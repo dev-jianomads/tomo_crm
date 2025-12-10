@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SessionState } from "./types";
 import { readFromStorage, writeToStorage } from "./storage";

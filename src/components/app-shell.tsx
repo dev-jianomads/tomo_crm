@@ -304,3 +304,4 @@ function suggestionFromText(input: string) {
   return "Logged and ready. Want me to draft a quick summary?";
 }
 
+
