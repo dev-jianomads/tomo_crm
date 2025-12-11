@@ -63,15 +63,19 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:flex-row md:items-start md:py-16">
-        <div className="md:absolute md:left-8 md:top-6 flex items-center gap-2">
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:py-16">
+        <div className="flex items-center gap-2">
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
           <span className="text-sm font-semibold text-gray-900">Tomo</span>
         </div>
-        <div className="w-full md:w-1/2">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Plan selection</p>
-          <h1 className="mt-2 text-2xl font-semibold text-gray-900">Choose your plan</h1>
-          <div className="mt-6 grid gap-4">
+
+        <div className="grid gap-2 md:grid-cols-2 md:items-start md:gap-8">
+          <div className="w-full">
+            <div className="mb-2">
+              <p className="text-sm font-medium text-gray-900">Pick a plan</p>
+              <p className="text-xs text-gray-600">Choose what fits now; you can switch later in Settings → Billing.</p>
+            </div>
+            <div className="grid gap-4">
             {plans.map((plan) => (
               <button
                 key={plan.id}
@@ -107,7 +111,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <div className="w-full rounded-lg border border-gray-200 bg-white p-6 shadow-[0_4px_16px_rgba(0,0,0,0.03)] md:w-1/2">
+          <div className="w-full rounded-lg border border-gray-200 bg-white p-6 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
           <p className="text-sm font-medium text-gray-900">Welcome to TOMO</p>
           <p className="text-sm text-gray-600">Sign in or create your workspace</p>
 
