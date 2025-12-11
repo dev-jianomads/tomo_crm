@@ -45,6 +45,12 @@ export type OnboardingState = {
   slackConnected: boolean;
   telegramConnected: boolean;
   telegramPhone?: string;
+  affinityConnected: boolean;
+  affinityListId?: string;
+  affinityTokenLast4?: string;
+  googleSheetsConnected: boolean;
+  googleSheetsFilename?: string;
+  googleSheetsAuthed?: boolean;
   notifications: Record<string, { email?: boolean; slack?: boolean; telegram?: boolean; inApp?: boolean }>;
   completed: boolean;
 };

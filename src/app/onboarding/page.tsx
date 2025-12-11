@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
+import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
 import { OnboardingState } from "@/lib/types";
 import { usePersistentState } from "@/lib/storage";
 
@@ -19,6 +20,9 @@ const initialState: OnboardingState = {
   emailConnected: false,
   slackConnected: false,
   telegramConnected: false,
+  affinityConnected: false,
+  googleSheetsConnected: false,
+  googleSheetsAuthed: false,
   notifications: defaultNotifications,
   completed: false,
 };
@@ -31,6 +35,14 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [telegramNumber, setTelegramNumber] = useState(state.telegramPhone ?? "");
   const [slackOpened, setSlackOpened] = useState(false);
+  const [affinityListId, setAffinityListId] = useState(state.affinityListId ?? "");
+  const [affinityTokenInput, setAffinityTokenInput] = useState("");
+  const [sheetsFilename, setSheetsFilename] = useState(
+    state.googleSheetsFilename ?? generatePresetSheetName()
+  );
+  const [affinitySaving, setAffinitySaving] = useState(false);
+  const [googleAuthing, setGoogleAuthing] = useState(false);
+  const [sheetCreating, setSheetCreating] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -54,7 +66,7 @@ export default function OnboardingPage() {
     goNext();
   };
 
-  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 6));
+  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 7));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const toggleNotification = (row: string, channel: "email" | "slack" | "telegram" | "inApp") => {
@@ -84,11 +96,11 @@ export default function OnboardingPage() {
             <p className="text-xs uppercase tracking-wide text-gray-500">Onboarding</p>
             <h1 className="text-2xl font-semibold text-gray-900">Connect your workspace</h1>
           </div>
-          <div className="hidden text-sm text-gray-500 md:block">Step {currentStep} of 6</div>
+          <div className="hidden text-sm text-gray-500 md:block">Step {currentStep} of 7</div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-          {[1, 2, 3, 4, 5, 6].map((step) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((step) => (
             <div
               key={step}
               className={`rounded-md border px-3 py-2 text-sm ${
@@ -187,16 +199,16 @@ export default function OnboardingPage() {
                       <p className="text-sm text-gray-600">Install the Ask Tomo app to get recaps and take action.</p>
                     </div>
                     {state.slackConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ✓</span>
+                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span>
                     ) : null}
                   </div>
                   <ul className="mt-3 space-y-2 text-sm text-gray-600">
-                    <li>• Morning and evening recaps</li>
-                    <li>• Meeting briefs and follow-up reminders</li>
-                    <li>• Actionable command cards in Slack</li>
+                    <li>� Morning and evening recaps</li>
+                    <li>� Meeting briefs and follow-up reminders</li>
+                    <li>� Actionable command cards in Slack</li>
                   </ul>
                   <div className="mt-4 space-y-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                    <p>We’ll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
+                    <p>We�ll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
                     <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium">
                       <span className="truncate">{slackInstallUrl}</span>
                       <button
@@ -230,7 +242,7 @@ export default function OnboardingPage() {
                       <p className="text-sm text-gray-600">Send recaps, briefs, and commands via Telegram.</p>
                     </div>
                     {state.telegramConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Onboarding link sent ✓</span>
+                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Onboarding link sent ?</span>
                     ) : null}
                   </div>
                   <p className="mt-3 text-sm text-gray-600">
@@ -256,7 +268,7 @@ export default function OnboardingPage() {
                   </button>
                   {state.telegramConnected ? (
                     <p className="mt-2 text-xs text-green-700">
-                      We’ve sent you a message from TOMO’s Telegram bot with your onboarding link.
+                      We�ve sent you a message from TOMO�s Telegram bot with your onboarding link.
                     </p>
                   ) : null}
                 </div>
@@ -306,11 +318,11 @@ export default function OnboardingPage() {
                             } ${disabled ? "cursor-not-allowed opacity-50" : "hover:border-blue-200 hover:text-blue-600"}`}
                             title={
                               disabled
-                                ? "Connect in Settings → Messaging to enable this channel."
+                                ? "Connect in Settings ? Messaging to enable this channel."
                                 : `Toggle ${channel} notifications`
                             }
                           >
-                            ✓
+                            ?
                           </button>
                         );
                       })}
@@ -330,6 +342,168 @@ export default function OnboardingPage() {
           )}
 
           {currentStep === 6 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Optional: Sync Tomo CRM to Affinity or Sheets</h2>
+                  <p className="text-sm text-gray-600">
+                    Bring in existing CRM data now or keep it ready for later. Credentials are saved securely server-side in production.
+                  </p>
+                </div>
+                <div className="text-sm text-gray-500">Optional</div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <img src="/icons/affinity.svg" alt="Affinity" className="h-5 w-5" />
+                      <p className="text-base font-semibold text-gray-900">Affinity CRM</p>
+                    </div>
+                    {state.affinityConnected ? (
+                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span>
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Enter your Affinity List ID and API token. We�ll sync people and companies into Tomo.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-gray-500">List ID</label>
+                    <input
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      placeholder="e.g. 12345"
+                      value={affinityListId}
+                      onChange={(e) => setAffinityListId(e.target.value)}
+                    />
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-gray-500">API token</label>
+                    <input
+                      type="password"
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      placeholder="Paste your token"
+                      value={affinityTokenInput}
+                      onChange={(e) => setAffinityTokenInput(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500">Saved securely in production; only stored locally in this mock.</p>
+                  </div>
+                  <button
+                    className="button-primary mt-4 w-full"
+                    disabled={affinitySaving || !affinityListId.trim() || !affinityTokenInput.trim()}
+                    onClick={async () => {
+                      if (!affinityListId.trim() || !affinityTokenInput.trim()) return;
+                      setAffinitySaving(true);
+                      try {
+                        const res = await connectAffinity({ listId: affinityListId.trim(), apiToken: affinityTokenInput.trim() });
+                        if (res.ok) {
+                          setState((prev) => ({
+                            ...prev,
+                            affinityConnected: true,
+                            affinityListId: res.listId,
+                            affinityTokenLast4: res.tokenLast4,
+                          }));
+                          setAffinityTokenInput("");
+                        }
+                      } finally {
+                        setAffinitySaving(false);
+                      }
+                    }}
+                  >
+                    {affinitySaving ? "Saving..." : state.affinityConnected ? "Update connection" : "Connect Affinity"}
+                  </button>
+                  {state.affinityConnected ? (
+                    <p className="mt-2 text-xs text-green-700">
+                      Affinity connected. List {state.affinityListId ?? affinityListId} � Token ending {state.affinityTokenLast4 ?? "����"}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <img src="/icons/google-sheets.svg" alt="Google Sheets" className="h-5 w-5" />
+                      <p className="text-base font-semibold text-gray-900">Google Sheets</p>
+                    </div>
+                    {state.googleSheetsConnected ? (
+                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Ready ?</span>
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Authenticate with Google and create a starter sheet. You can rename it below before we create it.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-gray-500">Preset filename</label>
+                    <input
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      value={sheetsFilename}
+                      onChange={(e) => setSheetsFilename(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500">We�ll create the file after you confirm the name.</p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="button-secondary"
+                      onClick={async () => {
+                        setGoogleAuthing(true);
+                        try {
+                          const res = await startGoogleAuth();
+                          if (res.authUrl) window.open(res.authUrl, "_blank");
+                          setState((prev) => ({ ...prev, googleSheetsAuthed: true }));
+                        } finally {
+                          setGoogleAuthing(false);
+                        }
+                      }}
+                    >
+                      {googleAuthing ? "Opening Google..." : state.googleSheetsAuthed ? "Re-auth Google" : "Sign in with Google"}
+                    </button>
+                    <button
+                      className="button-primary"
+                      disabled={sheetCreating || !sheetsFilename.trim()}
+                      onClick={async () => {
+                        if (!sheetsFilename.trim()) return;
+                        setSheetCreating(true);
+                        try {
+                          const res = await createGoogleSheet(sheetsFilename.trim());
+                          if (res.ok) {
+                            setState((prev) => ({
+                              ...prev,
+                              googleSheetsConnected: true,
+                              googleSheetsFilename: res.filename,
+                              googleSheetsAuthed: true,
+                            }));
+                          }
+                        } finally {
+                          setSheetCreating(false);
+                        }
+                      }}
+                    >
+                      {sheetCreating ? "Creating..." : state.googleSheetsConnected ? "Update filename" : "Create sheet"}
+                    </button>
+                  </div>
+                  {state.googleSheetsConnected ? (
+                    <p className="mt-2 text-xs text-green-700">
+                      Google Sheets ready. Filename {state.googleSheetsFilename ?? sheetsFilename}.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between">
+                <button className="text-sm text-gray-600 underline" onClick={goNext}>
+                  Skip for now
+                </button>
+                <button className="button-primary" onClick={goNext}>
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 7 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Your workspace is ready</h2>
               <div className="space-y-2 text-sm text-gray-700">
@@ -338,6 +512,8 @@ export default function OnboardingPage() {
                 <StatusLine label="Email connected" ok={state.emailConnected} />
                 <StatusLine label="Slack" ok={state.slackConnected} />
                 <StatusLine label="Telegram" ok={state.telegramConnected} />
+                <StatusLine label="Affinity" ok={state.affinityConnected} />
+                <StatusLine label="Google Sheets" ok={state.googleSheetsConnected} />
               </div>
               <button className="button-primary" onClick={completeOnboarding}>
                 Enter workspace
@@ -357,7 +533,7 @@ export default function OnboardingPage() {
                 Back
               </button>
             )}
-            {currentStep < 6 && (
+            {currentStep < 7 && (
               <button className="button-primary" onClick={goNext}>
                 Next
               </button>
@@ -387,7 +563,7 @@ function StepCard({
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           <p className="text-sm text-gray-600">{description}</p>
         </div>
-        {status ? <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ✓</span> : null}
+        {status ? <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span> : null}
       </div>
       {actions}
     </div>
@@ -401,6 +577,12 @@ function StatusLine({ label, ok }: { label: string; ok?: boolean }) {
       <span className="text-gray-700">{label}</span>
     </div>
   );
+}
+
+function generatePresetSheetName() {
+  const date = new Date();
+  const iso = date.toISOString().split("T")[0];
+  return `tomo_crm_sync_${iso}.xlsx`;
 }
 
 
