@@ -76,38 +76,38 @@ export default function AuthPage() {
               <p className="text-xs text-gray-600">Choose what fits now; you can switch later in Settings → Billing.</p>
             </div>
             <div className="grid gap-4">
-            {plans.map((plan) => (
-              <button
-                key={plan.id}
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`w-full rounded-lg border p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/30 ${
-                  selectedPlan === plan.id ? "border-blue-500 bg-blue-50/40" : "border-gray-200 bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`h-4 w-4 rounded-full border ${selectedPlan === plan.id ? "border-blue-600 bg-blue-600" : "border-gray-300"}`}
-                    />
-                    <p className="text-base font-medium text-gray-900">{plan.title}</p>
+              {plans.map((plan) => (
+                <button
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className={`w-full rounded-lg border p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/30 ${
+                    selectedPlan === plan.id ? "border-blue-500 bg-blue-50/40" : "border-gray-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`h-4 w-4 rounded-full border ${selectedPlan === plan.id ? "border-blue-600 bg-blue-600" : "border-gray-300"}`}
+                      />
+                      <p className="text-base font-medium text-gray-900">{plan.title}</p>
+                    </div>
+                    {plan.badge ? (
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-700">
+                        {plan.badge}
+                      </span>
+                    ) : null}
                   </div>
-                  {plan.badge ? (
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-700">
-                      {plan.badge}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm text-gray-700">{plan.price}</p>
-                <ul className="mt-3 space-y-1 text-sm text-gray-600">
-                  {plan.bullets.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-[2px] h-1.5 w-1.5 rounded-full bg-blue-500" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </button>
-            ))}
+                  <p className="mt-1 text-sm text-gray-700">{plan.price}</p>
+                  <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                    {plan.bullets.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <span className="mt-[2px] h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </button>
+              ))}
           </div>
         </div>
 
