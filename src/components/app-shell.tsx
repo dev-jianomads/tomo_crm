@@ -91,9 +91,8 @@ function NavRail({ active }: { active: Section }) {
 function BottomNav({ active }: { active: Section }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-6">
-      {navItems
-        .filter((item) => ["home", "contacts", "briefs", "tasks"].includes(item.id))
-        .map((item) => {
+      {[...navItems.filter((item) => ["home", "contacts", "briefs", "tasks"].includes(item.id)), { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }].map(
+        (item) => {
           const Icon = item.icon;
           const isActive = active === item.id;
           return (
@@ -102,7 +101,8 @@ function BottomNav({ active }: { active: Section }) {
               <span className={`text-xs ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
             </Link>
           );
-        })}
+        }
+      )}
     </nav>
   );
 }
@@ -303,5 +303,6 @@ function suggestionFromText(input: string) {
   if (input.toLowerCase().includes("task")) return "I prioritized tasks and flagged any blockers.";
   return "Logged and ready. Want me to draft a quick summary?";
 }
+
 
 

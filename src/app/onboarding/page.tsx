@@ -88,28 +88,50 @@ export default function OnboardingPage() {
     router.replace("/home");
   };
 
-  return (
-    <div className="min-h-screen bg-white px-4 py-8">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Onboarding</p>
-            <h1 className="text-2xl font-semibold text-gray-900">Connect your workspace</h1>
-          </div>
-          <div className="hidden text-sm text-gray-500 md:block">Step {currentStep} of 7</div>
-        </div>
+  const totalSteps = 7;
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-          {[1, 2, 3, 4, 5, 6, 7].map((step) => (
-            <div
-              key={step}
-              className={`rounded-md border px-3 py-2 text-sm ${
-                currentStep === step ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-gray-50 text-gray-700"
-              }`}
-            >
-              Step {step}
+  return (
+    <div className="min-h-screen bg-white px-4 py-4 md:py-8">
+      <div className="mx-auto flex max-w-4xl flex-col gap-5 md:gap-6">
+        <div className="sticky top-0 z-20 bg-white pb-3 pt-1 md:pt-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Onboarding</p>
+              <h1 className="text-2xl font-semibold text-gray-900">Connect your workspace</h1>
             </div>
-          ))}
+            <div className="hidden text-sm text-gray-500 md:block">Step {currentStep} of {totalSteps}</div>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              className="button-secondary h-9 px-3 text-sm"
+              onClick={goBack}
+              disabled={currentStep === 1}
+            >
+              Back
+            </button>
+            <div className="flex flex-1 items-center justify-center gap-2">
+              {Array.from({ length: totalSteps }, (_, idx) => {
+                const step = idx + 1;
+                const isActive = step === currentStep;
+                const isDone = step < currentStep;
+                return (
+                  <button
+                    key={step}
+                    onClick={() => setCurrentStep(step)}
+                    className={`h-3 w-3 rounded-full transition ${isActive ? "bg-blue-600 scale-105" : isDone ? "bg-blue-200" : "bg-gray-200 hover:bg-gray-300"}`}
+                    aria-label={`Go to step ${step}`}
+                  />
+                );
+              })}
+            </div>
+            <button
+              className="button-primary h-9 px-3 text-sm"
+              onClick={goNext}
+              disabled={currentStep === totalSteps}
+            >
+              Next
+            </button>
+          </div>
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -522,23 +544,9 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
-            TOMO keeps context from each step (plan, integrations) and will use it in briefs and follow-ups.
-          </div>
-          <div className="flex items-center gap-3">
-            {currentStep > 1 && (
-              <button className="text-sm text-gray-600 underline" onClick={goBack}>
-                Back
-              </button>
-            )}
-            {currentStep < 7 && (
-              <button className="button-primary" onClick={goNext}>
-                Next
-              </button>
-            )}
-          </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          TOMO keeps context from each step (plan, integrations) and will use it in briefs and follow-ups.
         </div>
       </div>
     </div>
@@ -584,5 +592,6 @@ function generatePresetSheetName() {
   const iso = date.toISOString().split("T")[0];
   return `tomo_crm_sync_${iso}.xlsx`;
 }
+
 
 
