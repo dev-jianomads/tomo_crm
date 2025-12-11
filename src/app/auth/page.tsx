@@ -108,66 +108,66 @@ export default function AuthPage() {
                   </ul>
                 </button>
               ))}
+            </div>
           </div>
-        </div>
 
           <div className="w-full rounded-lg border border-gray-200 bg-white p-6 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-          <p className="text-sm font-medium text-gray-900">Welcome to TOMO</p>
-          <p className="text-sm text-gray-600">Sign in or create your workspace</p>
+            <p className="text-sm font-medium text-gray-900">Welcome to TOMO</p>
+            <p className="text-sm text-gray-600">Sign in or create your workspace</p>
 
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-gray-500">Email</label>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs uppercase tracking-wide text-gray-500">Password</label>
-                <button onClick={() => setShowReset(true)} className="text-xs font-medium text-blue-600 hover:text-blue-700">
-                  Forgot password?
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wide text-gray-500">Email</label>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs uppercase tracking-wide text-gray-500">Password</label>
+                  <button onClick={() => setShowReset(true)} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+                    Forgot password?
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <button
+                onClick={handleContinue}
+                className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              >
+                Continue
+              </button>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="flex-1 border-t border-gray-200" />
+                <span>Or continue with</span>
+                <span className="flex-1 border-t border-gray-200" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <img src="/icons/google.svg" alt="Google" className="h-4 w-4" />
+                  Google
+                </button>
+                <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <img src="/icons/microsoft.svg" alt="Microsoft" className="h-4 w-4" />
+                  Microsoft 365
                 </button>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none"
-              />
             </div>
-            <button
-              onClick={handleContinue}
-              className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-            >
-              Continue
-            </button>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="flex-1 border-t border-gray-200" />
-              <span>Or continue with</span>
-              <span className="flex-1 border-t border-gray-200" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <img src="/icons/google.svg" alt="Google" className="h-4 w-4" />
-                Google
-              </button>
-              <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <img src="/icons/microsoft.svg" alt="Microsoft" className="h-4 w-4" />
-                Microsoft 365
-              </button>
-            </div>
-          </div>
 
-          <p className="mt-6 text-xs text-gray-500">
-            Using <span className="font-medium text-gray-700">{selectedPlan === "team" ? "Team" : "Individual"}</span> plan. Seat
-            management is handled later in Settings → Billing.
-          </p>
-        </div>
+            <p className="mt-6 text-xs text-gray-500">
+              Using <span className="font-medium text-gray-700">{selectedPlan === "team" ? "Team" : "Individual"}</span> plan. Seat
+              management is handled later in Settings → Billing.
+            </p>
+          </div>
       </div>
 
       {showReset && (
