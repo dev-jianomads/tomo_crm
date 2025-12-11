@@ -1,3 +1,39 @@
+/**
+ * =============================================================================
+ * TOMO CRM - App Shell Component
+ * =============================================================================
+ * 
+ * The main layout wrapper for authenticated pages.
+ * Provides navigation, resizable panels, and the Tomo AI assistant.
+ * 
+ * LAYOUT STRUCTURE:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ Header (logo, search, user avatar)                                       │
+ * ├────┬────────────────────┬───────────────────────────────────────────────┤
+ * │    │                    │                                               │
+ * │ N  │  List Content      │  Detail Content                               │
+ * │ a  │  (contacts list,   │  (contact detail, brief detail, etc.)         │
+ * │ v  │  briefs list, etc) │                                               │
+ * │    │                    ├───────────────────────────────────────────────┤
+ * │ R  │                    │  Tomo AI Assistant                            │
+ * │ a  │                    │  (always visible on desktop)                  │
+ * │ i  │                    │                                               │
+ * │ l  │                    │                                               │
+ * └────┴────────────────────┴───────────────────────────────────────────────┘
+ * 
+ * MOBILE LAYOUT:
+ * - Bottom navigation bar
+ * - List and detail stacked vertically
+ * - Tomo AI in floating sheet (FAB to open)
+ * 
+ * PRODUCTION ENHANCEMENTS:
+ * - Add user profile data from Firebase/Supabase
+ * - Add notification badge on nav items
+ * - Global search hitting Supabase with full-text search
+ * - Keyboard shortcuts (Cmd+K for search, etc.)
+ * =============================================================================
+ */
+
 "use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
@@ -23,10 +59,14 @@ type AppShellProps = {
   section: Section;
   listContent: ReactNode;
   detailContent: ReactNode;
-  contextTitle?: string;
-  assistantChips?: string[];
+  contextTitle?: string;       // Current context for Tomo AI (e.g., selected contact name)
+  assistantChips?: string[];   // Quick action suggestions for Tomo
 };
 
+/**
+ * Navigation items configuration
+ * PRODUCTION: Could add badge counts (e.g., tasks due today)
+ */
 const navItems: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Home", icon: HomeIcon, id: "home" },
   { href: "/contacts", label: "Contacts", icon: UserGroupIcon, id: "contacts" },
@@ -35,6 +75,10 @@ const navItems: { href: string; label: string; icon: typeof HomeIcon; id: Sectio
   { href: "/search", label: "Search", icon: MagnifyingGlassIcon, id: "search" },
 ];
 
+/**
+ * Hook to detect mobile viewport
+ * Uses 767px breakpoint (md in Tailwind)
+ */
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -49,6 +93,9 @@ function useIsMobile() {
   return isMobile;
 }
 
+/**
+ * Desktop navigation rail (left sidebar)
+ */
 function NavRail({ active }: { active: Section }) {
   const pathname = usePathname();
 
@@ -72,6 +119,7 @@ function NavRail({ active }: { active: Section }) {
           );
         })}
       </div>
+      {/* Settings at bottom of rail */}
       <div className="w-full">
         <Link href="/settings">
           <div
@@ -88,6 +136,10 @@ function NavRail({ active }: { active: Section }) {
   );
 }
 
+/**
+ * Mobile bottom navigation bar
+ * Shows 5 items: Home, Contacts, Briefs, Tasks, Settings
+ */
 function BottomNav({ active }: { active: Section }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-6">
@@ -107,30 +159,52 @@ function BottomNav({ active }: { active: Section }) {
   );
 }
 
+/**
+ * Main App Shell component
+ */
 export function AppShell({ section, listContent, detailContent, contextTitle, assistantChips }: AppShellProps) {
   const isMobile = useIsMobile();
+  
+  // Persisted panel sizes (survive page refresh)
   const [middleWidth, setMiddleWidth] = usePersistentState<number>("tomo-pane-width", 42);
   const [detailHeight, setDetailHeight] = usePersistentState<number>("tomo-detail-height", 55);
+  
+  // Drag state for resizable panels
   const [draggingColumn, setDraggingColumn] = useState(false);
   const [draggingRow, setDraggingRow] = useState(false);
+  
+  // Mobile assistant sheet state
   const [assistantOpen, setAssistantOpen] = useState(false);
+  
+  /**
+   * Chat messages with Tomo AI
+   * PRODUCTION: This could be:
+   * - In-memory only (privacy-first, no persistence)
+   * - Persisted to localStorage (current approach)
+   * - Synced to Supabase for cross-device continuity
+   */
   const [messages, setMessages] = usePersistentState<TomoMessage[]>("tomo-chat", initialMessages);
 
+  /**
+   * Context-aware suggestion chips for Tomo
+   * These change based on which section/page the user is viewing
+   */
   const defaultChips = useMemo(() => {
     const base = ["Summarize this", "Draft a follow-up", "What changed recently?"];
     if (section === "contacts") return [...base, "Show last interaction", "Suggest next step"];
     if (section === "briefs") return [...base, "Generate talking points", "Shorten this brief"];
     if (section === "tasks") return [...base, "Prioritize tasks", "Draft an email for this task"];
-    if (section === "home") return [...base, "What’s urgent today?", "Prep my next meeting"];
+    if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
   }, [section]);
 
+  // Column resize handler (list/detail split)
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
       if (!draggingColumn) return;
       const viewport = window.innerWidth;
       const leftNav = 64;
-      const usable = viewport - leftNav - 16; // padding safety
+      const usable = viewport - leftNav - 16;
       const newWidth = ((e.clientX - leftNav) / usable) * 100;
       const clamped = Math.min(65, Math.max(28, newWidth));
       setMiddleWidth(clamped);
@@ -144,10 +218,11 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     };
   }, [draggingColumn, setMiddleWidth]);
 
+  // Row resize handler (detail/assistant split)
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
       if (!draggingRow) return;
-      const containerHeight = window.innerHeight - 88; // minus header + paddings
+      const containerHeight = window.innerHeight - 88;
       const newHeight = (e.clientY - 120) / containerHeight * 100;
       const clamped = Math.min(78, Math.max(38, newHeight));
       setDetailHeight(clamped);
@@ -161,9 +236,24 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     };
   }, [draggingRow, setDetailHeight]);
 
+  /**
+   * Handle sending message to Tomo AI
+   * 
+   * CURRENT: Mock response with simulated delay
+   * 
+   * PRODUCTION: Replace with actual API call
+   * See tomo-assistant.tsx for detailed streaming implementation example
+   * 
+   * The contextTitle is passed to Tomo so it knows what entity
+   * the user is currently viewing (for context-aware responses)
+   */
   const handleSend = (text: string) => {
+    // Add user message immediately
     const userMessage: TomoMessage = { id: crypto.randomUUID(), from: "user", text, timestamp: Date.now() };
     setMessages((prev) => [...prev, userMessage]);
+    
+    // MOCK: Simulate AI response after delay
+    // PRODUCTION: Replace with streaming API call to /api/tomo/chat
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
@@ -171,8 +261,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
           id: crypto.randomUUID(),
           from: "tomo",
           text: contextTitle
-            ? `Pulling context on "${contextTitle}". Here’s a concise next step: ${suggestionFromText(text)}`
-            : `Got it. I’ll keep this in mind and suggest follow-ups.`,
+            ? `Pulling context on "${contextTitle}". Here's a concise next step: ${suggestionFromText(text)}`
+            : `Got it. I'll keep this in mind and suggest follow-ups.`,
           timestamp: Date.now(),
         },
       ]);
@@ -183,15 +273,28 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      {/* Header */}
       <header className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
         <div className="flex items-center gap-2">
           <span className="text-base font-semibold tracking-tight">Tomo</span>
           <span className="text-xs text-gray-500">AI execution workspace</span>
         </div>
+        
+        {/* 
+          Global search input
+          PRODUCTION: Wire to Supabase full-text search across contacts, briefs, tasks
+          Consider using Cmd+K shortcut to focus
+        */}
         <div className="hidden md:flex w-96 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
           <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
           <input placeholder="Search across contacts, briefs, tasks" className="flex-1 bg-transparent focus:outline-none" />
         </div>
+        
+        {/* 
+          User avatar
+          PRODUCTION: Show user's photo from Firebase Auth
+          Add dropdown for profile, settings, logout
+        */}
         <div className="flex items-center gap-2">
           <span className="hidden text-sm text-gray-600 md:inline">Workspace</span>
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-medium text-gray-700">
@@ -201,11 +304,14 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       </header>
 
       <div className="flex min-h-[calc(100vh-56px)]">
+        {/* Desktop navigation rail */}
         {!isMobile && <NavRail active={section} />}
 
         <main className="relative flex w-full flex-1 flex-col">
+          {/* Desktop layout: side-by-side panels */}
           {!isMobile ? (
             <div className="flex flex-1 gap-0">
+              {/* List panel (contacts list, briefs list, etc.) */}
               <section
                 className="flex-shrink-0 border-r border-gray-200"
                 style={{ width: `calc(${middleWidth}% - 8px)` }}
@@ -213,21 +319,28 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
                 {listContent}
               </section>
 
+              {/* Column resize handle */}
               <div
                 className="w-1 cursor-col-resize bg-gray-100 hover:bg-blue-200"
                 onMouseDown={() => setDraggingColumn(true)}
                 aria-label="Resize panes"
               />
 
+              {/* Detail + Assistant panel */}
               <section className="flex flex-1 flex-col">
+                {/* Detail content (contact detail, brief detail, etc.) */}
                 <div className="relative" style={{ height: `${detailHeight}%` }}>
                   <div className="absolute inset-0 overflow-auto">{detailContent}</div>
                 </div>
+                
+                {/* Row resize handle */}
                 <div
                   className="h-1 cursor-row-resize bg-gray-100 hover:bg-blue-200"
                   onMouseDown={() => setDraggingRow(true)}
                   aria-label="Resize detail and assistant"
                 />
+                
+                {/* Tomo AI Assistant (always visible on desktop) */}
                 <div className="flex-1 min-h-[240px] p-4">
                   <TomoAssistant
                     messages={messages}
@@ -239,6 +352,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               </section>
             </div>
           ) : (
+            /* Mobile layout: stacked vertically */
             <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
               {listContent}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -249,9 +363,12 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </main>
       </div>
 
+      {/* Mobile: Bottom nav + floating Tomo button + sheet */}
       {isMobile && (
         <>
           <BottomNav active={section} />
+          
+          {/* Floating action button to open Tomo */}
           <button
             onClick={() => setAssistantOpen(true)}
             className="fixed bottom-16 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200"
@@ -259,6 +376,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
           >
             <ChatBubbleLeftEllipsisIcon className="h-6 w-6" />
           </button>
+          
+          {/* Bottom sheet for Tomo AI on mobile */}
           <AssistantSheet open={assistantOpen} onClose={() => setAssistantOpen(false)}>
             <TomoAssistant
               messages={messages}
@@ -275,6 +394,10 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   );
 }
 
+/**
+ * Mobile bottom sheet for Tomo AI assistant
+ * Slides up from bottom when opened
+ */
 function AssistantSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <div
@@ -288,6 +411,7 @@ function AssistantSheet({ open, onClose, children }: { open: boolean; onClose: (
         style={{ minHeight: "70vh", maxHeight: "92vh" }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Drag handle indicator */}
         <div className="flex items-center justify-center border-b border-gray-200 py-2">
           <div className="h-1.5 w-12 rounded-full bg-gray-200" />
         </div>
@@ -297,12 +421,13 @@ function AssistantSheet({ open, onClose, children }: { open: boolean; onClose: (
   );
 }
 
+/**
+ * Mock response generator based on user input
+ * PRODUCTION: Remove this - responses come from Tomo AI API
+ */
 function suggestionFromText(input: string) {
-  if (input.toLowerCase().includes("brief")) return "Here’s a tighter brief plus 3 talking points.";
+  if (input.toLowerCase().includes("brief")) return "Here's a tighter brief plus 3 talking points.";
   if (input.toLowerCase().includes("follow")) return "I drafted a follow-up. Review before sending.";
   if (input.toLowerCase().includes("task")) return "I prioritized tasks and flagged any blockers.";
   return "Logged and ready. Want me to draft a quick summary?";
 }
-
-
-

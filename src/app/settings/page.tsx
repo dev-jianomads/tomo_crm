@@ -1,3 +1,39 @@
+/**
+ * =============================================================================
+ * TOMO CRM - Settings Page
+ * =============================================================================
+ * 
+ * User settings including profile, integrations, messaging, notifications, and billing.
+ * 
+ * SECTIONS:
+ * 1. Profile - User name, email, preferences
+ * 2. Integrations - Calendar, Contacts, Email, Affinity, Google Sheets
+ * 3. Messaging - Slack, Telegram
+ * 4. Notifications - Delivery preferences per channel
+ * 5. Billing & Plan - Stripe subscription management
+ * 
+ * PRODUCTION WIRING OVERVIEW:
+ * 
+ * PROFILE:
+ * - Fetch user data from Supabase `users` table
+ * - Update via Supabase on save
+ * - Display name also used by Tomo AI for personalization
+ * 
+ * INTEGRATIONS:
+ * - Status fetched from Supabase `user_integrations` table
+ * - Connect/disconnect actions call server-side API routes
+ * - See src/lib/integrations.ts for detailed API documentation
+ * 
+ * BILLING (STRIPE):
+ * - Display current plan from Stripe subscription
+ * - "Select plan" → Stripe Checkout Session
+ * - "Manage seats" → Stripe Customer Portal
+ * 
+ * SIGN OUT:
+ * - Firebase signOut() + clear any cached data
+ * =============================================================================
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -14,6 +50,35 @@ export default function SettingsPage() {
   const { ready, session } = useRequireSession();
   const router = useRouter();
   const [active, setActive] = useState<(typeof sections)[number]>("Profile");
+  
+  /**
+   * Integration state
+   * CURRENT: Stored in localStorage via usePersistentState
+   * PRODUCTION: Fetch from Supabase `user_integrations` table
+   * 
+   * Schema suggestion:
+   * ```sql
+   * CREATE TABLE user_integrations (
+   *   user_id TEXT PRIMARY KEY REFERENCES users(id),
+   *   calendar_connected BOOLEAN DEFAULT FALSE,
+   *   calendar_provider TEXT, -- 'google' | 'microsoft'
+   *   calendar_token_encrypted TEXT,
+   *   contacts_connected BOOLEAN DEFAULT FALSE,
+   *   email_connected BOOLEAN DEFAULT FALSE,
+   *   slack_connected BOOLEAN DEFAULT FALSE,
+   *   slack_workspace_id TEXT,
+   *   telegram_connected BOOLEAN DEFAULT FALSE,
+   *   telegram_chat_id TEXT,
+   *   affinity_connected BOOLEAN DEFAULT FALSE,
+   *   affinity_list_id TEXT,
+   *   affinity_token_encrypted TEXT,
+   *   google_sheets_connected BOOLEAN DEFAULT FALSE,
+   *   google_sheets_id TEXT,
+   *   google_sheets_filename TEXT,
+   *   updated_at TIMESTAMP DEFAULT NOW()
+   * );
+   * ```
+   */
   const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", {
     calendarConnected: false,
     contactsConnected: false,
@@ -26,18 +91,42 @@ export default function SettingsPage() {
     notifications: {},
     completed: false,
   });
+  
+  // Affinity form state
   const [affinityListId, setAffinityListId] = useState(integrations.affinityListId ?? "");
   const [affinityToken, setAffinityToken] = useState("");
+  
+  // Google Sheets form state
   const [sheetName, setSheetName] = useState(integrations.googleSheetsFilename ?? generatePresetSheetName());
+  
+  // Loading states
   const [savingAffinity, setSavingAffinity] = useState(false);
   const [authingSheet, setAuthingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
 
+  /**
+   * Settings navigation sidebar
+   */
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">Settings</p>
         <p className="text-sm text-gray-600">Workspace controls</p>
+        
+        {/* 
+          Sign Out Button
+          PRODUCTION: Replace clearSession() with Firebase signOut()
+          ```
+          import { signOut } from 'firebase/auth';
+          import { auth } from '@/lib/firebase';
+          
+          onClick={async () => {
+            await signOut(auth);
+            clearUserStorage(session.uid); // Clear cached data
+            router.replace("/auth");
+          }}
+          ```
+        */}
         <button
           onClick={() => {
             clearSession();
@@ -65,12 +154,33 @@ export default function SettingsPage() {
     </div>
   );
 
+  /**
+   * Settings detail content (changes based on selected section)
+   */
   const detailContent = (
     <div className="h-full overflow-auto p-4">
+      {/* ====== PROFILE SECTION ====== */}
       {active === "Profile" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
           <p className="text-sm text-gray-600">Manage your name, email, and workspace identity.</p>
+          
+          {/*
+            Profile Form
+            PRODUCTION: 
+            - Fetch initial values from Supabase user record
+            - Add save button that updates Supabase
+            - Consider adding profile photo upload
+            
+            ```
+            const updateProfile = async () => {
+              await supabase
+                .from('users')
+                .update({ display_name: name, ... })
+                .eq('id', session.uid);
+            };
+            ```
+          */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="text-xs uppercase tracking-wide text-gray-500">Name</label>
@@ -87,15 +197,34 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* ====== INTEGRATIONS SECTION ====== */}
       {active === "Integrations" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Integrations</h2>
           <p className="text-sm text-gray-600">Manage calendar, contacts, email, Affinity, and Sheets connections.</p>
+          
+          {/* 
+            Core integrations (Calendar, Contacts, Email)
+            PRODUCTION: Add connect/reconnect buttons for each
+            See onboarding page for OAuth flow patterns
+          */}
           <IntegrationRow title="Calendar" status={integrations.calendarConnected ? "Connected" : "Not connected"} />
           <IntegrationRow title="Contacts" status={integrations.contactsConnected ? "Connected" : "Not connected"} />
           <IntegrationRow title="Email" status={integrations.emailConnected ? "Connected" : "Optional"} />
 
+          {/* Affinity + Google Sheets cards */}
           <div className="grid gap-4 md:grid-cols-2">
+            {/* 
+              ====== AFFINITY CRM INTEGRATION ======
+              See src/lib/integrations.ts for full API documentation
+              
+              PRODUCTION FLOW:
+              1. User enters List ID and API Token
+              2. Click Connect → POST /api/integrations/affinity/connect
+              3. Server validates token, encrypts, stores in Supabase
+              4. Server returns success + token last 4 chars
+              5. Optionally trigger initial sync: POST /api/integrations/affinity/sync
+            */}
             <div className="rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -137,6 +266,7 @@ export default function SettingsPage() {
                     if (!affinityListId.trim() || !affinityToken.trim()) return;
                     setSavingAffinity(true);
                     try {
+                      // MOCK: Replace with real API call in production
                       const res = await connectAffinity({ listId: affinityListId.trim(), apiToken: affinityToken.trim() });
                       if (res.ok) {
                         setIntegrations((prev) => ({
@@ -145,7 +275,7 @@ export default function SettingsPage() {
                           affinityListId: res.listId,
                           affinityTokenLast4: res.tokenLast4,
                         }));
-                        setAffinityToken("");
+                        setAffinityToken(""); // Clear token from form after saving
                       }
                     } finally {
                       setSavingAffinity(false);
@@ -158,6 +288,7 @@ export default function SettingsPage() {
                   <button
                     className="button-secondary"
                     onClick={() => {
+                      // PRODUCTION: Call DELETE /api/integrations/affinity/disconnect
                       setIntegrations((prev) => ({
                         ...prev,
                         affinityConnected: false,
@@ -177,6 +308,17 @@ export default function SettingsPage() {
               ) : null}
             </div>
 
+            {/* 
+              ====== GOOGLE SHEETS INTEGRATION ======
+              See src/lib/integrations.ts for full API documentation
+              
+              PRODUCTION FLOW:
+              1. Click "Sign in with Google" → Redirect to Google OAuth
+              2. After callback, tokens stored server-side
+              3. User edits preset filename
+              4. Click "Create sheet" → POST /api/integrations/google-sheets/create
+              5. Server creates sheet in user's Drive, stores sheet ID
+            */}
             <div className="rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -204,6 +346,7 @@ export default function SettingsPage() {
                   onClick={async () => {
                     setAuthingSheet(true);
                     try {
+                      // MOCK: Replace with redirect to Google OAuth
                       const res = await startGoogleAuth();
                       if (res.authUrl) window.open(res.authUrl, "_blank");
                       setIntegrations((prev) => ({ ...prev, googleSheetsAuthed: true }));
@@ -221,6 +364,7 @@ export default function SettingsPage() {
                     if (!sheetName.trim()) return;
                     setSavingSheet(true);
                     try {
+                      // MOCK: Replace with real API call
                       const res = await createGoogleSheet(sheetName.trim());
                       if (res.ok) {
                         setIntegrations((prev) => ({
@@ -246,31 +390,118 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* ====== MESSAGING SECTION ====== */}
       {active === "Messaging" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Messaging</h2>
           <p className="text-sm text-gray-600">Slack and Telegram connections.</p>
+          
+          {/*
+            SLACK INTEGRATION:
+            - You have: App ID, Bot Token, Bot User ID
+            - Add "Reconnect" button that triggers OAuth flow
+            - Show connected workspace name
+            
+            TELEGRAM INTEGRATION:
+            - Show bot connection status
+            - Option to change phone number / re-link
+            
+            See src/lib/integrations.ts for API documentation
+          */}
           <IntegrationRow title="Slack" status={integrations.slackConnected ? "Connected" : "Not connected"} />
           <IntegrationRow title="Telegram" status={integrations.telegramConnected ? "Onboarding link sent" : "Not connected"} />
         </div>
       )}
 
+      {/* ====== NOTIFICATIONS SECTION ====== */}
       {active === "Notifications" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
           <p className="text-sm text-gray-600">Routing for recaps, briefs, follow-ups.</p>
+          
+          {/*
+            PRODUCTION:
+            - Show grid of notification types × delivery channels
+            - Morning Recaps: Email, Slack, Telegram, In-App
+            - Meeting Briefs: Email, Slack, Telegram, In-App
+            - Follow-ups: ...
+            - Escalations: ...
+            
+            Store preferences in Supabase `user_notification_preferences` table
+            Used by scheduled jobs that send recaps via Loops.so, Slack, Telegram
+          */}
           <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
             Configure routing per channel. Slack/Telegram must be connected to enable those switches.
           </div>
         </div>
       )}
 
+      {/* ====== BILLING & PLAN SECTION ====== */}
       {active === "Billing & Plan" && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Billing & Plan</h2>
           <p className="text-sm text-gray-600">Current plan and upgrade options.</p>
+          
+          {/*
+            STRIPE INTEGRATION:
+            
+            1. DISPLAY CURRENT PLAN:
+               - Fetch from Stripe via API: GET /api/stripe/subscription
+               - Show plan name, price, billing period, next renewal date
+            
+            2. "SELECT PLAN" BUTTON:
+               - If changing plan: Create Checkout Session with new price
+               ```
+               const handleSelectPlan = async (priceId: string) => {
+                 const response = await fetch('/api/stripe/create-checkout-session', {
+                   method: 'POST',
+                   headers: { 'Authorization': `Bearer ${token}` },
+                   body: JSON.stringify({
+                     priceId,
+                     successUrl: `${window.location.origin}/settings?billing=success`,
+                     cancelUrl: `${window.location.origin}/settings`,
+                   }),
+                 });
+                 const { url } = await response.json();
+                 window.location.href = url;
+               };
+               ```
+            
+            3. "MANAGE SEATS" BUTTON (Team plan):
+               - Open Stripe Customer Portal
+               ```
+               const handleManageSeats = async () => {
+                 const response = await fetch('/api/stripe/create-portal-session', {
+                   method: 'POST',
+                   headers: { 'Authorization': `Bearer ${token}` },
+                   body: JSON.stringify({
+                     returnUrl: `${window.location.origin}/settings`,
+                   }),
+                 });
+                 const { url } = await response.json();
+                 window.location.href = url;
+               };
+               ```
+            
+            4. API ROUTES TO CREATE:
+               - POST /api/stripe/create-checkout-session
+               - POST /api/stripe/create-portal-session
+               - GET /api/stripe/subscription
+               - POST /api/stripe/webhook (for subscription events)
+            
+            5. STRIPE WEBHOOK EVENTS TO HANDLE:
+               - checkout.session.completed → Create/update subscription in Supabase
+               - customer.subscription.updated → Update plan in Supabase
+               - customer.subscription.deleted → Downgrade to free plan
+               - invoice.payment_failed → Notify user, grace period
+          */}
           <div className="grid gap-4 md:grid-cols-2">
-            <PlanCard name="Individual" price="$X/month" features={["1 user", "Contacts auto-sync", "Meeting briefs", "Follow-ups", "TOMO AI assistant"]} active={session?.plan === "individual"} />
+            <PlanCard 
+              name="Individual" 
+              price="$X/month" 
+              features={["1 user", "Contacts auto-sync", "Meeting briefs", "Follow-ups", "TOMO AI assistant"]} 
+              active={session?.plan === "individual"} 
+            />
             <PlanCard
               name="Team"
               price="$X/user/month"
@@ -279,6 +510,11 @@ export default function SettingsPage() {
               active={session?.plan === "team"}
             />
           </div>
+          
+          {/* 
+            Manage Seats button - opens Stripe Customer Portal
+            Only show for Team plan users
+          */}
           <button className="button-secondary w-fit">Manage seats</button>
         </div>
       )}
@@ -290,6 +526,10 @@ export default function SettingsPage() {
   return <AppShell section="settings" listContent={listContent} detailContent={detailContent} contextTitle={`${active} settings`} />;
 }
 
+/**
+ * Simple integration status row
+ * PRODUCTION: Add onClick to open connection/reconnection flow
+ */
 function IntegrationRow({ title, status }: { title: string; status: string }) {
   return (
     <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
@@ -302,6 +542,15 @@ function IntegrationRow({ title, status }: { title: string; status: string }) {
   );
 }
 
+/**
+ * Plan selection card
+ * 
+ * PRODUCTION ENHANCEMENTS:
+ * - Show actual price from Stripe
+ * - Add "Current" badge instead of blue border for active plan
+ * - Disable button if already on this plan
+ * - Wire onClick to Stripe Checkout
+ */
 function PlanCard({
   name,
   price,
@@ -332,14 +581,21 @@ function PlanCard({
           </li>
         ))}
       </ul>
+      {/*
+        PRODUCTION: Wire to Stripe
+        - If active: Show "Current plan" (disabled)
+        - If not active: onClick → create Checkout Session
+      */}
       <button className="button-primary mt-3 w-full">{active ? "Current plan" : "Select plan"}</button>
     </div>
   );
 }
 
+/**
+ * Generate a default Google Sheet filename with today's date
+ */
 function generatePresetSheetName() {
   const date = new Date();
   const iso = date.toISOString().split("T")[0];
   return `tomo_crm_sync_${iso}.xlsx`;
 }
-
