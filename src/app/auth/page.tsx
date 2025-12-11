@@ -126,7 +126,7 @@ export default function AuthPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex itemscenter justify-between">
                   <label className="text-xs uppercase tracking-wide text-gray-500">Password</label>
                   <button onClick={() => setShowReset(true)} className="text-xs font-medium text-blue-600 hover:text-blue-700">
                     Forgot password?
@@ -168,6 +168,7 @@ export default function AuthPage() {
               management is handled later in Settings → Billing.
             </p>
           </div>
+        </div>
       </div>
 
       {showReset && (
