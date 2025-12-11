@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Microsoft">
+  <rect width="64" height="64" rx="12" fill="#f3f4f6"/>
+  <rect x="10" y="10" width="20" height="20" fill="#f35325"/>
+  <rect x="34" y="10" width="20" height="20" fill="#81bc06"/>
+  <rect x="10" y="34" width="20" height="20" fill="#05a6f0"/>
+  <rect x="34" y="34" width="20" height="20" fill="#ffba08"/>
+</svg>

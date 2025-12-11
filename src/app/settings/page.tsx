@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { useRequireSession } from "@/lib/auth";
+import { clearSession, useRequireSession } from "@/lib/auth";
 
 const sections = ["Profile", "Integrations", "Messaging", "Notifications", "Billing & Plan"] as const;
 
 export default function SettingsPage() {
   const { ready, session } = useRequireSession();
+  const router = useRouter();
   const [active, setActive] = useState<(typeof sections)[number]>("Profile");
 
   const listContent = (
@@ -15,6 +17,16 @@ export default function SettingsPage() {
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">Settings</p>
         <p className="text-sm text-gray-600">Workspace controls</p>
+        <button
+          onClick={() => {
+            clearSession();
+            router.replace("/auth");
+          }}
+          className="mt-3 inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:border-gray-300"
+        >
+          <span className="h-2 w-2 rounded-full bg-rose-500" />
+          Sign out
+        </button>
       </div>
       <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
         {sections.map((section) => (

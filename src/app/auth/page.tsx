@@ -64,6 +64,10 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:flex-row md:items-start md:py-16">
+        <div className="md:absolute md:left-8 md:top-6 flex items-center gap-2">
+          <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
+          <span className="text-sm font-semibold text-gray-900">Tomo</span>
+        </div>
         <div className="w-full md:w-1/2">
           <p className="text-xs uppercase tracking-wide text-gray-500">Plan selection</p>
           <h1 className="mt-2 text-2xl font-semibold text-gray-900">Choose your plan</h1>
@@ -145,10 +149,12 @@ export default function AuthPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <img src="/icons/google.svg" alt="Google" className="h-4 w-4" />
                 Google
               </button>
               <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Microsoft
+                <img src="/icons/microsoft.svg" alt="Microsoft" className="h-4 w-4" />
+                Microsoft 365
               </button>
             </div>
           </div>

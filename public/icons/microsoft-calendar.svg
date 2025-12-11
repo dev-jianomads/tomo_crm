@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Microsoft Calendar">
+  <rect width="64" height="64" rx="12" fill="#0f6cbd"/>
+  <rect x="10" y="16" width="44" height="36" rx="6" fill="#f3f7fb"/>
+  <rect x="10" y="16" width="44" height="10" rx="6" fill="#0f6cbd"/>
+  <rect x="18" y="30" width="12" height="16" rx="4" fill="#0f6cbd"/>
+  <rect x="34" y="30" width="12" height="16" rx="4" fill="#0f6cbd"/>
+  <text x="24" y="42" font-family="Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">MS</text>
+  <text x="40" y="42" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">31</text>
+</svg>

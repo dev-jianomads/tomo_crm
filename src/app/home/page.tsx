@@ -32,8 +32,13 @@ export default function HomePage() {
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Home</p>
-        <h2 className="text-lg font-semibold text-gray-900">Today & This Week</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Home</p>
+            <h2 className="text-lg font-semibold text-gray-900">Today & This Week</h2>
+          </div>
+          <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
+        </div>
         <div className="mt-3 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
           <input
             value={query}

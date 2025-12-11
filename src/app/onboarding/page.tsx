@@ -107,10 +107,12 @@ export default function OnboardingPage() {
               description="TOMO uses your calendar to prepare meeting briefs and reminders."
               actions={
                 <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary" onClick={() => markConnected("calendarConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("calendarConnected")}>
+                    <img src="/icons/google-calendar.svg" alt="Google Calendar" className="h-4 w-4" />
                     Connect Google Calendar
                   </button>
-                  <button className="button-secondary" onClick={() => markConnected("calendarConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("calendarConnected")}>
+                    <img src="/icons/microsoft-calendar.svg" alt="Microsoft Calendar" className="h-4 w-4" />
                     Connect Microsoft 365 Calendar
                   </button>
                 </div>
@@ -125,10 +127,12 @@ export default function OnboardingPage() {
               description="TOMO builds your contact graph and relationship history from your contacts."
               actions={
                 <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary" onClick={() => markConnected("contactsConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("contactsConnected")}>
+                    <img src="/icons/google-contacts.svg" alt="Google Contacts" className="h-4 w-4" />
                     Connect Google Contacts
                   </button>
-                  <button className="button-secondary" onClick={() => markConnected("contactsConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("contactsConnected")}>
+                    <img src="/icons/microsoft-contacts.svg" alt="Microsoft Contacts" className="h-4 w-4" />
                     Connect Microsoft 365 Contacts
                   </button>
                 </div>
@@ -143,10 +147,12 @@ export default function OnboardingPage() {
               description="Enable follow-ups, recaps, and automated detection of commitments from your emails."
               actions={
                 <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary" onClick={() => markConnected("emailConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("emailConnected")}>
+                    <img src="/icons/gmail.svg" alt="Gmail" className="h-4 w-4" />
                     Connect Gmail
                   </button>
-                  <button className="button-secondary" onClick={() => markConnected("emailConnected")}>
+                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("emailConnected")}>
+                    <img src="/icons/outlook.svg" alt="Outlook" className="h-4 w-4" />
                     Connect Outlook
                   </button>
                   <button className="text-sm text-gray-600 underline" onClick={goNext}>
@@ -174,7 +180,10 @@ export default function OnboardingPage() {
                 <div className="rounded-lg border border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-base font-semibold text-gray-900">Slack</p>
+                      <div className="flex items-center gap-2">
+                        <img src="/icons/slack.svg" alt="Slack" className="h-5 w-5" />
+                        <p className="text-base font-semibold text-gray-900">Slack</p>
+                      </div>
                       <p className="text-sm text-gray-600">Install the Ask Tomo app to get recaps and take action.</p>
                     </div>
                     {state.slackConnected ? (
@@ -214,7 +223,10 @@ export default function OnboardingPage() {
                 <div className="rounded-lg border border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-base font-semibold text-gray-900">Telegram</p>
+                      <div className="flex items-center gap-2">
+                        <img src="/icons/telegram.svg" alt="Telegram" className="h-5 w-5" />
+                        <p className="text-base font-semibold text-gray-900">Telegram</p>
+                      </div>
                       <p className="text-sm text-gray-600">Send recaps, briefs, and commands via Telegram.</p>
                     </div>
                     {state.telegramConnected ? (
