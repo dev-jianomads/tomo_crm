@@ -66,7 +66,7 @@ export default function OnboardingPage() {
     goNext();
   };
 
-  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 7));
+  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 6));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const toggleNotification = (row: string, channel: "email" | "slack" | "telegram" | "inApp") => {
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
     router.replace("/home");
   };
 
-  const totalSteps = 7;
+  const totalSteps = 6;
 
   return (
     <div className="min-h-screen bg-white px-4 py-4 md:py-8">
@@ -204,7 +204,7 @@ export default function OnboardingPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Connect messaging channels</h2>
                   <p className="text-sm text-gray-600">
-                    Receive TOMO recaps and act on suggestions directly from Slack or Telegram.
+                    TOMO delivers recaps to your email by default. Connect Slack or Telegram to also receive recaps and let TOMO act on your suggestions directly there.
                   </p>
                 </div>
                 <div className="text-sm text-gray-500">Optional</div>
@@ -308,62 +308,6 @@ export default function OnboardingPage() {
           )}
 
           {currentStep === 5 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Choose how TOMO notifies you</h2>
-                  <p className="text-sm text-gray-600">You can change these settings anytime.</p>
-                </div>
-              </div>
-              <div className="overflow-hidden rounded-lg border border-gray-200">
-                <div className="grid grid-cols-5 bg-gray-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  <div>Type</div>
-                  <div>Email</div>
-                  <div>Slack</div>
-                  <div>Telegram</div>
-                  <div>In-App</div>
-                </div>
-                <div className="divide-y divide-gray-200">
-                  {Object.keys(state.notifications).map((row) => (
-                    <div key={row} className="grid grid-cols-5 items-center px-4 py-3 text-sm text-gray-700">
-                      <div className="font-medium">{row.replace(/([A-Z])/g, " $1")}</div>
-                      {(["email", "slack", "telegram", "inApp"] as const).map((channel) => {
-                        const disabled =
-                          (channel === "slack" && !state.slackConnected) || (channel === "telegram" && !state.telegramConnected);
-                        return (
-                          <button
-                            key={channel}
-                            disabled={disabled}
-                            onClick={() => toggleNotification(row, channel)}
-                            className={`mx-auto flex h-8 w-8 items-center justify-center rounded-md border ${
-                              state.notifications[row]?.[channel] ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500"
-                            } ${disabled ? "cursor-not-allowed opacity-50" : "hover:border-blue-200 hover:text-blue-600"}`}
-                            title={
-                              disabled
-                                ? "Connect in Settings ? Messaging to enable this channel."
-                                : `Toggle ${channel} notifications`
-                            }
-                          >
-                            ?
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <button className="text-sm text-gray-600 underline" onClick={goBack}>
-                  Back
-                </button>
-                <button className="button-primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 6 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -525,7 +469,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {currentStep === 7 && (
+          {currentStep === 6 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Your workspace is ready</h2>
               <div className="space-y-2 text-sm text-gray-700">
