@@ -47,13 +47,17 @@ import {
   Squares2X2Icon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
+  ChartBarIcon,
+  DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { initialMessages } from "@/lib/mock-data";
 import { usePersistentState } from "@/lib/storage";
 import { TomoMessage } from "@/lib/types";
 
-type Section = "home" | "contacts" | "briefs" | "tasks" | "search" | "settings";
+// IA labels (desktop order): TODAY, MOMENTUM, ACTIONS, RELATIONSHIPS, MATERIALS, SETTINGS
+// Section identifiers map to routes
+type Section = "home" | "momentum" | "tasks" | "contacts" | "materials" | "search" | "settings";
 
 type AppShellProps = {
   section: Section;
@@ -67,12 +71,13 @@ type AppShellProps = {
  * Navigation items configuration
  * PRODUCTION: Could add badge counts (e.g., tasks due today)
  */
+// Preserve existing layout; only relabel IA and add new routes with minimal churn
 const navItems: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
-  { href: "/home", label: "Home", icon: HomeIcon, id: "home" },
-  { href: "/contacts", label: "Contacts", icon: UserGroupIcon, id: "contacts" },
-  { href: "/briefs", label: "Briefs", icon: Squares2X2Icon, id: "briefs" },
-  { href: "/tasks", label: "Tasks", icon: ClipboardDocumentListIcon, id: "tasks" },
-  { href: "/search", label: "Search", icon: MagnifyingGlassIcon, id: "search" },
+  { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
+  { href: "/momentum", label: "Momentum", icon: ChartBarIcon, id: "momentum" },
+  { href: "/tasks", label: "Actions", icon: ClipboardDocumentListIcon, id: "tasks" },
+  { href: "/contacts", label: "Relationships", icon: UserGroupIcon, id: "contacts" },
+  { href: "/materials", label: "Materials", icon: DocumentDuplicateIcon, id: "materials" },
 ];
 
 /**
@@ -143,7 +148,7 @@ function NavRail({ active }: { active: Section }) {
 function BottomNav({ active }: { active: Section }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-6">
-      {[...navItems.filter((item) => ["home", "contacts", "briefs", "tasks"].includes(item.id)), { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }].map(
+      {[...navItems.filter((item) => ["home", "contacts", "materials", "tasks"].includes(item.id)), { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }].map(
         (item) => {
           const Icon = item.icon;
           const isActive = active === item.id;
@@ -192,7 +197,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   const defaultChips = useMemo(() => {
     const base = ["Summarize this", "Draft a follow-up", "What changed recently?"];
     if (section === "contacts") return [...base, "Show last interaction", "Suggest next step"];
-    if (section === "briefs") return [...base, "Generate talking points", "Shorten this brief"];
+    if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
+    if (section === "momentum") return [...base, "Explain this score", "What next", "Draft outreach"];
     if (section === "tasks") return [...base, "Prioritize tasks", "Draft an email for this task"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;

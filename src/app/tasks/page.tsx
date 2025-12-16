@@ -1,92 +1,69 @@
 "use client";
 
+/**
+ * ACTIONS page (/tasks) — execution + approvals
+ * - Grouped by state: Needs Approval, In Progress, Blocked/Stalled
+ * - Calm UI; no dense tables
+ * - Draft review + evidence + activity log
+ */
+
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { tasks } from "@/lib/mock-data";
+import { actions, ActionItem } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 
-export default function TasksPage() {
+type ActionGroupKey = "approval" | "in_progress" | "blocked";
+
+export default function ActionsPage() {
   const { ready } = useRequireSession();
-  const [activeId, setActiveId] = useState<string | null>(() => tasks[0]?.id ?? null);
-  const [filter, setFilter] = useState<"All" | "Overdue" | "Today" | "This week">("All");
+  const [activeId, setActiveId] = useState<string | null>(() => actions[0]?.id ?? null);
 
-  const grouped = useMemo(() => {
-    const buckets = ["Overdue", "Today", "This week"] as const;
-    return buckets.map((bucket) => ({
-      title: bucket,
-      items: tasks.filter((task) => task.bucket === bucket && (filter === "All" || filter === bucket)),
-    }));
-  }, [filter]);
+  const groups = useMemo(() => {
+    const map: Record<ActionGroupKey, ActionItem[]> = { approval: [], in_progress: [], blocked: [] };
+    actions.forEach((a) => map[a.status].push(a));
+    return map;
+  }, []);
 
-  const active = tasks.find((t) => t.id === activeId) ?? null;
+  const active = actions.find((a) => a.id === activeId) ?? null;
 
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Tasks</p>
-        <div className="mt-3 flex gap-2">
-          {["All", "Overdue", "Today", "This week"].map((pill) => (
-            <button
-              key={pill}
-              onClick={() => setFilter(pill as typeof filter)}
-              className={`rounded-full px-3 py-1 text-xs transition ${
-                filter === pill ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {pill}
-            </button>
-          ))}
-        </div>
+        <p className="text-xs uppercase tracking-wide text-gray-500">Actions</p>
+        <p className="text-sm text-gray-600">Waiting for you or others</p>
       </div>
+
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
-        {grouped.map((group) => (
-          <div key={group.title} className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-gray-500">{group.title}</p>
-            {group.items.map((task) => (
-              <button
-                key={task.id}
-                onClick={() => setActiveId(task.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                  activeId === task.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <p className="text-sm font-semibold text-gray-900">{task.title}</p>
-                <p className="text-xs text-gray-600">{task.due}</p>
-                {task.linkedTo ? <p className="text-xs text-gray-500">Linked to: {task.linkedTo}</p> : null}
-              </button>
-            ))}
-          </div>
-        ))}
+        <ActionGroup
+          title="Needs Your Approval"
+          hint="Draft outreach, scheduling, CRM updates"
+          items={groups.approval}
+          activeId={activeId}
+          onSelect={setActiveId}
+        />
+        <ActionGroup
+          title="In Progress"
+          hint="Scheduling in flight, replies pending"
+          items={groups.in_progress}
+          activeId={activeId}
+          onSelect={setActiveId}
+        />
+        {groups.blocked.length ? (
+          <ActionGroup
+            title="Blocked / Stalled"
+            hint="Silent failures, engagement drops"
+            items={groups.blocked}
+            activeId={activeId}
+            onSelect={setActiveId}
+          />
+        ) : null}
       </div>
     </div>
   );
 
   const detailContent = (
     <div className="h-full overflow-auto p-4">
-      {!active ? (
-        <Placeholder title="Select a task" />
-      ) : (
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Task</p>
-              <h2 className="text-lg font-semibold text-gray-900">{active.title}</h2>
-              <p className="text-sm text-gray-600">
-                {active.bucket} • {active.due}
-              </p>
-            </div>
-            {active.linkedTo ? (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">Linked: {active.linkedTo}</span>
-            ) : null}
-          </div>
-          <p className="text-sm text-gray-700">
-            TOMO can draft the follow-up email for this task and stage it for review. Nothing is sent without your confirmation.
-          </p>
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-            Ask TOMO to prioritize tasks, block time, or draft summaries for stakeholders.
-          </div>
-        </div>
-      )}
+      {!active ? <Placeholder title="Select an action to move forward." /> : <ActionDetail action={active} />}
     </div>
   );
 
@@ -98,8 +75,154 @@ export default function TasksPage() {
       listContent={listContent}
       detailContent={detailContent}
       contextTitle={active?.title}
-      assistantChips={["Draft the follow-up", "Prioritize this week", "Log a note", "Remind me tomorrow"]}
+      assistantChips={["Draft outreach", "Generate 3 variants", "Explain why this surfaced", "Create new action"]}
     />
+  );
+}
+
+function ActionGroup({
+  title,
+  hint,
+  items,
+  activeId,
+  onSelect,
+}: {
+  title: string;
+  hint: string;
+  items: ActionItem[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="text-xs text-gray-500">{hint}</p>
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.id)}
+            className={`w-full rounded-md border px-3 py-2 text-left transition ${
+              activeId === item.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                <p className="text-xs text-gray-600">Why: {item.trigger}</p>
+              </div>
+              <StatusPill status={item.status} />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: ActionGroupKey }) {
+  const map: Record<ActionGroupKey, string> = {
+    approval: "Needs approval",
+    in_progress: "In progress",
+    blocked: "Blocked",
+  };
+  return <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">{map[status]}</span>;
+}
+
+function ActionDetail({ action }: { action: ActionItem }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
+          <h2 className="text-lg font-semibold text-gray-900">{action.title}</h2>
+          <p className="text-sm text-gray-600">Why: {action.trigger}</p>
+        </div>
+        <StatusPill status={action.status} />
+      </div>
+
+      <DisclosureCard title="Preview (collapsed)" defaultOpen>
+        {action.draft ? (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-700">Draft email content</p>
+            <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-line">{action.draft}</div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-700">No draft available. Create one from Assistant.</p>
+        )}
+      </DisclosureCard>
+
+      <DisclosureCard title="Evidence" defaultOpen>
+        <ul className="space-y-1 text-sm text-gray-800">
+          {action.evidence.map((e) => (
+            <li key={e} className="flex items-start gap-2">
+              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+              <span>{e}</span>
+            </li>
+          ))}
+        </ul>
+      </DisclosureCard>
+
+      {action.suggestedUpdates?.length ? (
+        <DisclosureCard title="Proposed CRM updates">
+          <ul className="space-y-1 text-sm text-gray-800">
+            {action.suggestedUpdates.map((u) => (
+              <li key={u} className="flex items-start gap-2">
+                <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                <span>{u}</span>
+              </li>
+            ))}
+          </ul>
+        </DisclosureCard>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button className="button-primary">Approve &amp; Send</button>
+        <button className="button-secondary">Edit</button>
+        <button className="button-secondary">Snooze</button>
+        <button className="text-sm text-gray-600 underline">Reject</button>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input type="checkbox" className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600" defaultChecked={action.autoApproveType} />
+          Always auto-approve this type
+        </label>
+      </div>
+
+      <DisclosureCard title="Activity log (read-only)" defaultOpen={false}>
+        <div className="space-y-1 text-xs text-gray-700">
+          {action.activityLog.slice(-5).map((log) => (
+            <div key={log.id} className="flex items-center justify-between">
+              <span>{log.ts}</span>
+              <span className="text-gray-800">{log.summary}</span>
+              <span className="text-gray-500">{log.actor}</span>
+            </div>
+          ))}
+        </div>
+      </DisclosureCard>
+    </div>
+  );
+}
+
+function DisclosureCard({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-md border border-gray-200 bg-white">
+      <button className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-900" onClick={() => setOpen((v) => !v)}>
+        <span>{title}</span>
+        <span className="text-xs text-gray-500">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open ? <div className="border-t border-gray-100 px-3 py-2">{children}</div> : null}
+    </div>
   );
 }
 

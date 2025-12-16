@@ -1,5 +1,21 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+/**
+ * Redirect Briefs -> Materials (Briefs tab)
+ */
+export default function BriefsRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/materials?tab=briefs");
+  }, []);
+  return null;
+}
+
+"use client";
+
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { meetingBriefs } from "@/lib/mock-data";

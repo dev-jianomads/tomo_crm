@@ -516,6 +516,14 @@ export default function SettingsPage() {
             Only show for Team plan users
           */}
           <button className="button-secondary w-fit">Manage seats</button>
+
+          {/* Placeholders for approvals/automation/sync/roles (UI only) */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <PlaceholderCard title="Approvals & automation" body="Decide what the agent can auto-approve vs. requires review." />
+            <PlaceholderCard title="Sync rules (CRMs)" body="Backstop / Dynamo / DealCloud / Salesforce mapping. Coming soon." />
+            <PlaceholderCard title="Email/Calendar permissions" body="Review consent and scopes. UI placeholder only." />
+            <PlaceholderCard title="Roles & permissions" body="Simple roles mock; no backend wiring yet." />
+          </div>
         </div>
       )}
     </div>
@@ -587,6 +595,16 @@ function PlanCard({
         - If not active: onClick → create Checkout Session
       */}
       <button className="button-primary mt-3 w-full">{active ? "Current plan" : "Select plan"}</button>
+    </div>
+  );
+}
+
+function PlaceholderCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3">
+      <p className="text-sm font-semibold text-gray-900">{title}</p>
+      <p className="text-xs text-gray-600">{body}</p>
+      <p className="mt-2 text-[11px] uppercase tracking-wide text-gray-500">Coming soon</p>
     </div>
   );
 }
