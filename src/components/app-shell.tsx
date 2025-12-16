@@ -431,3 +431,5 @@ function suggestionFromText(input: string) {
   if (input.toLowerCase().includes("task")) return "I prioritized tasks and flagged any blockers.";
   return "Logged and ready. Want me to draft a quick summary?";
 }
+
+
