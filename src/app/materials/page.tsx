@@ -240,3 +240,4 @@ function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
 }
 
+
