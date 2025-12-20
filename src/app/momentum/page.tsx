@@ -62,7 +62,7 @@ export default function MomentumPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-900">{rel.firm}</p>
+                <p className="text-sm font-semibold accent-title">{rel.firm}</p>
                 <p className="text-xs text-gray-600">{rel.name}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -125,7 +125,7 @@ function FlowSection({
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Flow</p>
+          <p className="text-sm font-semibold accent-title">Flow</p>
           <p className="text-xs text-gray-600">Momentum bands — motion, not stages.</p>
         </div>
       </div>
@@ -142,7 +142,7 @@ function FlowSection({
                 {tile.delta > 0 ? "↑" : tile.delta < 0 ? "↓" : "↔"} {Math.abs(tile.delta)}
               </span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{tile.count}</p>
+            <p className="mt-1 text-lg font-semibold accent-title">{tile.count}</p>
             <p className="mt-0.5 truncate text-xs text-gray-600">{tile.names.length ? `Top: ${tile.names.slice(0, 3).join(", ")}` : "Top: —"}</p>
           </button>
         ))}
@@ -158,7 +158,7 @@ function HealthSection({ showMore, onToggleShowMore }: { showMore: boolean; onTo
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-900">Health</p>
+        <p className="text-sm font-semibold accent-title">Health</p>
         <button className="text-xs text-blue-700 hover:underline" onClick={onToggleShowMore}>
           {showMore ? "Show less" : "Show more"}
         </button>
@@ -179,7 +179,7 @@ function MetricTile({ metric }: { metric: (typeof healthMetrics)[number] }) {
     <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2" title={metric.description}>
       <p className="text-xs text-gray-600">{metric.label}</p>
       <div className="mt-1 flex items-center justify-between">
-        <p className="text-lg font-semibold text-gray-900">{metric.value}</p>
+        <p className="text-lg font-semibold accent-title">{metric.value}</p>
         {metric.trend ? <span className={`text-xs ${metric.trend.startsWith("-") ? "text-amber-700" : "text-green-700"}`}>{metric.trend}</span> : null}
       </div>
     </div>

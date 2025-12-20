@@ -46,7 +46,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
-            <h2 className="text-lg font-semibold text-gray-900">Stay focused, not flooded</h2>
+            <h2 className="text-lg font-semibold accent-title">Stay focused, not flooded</h2>
           </div>
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
         </div>
@@ -146,7 +146,7 @@ function TodayGroup({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          <p className="text-sm font-semibold accent-title">{title}</p>
           <p className="text-xs text-gray-500">{hint}</p>
         </div>
       </div>
@@ -205,7 +205,7 @@ function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]
   return (
     <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-3">
       <div className="space-y-0.5">
-        <p className="text-sm font-semibold text-gray-900">Momentum shifts</p>
+        <p className="text-sm font-semibold accent-title">Momentum shifts</p>
         <p className="text-xs text-gray-500">What changed since yesterday</p>
       </div>
 
@@ -246,7 +246,7 @@ function ActionDetail({ actionId }: { actionId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
-          <h3 className="text-lg font-semibold text-gray-900">{action.title}</h3>
+          <h3 className="text-lg font-semibold accent-title">{action.title}</h3>
           <p className="text-sm text-gray-600">Why: {action.trigger}</p>
         </div>
         <StatusPill status={action.status} />
@@ -334,7 +334,7 @@ function CommitmentDetail({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Commitment</p>
-          <h3 className="text-lg font-semibold text-gray-900">{commitment.title}</h3>
+          <h3 className="text-lg font-semibold accent-title">{commitment.title}</h3>
           <p className="text-sm text-gray-600">{commitment.datetime}</p>
           <p className="text-sm text-gray-600">{commitment.lp}</p>
         </div>
@@ -359,7 +359,7 @@ function BriefDetail({ brief, onCreateAction }: { brief: (typeof briefs)[number]
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Brief</p>
-          <h3 className="text-lg font-semibold text-gray-900">{brief.meetingTitle}</h3>
+          <h3 className="text-lg font-semibold accent-title">{brief.meetingTitle}</h3>
           <p className="text-sm text-gray-600">{brief.datetime} • {brief.lp}</p>
         </div>
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{brief.status}</span>

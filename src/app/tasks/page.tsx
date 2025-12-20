@@ -84,7 +84,7 @@ function ActionGroup({
   if (!items.length) return null;
   return (
     <div className="space-y-2">
-      <p className="text-sm font-semibold text-gray-900">{title}</p>
+      <p className="text-sm font-semibold accent-title">{title}</p>
       <div className="space-y-2">
         {items.map((item) => (
           <button
@@ -114,7 +114,7 @@ function StatusPill({ status }: { status: ActionGroupKey }) {
     in_progress: "In motion",
     blocked: "Needs intervention",
   };
-  return <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">{map[status]}</span>;
+  return <span className="accent-chip">{map[status]}</span>;
 }
 
 function ActionDetail({ action }: { action: ActionItem }) {
@@ -123,7 +123,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
-          <h2 className="text-lg font-semibold text-gray-900">{action.title}</h2>
+          <h2 className="text-lg font-semibold accent-title">{action.title}</h2>
         </div>
         <StatusPill status={action.status} />
       </div>

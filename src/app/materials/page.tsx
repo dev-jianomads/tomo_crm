@@ -61,7 +61,7 @@ export default function MaterialsPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{m.name}</p>
+                  <p className="text-sm font-semibold accent-title">{m.name}</p>
                   <p className="text-xs text-gray-600">
                     {m.type} • {m.version} • {m.date}
                   </p>
@@ -123,7 +123,7 @@ function OverviewTiles({
           className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-left transition hover:border-gray-200 hover:bg-white"
         >
           <p className="text-xs text-gray-600">{tile.label}</p>
-          <p className="text-lg font-semibold text-gray-900">{tile.value}</p>
+          <p className="text-lg font-semibold accent-title">{tile.value}</p>
         </button>
       ))}
     </div>
@@ -148,7 +148,7 @@ function MaterialDetail({ material }: { material: Material }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Material</p>
-          <h3 className="text-lg font-semibold text-gray-900">{material.name}</h3>
+          <h3 className="text-lg font-semibold accent-title">{material.name}</h3>
           <p className="text-sm text-gray-600">
             {material.type} • {material.version} • {material.date}
           </p>
@@ -157,12 +157,12 @@ function MaterialDetail({ material }: { material: Material }) {
       </div>
 
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold text-gray-900">Summary</p>
+        <p className="text-sm font-semibold accent-title">Summary</p>
         <p className="mt-1 text-sm text-gray-800">{summary}</p>
       </section>
 
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold text-gray-900">Engagement</p>
+        <p className="text-sm font-semibold accent-title">Engagement</p>
         <div className="mt-2 space-y-1 text-sm text-gray-800">
           <p>Engaged: {engagement.engaged.join(", ") || "—"}</p>
           <p>Skimmed: {engagement.skimmed.join(", ") || "—"}</p>
@@ -171,7 +171,7 @@ function MaterialDetail({ material }: { material: Material }) {
       </section>
 
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold text-gray-900">Momentum attribution</p>
+        <p className="text-sm font-semibold accent-title">Momentum attribution</p>
         <div className="mt-2 space-y-1 text-sm text-gray-800">
           <p>Momentum ↑: {attribution.up.join(", ") || "—"}</p>
           <p>Unchanged: {attribution.flat.join(", ") || "—"}</p>
@@ -180,7 +180,7 @@ function MaterialDetail({ material }: { material: Material }) {
       </section>
 
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold text-gray-900">What to do next</p>
+        <p className="text-sm font-semibold accent-title">What to do next</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button className="button-primary">Create action</button>
           <button className="button-secondary">Draft follow-up</button>
@@ -189,7 +189,7 @@ function MaterialDetail({ material }: { material: Material }) {
       </section>
 
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold text-gray-900">TOMO</p>
+        <p className="text-sm font-semibold accent-title">TOMO</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button className="button-secondary">Draft investor update</button>
           <button className="button-secondary">Draft follow-ups</button>

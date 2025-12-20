@@ -6,6 +6,8 @@
   --muted: #6b7280;
   --border: #e5e7eb;
   --accent: #2563eb;
+  --accent-soft: #e8f0ff;
+  --accent-ink: #1d4ed8;
 }
 
 @theme inline {
@@ -50,4 +52,16 @@ body {
 
 .button-secondary {
   @apply rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:border-blue-200 hover:bg-blue-50;
+}
+
+.accent-title {
+  color: var(--accent-ink);
+}
+
+.accent-label {
+  color: #4b5563;
+}
+
+.accent-chip {
+  @apply rounded-full bg-[color:var(--accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--accent-ink)];
 }
