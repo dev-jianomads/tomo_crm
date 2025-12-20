@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * ACTIONS page (/tasks) — execution + approvals
- * - Grouped by state: Needs Approval, In Progress, Blocked/Stalled
- * - Calm UI; no dense tables
- * - Draft review + evidence + activity log
- */
-
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { actions, ActionItem } from "@/lib/mockData";
@@ -30,28 +23,25 @@ export default function ActionsPage() {
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">Actions</p>
-        <p className="text-sm text-gray-600">Waiting for you or others</p>
+        <p className="text-sm text-gray-600">Ready to execute</p>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         <ActionGroup
-          title="Needs Your Approval"
-          hint="Draft outreach, scheduling, CRM updates"
+          title="Needs your sign-off"
           items={groups.approval}
           activeId={activeId}
           onSelect={setActiveId}
         />
         <ActionGroup
-          title="In Progress"
-          hint="Scheduling in flight, replies pending"
+          title="In motion"
           items={groups.in_progress}
           activeId={activeId}
           onSelect={setActiveId}
         />
         {groups.blocked.length ? (
           <ActionGroup
-            title="Blocked / Stalled"
-            hint="Silent failures, engagement drops"
+            title="Needs intervention"
             items={groups.blocked}
             activeId={activeId}
             onSelect={setActiveId}
@@ -75,20 +65,18 @@ export default function ActionsPage() {
       listContent={listContent}
       detailContent={detailContent}
       contextTitle={active?.title}
-      assistantChips={["Draft outreach", "Generate 3 variants", "Explain why this surfaced", "Create new action"]}
+      assistantChips={["Explain why this surfaced", "What should happen next", "Draft outreach", "Create follow-up action"]}
     />
   );
 }
 
 function ActionGroup({
   title,
-  hint,
   items,
   activeId,
   onSelect,
 }: {
   title: string;
-  hint: string;
   items: ActionItem[];
   activeId: string | null;
   onSelect: (id: string) => void;
@@ -96,10 +84,7 @@ function ActionGroup({
   if (!items.length) return null;
   return (
     <div className="space-y-2">
-      <div>
-        <p className="text-sm font-semibold text-gray-900">{title}</p>
-        <p className="text-xs text-gray-500">{hint}</p>
-      </div>
+      <p className="text-sm font-semibold text-gray-900">{title}</p>
       <div className="space-y-2">
         {items.map((item) => (
           <button
@@ -112,7 +97,7 @@ function ActionGroup({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                <p className="text-xs text-gray-600">Why: {item.trigger}</p>
+                <p className="text-xs text-gray-600">{item.evidence.slice(0, 3).join(" · ") || item.trigger}</p>
               </div>
               <StatusPill status={item.status} />
             </div>
@@ -125,9 +110,9 @@ function ActionGroup({
 
 function StatusPill({ status }: { status: ActionGroupKey }) {
   const map: Record<ActionGroupKey, string> = {
-    approval: "Needs approval",
-    in_progress: "In progress",
-    blocked: "Blocked",
+    approval: "Needs sign-off",
+    in_progress: "In motion",
+    blocked: "Needs intervention",
   };
   return <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">{map[status]}</span>;
 }
@@ -139,25 +124,13 @@ function ActionDetail({ action }: { action: ActionItem }) {
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
           <h2 className="text-lg font-semibold text-gray-900">{action.title}</h2>
-          <p className="text-sm text-gray-600">Why: {action.trigger}</p>
         </div>
         <StatusPill status={action.status} />
       </div>
 
-      <DisclosureCard title="Preview (collapsed)" defaultOpen>
-        {action.draft ? (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-700">Draft email content</p>
-            <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-line">{action.draft}</div>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-700">No draft available. Create one from Assistant.</p>
-        )}
-      </DisclosureCard>
-
       <DisclosureCard title="Evidence" defaultOpen>
         <ul className="space-y-1 text-sm text-gray-800">
-          {action.evidence.map((e) => (
+          {action.evidence.slice(0, 3).map((e) => (
             <li key={e} className="flex items-start gap-2">
               <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
               <span>{e}</span>
@@ -166,8 +139,10 @@ function ActionDetail({ action }: { action: ActionItem }) {
         </ul>
       </DisclosureCard>
 
+      <DraftSection draft={action.draft} autoApprove={action.autoApproveType} />
+
       {action.suggestedUpdates?.length ? (
-        <DisclosureCard title="Proposed CRM updates">
+        <DisclosureCard title="Proposed CRM updates" defaultOpen={false}>
           <ul className="space-y-1 text-sm text-gray-800">
             {action.suggestedUpdates.map((u) => (
               <li key={u} className="flex items-start gap-2">
@@ -180,17 +155,17 @@ function ActionDetail({ action }: { action: ActionItem }) {
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <button className="button-primary">Approve &amp; Send</button>
+        <button className="button-primary">Approve and send</button>
         <button className="button-secondary">Edit</button>
         <button className="button-secondary">Snooze</button>
         <button className="text-sm text-gray-600 underline">Reject</button>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input type="checkbox" className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600" defaultChecked={action.autoApproveType} />
-          Always auto-approve this type
-        </label>
       </div>
+      <label className="flex items-center gap-2 text-xs text-gray-600">
+        <input type="checkbox" className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600" defaultChecked={action.autoApproveType} />
+        Always auto-approve this type
+      </label>
 
-      <DisclosureCard title="Activity log (read-only)" defaultOpen={false}>
+      <DisclosureCard title="Audit trail" defaultOpen={false}>
         <div className="space-y-1 text-xs text-gray-700">
           {action.activityLog.slice(-5).map((log) => (
             <div key={log.id} className="flex items-center justify-between">
@@ -201,6 +176,35 @@ function ActionDetail({ action }: { action: ActionItem }) {
           ))}
         </div>
       </DisclosureCard>
+
+      <DisclosureCard title="TOMO" defaultOpen={false}>
+        <div className="flex flex-wrap gap-2">
+          <button className="button-secondary">Explain why this surfaced</button>
+          <button className="button-secondary">What should happen next</button>
+          <button className="button-secondary">Draft outreach</button>
+          <button className="button-secondary">Create follow-up action</button>
+        </div>
+      </DisclosureCard>
+    </div>
+  );
+}
+
+function DraftSection({ draft, autoApprove }: { draft?: string; autoApprove?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const firstLine = draft ? draft.split("\n")[0] : "";
+  return (
+    <div className="rounded-md border border-gray-200 bg-white">
+      <button className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-900" onClick={() => setOpen((v) => !v)}>
+        <span>Draft</span>
+        <span className="text-xs text-gray-500">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open ? (
+        <div className="border-t border-gray-100 px-3 py-2 space-y-2">
+          {draft ? <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-line">{draft}</div> : <p className="text-sm text-gray-700">No draft available.</p>}
+        </div>
+      ) : (
+        <div className="border-t border-gray-100 px-3 py-2 text-sm text-gray-700">{firstLine || "No draft available."}</div>
+      )}
     </div>
   );
 }
