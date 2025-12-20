@@ -1,14 +1,9 @@
 "use client";
 
-/**
- * RELATIONSHIPS page (/contacts) — single-LP briefing room
- * - Above the fold: brief narrative + state snapshot + open loops
- * - Everything else is progressive disclosure
- */
-
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { relationships, Relationship } from "@/lib/mockData";
+import { activityLog, relationships, Relationship } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 
 export default function RelationshipsPage() {
@@ -16,7 +11,7 @@ export default function RelationshipsPage() {
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(() => relationships[0]?.id ?? null);
 
-  const filtered = relationships.filter((rel) => rel.name.toLowerCase().includes(query.toLowerCase()) || rel.firm.toLowerCase().includes(query.toLowerCase()));
+const filtered = relationships.filter((rel) => rel.name.toLowerCase().includes(query.toLowerCase()) || rel.firm.toLowerCase().includes(query.toLowerCase()));
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
 
   const listContent = (
@@ -85,6 +80,38 @@ export default function RelationshipsPage() {
 }
 
 function RelationshipDetail({ relationship }: { relationship: Relationship }) {
+  const router = useRouter();
+
+  const snapshot = useMemo(() => {
+    const direction = relationship.momentumTrend === "up" ? "Momentum is heating up" : relationship.momentumTrend === "down" ? "Momentum is cooling" : "Momentum is steady";
+    const pace = `Pace feels ${relationship.velocity.toLowerCase()}.`;
+    const next = relationship.nextMove ? `Next to watch: ${relationship.nextMove}.` : "";
+    return `${direction}. ${pace} ${next}`.trim();
+  }, [relationship]);
+
+  const stallRisk = relationship.band === "Stalled" || relationship.momentumTrend === "down" ? "High" : relationship.momentumTrend === "flat" ? "Medium" : "Low";
+  const openLoopItems = [
+    "Confirm timing for the next allocation step",
+    "Close the loop on the latest performance send",
+    "Re-affirm interest level before quarter-end",
+  ].slice(0, 3);
+
+  const keyChanges = [
+    "Momentum softened after no reply to last update.",
+    "Recent deck opens suggest renewed interest.",
+    "Meeting request sent; awaiting confirmation.",
+  ];
+
+  const keyInteractions = [
+    "Call last week on Q4 performance; asked for pipeline clarity.",
+    "Deck opened multiple times over the weekend.",
+    "Short reply promising a follow-up date.",
+  ];
+
+  const materialsEngagement = "Mixed engagement; recent deck opens nudged momentum slightly up.";
+
+  const recent = activityLog.slice(0, 5);
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between">
@@ -92,7 +119,6 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
           <p className="text-xs uppercase tracking-wide text-gray-500">Relationship</p>
           <h2 className="text-lg font-semibold text-gray-900">{relationship.name}</h2>
           <p className="text-sm text-gray-600">{relationship.firm}</p>
-          <p className="text-xs text-gray-500">Last meaningful interaction: {relationship.lastInteraction}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <MomentumChip score={relationship.momentumScore} trend={relationship.momentumTrend} />
@@ -100,62 +126,86 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         </div>
       </div>
 
-      {/* Relationship brief (living memo) */}
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-medium text-gray-900">Relationship brief</p>
-        <p className="mt-1 text-sm text-gray-700">
-          Narrative snapshot from recent emails/meetings/materials. Focus on momentum, stall risk, and the next move.
-        </p>
-        <div className="mt-2 grid gap-2 text-xs text-gray-700 sm:grid-cols-2">
-          <SnapshotItem label="Momentum" value={`${relationship.momentumScore} (${relationship.momentumTrend})`} />
-          <SnapshotItem label="Velocity" value={relationship.velocity} />
-          <SnapshotItem label="Stall risk" value={relationship.band === "Stalled" || relationship.momentumTrend === "down" ? "Elevated" : "Low"} />
-          <SnapshotItem label="Next move" value={relationship.nextMove} />
-        </div>
-        <p className="mt-2 text-xs text-gray-500">Generated from recent emails, meetings, and materials.</p>
-      </div>
+      {/* Section 1 — Current Snapshot */}
+      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
+        <p className="text-sm font-semibold text-gray-900">Current snapshot</p>
+        <p className="mt-1 text-sm text-gray-800">{snapshot}</p>
+      </section>
 
-      {/* Open loops & risks */}
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+      {/* Section 2 — Relationship Status */}
+      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
+        <p className="text-sm font-semibold text-gray-900">Relationship status</p>
+        <div className="mt-2 grid gap-2 text-sm text-gray-800 sm:grid-cols-2">
+          <StatusField label="Momentum" value={`${relationship.momentumScore} ${relationship.momentumTrend === "up" ? "↑" : relationship.momentumTrend === "down" ? "↓" : "→"}`} />
+          <StatusField label="Pace" value={relationship.velocity} />
+          <StatusField label="Stall risk" value={stallRisk} />
+          <StatusField label="Next move" value={relationship.nextMove} />
+        </div>
+        <p className="mt-2 text-xs text-gray-500">Updated from recent emails, meetings, and shared materials.</p>
+      </section>
+
+      {/* Section 3 — Open Loops */}
+      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-900">Open loops & risks</p>
-          <span className="text-xs text-gray-500">Links create/open actions</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Open Loops</p>
+            <p className="text-xs text-gray-600">Unresolved items that could slow momentum.</p>
+          </div>
+          <button className="text-xs text-blue-700 hover:underline" onClick={() => router.push("/tasks")}>
+            Create action
+          </button>
         </div>
-        {relationship.openLoops ? (
-          <ul className="mt-2 space-y-1 text-sm text-gray-800">
-            <li className="flex items-start gap-2">
+        <ul className="mt-2 space-y-1 text-sm text-gray-800">
+          {openLoopItems.map((item) => (
+            <li key={item} className="flex items-start gap-2">
               <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-              <span>Follow up on allocation timing (peak interest window)</span>
+              <span>{item}</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-              <span>Send concise performance snapshot</span>
-            </li>
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-600">No open loops.</p>
-        )}
-      </div>
+          ))}
+        </ul>
+      </section>
 
-      {/* Progressive disclosure accordions */}
-      <Accordion title="Momentum timeline" hint="Inflection markers only">
-        <p className="text-sm text-gray-700">Heating → Cooling as engagement slowed. Show sparkline placeholder here.</p>
-      </Accordion>
-      <Accordion title="Key interactions" hint="Meaningful events only">
-        <ul className="space-y-1 text-sm text-gray-700">
-          <li>Call 3d ago — discussed Q4 performance</li>
-          <li>Deck opened 3x last week</li>
-          <li>Email follow-up pending reply</li>
+      {/* Section 4 — Key Changes Over Time */}
+      <Accordion title="KEY CHANGES OVER TIME" hint="Key moments that changed direction">
+        <ul className="space-y-1 text-sm text-gray-800">
+          {keyChanges.map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-600" />
+              <span>{item}</span>
+            </li>
+          ))}
         </ul>
       </Accordion>
-      <Accordion title="Materials & engagement" hint="Links into Materials">
-        <p className="text-sm text-gray-700">See Materials → Outbound filtered to this LP.</p>
+
+      {/* Section 5 — Key Interactions */}
+      <Accordion title="KEY INTERACTIONS" hint="Meaningful meetings, replies, or materials">
+        <ul className="space-y-1 text-sm text-gray-800">
+          {keyInteractions.map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-green-600" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
       </Accordion>
-      <Accordion title="Recent actions trace" hint="Last 5, read-only">
-        <ul className="space-y-1 text-sm text-gray-700">
-          <li>Approved outreach draft</li>
-          <li>Scheduling in flight</li>
-          <li>Notified stall risk</li>
+
+      {/* Section 6 — Engagement with Materials */}
+      <Accordion title="Engagement with Materials" hint="Directional view; no per-LP analytics">
+        <div className="text-sm text-gray-800">{materialsEngagement}</div>
+        <button className="mt-2 text-sm text-blue-700 hover:underline" onClick={() => router.push(`/materials?lp=${encodeURIComponent(relationship.name)}`)}>
+          View details
+        </button>
+      </Accordion>
+
+      {/* Section 7 — Recent Activity */}
+      <Accordion title="Recent activity" hint="Last 5 system-recorded actions">
+        <ul className="space-y-1 text-sm text-gray-800">
+          {recent.map((log) => (
+            <li key={log.id} className="flex items-start gap-2">
+              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-gray-400" />
+              <span>{log.summary}</span>
+            </li>
+          ))}
         </ul>
       </Accordion>
     </div>
@@ -171,7 +221,7 @@ function MomentumChip({ score, trend }: { score: number; trend: Relationship["mo
   );
 }
 
-function SnapshotItem({ label, value }: { label: string; value: string }) {
+function StatusField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
