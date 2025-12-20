@@ -71,6 +71,11 @@
 
 import { Contact, MeetingBrief, TaskItem, TomoMessage } from "./types";
 
+type MomentumShiftDelta = {
+  band: "Heating" | "Cooling" | "Stalled" | "Stable";
+  delta: number;
+};
+
 /**
  * Mock contacts data
  * 
@@ -198,6 +203,13 @@ export const tasks: TaskItem[] = [
   { id: "t2", title: "Share updated retention metrics with Jamie", due: "Overdue", bucket: "Overdue", linkedTo: "Jamie Chen" },
   { id: "t3", title: "Confirm pilot expansion scope with Priya", due: "This week", bucket: "This week", linkedTo: "Priya Desai" },
   { id: "t4", title: "Draft recap for GTM sync", due: "This week", bucket: "This week" },
+];
+
+export const momentumShiftDeltas: MomentumShiftDelta[] = [
+  { band: "Stalled", delta: 1 },
+  { band: "Heating", delta: 3 },
+  { band: "Cooling", delta: 2 },
+  { band: "Stable", delta: 0 },
 ];
 
 /**

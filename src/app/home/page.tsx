@@ -2,15 +2,14 @@
 
 /**
  * TODAY page (/home) — “What should I do right now?”
- * - 24–72h horizon only
- * - No charts, no firehose; show the few critical items
+ * - Keep the focus narrow; no firehose
  * - Cross-link to Materials/Briefs for prep and Actions for execution
  */
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { actions, briefs, commitments } from "@/lib/mockData";
+import { MomentumShift, actions, briefs, commitments, momentumShifts } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 
 type TodaySelection =
@@ -47,17 +46,17 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
-            <h2 className="text-lg font-semibold text-gray-900">24–72h horizon</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Stay focused, not flooded</h2>
           </div>
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
         </div>
-        <p className="mt-2 text-xs text-gray-600">Critical first, no firehose. Open actions or briefs to move.</p>
+        <p className="mt-2 text-xs text-gray-600">Calm view of what to move now; no dashboards or charts.</p>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         <TodayGroup
-          title="Critical Actions"
-          hint="Max 5 items; approvals + urgent sends"
+          title="What needs your attention"
+          hint="Approvals and urgent sends to move now"
           items={actions.slice(0, 5).map((a) => ({
             id: a.id,
             title: a.title,
@@ -69,9 +68,14 @@ export default function HomePage() {
           onSelect={(id) => setSelection({ type: "action", id })}
         />
 
+        <MomentumShiftsSection
+          shifts={momentumShifts}
+          onNavigate={(band) => router.push(`/momentum?band=${encodeURIComponent(band)}`)}
+        />
+
         <TodayGroup
-          title="Upcoming Commitments"
-          hint="Next 72h meetings/deadlines"
+          title="Coming up"
+          hint="Next commitments and prep steps"
           items={commitments.map((c) => ({
             id: c.id,
             title: c.title,
@@ -164,6 +168,61 @@ function TodayGroup({
             </div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]; onNavigate: (bandParam: string) => void }) {
+  const items = useMemo(() => {
+    const order: MomentumShift["band"][] = ["Stalled", "Heating", "Cooling", "Stable"];
+    const bandParamMap: Record<MomentumShift["band"], string> = {
+      Heating: "Heating",
+      Cooling: "Cooling",
+      Stalled: "Stalled",
+      Stable: "Active-Stable",
+    };
+
+    return order
+      .map((band) => shifts.find((shift) => shift.band === band))
+      .filter((shift): shift is MomentumShift => Boolean(shift))
+      .filter((shift) => shift.delta >= 2 || (shift.delta === 1 && shift.band === "Stalled"))
+      .slice(0, 4)
+      .map((shift) => ({
+        band: shift.band,
+        bandParam: bandParamMap[shift.band],
+        label:
+          shift.band === "Heating"
+            ? `↑ ${shift.delta} heating up`
+            : shift.band === "Cooling"
+            ? `↓ ${shift.delta} cooling`
+            : shift.band === "Stalled"
+            ? `⚠ ${shift.delta} stalled`
+            : `↔ ${shift.delta} stable`,
+      }));
+  }, [shifts]);
+
+  return (
+    <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-3">
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-gray-900">Momentum shifts</p>
+        <p className="text-xs text-gray-500">What changed since yesterday</p>
+      </div>
+
+      <div className="mt-2 space-y-1">
+        {items.length ? (
+          items.map((item) => (
+            <button
+              key={item.band}
+              onClick={() => onNavigate(item.bandParam)}
+              className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-gray-900 transition hover:bg-white"
+            >
+              {item.label}
+            </button>
+          ))
+        ) : (
+          <p className="text-xs text-gray-600">No meaningful changes since yesterday.</p>
+        )}
       </div>
     </div>
   );

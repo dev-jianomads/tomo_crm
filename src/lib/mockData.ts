@@ -21,6 +21,11 @@ export type Relationship = {
 
 export type ActionStatus = "approval" | "in_progress" | "blocked";
 
+export type MomentumShift = {
+  band: "Heating" | "Cooling" | "Stalled" | "Stable";
+  delta: number;
+};
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -170,6 +175,13 @@ export const commitments: Commitment[] = [
   { id: "c1", title: "Northwind Q4 review", datetime: "Tomorrow 10:30 AM ET", lp: "Northwind Capital", briefId: "b1", window: "next72h" },
   { id: "c2", title: "Peakline allocation check-in", datetime: "Fri 2:00 PM ET", lp: "Peakline Partners", briefId: "b2", window: "next72h" },
   { id: "c3", title: "Lumen async update send", datetime: "Today 5:00 PM ET", lp: "Lumen LP", window: "today" },
+];
+
+export const momentumShifts: MomentumShift[] = [
+  { band: "Stalled", delta: 1 },
+  { band: "Heating", delta: 3 },
+  { band: "Cooling", delta: 2 },
+  { band: "Stable", delta: 0 },
 ];
 
 export const briefs: Brief[] = [
