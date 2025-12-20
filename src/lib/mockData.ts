@@ -26,6 +26,26 @@ export type MomentumShift = {
   delta: number;
 };
 
+export type FlowBand = "Heating" | "Active" | "Cooling" | "Stalled";
+
+export type FlowSummary = {
+  band: FlowBand;
+  delta: number; // net change vs yesterday
+  names: string[]; // top LPs in this band
+};
+
+export type HealthMetricTier = "A" | "B";
+
+export type HealthMetric = {
+  id: string;
+  label: string;
+  value: string;
+  trend?: string;
+  description: string;
+  tier: HealthMetricTier;
+  showIfStageData?: boolean;
+};
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -213,6 +233,85 @@ export const materials: Material[] = [
   { id: "m1", name: "Q4 Performance Deck", type: "Deck", version: "v4", date: "Jan 12", engagement: "High", momentumImpact: "up", followUpSignal: "12 opens, 3 replies pending" },
   { id: "m2", name: "January Investor Update", type: "Update", version: "v2", date: "Jan 8", engagement: "Mixed", momentumImpact: "flat", followUpSignal: "8 opened, no replies" },
   { id: "m3", name: "Data Room Access", type: "Data Room", version: "v1", date: "Jan 3", engagement: "Ignored", momentumImpact: "down", followUpSignal: "No activity in 10d" },
+];
+
+export const momentumFlowSummary: FlowSummary[] = [
+  { band: "Heating", delta: 2, names: ["Alex Morgan", "Jamie Chen", "Priya Desai"] },
+  { band: "Active", delta: 1, names: ["Jamie Chen", "Alex Morgan", "Samir Patel"] },
+  { band: "Cooling", delta: -1, names: ["Priya Desai", "Samir Patel"] },
+  { band: "Stalled", delta: 1, names: ["Samir Patel"] },
+];
+
+export const healthMetrics: HealthMetric[] = [
+  {
+    id: "hm1",
+    tier: "A",
+    label: "High value meetings held",
+    value: "4",
+    trend: "+1",
+    description: "Tier 1–2 LP meetings scheduled and completed.",
+  },
+  {
+    id: "hm2",
+    tier: "A",
+    label: "Tier 1 coverage",
+    value: "68%",
+    trend: "+6%",
+    description: "Percentage of Tier 1 LPs with a meaningful touch in the last 7 days.",
+  },
+  {
+    id: "hm3",
+    tier: "A",
+    label: "Momentum distribution",
+    value: "12 • 18 • 9",
+    description: "Current spread across Heating / Active / Cooling.",
+  },
+  {
+    id: "hm4",
+    tier: "A",
+    label: "Momentum movement",
+    value: "+4 net",
+    description: "Net LPs heating up vs cooling since yesterday.",
+  },
+  {
+    id: "hm5",
+    tier: "A",
+    label: "Decay risk",
+    value: "6",
+    trend: "+1",
+    description: "LPs at risk due to silence, missed follow-ups, or stalled flow.",
+  },
+  {
+    id: "hm6",
+    tier: "A",
+    label: "Unanswered inbound",
+    value: "3",
+    description: "LP inbound messages beyond response SLA.",
+  },
+  {
+    id: "hm7",
+    tier: "A",
+    label: "Stage velocity & stall rate",
+    value: "3.4d / 9%",
+    trend: "-0.2d",
+    description: "Time spent per stage and percent stalled.",
+    showIfStageData: true,
+  },
+  {
+    id: "hm8",
+    tier: "B",
+    label: "Active LPs",
+    value: "26",
+    description: "LPs with an active conversation thread (LMRR-style).",
+  },
+  {
+    id: "hm9",
+    tier: "B",
+    label: "High-value LPs cooling",
+    value: "3",
+    trend: "+1",
+    description: "Tier 1 LPs with declining momentum.",
+  },
 ];
 
 export const activityLog: ActivityLogEntry[] = [
