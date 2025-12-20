@@ -211,3 +211,4 @@ export const activityLog: ActivityLogEntry[] = [
   { id: "log5", ts: "Yesterday 10:12", actor: "User", summary: "Snoozed Lumen outreach" },
 ];
 
+
