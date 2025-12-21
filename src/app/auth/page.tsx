@@ -259,14 +259,14 @@ export default function AuthPage() {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
-          <span className="text-sm font-semibold text-gray-900">Tomo</span>
+          <span className="text-sm font-semibold accent-title">Tomo</span>
         </div>
 
         <div className="grid gap-2 md:grid-cols-2 md:items-start md:gap-8">
           {/* Plan Selection Column */}
           <div className="w-full">
             <div className="mb-2">
-              <p className="text-sm font-medium text-gray-900">Pick a plan</p>
+              <p className="text-sm font-medium accent-title">Pick a plan</p>
               <p className="text-xs text-gray-600">Choose what fits now; you can switch later in Settings → Billing.</p>
             </div>
             <div className="grid gap-4">
@@ -387,7 +387,7 @@ export default function AuthPage() {
           <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-lg font-semibold text-gray-900">Reset password</p>
+                <p className="text-lg font-semibold accent-title">Reset password</p>
                 <p className="text-sm text-gray-600">We'll send a reset link to the email below.</p>
               </div>
               <button className="text-gray-500" onClick={() => setShowReset(false)}>

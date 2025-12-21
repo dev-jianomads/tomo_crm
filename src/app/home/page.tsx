@@ -146,7 +146,7 @@ function TodayGroup({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold accent-title">{title}</p>
+          <p className="text-sm font-semibold text-[color:var(--accent-ink)]">{title}</p>
           <p className="text-xs text-gray-500">{hint}</p>
         </div>
       </div>
@@ -156,7 +156,7 @@ function TodayGroup({
             key={item.id}
             onClick={() => onSelect(item.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              activeId === item.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+              activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
             <div className="flex items-start justify-between gap-2">

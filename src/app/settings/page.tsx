@@ -144,7 +144,7 @@ export default function SettingsPage() {
             key={section}
             onClick={() => setActive(section)}
             className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
-              active === section ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+              active === section ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
             {section}
@@ -162,7 +162,7 @@ export default function SettingsPage() {
       {/* ====== PROFILE SECTION ====== */}
       {active === "Profile" && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+          <h2 className="text-lg font-semibold accent-title">Profile</h2>
           <p className="text-sm text-gray-600">Manage your name, email, and workspace identity.</p>
           
           {/*
@@ -200,7 +200,7 @@ export default function SettingsPage() {
       {/* ====== INTEGRATIONS SECTION ====== */}
       {active === "Integrations" && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">Integrations</h2>
+          <h2 className="text-lg font-semibold accent-title">Integrations</h2>
           <p className="text-sm text-gray-600">Manage calendar, contacts, email, Affinity, and Sheets connections.</p>
           
           {/* 
@@ -393,7 +393,7 @@ export default function SettingsPage() {
       {/* ====== MESSAGING SECTION ====== */}
       {active === "Messaging" && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">Messaging</h2>
+          <h2 className="text-lg font-semibold accent-title">Messaging</h2>
           <p className="text-sm text-gray-600">Slack and Telegram connections.</p>
           
           {/*
@@ -416,7 +416,7 @@ export default function SettingsPage() {
       {/* ====== NOTIFICATIONS SECTION ====== */}
       {active === "Notifications" && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
+          <h2 className="text-lg font-semibold accent-title">Notifications</h2>
           <p className="text-sm text-gray-600">Routing for recaps, briefs, follow-ups.</p>
           
           {/*
@@ -439,7 +439,7 @@ export default function SettingsPage() {
       {/* ====== BILLING & PLAN SECTION ====== */}
       {active === "Billing & Plan" && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Billing & Plan</h2>
+          <h2 className="text-lg font-semibold accent-title">Billing & Plan</h2>
           <p className="text-sm text-gray-600">Current plan and upgrade options.</p>
           
           {/*
@@ -602,7 +602,7 @@ function PlanCard({
 function PlaceholderCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3">
-      <p className="text-sm font-semibold text-gray-900">{title}</p>
+      <p className="text-sm font-semibold accent-title">{title}</p>
       <p className="text-xs text-gray-600">{body}</p>
       <p className="mt-2 text-[11px] uppercase tracking-wide text-gray-500">Coming soon</p>
     </div>

@@ -202,7 +202,7 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Connect messaging channels</h2>
+                  <h2 className="text-lg font-semibold accent-title">Connect messaging channels</h2>
                   <p className="text-sm text-gray-600">
                     TOMO delivers recaps to your email by default. Connect Slack or Telegram to also receive recaps and let TOMO act on your suggestions directly there.
                   </p>
@@ -311,7 +311,7 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Optional: Sync Tomo CRM to Affinity or Sheets</h2>
+                  <h2 className="text-lg font-semibold accent-title">Optional: Sync Tomo CRM to Affinity or Sheets</h2>
                   <p className="text-sm text-gray-600">
                     Bring in existing CRM data now or keep it ready for later. Credentials are saved securely server-side in production.
                   </p>
@@ -471,7 +471,7 @@ export default function OnboardingPage() {
 
           {currentStep === 6 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900">Your workspace is ready</h2>
+              <h2 className="text-lg font-semibold accent-title">Your workspace is ready</h2>
               <div className="space-y-2 text-sm text-gray-700">
                 <StatusLine label="Calendar connected" ok={state.calendarConnected} />
                 <StatusLine label="Contacts synced" ok={state.contactsConnected} />
@@ -512,7 +512,7 @@ function StepCard({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold accent-title">{title}</h2>
           <p className="text-sm text-gray-600">{description}</p>
         </div>
         {status ? <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span> : null}

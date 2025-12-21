@@ -63,7 +63,7 @@ export default function SearchPage() {
             }`}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-900">{result.title}</p>
+              <p className="text-sm font-semibold accent-title">{result.title}</p>
               <span className="text-xs uppercase text-gray-500">{result.type}</span>
             </div>
             <p className="text-xs text-gray-600">{result.meta}</p>
@@ -108,7 +108,7 @@ function ContactCard({ id }: { id: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs uppercase tracking-wide text-gray-500">Contact</p>
-      <h3 className="text-lg font-semibold text-gray-900">{contact.name}</h3>
+      <h3 className="text-lg font-semibold accent-title">{contact.name}</h3>
       <p className="text-sm text-gray-600">{contact.role}</p>
       <p className="text-xs text-gray-500">Last interaction {contact.lastInteraction}</p>
     </div>
@@ -121,7 +121,7 @@ function MeetingCard({ id }: { id: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs uppercase tracking-wide text-gray-500">Meeting</p>
-      <h3 className="text-lg font-semibold text-gray-900">{meeting.title}</h3>
+      <h3 className="text-lg font-semibold accent-title">{meeting.title}</h3>
       <p className="text-sm text-gray-600">{meeting.datetime}</p>
       <p className="text-sm text-gray-700">{meeting.summary}</p>
     </div>
@@ -134,7 +134,7 @@ function TaskCard({ id }: { id: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs uppercase tracking-wide text-gray-500">Task</p>
-      <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
+      <h3 className="text-lg font-semibold accent-title">{task.title}</h3>
       <p className="text-sm text-gray-600">
         {task.bucket} • {task.due}
       </p>
