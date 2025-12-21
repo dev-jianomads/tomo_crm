@@ -72,7 +72,7 @@ export default function MaterialsPage() {
                 <span>
                   Momentum impact: {m.momentumImpact === "up" ? "Positive" : m.momentumImpact === "down" ? "Negative" : "Neutral"}
                 </span>
-                <span className="truncate">{m.followUpSignal || "No follow-up flagged"}</span>
+                <span className={`truncate ${m.followUpSignal ? "peach-text" : ""}`}>{m.followUpSignal || "No follow-up flagged"}</span>
               </div>
             </button>
           ))}

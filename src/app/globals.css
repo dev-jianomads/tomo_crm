@@ -5,9 +5,12 @@
   --foreground: #222222;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --accent: #2563eb;
-  --accent-soft: #e8f0ff;
-  --accent-ink: #1d4ed8;
+  --accent: #212548;
+  --accent-soft: #e8e9f3;
+  --accent-ink: #212548;
+  --peach: #ff9786;
+  --peach-soft: #ffe6e1;
+  --peach-ink: #e26c5a;
 }
 
 @theme inline {
@@ -47,11 +50,22 @@ body {
 }
 
 .button-primary {
-  @apply rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700;
+  @apply rounded-md px-4 py-2 text-sm font-medium text-white transition;
+  background: var(--accent);
+}
+
+.button-primary:hover {
+  background: #1a1d3c;
 }
 
 .button-secondary {
-  @apply rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:border-blue-200 hover:bg-blue-50;
+  @apply rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition;
+}
+
+.button-secondary:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .accent-title {
@@ -64,4 +78,14 @@ body {
 
 .accent-chip {
   @apply rounded-full bg-[color:var(--accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--accent-ink)];
+}
+
+.peach-chip {
+  @apply rounded-full px-2.5 py-1 text-[11px] font-medium;
+  background: var(--peach-soft);
+  color: var(--peach-ink);
+}
+
+.peach-text {
+  color: var(--peach-ink);
 }

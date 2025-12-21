@@ -114,7 +114,8 @@ function StatusPill({ status }: { status: ActionGroupKey }) {
     in_progress: "In motion",
     blocked: "Needs intervention",
   };
-  return <span className="accent-chip">{map[status]}</span>;
+  const isPeach = status === "blocked";
+  return <span className={isPeach ? "peach-chip" : "accent-chip"}>{map[status]}</span>;
 }
 
 function ActionDetail({ action }: { action: ActionItem }) {

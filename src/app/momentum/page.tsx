@@ -191,7 +191,7 @@ function BandBadge({ band }: { band: string }) {
     "Heating Up": "bg-green-50 text-green-700",
     "Active-Stable": "bg-blue-50 text-blue-700",
     Cooling: "bg-amber-50 text-amber-700",
-    Stalled: "bg-gray-100 text-gray-700",
+    Stalled: "peach-chip",
   };
   return <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${map[band] ?? "bg-gray-100 text-gray-700"}`}>{band}</span>;
 }

@@ -211,15 +211,18 @@ function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]
 
       <div className="mt-2 space-y-1">
         {items.length ? (
-          items.map((item) => (
-            <button
-              key={item.band}
-              onClick={() => onNavigate(item.bandParam)}
-              className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-gray-900 transition hover:bg-white"
-            >
-              {item.label}
-            </button>
-          ))
+          items.map((item) => {
+            const isStalled = item.band === "Stalled";
+            return (
+              <button
+                key={item.band}
+                onClick={() => onNavigate(item.bandParam)}
+                className={`w-full rounded-md px-2 py-2 text-left text-sm font-medium transition hover:bg-white ${isStalled ? "peach-text" : "text-gray-900"}`}
+              >
+                {item.label}
+              </button>
+            );
+          })
         ) : (
           <p className="text-xs text-gray-600">No meaningful changes since yesterday.</p>
         )}
