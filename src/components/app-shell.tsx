@@ -56,7 +56,7 @@ import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
 // IA labels (desktop order): TODAY, MOMENTUM, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "home" | "momentum" | "contacts" | "targets" | "activity" | "materials" | "settings";
+type Section = "home" | "momentum" | "contacts" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -193,6 +193,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "momentum") return [...base, "Explain this score", "What next", "Draft outreach"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+    if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
   }, [section]);
