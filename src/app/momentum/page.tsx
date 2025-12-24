@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { FlowBand, healthMetrics, momentumFlowSummary, relationships } from "@/lib/mockData";
@@ -20,6 +20,14 @@ type Selection =
   | { kind: "flow"; band: FlowBand };
 
 export default function MomentumPage() {
+  return (
+    <Suspense fallback={null}>
+      <MomentumContent />
+    </Suspense>
+  );
+}
+
+function MomentumContent() {
   const { ready } = useRequireSession();
   const router = useRouter();
   const searchParams = useSearchParams();
