@@ -412,10 +412,6 @@ function AssistantDock({ open, onClose, children }: { open: boolean; onClose: ()
     </div>
   );
 }
-      </div>
-    </div>
-  );
-}
 
 /**
  * Mock response generator based on user input
