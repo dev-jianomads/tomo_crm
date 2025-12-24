@@ -133,7 +133,11 @@ export default function MomentumPage() {
       ) : (
         <div className="space-y-2 rounded-lg border border-gray-200 bg-white px-3 py-3">
           <p className="text-sm font-semibold accent-title">
-            {selection.kind === "flow" ? bandLabelMap[selection.band] : `${selection.band} momentum`}
+            {selection.kind === "flow"
+              ? bandLabelMap[selection.band]
+              : selection.kind === "momentum"
+              ? `${selection.band} momentum`
+              : "Health detail"}
           </p>
           <p className="text-sm text-gray-700">Relationships driving this state:</p>
           <div className="space-y-2">
