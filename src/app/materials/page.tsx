@@ -37,15 +37,7 @@ export default function MaterialsPage() {
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Materials</p>
-            <p className="text-sm text-gray-600">What you sent — and what it moved.</p>
-          </div>
-          <Link href="/briefs" className="text-xs text-blue-700 hover:underline">
-            View meeting briefs
-          </Link>
-        </div>
+        <p className="text-xs uppercase tracking-wide text-gray-500">Materials</p>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
@@ -203,4 +195,5 @@ function MaterialDetail({ material }: { material: Material }) {
 function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
 }
+
 

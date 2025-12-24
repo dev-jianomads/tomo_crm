@@ -43,13 +43,15 @@ import { clearSession, useRequireSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
 import { usePersistentState } from "@/lib/storage";
 import { OnboardingState } from "@/lib/types";
+import { useFunds } from "@/components/fund-provider";
 
-const sections = ["Profile", "Integrations", "Messaging", "Notifications", "Billing & Plan"] as const;
+const sections = ["Profile", "Funds", "Integrations", "Messaging", "Notifications", "Billing & Plan"] as const;
 
 export default function SettingsPage() {
   const { ready, session } = useRequireSession();
   const router = useRouter();
   const [active, setActive] = useState<(typeof sections)[number]>("Profile");
+  const { funds, addFund, updateFund, removeFund, activeFundId, setActiveFundId } = useFunds();
   
   /**
    * Integration state
@@ -111,7 +113,6 @@ export default function SettingsPage() {
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">Settings</p>
-        <p className="text-sm text-gray-600">Workspace controls</p>
         
         {/* 
           Sign Out Button
@@ -163,7 +164,6 @@ export default function SettingsPage() {
       {active === "Profile" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold accent-title">Profile</h2>
-          <p className="text-sm text-gray-600">Manage your name, email, and workspace identity.</p>
           
           {/*
             Profile Form
@@ -197,11 +197,32 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {active === "Funds" && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold accent-title">Funds</h2>
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <p className="text-sm font-medium text-gray-900">Active fund</p>
+            <select
+              className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+              value={activeFundId}
+              onChange={(e) => setActiveFundId(e.target.value)}
+            >
+              <option value="all">All</option>
+              {funds.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <FundManager funds={funds} onAdd={addFund} onUpdate={updateFund} onRemove={removeFund} />
+        </div>
+      )}
+
       {/* ====== INTEGRATIONS SECTION ====== */}
       {active === "Integrations" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold accent-title">Integrations</h2>
-          <p className="text-sm text-gray-600">Manage calendar, contacts, email, Affinity, and Sheets connections.</p>
           
           {/* 
             Core integrations (Calendar, Contacts, Email)
@@ -394,7 +415,6 @@ export default function SettingsPage() {
       {active === "Messaging" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold accent-title">Messaging</h2>
-          <p className="text-sm text-gray-600">Slack and Telegram connections.</p>
           
           {/*
             SLACK INTEGRATION:
@@ -417,7 +437,6 @@ export default function SettingsPage() {
       {active === "Notifications" && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold accent-title">Notifications</h2>
-          <p className="text-sm text-gray-600">Routing for recaps, briefs, follow-ups.</p>
           
           {/*
             PRODUCTION:
@@ -440,7 +459,6 @@ export default function SettingsPage() {
       {active === "Billing & Plan" && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold accent-title">Billing & Plan</h2>
-          <p className="text-sm text-gray-600">Current plan and upgrade options.</p>
           
           {/*
             STRIPE INTEGRATION:
@@ -616,4 +634,57 @@ function generatePresetSheetName() {
   const date = new Date();
   const iso = date.toISOString().split("T")[0];
   return `tomo_crm_sync_${iso}.xlsx`;
+}
+
+function FundManager({
+  funds,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  funds: { id: string; name: string }[];
+  onAdd: (name: string) => void;
+  onUpdate: (id: string, name: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [draftName, setDraftName] = useState("");
+  return (
+    <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-900">Manage funds</p>
+        <span className="text-xs text-gray-600">{funds.length} saved</span>
+      </div>
+      <div className="space-y-2">
+        {funds.map((fund) => (
+          <div key={fund.id} className="flex items-center gap-2">
+            <input
+              className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+              defaultValue={fund.name}
+              onBlur={(e) => onUpdate(fund.id, e.target.value)}
+            />
+            <button className="text-xs text-rose-600 underline" onClick={() => onRemove(fund.id)}>
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+          placeholder="Add fund"
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+        />
+        <button
+          className="button-primary"
+          onClick={() => {
+            onAdd(draftName);
+            setDraftName("");
+          }}
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
 }

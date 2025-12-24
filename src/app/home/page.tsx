@@ -11,92 +11,93 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { MomentumShift, actions, briefs, commitments, momentumShifts } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
+import { useFunds } from "@/components/fund-provider";
 
 type TodaySelection =
   | { type: "action"; id: string }
   | { type: "commitment"; id: string }
   | { type: "brief"; id: string }
+  | { type: "shift"; band: MomentumShift["band"] }
   | null;
 
 export default function HomePage() {
   const { ready } = useRequireSession();
   const router = useRouter();
-  const [selection, setSelection] = useState<TodaySelection>(() => {
-    if (actions.length) return { type: "action", id: actions[0].id };
-    if (commitments.length) return { type: "commitment", id: commitments[0].id };
-    if (briefs.length) return { type: "brief", id: briefs[0].id };
-    return null;
-  });
+  const { activeFundId } = useFunds();
+  const [selection, setSelection] = useState<TodaySelection>(null);
 
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
     if (selection.type === "action") return actions.find((a) => a.id === selection.id)?.title;
     if (selection.type === "commitment") return commitments.find((c) => c.id === selection.id)?.title;
     if (selection.type === "brief") return briefs.find((b) => b.id === selection.id)?.meetingTitle;
+    if (selection.type === "shift") return `Momentum shift: ${selection.band}`;
   }, [selection]);
 
   // Helper lookups
   const selectedAction = selection?.type === "action" ? actions.find((a) => a.id === selection.id) : null;
   const selectedCommitment = selection?.type === "commitment" ? commitments.find((c) => c.id === selection.id) : null;
   const selectedBrief = selection?.type === "brief" ? briefs.find((b) => b.id === selection.id) : null;
+  const selectedShift = selection?.type === "shift" ? momentumShifts.find((s) => s.band === selection.band) : null;
+
+  const filteredActions = useMemo(() => {
+    if (activeFundId === "all") return actions;
+    return actions.filter((_, idx) => idx % 2 === 0); // stub: pretend alternate items match the selected fund
+  }, [activeFundId]);
+
+  const filteredCommitments = useMemo(() => {
+    if (activeFundId === "all") return commitments;
+    return commitments.filter((_, idx) => idx % 2 === 1);
+  }, [activeFundId]);
+
+  const filteredBriefs = useMemo(() => {
+    if (activeFundId === "all") return briefs;
+    return briefs.filter((_, idx) => idx % 2 === 0);
+  }, [activeFundId]);
 
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
-            <h2 className="text-lg font-semibold accent-title">Stay focused, not flooded</h2>
-          </div>
+          <p className="text-sm font-semibold accent-title">Today</p>
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
         </div>
-        <p className="mt-2 text-xs text-gray-600">Calm view of what to move now; no dashboards or charts.</p>
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         <TodayGroup
           title="What needs your attention"
-          hint="Approvals and urgent sends to move now"
-          items={actions.slice(0, 5).map((a) => ({
+          items={filteredActions.slice(0, 6).map((a, idx) => ({
             id: a.id,
             title: a.title,
             meta: a.trigger,
+            extra: idx % 2 === 0 ? "Due today • draft ready" : "Fresh evidence added",
             type: "action" as const,
             status: a.status,
           }))}
           activeId={selection?.type === "action" ? selection.id : undefined}
           onSelect={(id) => setSelection({ type: "action", id })}
+          dense={!selection}
         />
 
         <MomentumShiftsSection
           shifts={momentumShifts}
-          onNavigate={(band) => router.push(`/momentum?band=${encodeURIComponent(band)}`)}
+          onSelect={(band) => setSelection({ type: "shift", band })}
+          activeBand={selection?.type === "shift" ? selection.band : undefined}
         />
 
         <TodayGroup
           title="Coming up"
-          hint="Next commitments and prep steps"
-          items={commitments.map((c) => ({
+          items={filteredCommitments.map((c) => ({
             id: c.id,
             title: c.title,
             meta: `${c.datetime} • ${c.lp}`,
+            extra: c.window === "today" ? "Happening today" : "Within 72h",
             type: "commitment" as const,
           }))}
           activeId={selection?.type === "commitment" ? selection.id : undefined}
           onSelect={(id) => setSelection({ type: "commitment", id })}
-        />
-
-        <TodayGroup
-          title="Briefs Ready"
-          hint="Only briefs tied to upcoming commitments"
-          items={briefs.map((b) => ({
-            id: b.id,
-            title: b.meetingTitle,
-            meta: `${b.datetime} • ${b.lp} • ${b.status}`,
-            type: "brief" as const,
-          }))}
-          activeId={selection?.type === "brief" ? selection.id : undefined}
-          onSelect={(id) => setSelection({ type: "brief", id })}
+          dense={!selection}
         />
       </div>
     </div>
@@ -105,13 +106,22 @@ export default function HomePage() {
   const detailContent = (
     <div className="h-full overflow-y-auto p-4">
       {!selection ? (
-        <Placeholder title="Pick an action, commitment, or brief to move now." />
+        <Placeholder title="Select an item to open details." />
       ) : selection.type === "action" ? (
         <ActionDetail actionId={selection.id} />
       ) : selection.type === "commitment" ? (
-        <CommitmentDetail commitment={selectedCommitment} briefId={selectedCommitment?.briefId} onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)} />
+        <CommitmentDetail
+          commitment={selectedCommitment}
+          brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
+          onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
+          onCreateAction={() => router.push("/activity")}
+        />
       ) : (
-        <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/tasks")} />
+        selection.type === "brief" ? (
+          <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
+        ) : (
+          <ShiftDetail shift={selectedShift} onViewMomentum={(bandParam) => router.push(`/momentum?focus=${encodeURIComponent(bandParam)}`)} />
+        )
       )}
     </div>
   );
@@ -123,6 +133,7 @@ export default function HomePage() {
       section="home"
       listContent={listContent}
       detailContent={detailContent}
+      detailVisible={Boolean(selection)}
       contextTitle={selectedTitle}
       assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
     />
@@ -131,25 +142,20 @@ export default function HomePage() {
 
 function TodayGroup({
   title,
-  hint,
   items,
   onSelect,
   activeId,
+  dense = false,
 }: {
   title: string;
-  hint: string;
-  items: { id: string; title: string; meta: string; type: "action" | "commitment" | "brief"; status?: string }[];
+  items: { id: string; title: string; meta: string; type: "action" | "commitment" | "brief"; status?: string; extra?: string }[];
   onSelect: (id: string) => void;
   activeId?: string;
+  dense?: boolean;
 }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-[color:var(--accent-ink)]">{title}</p>
-          <p className="text-xs text-gray-500">{hint}</p>
-        </div>
-      </div>
+      <p className="text-sm font-semibold text-[color:var(--accent-ink)]">{title}</p>
       <div className="space-y-2">
         {items.map((item) => (
           <button
@@ -163,6 +169,7 @@ function TodayGroup({
               <div>
                 <p className="text-sm font-medium text-gray-900">{item.title}</p>
                 <p className="text-xs text-gray-600">{item.meta}</p>
+                {!dense && item.extra ? <p className="text-[11px] text-gray-500">{item.extra}</p> : null}
               </div>
               {item.status ? <StatusPill status={item.status} /> : null}
             </div>
@@ -173,16 +180,9 @@ function TodayGroup({
   );
 }
 
-function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]; onNavigate: (bandParam: string) => void }) {
+function MomentumShiftsSection({ shifts, onSelect, activeBand }: { shifts: MomentumShift[]; onSelect: (bandParam: MomentumShift["band"]) => void; activeBand?: MomentumShift["band"] }) {
   const items = useMemo(() => {
     const order: MomentumShift["band"][] = ["Stalled", "Heating", "Cooling", "Stable"];
-    const bandParamMap: Record<MomentumShift["band"], string> = {
-      Heating: "Heating",
-      Cooling: "Cooling",
-      Stalled: "Stalled",
-      Stable: "Active-Stable",
-    };
-
     return order
       .map((band) => shifts.find((shift) => shift.band === band))
       .filter((shift): shift is MomentumShift => Boolean(shift))
@@ -190,7 +190,6 @@ function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]
       .slice(0, 4)
       .map((shift) => ({
         band: shift.band,
-        bandParam: bandParamMap[shift.band],
         label:
           shift.band === "Heating"
             ? `↑ ${shift.delta} heating up`
@@ -204,10 +203,7 @@ function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]
 
   return (
     <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-3">
-      <div className="space-y-0.5">
-        <p className="text-sm font-semibold accent-title">Momentum shifts</p>
-        <p className="text-xs text-gray-500">What changed since yesterday</p>
-      </div>
+      <p className="text-sm font-semibold accent-title">Momentum shifts</p>
 
       <div className="mt-2 space-y-1">
         {items.length ? (
@@ -216,8 +212,10 @@ function MomentumShiftsSection({ shifts, onNavigate }: { shifts: MomentumShift[]
             return (
               <button
                 key={item.band}
-                onClick={() => onNavigate(item.bandParam)}
-                className={`w-full rounded-md px-2 py-2 text-left text-sm font-medium transition hover:bg-white ${isStalled ? "peach-text" : "text-gray-900"}`}
+                onClick={() => onSelect(item.band)}
+                className={`w-full rounded-md px-2 py-2 text-left text-sm font-medium transition hover:bg-white ${
+                  isStalled ? "peach-text" : "text-gray-900"
+                } ${activeBand === item.band ? "border border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : ""}`}
               >
                 {item.label}
               </button>
@@ -324,12 +322,14 @@ function ActionDetail({ actionId }: { actionId: string }) {
 
 function CommitmentDetail({
   commitment,
-  briefId,
+  brief,
   onOpenBrief,
+  onCreateAction,
 }: {
   commitment: { id: string; title: string; datetime: string; lp: string } | undefined | null;
-  briefId?: string;
+  brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
+  onCreateAction: () => void;
 }) {
   if (!commitment) return <Placeholder title="No commitment selected" />;
   return (
@@ -344,18 +344,24 @@ function CommitmentDetail({
       </div>
       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
         <p className="font-medium text-gray-900">Meeting prep</p>
-        <p className="text-sm text-gray-700">Use the brief to prep; focus on next move and commitments.</p>
+        <p className="text-sm text-gray-700">Keep the next move tight and confirm owner.</p>
       </div>
-      {briefId ? (
-        <button className="button-primary" onClick={() => onOpenBrief(briefId)}>
-          Open brief in Materials → Briefs
-        </button>
-      ) : null}
+      {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
     </div>
   );
 }
 
-function BriefDetail({ brief, onCreateAction }: { brief: (typeof briefs)[number] | null | undefined; onCreateAction: () => void }) {
+function BriefDetail({
+  brief,
+  onCreateAction,
+  onOpenBrief,
+  compact = false,
+}: {
+  brief: (typeof briefs)[number] | null | undefined;
+  onCreateAction: () => void;
+  onOpenBrief?: (id: string) => void;
+  compact?: boolean;
+}) {
   if (!brief) return <Placeholder title="No brief selected" />;
   return (
     <div className="space-y-3">
@@ -363,7 +369,9 @@ function BriefDetail({ brief, onCreateAction }: { brief: (typeof briefs)[number]
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Brief</p>
           <h3 className="text-lg font-semibold accent-title">{brief.meetingTitle}</h3>
-          <p className="text-sm text-gray-600">{brief.datetime} • {brief.lp}</p>
+          <p className="text-sm text-gray-600">
+            {brief.datetime} • {brief.lp}
+          </p>
         </div>
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{brief.status}</span>
       </div>
@@ -371,32 +379,75 @@ function BriefDetail({ brief, onCreateAction }: { brief: (typeof briefs)[number]
         <p className="font-medium text-gray-900">Summary</p>
         <p className="text-sm text-gray-700">{brief.summary}</p>
       </div>
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">Agenda</p>
-        <ul className="mt-1 space-y-1">
-          {brief.agenda.map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">Commitments</p>
-        <ul className="mt-1 space-y-1">
-          {brief.commitments.map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {!compact ? (
+        <>
+          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+            <p className="font-medium text-gray-900">Agenda</p>
+            <ul className="mt-1 space-y-1">
+              {brief.agenda.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+            <p className="font-medium text-gray-900">Commitments</p>
+            <ul className="mt-1 space-y-1">
+              {brief.commitments.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
       <div className="flex flex-wrap gap-2">
-        <button className="button-primary" onClick={onCreateAction}>Create follow-up action</button>
-        <button className="button-secondary" onClick={onCreateAction}>Draft email</button>
+        <button className="button-primary" onClick={onCreateAction}>
+          Create follow-up action
+        </button>
+        <button className="button-secondary" onClick={onCreateAction}>
+          Draft email
+        </button>
+        {onOpenBrief ? (
+          <button className="button-secondary" onClick={() => onOpenBrief(brief.id)}>
+            Open full brief
+          </button>
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+function ShiftDetail({ shift, onViewMomentum }: { shift: MomentumShift | undefined | null; onViewMomentum: (bandParam: string) => void }) {
+  if (!shift) return <Placeholder title="No shift selected" />;
+  const bandParamMap: Record<MomentumShift["band"], string> = {
+    Heating: "Heating",
+    Cooling: "Cooling",
+    Stalled: "Stalled",
+    Stable: "Active-Stable",
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500">Momentum shift</p>
+          <h3 className="text-lg font-semibold accent-title">{shift.band}</h3>
+          <p className="text-sm text-gray-700">{shift.delta} moved since yesterday</p>
+        </div>
+      </div>
+      <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+        <p className="font-medium text-gray-900">What to watch</p>
+        <p className="mt-1 text-sm text-gray-700">
+          Focus on relationships driving this move. Pull up the Momentum view to see the breakdown and act from there.
+        </p>
+      </div>
+      <button className="button-primary" onClick={() => onViewMomentum(bandParamMap[shift.band])}>
+        View in Momentum
+      </button>
     </div>
   );
 }

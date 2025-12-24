@@ -141,17 +141,13 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
           <StatusField label="Stall risk" value={stallRisk} />
           <StatusField label="Next move" value={relationship.nextMove} />
         </div>
-        <p className="mt-2 text-xs text-gray-500">Updated from recent emails, meetings, and shared materials.</p>
       </section>
 
       {/* Section 3 — Open Loops */}
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold accent-title">Open Loops</p>
-            <p className="text-xs text-gray-600">Unresolved items that could slow momentum.</p>
-          </div>
-          <button className="text-xs text-blue-700 hover:underline" onClick={() => router.push("/tasks")}>
+          <p className="text-sm font-semibold accent-title">Open Loops</p>
+          <button className="text-xs text-blue-700 hover:underline" onClick={() => router.push("/activity")}>
             Create action
           </button>
         </div>
@@ -166,7 +162,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       </section>
 
       {/* Section 4 — Key Changes Over Time */}
-      <Accordion title="KEY CHANGES OVER TIME" hint="Key moments that changed direction">
+      <Accordion title="KEY CHANGES OVER TIME">
         <ul className="space-y-1 text-sm text-gray-800">
           {keyChanges.map((item) => (
             <li key={item} className="flex items-start gap-2">
@@ -178,7 +174,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       </Accordion>
 
       {/* Section 5 — Key Interactions */}
-      <Accordion title="KEY INTERACTIONS" hint="Meaningful meetings, replies, or materials">
+      <Accordion title="KEY INTERACTIONS">
         <ul className="space-y-1 text-sm text-gray-800">
           {keyInteractions.map((item) => (
             <li key={item} className="flex items-start gap-2">
@@ -190,7 +186,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       </Accordion>
 
       {/* Section 6 — Engagement with Materials */}
-      <Accordion title="Engagement with Materials" hint="Directional view; no per-LP analytics">
+      <Accordion title="Engagement with Materials">
         <div className="text-sm text-gray-800">{materialsEngagement}</div>
         <button className="mt-2 text-sm text-blue-700 hover:underline" onClick={() => router.push(`/materials?lp=${encodeURIComponent(relationship.name)}`)}>
           View details
