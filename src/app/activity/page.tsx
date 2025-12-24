@@ -100,7 +100,13 @@ export default function ActivityPage() {
           >
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>{event.when}</span>
-              <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">{event.actor}</span>
+              <span
+                className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                  event.actor === "TOMO" ? "bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]" : "bg-blue-50 text-blue-700"
+                }`}
+              >
+                {event.actor}
+              </span>
             </div>
             <p className="mt-1 text-sm font-medium text-gray-900">{event.summary}</p>
             {event.entity ? <p className="text-xs text-gray-600">{event.entity}</p> : null}

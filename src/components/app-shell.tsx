@@ -284,7 +284,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
             </select>
           </div>
 
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-xs font-medium text-gray-700">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-[color:var(--accent)] text-xs font-semibold text-white">
             JD
           </div>
         </div>

@@ -233,7 +233,13 @@ function MomentumShiftsSection({ shifts, onSelect, activeBand }: { shifts: Momen
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className={`text-sm font-medium ${isStalled ? "peach-text" : "text-gray-900"}`}>{item.label}</p>
+                    <p
+                      className={`text-sm font-semibold ${
+                        item.band === "Heating" ? "text-green-700" : item.band === "Cooling" ? "text-amber-700" : isStalled ? "peach-text" : "text-gray-900"
+                      }`}
+                    >
+                      {item.label}
+                    </p>
                     <p className="text-xs text-gray-600">{item.preview}</p>
                   </div>
                   <span className="text-[11px] text-gray-500">{item.date}</span>
@@ -255,7 +261,13 @@ function StatusPill({ status }: { status: string }) {
     in_progress: "In progress",
     blocked: "Blocked",
   };
-  return <span className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">{map[status] ?? status}</span>;
+  const tone =
+    status === "approval"
+      ? "bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]"
+      : status === "blocked"
+      ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+      : "bg-blue-50 text-blue-700";
+  return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{map[status] ?? status}</span>;
 }
 
 function ActionDetail({ actionId }: { actionId: string }) {
