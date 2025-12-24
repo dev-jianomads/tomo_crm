@@ -4,27 +4,24 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
-import { useFunds } from "@/components/fund-provider";
 
-type TargetFilter = { fund: string; region: string; interest: string };
+type TargetFilter = { region: string; interest: string; stage: string; tier: string };
 type TargetList = { id: string; name: string; filters: TargetFilter; members: string[] };
 
-const defaultFilters: TargetFilter = { fund: "all", region: "Any", interest: "Active" };
+const defaultFilters: TargetFilter = { region: "Any", interest: "Active", stage: "Heating", tier: "Tier 1-2" };
 const defaultMembers = ["Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel"];
 
 export default function TargetsPage() {
   const { ready } = useRequireSession();
-  const { funds, activeFundId } = useFunds();
-  const [filters, setFilters] = useState<TargetFilter>(() => ({ ...defaultFilters, fund: activeFundId }));
+  const [filters, setFilters] = useState<TargetFilter>(() => ({ ...defaultFilters }));
   const [lists, setLists] = usePersistentState<TargetList[]>("tomo-target-lists", []);
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [listName, setListName] = useState("");
 
   const matchingMembers = useMemo(() => {
     // Mock: vary members slightly by selected region/interest
-    const subset = filters.interest === "Heating" ? defaultMembers.slice(0, 3) : defaultMembers;
-    return subset;
-  }, [filters.interest]);
+    return filters.stage === "Heating" || filters.interest === "Heating" ? defaultMembers.slice(0, 3) : defaultMembers;
+  }, [filters.interest, filters.stage]);
 
   const activeList = lists.find((l) => l.id === activeListId) ?? null;
 
@@ -42,14 +39,15 @@ export default function TargetsPage() {
       <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold accent-title">Filters</p>
-          <button className="text-xs text-blue-700 hover:underline" onClick={() => setFilters({ ...defaultFilters, fund: activeFundId })}>
+          <button className="text-xs text-blue-700 hover:underline" onClick={() => setFilters({ ...defaultFilters })}>
             Reset
           </button>
         </div>
         <div className="grid gap-3">
-          <FilterSelect label="Fund" value={filters.fund} options={[{ label: "All", value: "all" }, ...funds.map((f) => ({ label: f.name, value: f.id }))]} onChange={(val) => setFilters((prev) => ({ ...prev, fund: val }))} />
           <FilterSelect label="Region" value={filters.region} options={["Any", "North America", "Europe", "Asia"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, region: val }))} />
           <FilterSelect label="Interest" value={filters.interest} options={["Active", "Heating", "Cooling"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, interest: val }))} />
+          <FilterSelect label="Stage" value={filters.stage} options={["Heating", "Active", "Cooling", "Stalled"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, stage: val }))} />
+          <FilterSelect label="Tier" value={filters.tier} options={["Tier 1-2", "Tier 3", "Prospect"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, tier: val }))} />
         </div>
       </div>
 
@@ -91,7 +89,7 @@ export default function TargetsPage() {
                 <span className="text-xs text-gray-600">{list.members.length} members</span>
               </div>
               <p className="text-xs text-gray-600">
-                Fund: {list.filters.fund === "all" ? "All" : funds.find((f) => f.id === list.filters.fund)?.name ?? "Custom"} • {list.filters.region} • {list.filters.interest}
+                Filters: {list.filters.region} • {list.filters.interest} • {list.filters.stage} • {list.filters.tier}
               </p>
             </button>
           ))
@@ -106,7 +104,7 @@ export default function TargetsPage() {
               <span className="text-xs text-gray-600">{activeList.members.length} members</span>
             </div>
             <p className="mt-1 text-xs text-gray-600">
-              Fund: {activeList.filters.fund === "all" ? "All" : funds.find((f) => f.id === activeList.filters.fund)?.name ?? "Custom"} • {activeList.filters.region} • {activeList.filters.interest}
+              Filters: {activeList.filters.region} • {activeList.filters.interest} • {activeList.filters.stage} • {activeList.filters.tier}
             </p>
             <div className="mt-2 space-y-1 text-sm text-gray-800">
               {activeList.members.map((m) => (
