@@ -70,6 +70,7 @@ body {
 
 .accent-title {
   color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .accent-label {

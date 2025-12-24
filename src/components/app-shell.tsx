@@ -268,7 +268,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex flex-col text-right">
+          <div className="flex flex-col text-left">
             <span className="text-[11px] uppercase tracking-wide text-gray-500">Fund</span>
             <select
               className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none"

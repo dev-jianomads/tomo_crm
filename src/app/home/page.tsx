@@ -59,7 +59,7 @@ export default function HomePage() {
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold accent-title">Today</p>
+          <p className="text-base font-semibold accent-title">Today</p>
           <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
         </div>
       </div>
@@ -74,6 +74,7 @@ export default function HomePage() {
             extra: idx % 2 === 0 ? "Due today • draft ready" : "Fresh evidence added",
             type: "action" as const,
             status: a.status,
+            date: idx % 2 === 0 ? "Updated yesterday" : "As of today",
           }))}
           activeId={selection?.type === "action" ? selection.id : undefined}
           onSelect={(id) => setSelection({ type: "action", id })}
@@ -94,6 +95,7 @@ export default function HomePage() {
             meta: `${c.datetime} • ${c.lp}`,
             extra: c.window === "today" ? "Happening today" : "Within 72h",
             type: "commitment" as const,
+            date: c.datetime,
           }))}
           activeId={selection?.type === "commitment" ? selection.id : undefined}
           onSelect={(id) => setSelection({ type: "commitment", id })}
@@ -148,14 +150,14 @@ function TodayGroup({
   dense = false,
 }: {
   title: string;
-  items: { id: string; title: string; meta: string; type: "action" | "commitment" | "brief"; status?: string; extra?: string }[];
+  items: { id: string; title: string; meta: string; type: "action" | "commitment" | "brief"; status?: string; extra?: string; date?: string }[];
   onSelect: (id: string) => void;
   activeId?: string;
   dense?: boolean;
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-semibold text-[color:var(--accent-ink)]">{title}</p>
+      <p className="text-base font-semibold accent-title">{title}</p>
       <div className="space-y-2">
         {items.map((item) => (
           <button
@@ -165,13 +167,16 @@ function TodayGroup({
               activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-900">{item.title}</p>
                 <p className="text-xs text-gray-600">{item.meta}</p>
                 {!dense && item.extra ? <p className="text-[11px] text-gray-500">{item.extra}</p> : null}
               </div>
-              {item.status ? <StatusPill status={item.status} /> : null}
+              <div className="flex flex-col items-end gap-1">
+                {item.status ? <StatusPill status={item.status} /> : null}
+                {item.date ? <span className="text-[11px] text-gray-500">{item.date}</span> : null}
+              </div>
             </div>
           </button>
         ))}
@@ -198,14 +203,23 @@ function MomentumShiftsSection({ shifts, onSelect, activeBand }: { shifts: Momen
             : shift.band === "Stalled"
             ? `⚠ ${shift.delta} stalled`
             : `↔ ${shift.delta} stable`,
+        preview:
+          shift.band === "Heating"
+            ? "Top: Alex Morgan, Jamie Chen"
+            : shift.band === "Cooling"
+            ? "Watch: Priya Desai, Samir Patel"
+            : shift.band === "Stalled"
+            ? "Needs touch: Lumen LP"
+            : "Steady: Jamie, Alex",
+        date: "As of today",
       }));
   }, [shifts]);
 
   return (
-    <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-3">
-      <p className="text-sm font-semibold accent-title">Momentum shifts</p>
+    <div className="space-y-2">
+      <p className="text-base font-semibold accent-title">Momentum shifts</p>
 
-      <div className="mt-2 space-y-1">
+      <div className="space-y-2">
         {items.length ? (
           items.map((item) => {
             const isStalled = item.band === "Stalled";
@@ -213,11 +227,17 @@ function MomentumShiftsSection({ shifts, onSelect, activeBand }: { shifts: Momen
               <button
                 key={item.band}
                 onClick={() => onSelect(item.band)}
-                className={`w-full rounded-md px-2 py-2 text-left text-sm font-medium transition hover:bg-white ${
-                  isStalled ? "peach-text" : "text-gray-900"
-                } ${activeBand === item.band ? "border border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : ""}`}
+                className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                  activeBand === item.band ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
               >
-                {item.label}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className={`text-sm font-medium ${isStalled ? "peach-text" : "text-gray-900"}`}>{item.label}</p>
+                    <p className="text-xs text-gray-600">{item.preview}</p>
+                  </div>
+                  <span className="text-[11px] text-gray-500">{item.date}</span>
+                </div>
               </button>
             );
           })
