@@ -70,52 +70,64 @@ export default function TargetsPage() {
   );
 
   const detailContent = (
-    <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-sm font-semibold accent-title">Saved lists</p>
-      </div>
-      <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
-        {lists.length ? (
-          lists.map((list) => (
-            <button
-              key={list.id}
-              onClick={() => setActiveListId(list.id)}
-              className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                activeListId === list.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">{list.name}</p>
-                <span className="text-xs text-gray-600">{list.members.length} members</span>
-              </div>
-              <p className="text-xs text-gray-600">
-                Filters: {list.filters.region} • {list.filters.interest} • {list.filters.stage} • {list.filters.tier}
-              </p>
-            </button>
-          ))
-        ) : (
-          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No saved lists yet.</div>
-        )}
-
-        {activeList ? (
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold accent-title">{activeList.name}</p>
-              <span className="text-xs text-gray-600">{activeList.members.length} members</span>
-            </div>
-            <p className="mt-1 text-xs text-gray-600">
-              Filters: {activeList.filters.region} • {activeList.filters.interest} • {activeList.filters.stage} • {activeList.filters.tier}
-            </p>
-            <div className="mt-2 space-y-1 text-sm text-gray-800">
-              {activeList.members.map((m) => (
-                <div key={m} className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 px-2 py-1">
-                  <span>{m}</span>
-                  <span className="text-xs text-gray-500">Preview</span>
+    <div className="flex h-full flex-col gap-3">
+      <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <p className="text-sm font-semibold accent-title">Saved lists</p>
+          <span className="text-[11px] text-gray-500">{lists.length} total</span>
+        </div>
+        <div className="space-y-2 px-4 py-3">
+          {lists.length ? (
+            lists.map((list) => (
+              <button
+                key={list.id}
+                onClick={() => setActiveListId(list.id)}
+                className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                  activeListId === list.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">{list.name}</p>
+                  <span className="text-xs text-gray-600">{list.members.length} members</span>
                 </div>
-              ))}
+                <p className="text-xs text-gray-600">
+                  Filters: {list.filters.region} • {list.filters.interest} • {list.filters.stage} • {list.filters.tier}
+                </p>
+              </button>
+            ))
+          ) : (
+            <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No saved lists yet.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <p className="text-sm font-semibold accent-title">List details</p>
+          <span className="text-[11px] text-gray-500">{activeList ? `${activeList.members.length} members` : "Select a list"}</span>
+        </div>
+        <div className="px-4 py-3">
+          {activeList ? (
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{activeList.name}</p>
+                <p className="text-xs text-gray-600">
+                  Filters: {activeList.filters.region} • {activeList.filters.interest} • {activeList.filters.stage} • {activeList.filters.tier}
+                </p>
+              </div>
+              <div className="space-y-1 text-sm text-gray-800">
+                {activeList.members.map((m) => (
+                  <div key={m} className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 px-2 py-1">
+                    <span>{m}</span>
+                    <span className="text-xs text-gray-500">Preview</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">Select a list to view details.</div>
+          )}
+        </div>
       </div>
     </div>
   );
