@@ -90,6 +90,8 @@ export default function SettingsPage() {
     affinityConnected: false,
     googleSheetsConnected: false,
     googleSheetsAuthed: false,
+    contactImportUploaded: false,
+    fundStrategyUploaded: false,
     notifications: {},
     completed: false,
   });
