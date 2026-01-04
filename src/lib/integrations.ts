@@ -208,6 +208,58 @@ export async function disconnectGoogleSheet() {
 
 /**
  * =============================================================================
+ * ONBOARDING FILE INGEST (CONTACTS + FUND STRATEGY) - MOCKS
+ * =============================================================================
+ * These functions stub the backend endpoints that will ingest user-provided
+ * data for Tomo to build starting context.
+ * 
+ * API ROUTES TO CREATE:
+ * 
+ * POST /api/onboarding/upload-contacts
+ * - Receives CSV/XLS/XLSX file (multipart/form-data)
+ * - Parses headers and rows, infers name/email/company/phone columns
+ * - Stores file in object storage (e.g., S3)
+ * - Enqueues background job to normalize + dedupe contacts
+ * - Returns: { ok: true, filename, rowCount }
+ * 
+ * POST /api/onboarding/upload-fund-strategy
+ * - Receives DOCX/TXT file or raw text
+ * - Extracts text, cleans formatting
+ * - Runs summarization + key entities extraction
+ * - Stores raw + parsed content for later use
+ * - Returns: { ok: true, filename, wordCount }
+ */
+export async function uploadContactsSeed(file: File) {
+  await wait(350);
+
+  // MOCK: Pretend we parsed the file and counted rows
+  const estimatedRows = Math.max(12, Math.min(5000, Math.round(file.size / 48)));
+
+  return {
+    ok: true,
+    filename: file.name,
+    rowCount: estimatedRows,
+    message: "Uploaded contacts file (mock). Replace with POST /api/onboarding/upload-contacts.",
+  };
+}
+
+export async function uploadFundStrategy(payload: { file?: File; text?: string }) {
+  await wait(400);
+
+  const wordCountFromText = payload.text
+    ? payload.text.trim().split(/\s+/).filter(Boolean).length
+    : undefined;
+
+  return {
+    ok: true,
+    filename: payload.file?.name ?? (payload.text ? "Pasted strategy" : "Untitled"),
+    wordCount: payload.file ? undefined : wordCountFromText ?? 0,
+    message: "Uploaded fund strategy (mock). Replace with POST /api/onboarding/upload-fund-strategy.",
+  };
+}
+
+/**
+ * =============================================================================
  * SLACK INTEGRATION
  * =============================================================================
  * 
@@ -409,6 +461,7 @@ function wait(ms: number) {
  * }
  * ```
  */
+
 
 
 

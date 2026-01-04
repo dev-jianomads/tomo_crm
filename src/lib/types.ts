@@ -189,6 +189,12 @@ export type OnboardingState = {
   googleSheetsConnected: boolean;
   googleSheetsFilename?: string;
   googleSheetsAuthed?: boolean;
+  contactImportUploaded: boolean;
+  contactImportFilename?: string;
+  contactImportRowCount?: number;
+  fundStrategyUploaded: boolean;
+  fundStrategyFilename?: string;
+  fundStrategyText?: string;
   notifications: Record<string, { email?: boolean; slack?: boolean; telegram?: boolean; inApp?: boolean }>;
   completed: boolean;
 };

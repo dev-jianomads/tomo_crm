@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
-import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
+import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
 import { OnboardingState } from "@/lib/types";
 import { usePersistentState } from "@/lib/storage";
 
@@ -23,6 +23,8 @@ const initialState: OnboardingState = {
   affinityConnected: false,
   googleSheetsConnected: false,
   googleSheetsAuthed: false,
+  contactImportUploaded: false,
+  fundStrategyUploaded: false,
   notifications: defaultNotifications,
   completed: false,
 };
@@ -43,6 +45,17 @@ export default function OnboardingPage() {
   const [affinitySaving, setAffinitySaving] = useState(false);
   const [googleAuthing, setGoogleAuthing] = useState(false);
   const [sheetCreating, setSheetCreating] = useState(false);
+  const [contactsFile, setContactsFile] = useState<File | null>(null);
+  const [contactsUploading, setContactsUploading] = useState(false);
+  const [strategyFile, setStrategyFile] = useState<File | null>(null);
+  const [strategyText, setStrategyText] = useState(state.fundStrategyText ?? "");
+  const [strategyUploading, setStrategyUploading] = useState(false);
+
+  // Ensure newly added onboarding fields get defaulted when loading older local state
+  useEffect(() => {
+    if (!ready) return;
+    setState((prev) => ({ ...initialState, ...prev }));
+  }, [ready, setState]);
 
   useEffect(() => {
     const session = getSession();
@@ -61,12 +74,14 @@ export default function OnboardingPage() {
     }
   }, [ready, state.completed, router]);
 
+  const totalSteps = 8;
+
   const markConnected = (key: keyof Pick<OnboardingState, "calendarConnected" | "contactsConnected" | "emailConnected">) => {
     setState({ ...state, [key]: true });
     goNext();
   };
 
-  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 6));
+  const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const toggleNotification = (row: string, channel: "email" | "slack" | "telegram" | "inApp") => {
@@ -79,6 +94,46 @@ export default function OnboardingPage() {
     });
   };
 
+  const handleContactsUpload = async () => {
+    if (!contactsFile) return;
+    setContactsUploading(true);
+    try {
+      const res = await uploadContactsSeed(contactsFile);
+      if (res.ok) {
+        setState((prev) => ({
+          ...prev,
+          contactImportUploaded: true,
+          contactImportFilename: res.filename,
+          contactImportRowCount: res.rowCount,
+        }));
+        goNext();
+      }
+    } finally {
+      setContactsUploading(false);
+    }
+  };
+
+  const handleFundStrategyUpload = async () => {
+    const trimmedText = strategyText.trim();
+    if (!strategyFile && !trimmedText) return;
+    setStrategyUploading(true);
+    try {
+      const res = await uploadFundStrategy({ file: strategyFile ?? undefined, text: trimmedText || undefined });
+      if (res.ok) {
+        setState((prev) => ({
+          ...prev,
+          fundStrategyUploaded: true,
+          fundStrategyFilename: res.filename,
+          fundStrategyText: trimmedText || prev.fundStrategyText,
+        }));
+        if (strategyFile) setStrategyFile(null);
+        goNext();
+      }
+    } finally {
+      setStrategyUploading(false);
+    }
+  };
+
   const completeOnboarding = () => {
     const session = getSession();
     if (session) {
@@ -87,8 +142,6 @@ export default function OnboardingPage() {
     setState({ ...state, completed: true });
     router.replace("/home");
   };
-
-  const totalSteps = 6;
 
   return (
     <div className="min-h-screen bg-white px-4 py-4 md:py-8">
@@ -470,6 +523,122 @@ export default function OnboardingPage() {
           )}
 
           {currentStep === 6 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold accent-title">Import contacts from CSV or Excel</h2>
+                  <p className="text-sm text-gray-600">
+                    Seed TOMO with the people you already track. We&apos;ll parse names, roles, companies, and contact info.
+                  </p>
+                </div>
+                <div className="text-sm text-gray-500">Optional</div>
+              </div>
+
+              <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-gray-500">Contacts file</label>
+                  <input
+                    type="file"
+                    accept=".csv,.xls,.xlsx"
+                    onChange={(e) => setContactsFile(e.target.files?.[0] ?? null)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Supports CSV, XLS, or XLSX. Include headers like Name, Email, Company, Title, Phone.
+                  </p>
+                </div>
+
+                {state.contactImportUploaded ? (
+                  <p className="text-xs text-green-700">
+                    Uploaded {state.contactImportFilename ?? contactsFile?.name ?? "your file"}. We&apos;ll queue parsing
+                    (~{state.contactImportRowCount ?? "tens of"} rows) while you finish onboarding.
+                  </p>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="button-primary"
+                    disabled={!contactsFile || contactsUploading}
+                    onClick={handleContactsUpload}
+                  >
+                    {contactsUploading ? "Uploading..." : state.contactImportUploaded ? "Replace file" : "Upload file"}
+                  </button>
+                  <button
+                    className="button-secondary"
+                    onClick={() => {
+                      setContactsFile(null);
+                      goNext();
+                    }}
+                  >
+                    Skip for now
+                  </button>
+                  <span className="text-xs text-gray-500">
+                    In production, files are stored securely and processed asynchronously.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 7 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold accent-title">Share your fund strategy (optional)</h2>
+                  <p className="text-sm text-gray-600">
+                    Give TOMO context on mandate, stage, geos, and targets so briefs and outreach match your strategy.
+                  </p>
+                </div>
+                <div className="text-sm text-gray-500">Optional</div>
+              </div>
+
+              <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-gray-500">Upload strategy document</label>
+                  <input
+                    type="file"
+                    accept=".doc,.docx,.txt"
+                    onChange={(e) => setStrategyFile(e.target.files?.[0] ?? null)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-500">Accepts DOC/DOCX or TXT. We&apos;ll extract thesis, ICP, check size, and guardrails.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-gray-500">Or paste a short summary</label>
+                  <textarea
+                    value={strategyText}
+                    onChange={(e) => setStrategyText(e.target.value)}
+                    rows={4}
+                    placeholder="Stage, check size, ownership, sectors, geography, ICP..."
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                {state.fundStrategyUploaded ? (
+                  <p className="text-xs text-green-700">
+                    Strategy captured from {state.fundStrategyFilename ?? "pasted text"}. TOMO will use it as context for briefs and recommendations.
+                  </p>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="button-primary"
+                    disabled={strategyUploading || (!strategyFile && !strategyText.trim())}
+                    onClick={handleFundStrategyUpload}
+                  >
+                    {strategyUploading ? "Saving..." : state.fundStrategyUploaded ? "Update strategy" : "Save and continue"}
+                  </button>
+                  <button className="text-sm text-gray-600 underline" onClick={goNext}>
+                    Skip for now
+                  </button>
+                  <span className="text-xs text-gray-500">Nothing is sent until you confirm. Parsing is queued server-side.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 8 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold accent-title">Your workspace is ready</h2>
               <div className="space-y-2 text-sm text-gray-700">
@@ -480,6 +649,8 @@ export default function OnboardingPage() {
                 <StatusLine label="Telegram" ok={state.telegramConnected} />
                 <StatusLine label="Affinity" ok={state.affinityConnected} />
                 <StatusLine label="Google Sheets" ok={state.googleSheetsConnected} />
+                <StatusLine label="Contacts file uploaded" ok={state.contactImportUploaded} />
+                <StatusLine label="Fund strategy shared" ok={state.fundStrategyUploaded} />
               </div>
               <button className="button-primary" onClick={completeOnboarding}>
                 Enter workspace
