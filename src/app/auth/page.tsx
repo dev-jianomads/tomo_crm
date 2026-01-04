@@ -169,12 +169,11 @@ export default function AuthPage() {
 
   /**
    * Check if user is already authenticated
-   * Redirect to appropriate page if so
+   * Mock behavior: always route to onboarding if a session exists
    */
   useEffect(() => {
     const session = getSession();
-    if (session?.onboardingComplete) router.replace("/home");
-    if (session && !session.onboardingComplete) router.replace("/onboarding");
+    if (session) router.replace("/onboarding");
     
     // PRODUCTION: Use Firebase onAuthStateChanged instead
     // ```
@@ -197,17 +196,10 @@ export default function AuthPage() {
   const handleContinue = () => {
     if (!email) return;
     
-    // MOCK: Check if user has logged in before (by email match)
-    const existing = readFromStorage<SessionState | null>("tomo-session", null);
-    const onboardingComplete = existing?.email === email ? existing.onboardingComplete : false;
-    const session: SessionState = { email, plan: selectedPlan, onboardingComplete };
+    // MOCK: Always route through onboarding for every sign-in/sign-up
+    const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false };
     setSession(session);
-    
-    if (onboardingComplete) {
-      router.replace("/home");
-    } else {
-      router.replace("/onboarding");
-    }
+    router.replace("/onboarding");
     
     // PRODUCTION: Replace with Firebase auth
     // ```
