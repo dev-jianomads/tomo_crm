@@ -12,10 +12,11 @@ export default function LandingRedirect() {
     const session = readFromStorage<SessionState | null>("tomo-session", null);
     if (!session) {
       router.replace("/auth");
-      return;
+    } else if (!session.onboardingComplete) {
+      router.replace("/onboarding");
+    } else {
+      router.replace("/home");
     }
-    // Mock behavior: always send signed-in users through onboarding
-    router.replace("/onboarding");
   }, [router]);
 
   return (

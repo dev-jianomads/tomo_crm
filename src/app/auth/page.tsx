@@ -169,11 +169,12 @@ export default function AuthPage() {
 
   /**
    * Check if user is already authenticated
-   * Mock behavior: always route to onboarding if a session exists
+   * Redirect to onboarding if not complete, else home
    */
   useEffect(() => {
     const session = getSession();
-    if (session) router.replace("/onboarding");
+    if (session?.onboardingComplete) router.replace("/home");
+    if (session && !session.onboardingComplete) router.replace("/onboarding");
     
     // PRODUCTION: Use Firebase onAuthStateChanged instead
     // ```
@@ -196,7 +197,7 @@ export default function AuthPage() {
   const handleContinue = () => {
     if (!email) return;
     
-    // MOCK: Always route through onboarding for every sign-in/sign-up
+    // MOCK: Route through onboarding for new sign-in/sign-up
     const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false };
     setSession(session);
     router.replace("/onboarding");
