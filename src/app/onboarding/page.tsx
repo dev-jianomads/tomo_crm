@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getSession, setSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
 import { OnboardingState } from "@/lib/types";
@@ -95,6 +96,16 @@ export default function OnboardingPage() {
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
+  const forceNavigateHome = () => {
+    navigateHome();
+    if (typeof window !== "undefined") {
+      // Hard fallback for cases where Next's router fetch fails
+      setTimeout(() => {
+        window.location.href = "/home";
+      }, 10);
+    }
+  };
+
   const handleNext = () => {
     if (isLastStep) {
       completeOnboarding();
@@ -159,7 +170,7 @@ export default function OnboardingPage() {
       setSession({ ...session, onboardingComplete: true });
     }
     setState((prev) => ({ ...prev, completed: true }));
-    navigateHome();
+    forceNavigateHome();
   };
 
   return (
@@ -667,9 +678,11 @@ export default function OnboardingPage() {
                 <StatusLine label="Contacts file uploaded" ok={state.contactImportUploaded} />
                 <StatusLine label="Fund strategy shared" ok={state.fundStrategyUploaded} />
               </div>
-              <button type="button" className="button-primary" onClick={completeOnboarding}>
-                Enter workspace
-              </button>
+              <Link href="/home" prefetch={false} className="inline-block">
+                <button type="button" className="button-primary" onClick={completeOnboarding}>
+                  Enter workspace
+                </button>
+              </Link>
             </div>
           )}
         </div>
