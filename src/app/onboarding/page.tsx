@@ -75,6 +75,7 @@ export default function OnboardingPage() {
   }, [ready, state.completed, router]);
 
   const totalSteps = 8;
+  const isLastStep = currentStep === totalSteps;
 
   const markConnected = (key: keyof Pick<OnboardingState, "calendarConnected" | "contactsConnected" | "emailConnected">) => {
     setState({ ...state, [key]: true });
@@ -83,6 +84,14 @@ export default function OnboardingPage() {
 
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
+
+  const handleNext = () => {
+    if (isLastStep) {
+      completeOnboarding();
+    } else {
+      goNext();
+    }
+  };
 
   const toggleNotification = (row: string, channel: "email" | "slack" | "telegram" | "inApp") => {
     setState({
@@ -139,7 +148,7 @@ export default function OnboardingPage() {
     if (session) {
       setSession({ ...session, onboardingComplete: true });
     }
-    setState({ ...state, completed: true });
+    setState((prev) => ({ ...prev, completed: true }));
     router.replace("/home");
   };
 
@@ -177,12 +186,8 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
-            <button
-              className="button-primary h-9 px-3 text-sm"
-              onClick={goNext}
-              disabled={currentStep === totalSteps}
-            >
-              Next
+            <button className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
+              {isLastStep ? "Finish" : "Next"}
             </button>
           </div>
         </div>
