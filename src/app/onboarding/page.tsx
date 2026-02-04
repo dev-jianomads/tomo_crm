@@ -57,6 +57,16 @@ export default function OnboardingPage() {
     setState((prev) => ({ ...initialState, ...prev }));
   }, [ready, setState]);
 
+  const navigateHome = () => {
+    try {
+      router.replace("/home");
+    } catch {
+      if (typeof window !== "undefined") {
+        window.location.href = "/home";
+      }
+    }
+  };
+
   useEffect(() => {
     const session = getSession();
     if (!session) router.replace("/auth");
@@ -69,10 +79,10 @@ export default function OnboardingPage() {
       const session = getSession();
       if (session) {
         setSession({ ...session, onboardingComplete: true });
-        router.replace("/home");
       }
+      navigateHome();
     }
-  }, [ready, state.completed, router]);
+  }, [ready, state.completed, navigateHome]);
 
   const totalSteps = 8;
   const isLastStep = currentStep === totalSteps;
@@ -149,7 +159,7 @@ export default function OnboardingPage() {
       setSession({ ...session, onboardingComplete: true });
     }
     setState((prev) => ({ ...prev, completed: true }));
-    router.replace("/home");
+    navigateHome();
   };
 
   return (
@@ -186,7 +196,7 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
-            <button className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
+            <button type="button" className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
               {isLastStep ? "Finish" : "Next"}
             </button>
           </div>
@@ -657,7 +667,7 @@ export default function OnboardingPage() {
                 <StatusLine label="Contacts file uploaded" ok={state.contactImportUploaded} />
                 <StatusLine label="Fund strategy shared" ok={state.fundStrategyUploaded} />
               </div>
-              <button className="button-primary" onClick={completeOnboarding}>
+              <button type="button" className="button-primary" onClick={completeOnboarding}>
                 Enter workspace
               </button>
             </div>
