@@ -170,17 +170,17 @@ export function clearSession() {
  * ```
  */
 export function useSession() {
-  const initialSession = typeof window !== "undefined" ? readFromStorage<SessionState | null>(KEY, null) : null;
-  const [session, setSession] = useState<SessionState | null>(initialSession);
+  const initialSession = typeof window !== "undefined" ? getSession() : null;
+  const [session, setSessionState] = useState<SessionState | null>(initialSession);
   const ready = typeof window !== "undefined";
 
   const updateSession = (payload: SessionState | null) => {
     if (payload) {
       setSession(payload);
-      writeToStorage(KEY, payload);
+      setSessionState(payload);
     } else {
       clearSession();
-      setSession(null);
+      setSessionState(null);
     }
   };
 

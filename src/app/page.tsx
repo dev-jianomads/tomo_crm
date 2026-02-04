@@ -2,14 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { readFromStorage } from "@/lib/storage";
-import { SessionState } from "@/lib/types";
+import { getSession } from "@/lib/auth";
 
 export default function LandingRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    const session = readFromStorage<SessionState | null>("tomo-session", null);
+    const session = getSession();
     if (!session) {
       router.replace("/auth");
     } else if (!session.onboardingComplete) {
