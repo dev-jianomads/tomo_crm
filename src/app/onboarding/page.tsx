@@ -164,13 +164,20 @@ export default function OnboardingPage() {
     }
   };
 
-  const completeOnboarding = () => {
+  const completeOnboarding = async () => {
     const session = getSession();
     if (session) {
       setSession({ ...session, onboardingComplete: true });
     }
     setState((prev) => ({ ...prev, completed: true }));
-    forceNavigateHome();
+
+    try {
+      await fetch("/api/onboarding/complete", { method: "POST" });
+      router.replace("/home");
+      router.refresh();
+    } catch {
+      forceNavigateHome();
+    }
   };
 
   return (
