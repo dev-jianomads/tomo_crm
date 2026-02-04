@@ -283,12 +283,12 @@ export default function OnboardingPage() {
                     ) : null}
                   </div>
                   <ul className="mt-3 space-y-2 text-sm text-gray-600">
-                    <li>� Morning and evening recaps</li>
-                    <li>� Meeting briefs and follow-up reminders</li>
-                    <li>� Actionable command cards in Slack</li>
+                    <li>Morning and evening recaps</li>
+                    <li>Meeting briefs and follow-up reminders</li>
+                    <li>Actionable command cards in Slack</li>
                   </ul>
                   <div className="mt-4 space-y-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                    <p>We�ll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
+                    <p>We'll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
                     <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium">
                       <span className="truncate">{slackInstallUrl}</span>
                       <button
@@ -348,7 +348,7 @@ export default function OnboardingPage() {
                   </button>
                   {state.telegramConnected ? (
                     <p className="mt-2 text-xs text-green-700">
-                      We�ve sent you a message from TOMO�s Telegram bot with your onboarding link.
+                      We've sent you a message from TOMO's Telegram bot with your onboarding link.
                     </p>
                   ) : null}
                 </div>
@@ -391,7 +391,7 @@ export default function OnboardingPage() {
                     )}
                   </div>
                   <p className="mt-2 text-sm text-gray-600">
-                    Enter your Affinity List ID and API token. We�ll sync people and companies into Tomo.
+                    Enter your Affinity List ID and API token. We'll sync people and companies into Tomo.
                   </p>
                   <div className="mt-3 space-y-2">
                     <label className="text-xs uppercase tracking-wide text-gray-500">List ID</label>
@@ -439,7 +439,7 @@ export default function OnboardingPage() {
                   </button>
                   {state.affinityConnected ? (
                     <p className="mt-2 text-xs text-green-700">
-                      Affinity connected. List {state.affinityListId ?? affinityListId} � Token ending {state.affinityTokenLast4 ?? "����"}
+                      Affinity connected. List {state.affinityListId ?? affinityListId} — Token ending {state.affinityTokenLast4 ?? "????"}
                     </p>
                   ) : null}
                 </div>
@@ -466,7 +466,7 @@ export default function OnboardingPage() {
                       value={sheetsFilename}
                       onChange={(e) => setSheetsFilename(e.target.value)}
                     />
-                    <p className="text-xs text-gray-500">We�ll create the file after you confirm the name.</p>
+                  <p className="text-xs text-gray-500">We'll create the file after you confirm the name.</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
