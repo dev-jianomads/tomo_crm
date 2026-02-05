@@ -335,7 +335,7 @@ export default function AuthPage() {
               {/* Continue button */}
               <button
                 onClick={handleContinue}
-                className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                className="flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
               >
                 Continue
               </button>
@@ -406,7 +406,7 @@ export default function AuthPage() {
               </button>
               <button
                 onClick={handleReset}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
               >
                 Send reset link
               </button>

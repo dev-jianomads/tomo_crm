@@ -202,7 +202,7 @@ export function TomoAssistant({
           />
           <button
             onClick={() => handleSend()}
-            className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white transition hover:bg-blue-700"
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-700 text-white transition hover:bg-blue-600"
             aria-label="Send to TOMO"
           >
             <PaperAirplaneIcon className="h-4 w-4" />
