@@ -65,6 +65,32 @@ export default function HomePage() {
     return commitments.filter((_, idx) => idx % 2 === 1);
   }, [activeFundId]);
 
+  const sortedCommitments = useMemo(() => {
+    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const windowOrder: Record<string, number> = { today: 0, next72h: 1 };
+    const parseTimeToMinutes = (time: string) => {
+      const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return 0;
+      let hour = Number(match[1]) % 12;
+      const minutes = Number(match[2]);
+      if (match[3].toUpperCase() === "PM") hour += 12;
+      return hour * 60 + minutes;
+    };
+    const commitmentKey = (commitment: (typeof commitments)[number]) => {
+      const dt = commitment.datetime;
+      if (dt.startsWith("Today")) return [windowOrder[commitment.window] ?? 9, 0, parseTimeToMinutes(dt)];
+      if (dt.startsWith("Tomorrow")) return [windowOrder[commitment.window] ?? 9, 1, parseTimeToMinutes(dt)];
+      const dayIdx = dayOrder.findIndex((day) => dt.startsWith(day));
+      return [windowOrder[commitment.window] ?? 9, dayIdx === -1 ? 9 : dayIdx + 2, parseTimeToMinutes(dt)];
+    };
+    return [...filteredCommitments].sort((a, b) => {
+      const [wA, dA, tA] = commitmentKey(a);
+      const [wB, dB, tB] = commitmentKey(b);
+      if (wA !== wB) return wA - wB;
+      if (dA !== dB) return dA - dB;
+      return tA - tB;
+    });
+  }, [filteredCommitments]);
   const filteredBriefs = useMemo(() => {
     if (activeFundId === "all") return briefs;
     return briefs.filter((_, idx) => idx % 2 === 0);
@@ -104,7 +130,7 @@ export default function HomePage() {
 
         <TodayGroup
           title="Coming up"
-          items={filteredCommitments.map((c) => ({
+          items={sortedCommitments.map((c) => ({
             id: c.id,
             title: c.title,
             meta: `${c.datetime} • ${c.lp}`,
@@ -624,6 +650,7 @@ function CommitmentDetail({
         <p className="text-sm tomo-ai-text">Keep the next move tight and confirm owner.</p>
       </div>
       {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
+      <MockActivityBox />
     </div>
   );
 }
@@ -743,6 +770,30 @@ function ShiftDetail({ shift, onViewMomentum }: { shift: MomentumShift | undefin
 
 function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
+}
+
+function MockActivityBox() {
+  const items = [
+    { ts: "Yesterday 3:20 PM", type: "Call", note: "Discussed allocation timing and next steps." },
+    { ts: "Tue 11:00 AM", type: "Meeting", note: "Reviewed Q4 results; asked for updated deck." },
+    { ts: "Mon 9:05 AM", type: "Email", note: "Shared performance snapshot + follow-up agenda." },
+  ];
+  return (
+    <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Recent activity</p>
+      <div className="mt-2 space-y-2">
+        {items.map((item) => (
+          <div key={`${item.ts}-${item.type}`} className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-gray-900">{item.type}</p>
+              <p className="text-xs text-gray-600">{item.note}</p>
+            </div>
+            <span className="text-[11px] text-gray-500 whitespace-nowrap">{item.ts}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ToastViewport({ toasts }: { toasts: { id: string; message: string }[] }) {
