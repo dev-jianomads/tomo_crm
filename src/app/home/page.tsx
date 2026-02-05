@@ -415,7 +415,13 @@ function ActionDetail({
                 <button
                   className="button-secondary"
                   onClick={() => {
-                    const allAccepted = Object.fromEntries(suggestedRows.map((_, idx) => [idx, "accepted"]));
+                    const allAccepted = suggestedRows.reduce<Record<number, "accepted" | "rejected" | "pending">>(
+                      (acc, _, idx) => {
+                        acc[idx] = "accepted";
+                        return acc;
+                      },
+                      {}
+                    );
                     setUpdateStatuses(allAccepted);
                   }}
                 >
