@@ -72,17 +72,6 @@ export default function OnboardingPage() {
     if (!session) router.replace("/auth");
   }, [router]);
 
-  useEffect(() => {
-    if (!ready) return;
-    if (state.completed) {
-      const session = getSession();
-      if (session) {
-        setSession({ ...session, onboardingComplete: true });
-      }
-      navigateHome();
-    }
-  }, [ready, state.completed, navigateHome]);
-
   const totalSteps = 8;
   const isLastStep = currentStep === totalSteps;
 
