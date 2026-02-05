@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { getSession, setSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
 import { OnboardingState } from "@/lib/types";
@@ -71,7 +70,6 @@ export default function OnboardingPage() {
   useEffect(() => {
     const session = getSession();
     if (!session) router.replace("/auth");
-    if (session?.onboardingComplete) router.replace("/home");
   }, [router]);
 
   useEffect(() => {
@@ -214,9 +212,13 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
-            <button type="button" className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
-              {isLastStep ? "Finish" : "Next"}
-            </button>
+            {!isLastStep ? (
+              <button type="button" className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
+                Next
+              </button>
+            ) : (
+              <div className="h-9 px-3" aria-hidden="true" />
+            )}
           </div>
         </div>
 
@@ -685,11 +687,9 @@ export default function OnboardingPage() {
                 <StatusLine label="Contacts file uploaded" ok={state.contactImportUploaded} />
                 <StatusLine label="Fund strategy shared" ok={state.fundStrategyUploaded} />
               </div>
-              <Link href="/home" prefetch={false} className="inline-block">
-                <button type="button" className="button-primary" onClick={completeOnboarding}>
-                  Enter workspace
-                </button>
-              </Link>
+              <button type="button" className="button-primary" onClick={completeOnboarding}>
+                Enter workspace
+              </button>
             </div>
           )}
         </div>
