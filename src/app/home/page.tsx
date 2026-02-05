@@ -6,7 +6,7 @@
  * - Cross-link to Materials/Briefs for prep and Actions for execution
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
@@ -26,6 +26,20 @@ export default function HomePage() {
   const router = useRouter();
   const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
+  const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+
+  const addToast = (message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts((prev) => [...prev, { id, message }]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 4000);
+  };
+
+  const completeAndReset = () => {
+    setSelection(null);
+    router.replace("/home");
+  };
 
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
@@ -111,7 +125,7 @@ export default function HomePage() {
       {!selection ? (
         <Placeholder title="Select an item to open details." />
       ) : selection.type === "action" ? (
-        <ActionDetail actionId={selection.id} />
+        <ActionDetail actionId={selection.id} onToast={addToast} onComplete={completeAndReset} />
       ) : selection.type === "commitment" ? (
         <CommitmentDetail
           commitment={selectedCommitment}
@@ -132,14 +146,17 @@ export default function HomePage() {
   if (!ready) return null;
 
   return (
-    <AppShell
-      section="home"
-      listContent={listContent}
-      detailContent={detailContent}
-      detailVisible={Boolean(selection)}
-      contextTitle={selectedTitle}
-      assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
-    />
+    <>
+      <AppShell
+        section="home"
+        listContent={listContent}
+        detailContent={detailContent}
+        detailVisible={Boolean(selection)}
+        contextTitle={selectedTitle}
+        assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
+      />
+      <ToastViewport toasts={toasts} />
+    </>
   );
 }
 
@@ -271,16 +288,58 @@ function StatusPill({ status }: { status: string }) {
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{map[status] ?? status}</span>;
 }
 
-function ActionDetail({ actionId }: { actionId: string }) {
+function ActionDetail({
+  actionId,
+  onToast,
+  onComplete,
+}: {
+  actionId: string;
+  onToast: (message: string) => void;
+  onComplete: () => void;
+}) {
   const action = actions.find((a) => a.id === actionId);
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [showInviteDraft, setShowInviteDraft] = useState(false);
+  const [updateStatuses, setUpdateStatuses] = useState<Record<number, "accepted" | "rejected" | "pending">>({});
   if (!action) return <Placeholder title="No action selected" />;
+  const isScheduling = action.type === "scheduling";
+  const isCrmUpdate = action.type === "crm_update";
+  const crmTitle = isCrmUpdate ? action.title.replace(/^Update CRM:\s*/i, "") : action.title;
+  const suggestedRows = (action.suggestedUpdates ?? []).map((text) => {
+    const [fieldRaw, updateRaw] = text.split(":").map((s) => s.trim());
+    return {
+      field: fieldRaw || "Update",
+      current: "—",
+      update: updateRaw || text,
+      reason: action.trigger,
+    };
+  });
+  const availability = [
+    { day: "Mon", slots: ["10:00 AM", "2:00 PM"] },
+    { day: "Tue", slots: ["9:30 AM", "3:00 PM"] },
+    { day: "Wed", slots: ["11:00 AM", "4:30 PM"] },
+    { day: "Thu", slots: ["10:30 AM", "1:30 PM"] },
+    { day: "Fri", slots: ["9:00 AM", "2:30 PM"] },
+  ];
+
+  const resetLocalState = () => {
+    setShowAvailability(false);
+    setSelectedSlot(null);
+    setShowInviteDraft(false);
+    setUpdateStatuses({});
+  };
+
+  useEffect(() => {
+    resetLocalState();
+  }, [actionId]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
-          <h3 className="text-lg font-semibold accent-title">{action.title}</h3>
+          <h3 className="text-lg font-semibold accent-title">{crmTitle}</h3>
           <p className="text-sm text-gray-600">Why: {action.trigger}</p>
         </div>
         <StatusPill status={action.status} />
@@ -322,28 +381,204 @@ function ActionDetail({ actionId }: { actionId: string }) {
       ) : null}
 
       {action.suggestedUpdates?.length ? (
-        <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-gray-900">Proposed updates</p>
-            <TomoAiBadge label="Tomo suggestion" />
+        isCrmUpdate ? (
+          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-gray-900">Proposed updates</p>
+              <div className="flex items-center gap-2">
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    const allAccepted = Object.fromEntries(suggestedRows.map((_, idx) => [idx, "accepted"]));
+                    setUpdateStatuses(allAccepted);
+                  }}
+                >
+                  Accept all
+                </button>
+                <TomoAiBadge label="Tomo suggestion" />
+              </div>
+            </div>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500">
+                    <th className="py-2 pr-2">Field</th>
+                    <th className="py-2 pr-2">Current</th>
+                    <th className="py-2 pr-2">Update</th>
+                    <th className="py-2 pr-2">Reason</th>
+                    <th className="py-2">Approve</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {suggestedRows.map((row, idx) => {
+                    const status = updateStatuses[idx] ?? "pending";
+                    return (
+                      <tr key={`${row.field}-${idx}`} className="align-top">
+                        <td className="py-2 pr-2 font-medium text-gray-900">{row.field}</td>
+                        <td className="py-2 pr-2 text-gray-600">{row.current}</td>
+                        <td className="py-2 pr-2 text-gray-800">{row.update}</td>
+                        <td className="py-2 pr-2 text-gray-600">{row.reason}</td>
+                        <td className="py-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className={`rounded-full border px-2 py-1 text-[11px] ${
+                                status === "accepted" ? "border-green-200 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"
+                              }`}
+                              onClick={() => setUpdateStatuses((prev) => ({ ...prev, [idx]: "accepted" }))}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              className={`rounded-full border px-2 py-1 text-[11px] ${
+                                status === "rejected" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-600"
+                              }`}
+                              onClick={() => setUpdateStatuses((prev) => ({ ...prev, [idx]: "rejected" }))}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="button-primary tomo-ai-bg"
+                onClick={() => {
+                  onToast("CRM updates applied.");
+                  resetLocalState();
+                  onComplete();
+                }}
+              >
+                Apply updates
+              </button>
+              <button className="button-secondary" onClick={() => setUpdateStatuses({})}>
+                Reset selections
+              </button>
+            </div>
           </div>
-          <ul className="mt-1 space-y-1 tomo-ai-text">
-            {action.suggestedUpdates.map((u) => (
-              <li key={u} className="flex items-start gap-2">
-                <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                <span>{u}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        ) : (
+          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-gray-900">Proposed updates</p>
+              <TomoAiBadge label="Tomo suggestion" />
+            </div>
+            <ul className="mt-1 space-y-1 tomo-ai-text">
+              {action.suggestedUpdates.map((u) => (
+                <li key={u} className="flex items-start gap-2">
+                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                  <span>{u}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <button className="button-primary tomo-ai-bg">Approve &amp; Send</button>
-        <button className="button-secondary">Edit</button>
-        <button className="button-secondary">Snooze</button>
-        <button className="text-sm text-gray-600 underline">Reject</button>
+        {isScheduling ? (
+          <button
+            className="button-primary tomo-ai-bg"
+            onClick={() => {
+              setShowAvailability(true);
+              onToast("Tomo is fetching availability…");
+            }}
+          >
+            Schedule
+          </button>
+        ) : (
+          <>
+            <button
+              className="button-primary tomo-ai-bg"
+              onClick={() => {
+                onToast("Outreach approved and queued to send.");
+                resetLocalState();
+                onComplete();
+              }}
+            >
+              Approve &amp; Send
+            </button>
+            <button className="button-secondary">Edit</button>
+            <button className="button-secondary">Snooze</button>
+            <button className="text-sm text-gray-600 underline">Reject</button>
+          </>
+        )}
       </div>
+
+      {isScheduling && showAvailability ? (
+        <div className="space-y-3 rounded-md border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800">
+          <div className="flex items-center justify-between">
+            <p className="font-medium text-gray-900">Weekly availability</p>
+            <span className="text-xs text-gray-500">Mock calendar</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {availability.map((day) => (
+              <div key={day.day} className="rounded-md border border-gray-100 bg-gray-50 p-2">
+                <p className="text-xs font-semibold text-gray-700">{day.day}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {day.slots.map((slot) => {
+                    const slotKey = `${day.day} ${slot}`;
+                    const isSelected = selectedSlot === slotKey;
+                    return (
+                      <button
+                        key={slot}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                          isSelected ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]" : "border-gray-200 text-gray-600"
+                        }`}
+                        onClick={() => {
+                          setSelectedSlot(slotKey);
+                          setShowInviteDraft(true);
+                        }}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {showInviteDraft && selectedSlot ? (
+            <div className="space-y-2 rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">Draft invitation</p>
+                  <TomoAiBadge label="Tomo draft" />
+                </div>
+                <span className="text-xs text-gray-500">{selectedSlot}</span>
+              </div>
+              <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm tomo-ai-text">
+                Hi Jamie — Tomo found a 30m slot on {selectedSlot}. Want me to send the invite with a brief agenda and next steps?
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="button-primary tomo-ai-bg"
+                  onClick={() => {
+                    onToast("Invitation sent.");
+                    resetLocalState();
+                    onComplete();
+                  }}
+                >
+                  Send invite
+                </button>
+                <button className="button-secondary">Edit</button>
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    setShowInviteDraft(false);
+                    setSelectedSlot(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="space-y-1 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
         <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Activity log</p>
@@ -508,4 +743,16 @@ function ShiftDetail({ shift, onViewMomentum }: { shift: MomentumShift | undefin
 
 function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
+}
+
+function ToastViewport({ toasts }: { toasts: { id: string; message: string }[] }) {
+  return (
+    <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex w-[280px] flex-col gap-2">
+      {toasts.map((toast) => (
+        <div key={toast.id} className="pointer-events-auto rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm">
+          {toast.message}
+        </div>
+      ))}
+    </div>
+  );
 }
