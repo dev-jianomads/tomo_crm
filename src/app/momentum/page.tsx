@@ -140,7 +140,7 @@ function MomentumContent() {
           </div>
           <p className="text-lg font-semibold text-gray-900">{selectedHealthMetric.value}</p>
           {selectedHealthMetric.trend ? <p className="text-xs text-gray-600">Trend: {selectedHealthMetric.trend}</p> : null}
-          <p className="text-sm text-gray-700">{selectedHealthMetric.description}</p>
+          <p className="text-sm tomo-ai-text">{selectedHealthMetric.description}</p>
         </div>
       ) : (
         <div className="space-y-2 rounded-lg border border-gray-200 bg-white px-3 py-3">

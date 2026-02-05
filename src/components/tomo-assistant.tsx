@@ -164,7 +164,7 @@ export function TomoAssistant({
               className={`max-w-[85%] rounded-md border px-3 py-2 ${
                 msg.from === "user"
                   ? "border-blue-100 bg-blue-50 text-gray-900"
-                  : "border-gray-200 bg-gray-50 text-gray-800"
+                  : "tomo-ai-border bg-gray-50 tomo-ai-text"
               }`}
             >
               {/* 
@@ -175,7 +175,7 @@ export function TomoAssistant({
                 - Action buttons
               */}
               <p className="whitespace-pre-line">{msg.text}</p>
-              <span className="mt-1 block text-[11px] text-gray-400">
+              <span className={`mt-1 block text-[11px] ${msg.from === "user" ? "text-gray-400" : "tomo-ai-text"}`}>
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </span>
             </div>
@@ -202,7 +202,7 @@ export function TomoAssistant({
           />
           <button
             onClick={() => handleSend()}
-            className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-700 text-white transition hover:bg-blue-600"
+            className="flex h-9 w-9 items-center justify-center rounded-md tomo-ai-bg text-white transition"
             aria-label="Send to TOMO"
           >
             <PaperAirplaneIcon className="h-4 w-4" />

@@ -133,7 +133,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
           <p className="text-sm font-semibold accent-title">Current snapshot</p>
           <TomoAiBadge label="Tomo insight" />
         </div>
-        <p className="mt-1 text-sm text-gray-800">{snapshot}</p>
+        <p className="mt-1 text-sm tomo-ai-text">{snapshot}</p>
       </section>
 
       {/* Section 2 — Relationship Status */}
@@ -158,7 +158,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         <div className="mt-1">
           <TomoAiBadge label="Tomo suggestions" />
         </div>
-        <ul className="mt-2 space-y-1 text-sm text-gray-800">
+        <ul className="mt-2 space-y-1 text-sm tomo-ai-text">
           {openLoopItems.map((item) => (
             <li key={item} className="flex items-start gap-2">
               <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
@@ -173,7 +173,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         <div className="mb-2">
           <TomoAiBadge label="Tomo insight" />
         </div>
-        <ul className="space-y-1 text-sm text-gray-800">
+        <ul className="space-y-1 text-sm tomo-ai-text">
           {keyChanges.map((item) => (
             <li key={item} className="flex items-start gap-2">
               <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-600" />
@@ -188,7 +188,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         <div className="mb-2">
           <TomoAiBadge label="Tomo summary" />
         </div>
-        <ul className="space-y-1 text-sm text-gray-800">
+        <ul className="space-y-1 text-sm tomo-ai-text">
           {keyInteractions.map((item) => (
             <li key={item} className="flex items-start gap-2">
               <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-green-600" />
@@ -203,7 +203,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         <div className="mb-2">
           <TomoAiBadge label="Tomo insight" />
         </div>
-        <div className="text-sm text-gray-800">{materialsEngagement}</div>
+        <div className="text-sm tomo-ai-text">{materialsEngagement}</div>
         <button className="mt-2 text-sm text-blue-700 hover:underline" onClick={() => router.push(`/materials?lp=${encodeURIComponent(relationship.name)}`)}>
           View details
         </button>

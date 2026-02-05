@@ -342,10 +342,10 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Floating action button to open Tomo */}
       <button
         onClick={() => setAssistantOpen(true)}
-        className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200"
+        className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
         aria-label="Open TOMO chat"
       >
-        <img src="/icons/tomo-ai.svg" alt="Tomo" className="h-5 w-5" />
+        <img src="/icons/tomo-ai.png" alt="Tomo" className="h-5 w-5" />
       </button>
 
       {/* Assistant surface */}

@@ -154,7 +154,7 @@ function MaterialDetail({ material }: { material: Material }) {
           <p className="text-sm font-semibold accent-title">Summary</p>
           <TomoAiBadge label="Tomo summary" />
         </div>
-        <p className="mt-1 text-sm text-gray-800">{summary}</p>
+        <p className="mt-1 text-sm tomo-ai-text">{summary}</p>
       </section>
 
       <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
@@ -162,7 +162,7 @@ function MaterialDetail({ material }: { material: Material }) {
           <p className="text-sm font-semibold accent-title">Engagement</p>
           <TomoAiBadge label="Tomo insight" />
         </div>
-        <div className="mt-2 space-y-1 text-sm text-gray-800">
+        <div className="mt-2 space-y-1 text-sm tomo-ai-text">
           <p>Engaged: {engagement.engaged.join(", ") || "—"}</p>
           <p>Skimmed: {engagement.skimmed.join(", ") || "—"}</p>
           <p>No response: {engagement.noResponse.join(", ") || "—"}</p>
@@ -174,7 +174,7 @@ function MaterialDetail({ material }: { material: Material }) {
           <p className="text-sm font-semibold accent-title">Momentum attribution</p>
           <TomoAiBadge label="Tomo insight" />
         </div>
-        <div className="mt-2 space-y-1 text-sm text-gray-800">
+        <div className="mt-2 space-y-1 text-sm tomo-ai-text">
           <p>Momentum ↑: {attribution.up.join(", ") || "—"}</p>
           <p>Unchanged: {attribution.flat.join(", ") || "—"}</p>
           <p>Momentum ↓: {attribution.down.join(", ") || "—"}</p>

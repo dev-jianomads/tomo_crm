@@ -105,7 +105,15 @@ body {
 
 .tomo-ai-badge {
   display: inline-block;
-  width: 14px;
-  height: 14px;
-  background: url("/icons/tomo-ai.svg") no-repeat center / contain;
+  width: 16px;
+  height: 16px;
+  background: url("/icons/tomo-ai.png") no-repeat center / contain;
+}
+
+.tomo-ai-bg {
+  background: var(--peach);
+}
+
+.tomo-ai-bg:hover {
+  background: #ff8b79;
 }
