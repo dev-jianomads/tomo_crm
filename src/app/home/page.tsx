@@ -9,6 +9,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { MomentumShift, actions, briefs, commitments, momentumShifts } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
@@ -298,9 +299,12 @@ function ActionDetail({ actionId }: { actionId: string }) {
       </div>
 
       {action.draft ? (
-        <div className="space-y-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-gray-900">Draft (review before send)</p>
+        <div className="space-y-2 rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-900">Draft (review before send)</p>
+              <TomoAiBadge label="Tomo draft" />
+            </div>
             <label className="flex items-center gap-2 text-xs text-gray-600">
               <input
                 type="checkbox"
@@ -318,8 +322,11 @@ function ActionDetail({ actionId }: { actionId: string }) {
       ) : null}
 
       {action.suggestedUpdates?.length ? (
-        <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-          <p className="font-medium text-gray-900">Proposed updates</p>
+        <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+          <div className="flex items-center justify-between">
+            <p className="font-medium text-gray-900">Proposed updates</p>
+            <TomoAiBadge label="Tomo suggestion" />
+          </div>
           <ul className="mt-1 space-y-1">
             {action.suggestedUpdates.map((u) => (
               <li key={u} className="flex items-start gap-2">
@@ -374,8 +381,11 @@ function CommitmentDetail({
           <p className="text-sm text-gray-600">{commitment.lp}</p>
         </div>
       </div>
-      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">Meeting prep</p>
+      <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-gray-900">Meeting prep</p>
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <p className="text-sm text-gray-700">Keep the next move tight and confirm owner.</p>
       </div>
       {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
@@ -407,14 +417,20 @@ function BriefDetail({
         </div>
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{brief.status}</span>
       </div>
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">Summary</p>
+      <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-gray-900">Summary</p>
+          <TomoAiBadge label="Tomo summary" />
+        </div>
         <p className="text-sm text-gray-700">{brief.summary}</p>
       </div>
       {!compact ? (
         <>
-          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-            <p className="font-medium text-gray-900">Agenda</p>
+          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-gray-900">Agenda</p>
+              <TomoAiBadge label="Tomo draft" />
+            </div>
             <ul className="mt-1 space-y-1">
               {brief.agenda.map((item) => (
                 <li key={item} className="flex items-start gap-2">
@@ -424,8 +440,11 @@ function BriefDetail({
               ))}
             </ul>
           </div>
-          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-            <p className="font-medium text-gray-900">Commitments</p>
+          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-gray-900">Commitments</p>
+              <TomoAiBadge label="Tomo draft" />
+            </div>
             <ul className="mt-1 space-y-1">
               {brief.commitments.map((item) => (
                 <li key={item} className="flex items-start gap-2">
@@ -471,8 +490,11 @@ function ShiftDetail({ shift, onViewMomentum }: { shift: MomentumShift | undefin
           <p className="text-sm text-gray-700">{shift.delta} moved since yesterday</p>
         </div>
       </div>
-      <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">What to watch</p>
+      <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-gray-900">What to watch</p>
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <p className="mt-1 text-sm text-gray-700">
           Focus on relationships driving this move. Pull up the Momentum view to see the breakdown and act from there.
         </p>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { activityLog, relationships, Relationship } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 
@@ -127,8 +128,11 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       </div>
 
       {/* Section 1 — Current Snapshot */}
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold accent-title">Current snapshot</p>
+      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold accent-title">Current snapshot</p>
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <p className="mt-1 text-sm text-gray-800">{snapshot}</p>
       </section>
 
@@ -144,12 +148,15 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       </section>
 
       {/* Section 3 — Open Loops */}
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold accent-title">Open Loops</p>
           <button className="text-xs text-blue-700 hover:underline" onClick={() => router.push("/activity")}>
             Create action
           </button>
+        </div>
+        <div className="mt-1">
+          <TomoAiBadge label="Tomo suggestions" />
         </div>
         <ul className="mt-2 space-y-1 text-sm text-gray-800">
           {openLoopItems.map((item) => (
@@ -163,6 +170,9 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
 
       {/* Section 4 — Key Changes Over Time */}
       <Accordion title="KEY CHANGES OVER TIME">
+        <div className="mb-2">
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <ul className="space-y-1 text-sm text-gray-800">
           {keyChanges.map((item) => (
             <li key={item} className="flex items-start gap-2">
@@ -175,6 +185,9 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
 
       {/* Section 5 — Key Interactions */}
       <Accordion title="KEY INTERACTIONS">
+        <div className="mb-2">
+          <TomoAiBadge label="Tomo summary" />
+        </div>
         <ul className="space-y-1 text-sm text-gray-800">
           {keyInteractions.map((item) => (
             <li key={item} className="flex items-start gap-2">
@@ -187,6 +200,9 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
 
       {/* Section 6 — Engagement with Materials */}
       <Accordion title="Engagement with Materials">
+        <div className="mb-2">
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <div className="text-sm text-gray-800">{materialsEngagement}</div>
         <button className="mt-2 text-sm text-blue-700 hover:underline" onClick={() => router.push(`/materials?lp=${encodeURIComponent(relationship.name)}`)}>
           View details

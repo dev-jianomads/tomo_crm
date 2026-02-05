@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { FlowBand, healthMetrics, momentumFlowSummary, relationships } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
@@ -133,7 +134,10 @@ function MomentumContent() {
     <div className="h-full overflow-auto p-4 space-y-3">
       {selection.kind === "health" && selectedHealthMetric ? (
         <div className="space-y-2 rounded-lg border border-gray-200 bg-white px-3 py-3">
-          <p className="text-sm font-semibold accent-title">{selectedHealthMetric.label}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold accent-title">{selectedHealthMetric.label}</p>
+            <TomoAiBadge label="Tomo insight" />
+          </div>
           <p className="text-lg font-semibold text-gray-900">{selectedHealthMetric.value}</p>
           {selectedHealthMetric.trend ? <p className="text-xs text-gray-600">Trend: {selectedHealthMetric.trend}</p> : null}
           <p className="text-sm text-gray-700">{selectedHealthMetric.description}</p>
@@ -147,6 +151,7 @@ function MomentumContent() {
               ? `${selection.band} momentum`
               : "Health detail"}
           </p>
+          <TomoAiBadge label="Tomo insight" />
           <p className="text-sm text-gray-700">Relationships driving this state:</p>
           <div className="space-y-2">
             {relatedRelationships.map((rel) => (

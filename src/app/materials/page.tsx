@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { materials, Material } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 
@@ -148,13 +149,19 @@ function MaterialDetail({ material }: { material: Material }) {
         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">{material.engagement}</span>
       </div>
 
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold accent-title">Summary</p>
+      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold accent-title">Summary</p>
+          <TomoAiBadge label="Tomo summary" />
+        </div>
         <p className="mt-1 text-sm text-gray-800">{summary}</p>
       </section>
 
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold accent-title">Engagement</p>
+      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold accent-title">Engagement</p>
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <div className="mt-2 space-y-1 text-sm text-gray-800">
           <p>Engaged: {engagement.engaged.join(", ") || "—"}</p>
           <p>Skimmed: {engagement.skimmed.join(", ") || "—"}</p>
@@ -162,8 +169,11 @@ function MaterialDetail({ material }: { material: Material }) {
         </div>
       </section>
 
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold accent-title">Momentum attribution</p>
+      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold accent-title">Momentum attribution</p>
+          <TomoAiBadge label="Tomo insight" />
+        </div>
         <div className="mt-2 space-y-1 text-sm text-gray-800">
           <p>Momentum ↑: {attribution.up.join(", ") || "—"}</p>
           <p>Unchanged: {attribution.flat.join(", ") || "—"}</p>

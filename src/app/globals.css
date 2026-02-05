@@ -94,3 +94,18 @@ body {
 .peach-text {
   color: var(--peach-ink);
 }
+
+.tomo-ai-text {
+  color: var(--peach);
+}
+
+.tomo-ai-border {
+  border-color: var(--peach);
+}
+
+.tomo-ai-badge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background: url("/icons/tomo-ai.svg") no-repeat center / contain;
+}
