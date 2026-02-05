@@ -49,7 +49,9 @@ export default function MaterialsPage() {
               key={m.id}
               onClick={() => setSelection(m.id)}
               className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                selection === m.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+                selection === m.id
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -113,7 +115,7 @@ function OverviewTiles({
         <button
           key={tile.label}
           onClick={() => onSelectFilter(tile.filter)}
-          className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-left transition hover:border-gray-200 hover:bg-white"
+          className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50"
         >
           <p className="text-xs text-gray-600">{tile.label}</p>
           <p className="text-lg font-semibold accent-title">{tile.value}</p>

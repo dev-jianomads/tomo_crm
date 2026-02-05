@@ -114,7 +114,7 @@ function NavRail({ active }: { active: Section }) {
       <Link key={item.href} href={item.href} className="w-full">
         <div
           className={`mx-auto flex h-10 w-10 items-center justify-center rounded-md transition ${
-            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-100"
+            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50"
           }`}
           title={item.label}
         >
@@ -309,7 +309,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               {/* Column resize handle */}
               {detailVisible ? (
                 <div
-                  className="w-1 cursor-col-resize bg-gray-100 hover:bg-blue-200"
+                  className="w-1 cursor-col-resize bg-gray-100 hover:bg-blue-100"
                   onMouseDown={() => setDraggingColumn(true)}
                   aria-label="Resize panes"
                 />

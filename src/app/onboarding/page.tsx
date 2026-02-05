@@ -193,7 +193,7 @@ export default function OnboardingPage() {
                   <button
                     key={step}
                     onClick={() => setCurrentStep(step)}
-                    className={`h-3 w-3 rounded-full transition ${isActive ? "bg-blue-600 scale-105" : isDone ? "bg-blue-200" : "bg-gray-200 hover:bg-gray-300"}`}
+                    className={`h-3 w-3 rounded-full transition ${isActive ? "bg-blue-600 scale-105" : isDone ? "bg-blue-200" : "bg-gray-200 hover:bg-blue-100"}`}
                     aria-label={`Go to step ${step}`}
                   />
                 );
