@@ -33,7 +33,7 @@ export default function HomePage() {
     setToasts((prev) => [...prev, { id, message }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 4000);
+    }, 5000);
   };
 
   const completeAndReset = () => {
@@ -806,7 +806,10 @@ function ToastViewport({ toasts }: { toasts: { id: string; message: string }[] }
   return (
     <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex w-[280px] flex-col gap-2">
       {toasts.map((toast) => (
-        <div key={toast.id} className="pointer-events-auto rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm">
+        <div
+          key={toast.id}
+          className="pointer-events-auto rounded-md border border-[color:var(--peach)] tomo-ai-bg px-3 py-2 text-sm text-white shadow-sm"
+        >
           {toast.message}
         </div>
       ))}
