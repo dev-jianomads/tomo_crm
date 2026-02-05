@@ -158,12 +158,10 @@ export default function OnboardingPage() {
     }
     setState((prev) => ({ ...prev, completed: true }));
 
-    try {
-      await fetch("/api/onboarding/complete", { method: "POST" });
+    if (typeof window !== "undefined") {
+      window.location.href = "/home";
+    } else {
       router.replace("/home");
-      router.refresh();
-    } catch {
-      forceNavigateHome();
     }
   };
 

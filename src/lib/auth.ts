@@ -80,20 +80,7 @@ const KEY = "tomo-session";
  * ```
  */
 export function getSession(): SessionState | null {
-  const session = readFromStorage<SessionState | null>(KEY, null);
-  if (!session || typeof document === "undefined") return session;
-
-  if (!session.onboardingComplete) {
-    const hasCookie = document.cookie
-      .split(";")
-      .map((item) => item.trim())
-      .some((item) => item === "tomo-onboarding-complete=true");
-    if (hasCookie) {
-      return { ...session, onboardingComplete: true };
-    }
-  }
-
-  return session;
+  return readFromStorage<SessionState | null>(KEY, null);
 }
 
 /**
@@ -110,9 +97,6 @@ export function getSession(): SessionState | null {
  */
 export function setSession(session: SessionState) {
   writeToStorage(KEY, session);
-  if (typeof document !== "undefined") {
-    document.cookie = `tomo-onboarding-complete=${session.onboardingComplete ? "true" : "false"}; path=/; samesite=lax`;
-  }
 }
 
 /**
@@ -132,7 +116,6 @@ export function setSession(session: SessionState) {
 export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
-  document.cookie = "tomo-onboarding-complete=false; path=/; samesite=lax";
 }
 
 /**
