@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
-import { MomentumShift, actions, briefs, commitments, momentumShifts } from "@/lib/mockData";
+import { actions, briefs, commitments } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 
@@ -18,7 +18,6 @@ type TodaySelection =
   | { type: "action"; id: string }
   | { type: "commitment"; id: string }
   | { type: "brief"; id: string }
-  | { type: "shift"; band: MomentumShift["band"] }
   | null;
 
 export default function HomePage() {
@@ -46,14 +45,12 @@ export default function HomePage() {
     if (selection.type === "action") return actions.find((a) => a.id === selection.id)?.title;
     if (selection.type === "commitment") return commitments.find((c) => c.id === selection.id)?.title;
     if (selection.type === "brief") return briefs.find((b) => b.id === selection.id)?.meetingTitle;
-    if (selection.type === "shift") return `Momentum shift: ${selection.band}`;
   }, [selection]);
 
   // Helper lookups
   const selectedAction = selection?.type === "action" ? actions.find((a) => a.id === selection.id) : null;
   const selectedCommitment = selection?.type === "commitment" ? commitments.find((c) => c.id === selection.id) : null;
   const selectedBrief = selection?.type === "brief" ? briefs.find((b) => b.id === selection.id) : null;
-  const selectedShift = selection?.type === "shift" ? momentumShifts.find((s) => s.band === selection.band) : null;
 
   const filteredActions = useMemo(() => {
     if (activeFundId === "all") return actions;
@@ -122,12 +119,6 @@ export default function HomePage() {
           dense={!selection}
         />
 
-        <MomentumShiftsSection
-          shifts={momentumShifts}
-          onSelect={(band) => setSelection({ type: "shift", band })}
-          activeBand={selection?.type === "shift" ? selection.band : undefined}
-        />
-
         <TodayGroup
           title="Coming up"
           items={sortedCommitments.map((c) => ({
@@ -159,13 +150,9 @@ export default function HomePage() {
           onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
           onCreateAction={() => router.push("/activity")}
         />
-      ) : (
-        selection.type === "brief" ? (
-          <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
-        ) : (
-          <ShiftDetail shift={selectedShift} onViewMomentum={(bandParam) => router.push(`/momentum?focus=${encodeURIComponent(bandParam)}`)} />
-        )
-      )}
+      ) : selection.type === "brief" ? (
+        <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
+      ) : null}
     </div>
   );
 
@@ -224,76 +211,6 @@ function TodayGroup({
             </div>
           </button>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function MomentumShiftsSection({ shifts, onSelect, activeBand }: { shifts: MomentumShift[]; onSelect: (bandParam: MomentumShift["band"]) => void; activeBand?: MomentumShift["band"] }) {
-  const items = useMemo(() => {
-    const order: MomentumShift["band"][] = ["Stalled", "Heating", "Cooling", "Stable"];
-    return order
-      .map((band) => shifts.find((shift) => shift.band === band))
-      .filter((shift): shift is MomentumShift => Boolean(shift))
-      .filter((shift) => shift.delta >= 2 || (shift.delta === 1 && shift.band === "Stalled"))
-      .slice(0, 4)
-      .map((shift) => ({
-        band: shift.band,
-        label:
-          shift.band === "Heating"
-            ? `↑ ${shift.delta} heating up`
-            : shift.band === "Cooling"
-            ? `↓ ${shift.delta} cooling`
-            : shift.band === "Stalled"
-            ? `⚠ ${shift.delta} stalled`
-            : `↔ ${shift.delta} stable`,
-        preview:
-          shift.band === "Heating"
-            ? "Top: Alex Morgan, Jamie Chen"
-            : shift.band === "Cooling"
-            ? "Watch: Priya Desai, Samir Patel"
-            : shift.band === "Stalled"
-            ? "Needs touch: Lumen LP"
-            : "Steady: Jamie, Alex",
-        date: "As of today",
-      }));
-  }, [shifts]);
-
-  return (
-    <div className="space-y-2">
-      <p className="text-base font-semibold accent-title">Momentum shifts</p>
-
-      <div className="space-y-2">
-        {items.length ? (
-          items.map((item) => {
-            const isStalled = item.band === "Stalled";
-            return (
-              <button
-                key={item.band}
-                onClick={() => onSelect(item.band)}
-                className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                  activeBand === item.band ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p
-                      className={`text-sm font-semibold ${
-                        item.band === "Heating" ? "text-green-700" : item.band === "Cooling" ? "text-amber-700" : isStalled ? "peach-text" : "text-gray-900"
-                      }`}
-                    >
-                      {item.label}
-                    </p>
-                    <p className="text-xs text-gray-600">{item.preview}</p>
-                  </div>
-                  <span className="text-[11px] text-gray-500">{item.date}</span>
-                </div>
-              </button>
-            );
-          })
-        ) : (
-          <p className="text-xs text-gray-600">No meaningful changes since yesterday.</p>
-        )}
       </div>
     </div>
   );
@@ -737,39 +654,6 @@ function BriefDetail({
           </button>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function ShiftDetail({ shift, onViewMomentum }: { shift: MomentumShift | undefined | null; onViewMomentum: (bandParam: string) => void }) {
-  if (!shift) return <Placeholder title="No shift selected" />;
-  const bandParamMap: Record<MomentumShift["band"], string> = {
-    Heating: "Heating",
-    Cooling: "Cooling",
-    Stalled: "Stalled",
-    Stable: "Active-Stable",
-  };
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Momentum shift</p>
-          <h3 className="text-lg font-semibold accent-title">{shift.band}</h3>
-          <p className="text-sm text-gray-700">{shift.delta} moved since yesterday</p>
-        </div>
-      </div>
-      <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-        <div className="flex items-center justify-between">
-          <p className="font-medium text-gray-900">What to watch</p>
-          <TomoAiBadge label="Tomo insight" />
-        </div>
-        <p className="mt-1 text-sm tomo-ai-text">
-          Focus on relationships driving this move. Pull up the Momentum view to see the breakdown and act from there.
-        </p>
-      </div>
-      <button className="button-primary" onClick={() => onViewMomentum(bandParamMap[shift.band])}>
-        View in Momentum
-      </button>
     </div>
   );
 }

@@ -47,7 +47,6 @@ import {
   Squares2X2Icon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
-  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { initialMessages } from "@/lib/mock-data";
@@ -55,8 +54,8 @@ import { usePersistentState } from "@/lib/storage";
 import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
-// IA labels (desktop order): TODAY, MOMENTUM, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "home" | "momentum" | "contacts" | "targets" | "activity" | "materials" | "settings" | "search";
+// IA labels (desktop order): TODAY, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
+type Section = "home" | "contacts" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -73,7 +72,6 @@ type AppShellProps = {
  */
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
-  { href: "/momentum", label: "Momentum", icon: ChartBarIcon, id: "momentum" },
   { href: "/contacts", label: "Relationships", icon: UserGroupIcon, id: "contacts" },
   { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
 ];
@@ -190,7 +188,6 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     const base = ["Summarize this", "Draft a follow-up", "What changed recently?"];
     if (section === "contacts") return [...base, "Show last interaction", "Suggest next step"];
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
-    if (section === "momentum") return [...base, "Explain this score", "What next", "Draft outreach"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
