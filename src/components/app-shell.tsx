@@ -55,7 +55,7 @@ import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "home" | "contacts" | "targets" | "activity" | "materials" | "settings" | "search";
+type Section = "home" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -72,7 +72,7 @@ type AppShellProps = {
  */
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
-  { href: "/contacts", label: "Relationships", icon: UserGroupIcon, id: "contacts" },
+  { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
   { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
 ];
 
@@ -134,7 +134,7 @@ function NavRail({ active }: { active: Section }) {
 
 /**
  * Mobile bottom navigation bar
- * Shows 5 items: Home, Contacts, Briefs, Tasks, Settings
+ * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
  */
 function BottomNav({ active }: { active: Section }) {
   const items = [...primaryNav, { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section }, { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }];
@@ -186,7 +186,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
    */
   const defaultChips = useMemo(() => {
     const base = ["Summarize this", "Draft a follow-up", "What changed recently?"];
-    if (section === "contacts") return [...base, "Show last interaction", "Suggest next step"];
+    if (section === "relationships") return [...base, "Show last interaction", "Suggest next step"];
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
