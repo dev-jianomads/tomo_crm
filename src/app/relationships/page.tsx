@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { useRequireSession } from "@/lib/auth";
@@ -36,7 +36,7 @@ type RelationshipSelection =
 
 type DuplicatePair = { left: Relationship; right: Relationship };
 
-export default function RelationshipsPage() {
+function RelationshipsPageContent() {
   const { ready } = useRequireSession();
   const { activeFundId } = useFunds();
   const { toasts, addToast } = useToasts();
@@ -354,7 +354,9 @@ export default function RelationshipsPage() {
     </div>
   );
 
-  if (!ready) return null;
+  if (!ready) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-gray-600">Loading relationships…</div>;
+  }
 
   return (
     <>
@@ -457,6 +459,14 @@ export default function RelationshipsPage() {
         </Modal>
       ) : null}
     </>
+  );
+}
+
+export default function RelationshipsPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-600">Loading relationships…</div>}>
+      <RelationshipsPageContent />
+    </Suspense>
   );
 }
 
