@@ -19,7 +19,7 @@
  *      try {
  *        const { user } = await signInWithEmailAndPassword(auth, email, password);
  *        // Check if user exists in Supabase and get profile
- *        // Redirect to /home or /onboarding based on onboardingComplete
+ *        // Redirect to /today or /onboarding based on onboardingComplete
  *      } catch (error) {
  *        if (error.code === 'auth/user-not-found') {
  *          // Create new user
@@ -173,7 +173,7 @@ export default function AuthPage() {
    */
   useEffect(() => {
     const session = getSession();
-    if (session?.onboardingComplete) router.replace("/home");
+    if (session?.onboardingComplete) router.replace("/today");
     if (session && !session.onboardingComplete) router.replace("/onboarding");
     
     // PRODUCTION: Use Firebase onAuthStateChanged instead
@@ -181,7 +181,7 @@ export default function AuthPage() {
     // const unsubscribe = onAuthStateChanged(auth, async (user) => {
     //   if (user) {
     //     const { data } = await supabase.from('users').select('onboarding_complete').eq('id', user.uid).single();
-    //     router.replace(data?.onboarding_complete ? '/home' : '/onboarding');
+    //     router.replace(data?.onboarding_complete ? '/today' : '/onboarding');
     //   }
     // });
     // return unsubscribe;
@@ -209,7 +209,7 @@ export default function AuthPage() {
     // try {
     //   const { user } = await signInWithEmailAndPassword(auth, email, password);
     //   const { onboardingComplete } = await syncUserToSupabase(user, selectedPlan);
-    //   router.replace(onboardingComplete ? '/home' : '/onboarding');
+    //   router.replace(onboardingComplete ? '/today' : '/onboarding');
     // } catch (error) {
     //   if (error.code === 'auth/user-not-found') {
     //     const { user } = await createUserWithEmailAndPassword(auth, email, password);

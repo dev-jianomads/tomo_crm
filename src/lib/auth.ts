@@ -42,7 +42,7 @@
  *    - Check if user exists in Supabase `users` table
  *    - If not, create user record with uid, email, default plan
  *    - Fetch onboardingComplete status from Supabase
- *    - Redirect to /onboarding or /home accordingly
+ *    - Redirect to /onboarding or /today accordingly
  * 
  * 6. SUPABASE USER RECORD:
  *    - id: Firebase uid (string, primary key)

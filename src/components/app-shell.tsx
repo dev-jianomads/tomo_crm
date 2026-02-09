@@ -55,7 +55,7 @@ import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "home" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
+type Section = "today" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -71,7 +71,7 @@ type AppShellProps = {
  * PRODUCTION: Could add badge counts (e.g., tasks due today)
  */
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
-  { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
+  { href: "/today", label: "Today", icon: HomeIcon, id: "today" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
   { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
 ];
@@ -160,7 +160,7 @@ function BottomNav({ active }: { active: Section }) {
 export function AppShell({ section, listContent, detailContent, contextTitle, assistantChips, detailVisible = true }: AppShellProps) {
   const isMobile = useIsMobile();
   const { funds, activeFundId, setActiveFundId } = useFunds();
-  const activeFund = activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "All funds";
+  const activeFund = funds.find((f) => f.id === activeFundId)?.name ?? funds[0]?.name ?? "Fund";
   
   // Persisted panel sizes (survive page refresh)
   const [middleWidth, setMiddleWidth] = usePersistentState<number>("tomo-pane-width", 42);
@@ -191,7 +191,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
-    if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
+    if (section === "today") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
   }, [section]);
 
@@ -272,7 +272,6 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               value={activeFundId}
               onChange={(e) => setActiveFundId(e.target.value)}
             >
-              <option value="all">All</option>
               {funds.map((fund) => (
                 <option key={fund.id} value={fund.id}>
                   {fund.name}

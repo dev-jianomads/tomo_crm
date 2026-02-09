@@ -59,10 +59,10 @@ export default function OnboardingPage() {
 
   const navigateHome = () => {
     try {
-      router.replace("/home");
+      router.replace("/today");
     } catch {
       if (typeof window !== "undefined") {
-        window.location.href = "/home";
+        window.location.href = "/today";
       }
     }
   };
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
     if (typeof window !== "undefined") {
       // Hard fallback for cases where Next's router fetch fails
       setTimeout(() => {
-        window.location.href = "/home";
+        window.location.href = "/today";
       }, 10);
     }
   };
@@ -159,9 +159,9 @@ export default function OnboardingPage() {
     setState((prev) => ({ ...prev, completed: true }));
 
     if (typeof window !== "undefined") {
-      window.location.href = "/home";
+      window.location.href = "/today";
     } else {
-      router.replace("/home");
+      router.replace("/today");
     }
   };
 

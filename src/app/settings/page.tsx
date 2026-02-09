@@ -44,6 +44,7 @@ import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integ
 import { usePersistentState } from "@/lib/storage";
 import { OnboardingState } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
+import { useNotificationPrefs } from "@/lib/mvp3-store";
 
 const sections = ["Profile", "Funds", "Integrations", "Messaging", "Notifications", "Billing & Plan"] as const;
 
@@ -95,6 +96,8 @@ export default function SettingsPage() {
     notifications: {},
     completed: false,
   });
+
+  const [notificationPrefs, setNotificationPrefs] = useNotificationPrefs();
   
   // Affinity form state
   const [affinityListId, setAffinityListId] = useState(integrations.affinityListId ?? "");
@@ -209,7 +212,6 @@ export default function SettingsPage() {
               value={activeFundId}
               onChange={(e) => setActiveFundId(e.target.value)}
             >
-              <option value="all">All</option>
               {funds.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
@@ -430,8 +432,18 @@ export default function SettingsPage() {
             
             See src/lib/integrations.ts for API documentation
           */}
-          <IntegrationRow title="Slack" status={integrations.slackConnected ? "Connected" : "Not connected"} />
-          <IntegrationRow title="Telegram" status={integrations.telegramConnected ? "Onboarding link sent" : "Not connected"} />
+          <div className="rounded-md border border-gray-200 px-3 py-2">
+            <IntegrationRow title="Slack" status={integrations.slackConnected ? "Connected" : "Not connected"} />
+            <button className="button-secondary mt-2 w-full" disabled>
+              Connect Slack (mock only)
+            </button>
+          </div>
+          <div className="rounded-md border border-gray-200 px-3 py-2">
+            <IntegrationRow title="Telegram" status={integrations.telegramConnected ? "Onboarding link sent" : "Not connected"} />
+            <button className="button-secondary mt-2 w-full" disabled>
+              Connect Telegram (mock only)
+            </button>
+          </div>
         </div>
       )}
 
@@ -452,7 +464,79 @@ export default function SettingsPage() {
             Used by scheduled jobs that send recaps via Loops.so, Slack, Telegram
           */}
           <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-            Configure routing per channel. Slack/Telegram must be connected to enable those switches.
+            Configure routing per channel. Slack/Telegram are mock-only in this build.
+          </div>
+          <div className="space-y-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+            <ToggleRow
+              label="In-app"
+              checked={notificationPrefs.inApp}
+              onChange={(checked) => setNotificationPrefs((prev) => ({ ...prev, inApp: checked }))}
+            />
+            <ToggleRow
+              label="Email"
+              checked={notificationPrefs.email}
+              onChange={(checked) => setNotificationPrefs((prev) => ({ ...prev, email: checked }))}
+            />
+            <ToggleRow
+              label="Slack"
+              checked={notificationPrefs.slack}
+              onChange={(checked) => setNotificationPrefs((prev) => ({ ...prev, slack: checked }))}
+            />
+            <ToggleRow
+              label="Telegram"
+              checked={notificationPrefs.telegram}
+              onChange={(checked) => setNotificationPrefs((prev) => ({ ...prev, telegram: checked }))}
+            />
+            <div>
+              <label className="text-[11px] uppercase tracking-wide text-gray-500">Notification email</label>
+              <input
+                className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                placeholder="you@firm.com"
+                value={notificationPrefs.emailAddress ?? ""}
+                onChange={(e) => setNotificationPrefs((prev) => ({ ...prev, emailAddress: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="space-y-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+            <p className="text-sm font-medium text-gray-900">Work hours &amp; timezone</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-[11px] uppercase tracking-wide text-gray-500">Timezone default</label>
+                <input
+                  className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  value={notificationPrefs.timezoneDefault ?? ""}
+                  onChange={(e) => setNotificationPrefs((prev) => ({ ...prev, timezoneDefault: e.target.value }))}
+                  placeholder="America/New_York"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] uppercase tracking-wide text-gray-500">Work hours</label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <input
+                    className="rounded-md border border-gray-200 px-2 py-2 text-sm"
+                    value={notificationPrefs.workHoursDefault?.start ?? ""}
+                    onChange={(e) =>
+                      setNotificationPrefs((prev) => ({
+                        ...prev,
+                        workHoursDefault: { start: e.target.value, end: prev.workHoursDefault?.end ?? "" },
+                      }))
+                    }
+                    placeholder="09:00"
+                  />
+                  <input
+                    className="rounded-md border border-gray-200 px-2 py-2 text-sm"
+                    value={notificationPrefs.workHoursDefault?.end ?? ""}
+                    onChange={(e) =>
+                      setNotificationPrefs((prev) => ({
+                        ...prev,
+                        workHoursDefault: { start: prev.workHoursDefault?.start ?? "", end: e.target.value },
+                      }))
+                    }
+                    placeholder="18:00"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -567,6 +651,15 @@ function IntegrationRow({ title, status }: { title: string; status: string }) {
       </div>
       <span className="text-xs text-gray-500">{status}</span>
     </div>
+  );
+}
+
+function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between">
+      <span className="text-sm text-gray-700">{label}</span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+    </label>
   );
 }
 

@@ -14,7 +14,7 @@ export default function LandingRedirect() {
     } else if (!session.onboardingComplete) {
       router.replace("/onboarding");
     } else {
-      router.replace("/home");
+      router.replace("/today");
     }
   }, [router]);
 
