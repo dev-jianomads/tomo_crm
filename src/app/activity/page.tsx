@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { useRequireSession } from "@/lib/auth";
@@ -18,7 +18,7 @@ const categories: { value: Category; label: string; types: ActivityEvent["type"]
   { value: "entity", label: "Entity", types: ["entity_merged", "field_locked", "field_overridden"] },
 ];
 
-export default function ActivityPage() {
+function ActivityPageContent() {
   const { ready } = useRequireSession();
   const { funds, activeFundId, setActiveFundId } = useFunds();
   const [activityLog] = useActivityLog(activeFundId);
@@ -168,4 +168,12 @@ export default function ActivityPage() {
   if (!ready) return null;
 
   return <AppShell section="activity" listContent={listContent} detailContent={detailContent} contextTitle={active?.summary} />;
+}
+
+export default function ActivityPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-600">Loading activity…</div>}>
+      <ActivityPageContent />
+    </Suspense>
+  );
 }
