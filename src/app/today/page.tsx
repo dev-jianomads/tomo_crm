@@ -383,7 +383,13 @@ export default function TodayPage() {
               fundId: activeFundId,
               contactId,
               title: "Trip meeting request",
-              participants: [{ name: relationships.find((rel) => rel.id === contactId)?.name ?? "Relationship", role: "LP" }],
+              participants: [
+                {
+                  name: relationships.find((rel) => rel.id === contactId)?.name ?? "Relationship",
+                  role: "LP" as const,
+                  timezone: relationships.find((rel) => rel.id === contactId)?.timezone,
+                },
+              ],
               coordinator: "ME" as const,
               durationMinutes: 30,
               locationType: "IN_PERSON" as const,
