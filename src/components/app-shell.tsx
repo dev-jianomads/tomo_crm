@@ -132,7 +132,7 @@ function NavRail({ active }: { active: Section }) {
   };
 
   return (
-    <aside className="relative z-10 flex h-[calc(100vh-64px)] w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
+    <aside className="fixed bottom-0 left-0 top-14 z-40 flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
       <div className="flex flex-col items-center gap-2">
         {secondaryNav.map((item) => renderItem(item))}
@@ -296,11 +296,11 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </div>
       </header>
 
-      <div className="flex min-h-[calc(100vh-56px)]">
+      <div className="relative min-h-[calc(100vh-56px)]">
         {/* Desktop navigation rail */}
         {!isMobile && <NavRail active={section} />}
 
-        <main className="relative flex min-w-0 flex-1 flex-col">
+        <main className={`relative flex min-w-0 flex-1 flex-col ${!isMobile ? "ml-16" : ""}`}>
           {/* Desktop layout: side-by-side panels */}
           {!isMobile ? (
             <div className="flex flex-1 gap-0">
