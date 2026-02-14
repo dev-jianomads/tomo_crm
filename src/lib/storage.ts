@@ -20,7 +20,7 @@
  * =============================================================================
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Read a value from localStorage with JSON parsing
@@ -101,16 +101,34 @@ export function writeToStorage<T>(key: string, value: T) {
  * user_preferences table instead.
  */
 export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void, boolean] {
-  // Initialize from storage if available
-  const initialValue = typeof window !== "undefined" ? readFromStorage<T>(key, initial) : initial;
-  const [state, setState] = useState<T>(initialValue);
-  const ready = typeof window !== "undefined";
+  // IMPORTANT: Always initialize with the fallback value to avoid hydration mismatch.
+  // Server renders with `initial`; client must also render with `initial` on the first pass.
+  // localStorage is read in useEffect (client-only, after hydration).
+  const [state, setState] = useState<T>(initial);
+  const [ready, setReady] = useState(false);
+
+  // Keep a ref to the initial value so the effect always has the latest
+  // fallback without needing it in the dependency array (avoids infinite loops
+  // when `initial` is an object/array created inline).
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+
+  // Keep a ref to the key for the updater closure
+  const keyRef = useRef(key);
+  keyRef.current = key;
+
+  // After mount (and whenever the storage key changes), read from localStorage
+  useEffect(() => {
+    const stored = readFromStorage<T>(key, initialRef.current);
+    setState(stored);
+    setReady(true);
+  }, [key]);
 
   // Wrapper that persists to localStorage on change
   const update = (val: T | ((prev: T) => T)) => {
     setState((prev) => {
       const next = typeof val === "function" ? (val as (prev: T) => T)(prev) : val;
-      writeToStorage(key, next);
+      writeToStorage(keyRef.current, next);
       return next;
     });
   };

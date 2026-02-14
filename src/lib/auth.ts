@@ -57,7 +57,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SessionState } from "./types";
 import { readFromStorage, writeToStorage } from "./storage";
@@ -153,11 +153,19 @@ export function clearSession() {
  * ```
  */
 export function useSession() {
-  const initialSession = typeof window !== "undefined" ? getSession() : null;
-  const [session, setSessionState] = useState<SessionState | null>(initialSession);
-  const ready = typeof window !== "undefined";
+  // IMPORTANT: Always initialize with null to match server render and avoid
+  // hydration mismatch (React error #418). Read from localStorage in useEffect.
+  const [session, setSessionState] = useState<SessionState | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const updateSession = (payload: SessionState | null) => {
+  // Read session from localStorage after mount (client-only)
+  useEffect(() => {
+    const stored = getSession();
+    setSessionState(stored);
+    setReady(true);
+  }, []);
+
+  const updateSession = useCallback((payload: SessionState | null) => {
     if (payload) {
       setSession(payload);
       setSessionState(payload);
@@ -165,7 +173,7 @@ export function useSession() {
       clearSession();
       setSessionState(null);
     }
-  };
+  }, []);
 
   return { session, ready, setSession: updateSession };
 }
