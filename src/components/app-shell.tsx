@@ -38,7 +38,7 @@
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ChatBubbleLeftEllipsisIcon,
   Cog6ToothIcon,
@@ -104,12 +104,21 @@ function useIsMobile() {
  */
 function NavRail({ active }: { active: Section }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const renderItem = (item: (typeof primaryNav)[number]) => {
     const Icon = item.icon;
     const isActive = pathname?.startsWith(item.href) || active === item.id;
     return (
-      <Link key={item.href} href={item.href} className="w-full">
+      <Link
+        key={item.href}
+        href={item.href}
+        className="w-full"
+        onClick={(e) => {
+          e.preventDefault();
+          router.push(item.href);
+        }}
+      >
         <div
           className={`mx-auto flex h-10 w-10 items-center justify-center rounded-md transition ${
             isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50"
@@ -123,7 +132,7 @@ function NavRail({ active }: { active: Section }) {
   };
 
   return (
-    <aside className="flex h-[calc(100vh-64px)] w-16 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
+    <aside className="relative z-10 flex h-[calc(100vh-64px)] w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
       <div className="flex flex-col items-center gap-2">
         {secondaryNav.map((item) => renderItem(item))}
@@ -137,6 +146,7 @@ function NavRail({ active }: { active: Section }) {
  * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
  */
 function BottomNav({ active }: { active: Section }) {
+  const router = useRouter();
   const items = [...primaryNav, { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section }, { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
@@ -144,7 +154,7 @@ function BottomNav({ active }: { active: Section }) {
         const Icon = item.icon;
         const isActive = active === item.id;
         return (
-          <Link key={item.id} href={item.href} className="flex flex-1 flex-col items-center gap-1">
+          <Link key={item.id} href={item.href} onClick={(e) => { e.preventDefault(); router.push(item.href); }} className="flex flex-1 flex-col items-center gap-1">
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
             <span className={`text-[11px] ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
           </Link>
@@ -290,7 +300,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         {/* Desktop navigation rail */}
         {!isMobile && <NavRail active={section} />}
 
-        <main className="relative flex w-full flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           {/* Desktop layout: side-by-side panels */}
           {!isMobile ? (
             <div className="flex flex-1 gap-0">
