@@ -1,44 +1,56 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
-import { ActivityEvent, useActivityLog } from "@/lib/mvp3-store";
 
-type Category = "system" | "threads" | "loops" | "scheduling" | "trip" | "entity" | "all";
+type EventType = "outreach" | "update" | "meeting" | "system";
 
-const categories: { value: Category; label: string; types: ActivityEvent["type"][] }[] = [
-  { value: "system", label: "System", types: ["connector_sync_started", "connector_sync_succeeded", "connector_sync_failed"] },
-  { value: "threads", label: "Threads", types: ["thread_created", "thread_updated"] },
-  { value: "loops", label: "Loops", types: ["loop_created", "loop_assigned", "loop_snoozed", "loop_done", "draft_generated", "marked_sent"] },
-  { value: "scheduling", label: "Scheduling", types: ["scheduling_request_created", "scheduling_request_sent", "scheduling_request_proposed", "scheduling_request_confirmed"] },
-  { value: "trip", label: "Trip", types: ["trip_created", "trip_generated_requests"] },
-  { value: "entity", label: "Entity", types: ["entity_merged", "field_locked", "field_overridden"] },
+type ActivityEvent = {
+  id: string;
+  when: string;
+  actor: "TOMO" | "User";
+  summary: string;
+  type: EventType;
+  entity?: string;
+  fundId?: string;
+};
+
+const mockEvents: ActivityEvent[] = [
+  { id: "e1", when: "Today 09:10", actor: "TOMO", summary: "Drafted outreach to Northwind", type: "outreach", entity: "Northwind Capital", fundId: "fund-1" },
+  { id: "e2", when: "Today 08:20", actor: "TOMO", summary: "Checked engagement for Peakline", type: "update", entity: "Peakline Partners", fundId: "fund-2" },
+  { id: "e3", when: "Yesterday 18:05", actor: "User", summary: "Approved follow-up to Peakline", type: "outreach", entity: "Peakline Partners", fundId: "fund-2" },
+  { id: "e4", when: "Yesterday 14:33", actor: "TOMO", summary: "Updated brief for Northwind", type: "meeting", entity: "Northwind Capital", fundId: "fund-1" },
+  { id: "e5", when: "Yesterday 10:12", actor: "User", summary: "Snoozed Lumen outreach", type: "system", entity: "Lumen LP", fundId: "fund-3" },
+  { id: "e6", when: "Mon 16:04", actor: "TOMO", summary: "Logged momentum change: Stalled → Heating", type: "update", entity: "Momentum", fundId: "fund-1" },
 ];
 
-function ActivityPageContent() {
+const eventTypes: { value: EventType | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "outreach", label: "Outreach" },
+  { value: "meeting", label: "Meetings" },
+  { value: "update", label: "Updates" },
+  { value: "system", label: "System" },
+];
+
+export default function ActivityPage() {
   const { ready } = useRequireSession();
   const { funds, activeFundId, setActiveFundId } = useFunds();
-  const [activityLog] = useActivityLog(activeFundId);
-  const params = useSearchParams();
-  const initialCategory = (params?.get("category") as Category) ?? "all";
-  const [categoryFilter, setCategoryFilter] = useState<Category>(initialCategory);
+  const [typeFilter, setTypeFilter] = useState<EventType | "all">("all");
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("all");
-  const [activeId, setActiveId] = useState<string | null>(activityLog[0]?.id ?? null);
+  const [activeId, setActiveId] = useState<string | null>(mockEvents[0]?.id ?? null);
 
   const filteredEvents = useMemo(() => {
-    return activityLog.filter((event) => {
-      const matchesFund = event.fundId === activeFundId;
-      const categoryTypes = categoryFilter === "all" ? null : categories.find((c) => c.value === categoryFilter)?.types ?? [];
-      const matchesCategory = !categoryTypes || categoryTypes.includes(event.type);
+    return mockEvents.filter((event) => {
+      const matchesFund = activeFundId === "all" || event.fundId === activeFundId;
+      const matchesType = typeFilter === "all" || event.type === typeFilter;
       const matchesDate =
         dateFilter === "all" ||
-        (dateFilter === "today" ? event.when.startsWith("Today") : !event.when.startsWith("Mon"));
-      return matchesFund && matchesCategory && matchesDate;
+        (dateFilter === "today" ? event.when.startsWith("Today") : !event.when.startsWith("Mon")); // lightweight mock window
+      return matchesFund && matchesType && matchesDate;
     });
-  }, [activityLog, activeFundId, categoryFilter, dateFilter]);
+  }, [activeFundId, dateFilter, typeFilter]);
 
   const active = filteredEvents.find((e) => e.id === activeId) ?? filteredEvents[0] ?? null;
 
@@ -55,29 +67,21 @@ function ActivityPageContent() {
               setActiveId(null);
             }}
           >
+            <option value="all">Fund: All</option>
             {funds.map((f) => (
               <option key={f.id} value={f.id}>
                 Fund: {f.name}
               </option>
             ))}
           </select>
-          <select
-            className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as Category)}
-          >
-            <option value="all">All</option>
-            {categories.map((category) => (
-              <option key={category.value} value={category.value}>
-                {category.label}
+          <select className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as EventType | "all")}>
+            {eventTypes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
               </option>
             ))}
           </select>
-          <select
-            className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}
-          >
+          <select className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none" value={dateFilter} onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}>
             <option value="all">Any date</option>
             <option value="today">Today</option>
             <option value="week">This week</option>
@@ -105,7 +109,7 @@ function ActivityPageContent() {
               </span>
             </div>
             <p className="mt-1 text-sm font-medium text-gray-900">{event.summary}</p>
-            {event.entityType ? <p className="text-xs text-gray-600">{event.entityType}</p> : null}
+            {event.entity ? <p className="text-xs text-gray-600">{event.entity}</p> : null}
           </button>
         ))}
         {!filteredEvents.length ? <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No activity for this view.</div> : null}
@@ -129,37 +133,18 @@ function ActivityPageContent() {
           </div>
           <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
             <p className="font-medium text-gray-900">Type</p>
-            <p className="text-sm text-gray-700">{active.type.replace(/_/g, " ")}</p>
+            <p className="text-sm text-gray-700 capitalize">{active.type}</p>
           </div>
-          {active.entityType ? (
+          {active.entity ? (
             <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
               <p className="font-medium text-gray-900">Linked entity</p>
-              <p className="text-sm text-gray-700">{active.entityType}</p>
-              {active.entityId ? <p className="text-xs text-gray-500">{active.entityId}</p> : null}
+              <p className="text-sm text-gray-700">{active.entity}</p>
             </div>
           ) : null}
-          {active.metadata ? (
-            <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-              <p className="font-medium text-gray-900">Metadata</p>
-              <ul className="mt-1 space-y-1 text-xs text-gray-600">
-                {Object.entries(active.metadata).map(([key, value]) => (
-                  <li key={key}>
-                    {key}: {value}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {active.evidence?.length ? (
-            <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
-              <p className="font-medium text-gray-900">Evidence</p>
-              <ul className="mt-1 space-y-1 text-xs text-gray-600">
-                {active.evidence.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+            <p className="font-medium text-gray-900">Notes</p>
+            <p className="text-sm text-gray-700">Traceability only. No action required here.</p>
+          </div>
         </div>
       )}
     </div>
@@ -167,13 +152,14 @@ function ActivityPageContent() {
 
   if (!ready) return null;
 
-  return <AppShell section="activity" listContent={listContent} detailContent={detailContent} contextTitle={active?.summary} />;
-}
-
-export default function ActivityPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-600">Loading activity…</div>}>
-      <ActivityPageContent />
-    </Suspense>
+    <AppShell
+      section="activity"
+      listContent={listContent}
+      detailContent={detailContent}
+      contextTitle={active?.summary}
+      assistantChips={["Summarize today", "Filter to my entries", "Export this log"]}
+    />
   );
 }
+

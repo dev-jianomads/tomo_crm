@@ -42,7 +42,7 @@
  *    - Check if user exists in Supabase `users` table
  *    - If not, create user record with uid, email, default plan
  *    - Fetch onboardingComplete status from Supabase
- *    - Redirect to /onboarding or /today accordingly
+ *    - Redirect to /onboarding or /home accordingly
  * 
  * 6. SUPABASE USER RECORD:
  *    - id: Firebase uid (string, primary key)
@@ -57,10 +57,10 @@
 
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SessionState } from "./types";
-import { readFromStorage, usePersistentState, writeToStorage } from "./storage";
+import { readFromStorage, writeToStorage } from "./storage";
 
 /** LocalStorage key for session - will be removed in production */
 const KEY = "tomo-session";
@@ -153,11 +153,11 @@ export function clearSession() {
  * ```
  */
 export function useSession() {
-  // Keep session hydration-safe by using persistent state hook semantics:
-  // initial value is rendered first, then storage value is loaded client-side.
-  const [session, setSessionState, ready] = usePersistentState<SessionState | null>(KEY, null);
+  const initialSession = typeof window !== "undefined" ? getSession() : null;
+  const [session, setSessionState] = useState<SessionState | null>(initialSession);
+  const ready = typeof window !== "undefined";
 
-  const updateSession = useCallback((payload: SessionState | null) => {
+  const updateSession = (payload: SessionState | null) => {
     if (payload) {
       setSession(payload);
       setSessionState(payload);
@@ -165,7 +165,7 @@ export function useSession() {
       clearSession();
       setSessionState(null);
     }
-  }, []);
+  };
 
   return { session, ready, setSession: updateSession };
 }

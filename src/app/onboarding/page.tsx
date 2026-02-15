@@ -51,29 +51,18 @@ export default function OnboardingPage() {
   const [strategyText, setStrategyText] = useState(state.fundStrategyText ?? "");
   const [strategyUploading, setStrategyUploading] = useState(false);
 
-  // Ensure newly added onboarding fields get defaulted when loading older local state,
-  // and sync form state from persistent storage after mount (since usePersistentState
-  // now defers localStorage reads to useEffect to avoid hydration mismatch).
+  // Ensure newly added onboarding fields get defaulted when loading older local state
   useEffect(() => {
     if (!ready) return;
-    setState((prev) => {
-      const merged = { ...initialState, ...prev };
-      // Sync local form state from stored values
-      setTelegramNumber(merged.telegramPhone ?? "");
-      setAffinityListId(merged.affinityListId ?? "");
-      setSheetsFilename(merged.googleSheetsFilename ?? generatePresetSheetName());
-      setStrategyText(merged.fundStrategyText ?? "");
-      return merged;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setState((prev) => ({ ...initialState, ...prev }));
   }, [ready, setState]);
 
   const navigateHome = () => {
     try {
-      router.replace("/today");
+      router.replace("/home");
     } catch {
       if (typeof window !== "undefined") {
-        window.location.href = "/today";
+        window.location.href = "/home";
       }
     }
   };
@@ -99,7 +88,7 @@ export default function OnboardingPage() {
     if (typeof window !== "undefined") {
       // Hard fallback for cases where Next's router fetch fails
       setTimeout(() => {
-        window.location.href = "/today";
+        window.location.href = "/home";
       }, 10);
     }
   };
@@ -170,9 +159,9 @@ export default function OnboardingPage() {
     setState((prev) => ({ ...prev, completed: true }));
 
     if (typeof window !== "undefined") {
-      window.location.href = "/today";
+      window.location.href = "/home";
     } else {
-      router.replace("/today");
+      router.replace("/home");
     }
   };
 

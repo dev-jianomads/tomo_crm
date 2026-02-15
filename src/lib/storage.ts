@@ -20,7 +20,7 @@
  * =============================================================================
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * Read a value from localStorage with JSON parsing
@@ -101,20 +101,10 @@ export function writeToStorage<T>(key: string, value: T) {
  * user_preferences table instead.
  */
 export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void, boolean] {
-  // IMPORTANT: Always initialize with the fallback value to avoid hydration mismatch.
-  // Server renders with `initial`; client must also render with `initial` on the first pass.
-  // localStorage is read in useEffect (client-only, after hydration).
-  const [state, setState] = useState<T>(initial);
-  const [ready, setReady] = useState(false);
-
-  // After mount (and whenever the storage key changes), read from localStorage.
-  // Intentionally key-scoped only: many callers pass object/array literals as
-  // `initial`, and re-running on every render causes state churn.
-  useEffect(() => {
-    const stored = readFromStorage<T>(key, initial);
-    setState(stored);
-    setReady(true);
-  }, [key]);
+  // Initialize from storage if available
+  const initialValue = typeof window !== "undefined" ? readFromStorage<T>(key, initial) : initial;
+  const [state, setState] = useState<T>(initialValue);
+  const ready = typeof window !== "undefined";
 
   // Wrapper that persists to localStorage on change
   const update = (val: T | ((prev: T) => T)) => {

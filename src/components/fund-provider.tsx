@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { usePersistentState } from "@/lib/storage";
 
 export type Fund = { id: string; name: string };
@@ -24,12 +24,7 @@ const defaultFunds: Fund[] = [
 
 export function FundProvider({ children }: { children: React.ReactNode }) {
   const [funds, setFunds] = usePersistentState<Fund[]>("tomo-funds", defaultFunds);
-  const [activeFundId, setActiveFundId] = usePersistentState<string>("tomo-active-fund", defaultFunds[0].id);
-
-  useEffect(() => {
-    const exists = funds.some((fund) => fund.id === activeFundId);
-    if (!exists) setActiveFundId(funds[0]?.id ?? defaultFunds[0].id);
-  }, [activeFundId, funds, setActiveFundId]);
+  const [activeFundId, setActiveFundId] = usePersistentState<string>("tomo-active-fund", "all");
 
   const value = useMemo<FundContextValue>(
     () => ({
@@ -51,11 +46,7 @@ export function FundProvider({ children }: { children: React.ReactNode }) {
       },
       removeFund: (id: string) => {
         setFunds((prev) => prev.filter((f) => f.id !== id));
-        setActiveFundId((prev) => {
-          if (prev !== id) return prev;
-          const remaining = funds.filter((f) => f.id !== id);
-          return remaining[0]?.id ?? defaultFunds[0].id;
-        });
+        setActiveFundId((prev) => (prev === id ? "all" : prev));
       },
     }),
     [activeFundId, funds, setActiveFundId, setFunds]

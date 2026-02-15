@@ -37,8 +37,10 @@
 "use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ChatBubbleLeftEllipsisIcon,
   Cog6ToothIcon,
   HomeIcon,
   MagnifyingGlassIcon,
@@ -53,7 +55,7 @@ import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "today" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
+type Section = "home" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -64,40 +66,20 @@ type AppShellProps = {
   detailVisible?: boolean;
 };
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: typeof HomeIcon;
-  id: Section;
-};
-
 /**
  * Navigation items configuration
  * PRODUCTION: Could add badge counts (e.g., tasks due today)
  */
-const primaryNav: NavItem[] = [
-  { href: "/today", label: "Today", icon: HomeIcon, id: "today" },
+const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
+  { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
   { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
 ];
 
-const secondaryNav: NavItem[] = [
+const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
-
-const mobileNav: NavItem[] = [...primaryNav, ...secondaryNav];
-
-function isNavItemActive(pathname: string | null, item: NavItem, active: Section) {
-  if (active === item.id) return true;
-  if (!pathname) return false;
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
-}
-
-function navigateTo(href: string) {
-  if (typeof window === "undefined") return;
-  window.location.assign(href);
-}
 
 /**
  * Hook to detect mobile viewport
@@ -123,34 +105,29 @@ function useIsMobile() {
 function NavRail({ active }: { active: Section }) {
   const pathname = usePathname();
 
-  const renderItem = (item: NavItem) => {
+  const renderItem = (item: (typeof primaryNav)[number]) => {
     const Icon = item.icon;
-    const isActive = isNavItemActive(pathname, item, active);
-
+    const isActive = pathname?.startsWith(item.href) || active === item.id;
     return (
-      <button
-        key={item.href}
-        type="button"
-        className="group flex w-full justify-center"
-        onClick={() => navigateTo(item.href)}
-        aria-label={item.label}
-      >
-        <span
+      <Link key={item.href} href={item.href} className="w-full">
+        <div
           className={`mx-auto flex h-10 w-10 items-center justify-center rounded-md transition ${
-            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 group-hover:bg-blue-50"
+            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50"
           }`}
           title={item.label}
         >
           <Icon className="h-5 w-5" />
-        </span>
-      </button>
+        </div>
+      </Link>
     );
   };
 
   return (
-    <aside className="fixed bottom-0 left-0 top-14 z-[9999] flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/90 py-4 pointer-events-auto">
+    <aside className="flex h-[calc(100vh-64px)] w-16 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
-      <div className="flex flex-col items-center gap-2">{secondaryNav.map(renderItem)}</div>
+      <div className="flex flex-col items-center gap-2">
+        {secondaryNav.map((item) => renderItem(item))}
+      </div>
     </aside>
   );
 }
@@ -160,25 +137,17 @@ function NavRail({ active }: { active: Section }) {
  * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
  */
 function BottomNav({ active }: { active: Section }) {
-  const pathname = usePathname();
-
+  const items = [...primaryNav, { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section }, { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
-      {mobileNav.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
-        const isActive = isNavItemActive(pathname, item, active);
-
+        const isActive = active === item.id;
         return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => navigateTo(item.href)}
-            className="flex flex-1 flex-col items-center gap-1"
-            aria-label={item.label}
-          >
+          <Link key={item.id} href={item.href} className="flex flex-1 flex-col items-center gap-1">
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
             <span className={`text-[11px] ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
-          </button>
+          </Link>
         );
       })}
     </nav>
@@ -191,7 +160,7 @@ function BottomNav({ active }: { active: Section }) {
 export function AppShell({ section, listContent, detailContent, contextTitle, assistantChips, detailVisible = true }: AppShellProps) {
   const isMobile = useIsMobile();
   const { funds, activeFundId, setActiveFundId } = useFunds();
-  const activeFund = funds.find((f) => f.id === activeFundId)?.name ?? funds[0]?.name ?? "Fund";
+  const activeFund = activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "All funds";
   
   // Persisted panel sizes (survive page refresh)
   const [middleWidth, setMiddleWidth] = usePersistentState<number>("tomo-pane-width", 42);
@@ -222,7 +191,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
-    if (section === "today") return [...base, "What's urgent today?", "Prep my next meeting"];
+    if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
   }, [section]);
 
@@ -303,6 +272,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               value={activeFundId}
               onChange={(e) => setActiveFundId(e.target.value)}
             >
+              <option value="all">All</option>
               {funds.map((fund) => (
                 <option key={fund.id} value={fund.id}>
                   {fund.name}
@@ -317,20 +287,13 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </div>
       </header>
 
-      {isMobile ? (
-        <main className="relative min-h-[calc(100vh-56px)] flex flex-col">
-          <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
-            {listContent}
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              {detailContent}
-            </div>
-          </div>
-        </main>
-      ) : (
-        <div className="min-h-[calc(100vh-56px)]">
-          <NavRail active={section} />
+      <div className="flex min-h-[calc(100vh-56px)]">
+        {/* Desktop navigation rail */}
+        {!isMobile && <NavRail active={section} />}
 
-          <main className="relative ml-16 flex min-w-0 flex-col">
+        <main className="relative flex w-full flex-1 flex-col">
+          {/* Desktop layout: side-by-side panels */}
+          {!isMobile ? (
             <div className="flex flex-1 gap-0">
               {/* List panel (contacts list, briefs list, etc.) */}
               <section
@@ -358,9 +321,17 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
                 </section>
               ) : null}
             </div>
-          </main>
-        </div>
-      )}
+          ) : (
+            /* Mobile layout: stacked vertically */
+            <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
+              {listContent}
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                {detailContent}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
