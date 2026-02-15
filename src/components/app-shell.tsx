@@ -36,9 +36,8 @@
 
 "use client";
 
-import { MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Cog6ToothIcon,
   HomeIcon,
@@ -95,24 +94,9 @@ function isNavItemActive(pathname: string | null, item: NavItem, active: Section
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-function handleNavClick(
-  e: ReactMouseEvent<HTMLAnchorElement>,
-  router: ReturnType<typeof useRouter>,
-  href: string
-) {
-  if (
-    e.defaultPrevented ||
-    e.button !== 0 ||
-    e.metaKey ||
-    e.ctrlKey ||
-    e.shiftKey ||
-    e.altKey
-  ) {
-    return;
-  }
-
-  // Prefer normal Link navigation path; this is only a non-blocking fallback.
-  router.push(href);
+function navigateTo(href: string) {
+  if (typeof window === "undefined") return;
+  window.location.assign(href);
 }
 
 /**
@@ -138,18 +122,17 @@ function useIsMobile() {
  */
 function NavRail({ active }: { active: Section }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const renderItem = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = isNavItemActive(pathname, item, active);
 
     return (
-      <Link
+      <button
         key={item.href}
-        href={item.href}
+        type="button"
         className="group flex w-full justify-center"
-        onClick={(e) => handleNavClick(e, router, item.href)}
+        onClick={() => navigateTo(item.href)}
         aria-label={item.label}
       >
         <span
@@ -160,12 +143,12 @@ function NavRail({ active }: { active: Section }) {
         >
           <Icon className="h-5 w-5" />
         </span>
-      </Link>
+      </button>
     );
   };
 
   return (
-    <aside className="fixed bottom-0 left-0 top-14 z-[200] flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/90 py-4 pointer-events-auto">
+    <aside className="fixed bottom-0 left-0 top-14 z-[9999] flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/90 py-4 pointer-events-auto">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
       <div className="flex flex-col items-center gap-2">{secondaryNav.map(renderItem)}</div>
     </aside>
@@ -178,7 +161,6 @@ function NavRail({ active }: { active: Section }) {
  */
 function BottomNav({ active }: { active: Section }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
@@ -187,16 +169,16 @@ function BottomNav({ active }: { active: Section }) {
         const isActive = isNavItemActive(pathname, item, active);
 
         return (
-          <Link
+          <button
             key={item.id}
-            href={item.href}
-            onClick={(e) => handleNavClick(e, router, item.href)}
+            type="button"
+            onClick={() => navigateTo(item.href)}
             className="flex flex-1 flex-col items-center gap-1"
             aria-label={item.label}
           >
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
             <span className={`text-[11px] ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
-          </Link>
+          </button>
         );
       })}
     </nav>
