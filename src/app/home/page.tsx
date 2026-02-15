@@ -274,16 +274,16 @@ function DailyBriefDialog({
         <div className="mt-4 space-y-3">
           {blocks.map((block) => (
             <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3">
-              <div className="flex items-start gap-2">
-                <BriefSectionIcon kind={block.icon} />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{block.title}</p>
-                  <p className="text-xs text-gray-600">{block.subtitle}</p>
-                </div>
-              </div>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
                 <div className="min-w-0 flex-1">
-                  <ul className="ml-4 space-y-1.5 text-sm text-gray-800">
+                  <div className="flex items-start gap-2">
+                    <BriefSectionIcon kind={block.icon} />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{block.title}</p>
+                      <p className="text-xs text-gray-600">{block.subtitle}</p>
+                    </div>
+                  </div>
+                  <ul className="ml-4 mt-2 space-y-1.5 text-sm text-gray-800">
                     {block.items.map((item) => (
                       <li key={item} className="flex items-start gap-2">
                         <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
@@ -305,8 +305,7 @@ function DailyBriefDialog({
                 </div>
 
                 <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-semibold accent-title">Tomo insight</p>
+                  <div className="flex items-center justify-end">
                     <TomoAiBadge label="Tomo insight" />
                   </div>
                   <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
