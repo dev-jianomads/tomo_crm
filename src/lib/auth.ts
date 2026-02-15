@@ -57,10 +57,10 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SessionState } from "./types";
-import { readFromStorage, writeToStorage } from "./storage";
+import { readFromStorage, usePersistentState, writeToStorage } from "./storage";
 
 /** LocalStorage key for session - will be removed in production */
 const KEY = "tomo-session";
@@ -153,17 +153,9 @@ export function clearSession() {
  * ```
  */
 export function useSession() {
-  // IMPORTANT: Always initialize with null to match server render and avoid
-  // hydration mismatch (React error #418). Read from localStorage in useEffect.
-  const [session, setSessionState] = useState<SessionState | null>(null);
-  const [ready, setReady] = useState(false);
-
-  // Read session from localStorage after mount (client-only)
-  useEffect(() => {
-    const stored = getSession();
-    setSessionState(stored);
-    setReady(true);
-  }, []);
+  // Keep session hydration-safe by using persistent state hook semantics:
+  // initial value is rendered first, then storage value is loaded client-side.
+  const [session, setSessionState, ready] = usePersistentState<SessionState | null>(KEY, null);
 
   const updateSession = useCallback((payload: SessionState | null) => {
     if (payload) {

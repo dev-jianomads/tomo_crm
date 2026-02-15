@@ -36,11 +36,10 @@
 
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ChatBubbleLeftEllipsisIcon,
   Cog6ToothIcon,
   HomeIcon,
   MagnifyingGlassIcon,
@@ -66,20 +65,56 @@ type AppShellProps = {
   detailVisible?: boolean;
 };
 
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof HomeIcon;
+  id: Section;
+};
+
 /**
  * Navigation items configuration
  * PRODUCTION: Could add badge counts (e.g., tasks due today)
  */
-const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
+const primaryNav: NavItem[] = [
   { href: "/today", label: "Today", icon: HomeIcon, id: "today" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
   { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
 ];
 
-const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
+const secondaryNav: NavItem[] = [
   { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
+
+const mobileNav: NavItem[] = [...primaryNav, ...secondaryNav];
+
+function isNavItemActive(pathname: string | null, item: NavItem, active: Section) {
+  if (active === item.id) return true;
+  if (!pathname) return false;
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+function handleNavClick(
+  e: ReactMouseEvent<HTMLAnchorElement>,
+  router: ReturnType<typeof useRouter>,
+  href: string
+) {
+  if (
+    e.defaultPrevented ||
+    e.button !== 0 ||
+    e.metaKey ||
+    e.ctrlKey ||
+    e.shiftKey ||
+    e.altKey
+  ) {
+    return;
+  }
+
+  // Keep navigation deterministic even if Link prefetch/client state glitches.
+  e.preventDefault();
+  router.push(href);
+}
 
 /**
  * Hook to detect mobile viewport
@@ -106,37 +141,34 @@ function NavRail({ active }: { active: Section }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const renderItem = (item: (typeof primaryNav)[number]) => {
+  const renderItem = (item: NavItem) => {
     const Icon = item.icon;
-    const isActive = pathname?.startsWith(item.href) || active === item.id;
+    const isActive = isNavItemActive(pathname, item, active);
+
     return (
       <Link
         key={item.href}
         href={item.href}
-        className="w-full"
-        onClick={(e) => {
-          e.preventDefault();
-          router.push(item.href);
-        }}
+        className="group flex w-full justify-center"
+        onClick={(e) => handleNavClick(e, router, item.href)}
+        aria-label={item.label}
       >
-        <div
+        <span
           className={`mx-auto flex h-10 w-10 items-center justify-center rounded-md transition ${
-            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50"
+            isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 group-hover:bg-blue-50"
           }`}
           title={item.label}
         >
           <Icon className="h-5 w-5" />
-        </div>
+        </span>
       </Link>
     );
   };
 
   return (
-    <aside className="fixed bottom-0 left-0 top-14 z-40 flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
+    <aside className="relative z-20 flex h-full w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
-      <div className="flex flex-col items-center gap-2">
-        {secondaryNav.map((item) => renderItem(item))}
-      </div>
+      <div className="flex flex-col items-center gap-2">{secondaryNav.map(renderItem)}</div>
     </aside>
   );
 }
@@ -146,15 +178,23 @@ function NavRail({ active }: { active: Section }) {
  * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
  */
 function BottomNav({ active }: { active: Section }) {
+  const pathname = usePathname();
   const router = useRouter();
-  const items = [...primaryNav, { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section }, { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }];
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
-      {items.map((item) => {
+      {mobileNav.map((item) => {
         const Icon = item.icon;
-        const isActive = active === item.id;
+        const isActive = isNavItemActive(pathname, item, active);
+
         return (
-          <Link key={item.id} href={item.href} onClick={(e) => { e.preventDefault(); router.push(item.href); }} className="flex flex-1 flex-col items-center gap-1">
+          <Link
+            key={item.id}
+            href={item.href}
+            onClick={(e) => handleNavClick(e, router, item.href)}
+            className="flex flex-1 flex-col items-center gap-1"
+            aria-label={item.label}
+          >
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
             <span className={`text-[11px] ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
           </Link>
@@ -296,13 +336,20 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </div>
       </header>
 
-      <div className="relative min-h-[calc(100vh-56px)]">
-        {/* Desktop navigation rail */}
-        {!isMobile && <NavRail active={section} />}
+      {isMobile ? (
+        <main className="relative min-h-[calc(100vh-56px)] flex flex-col">
+          <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
+            {listContent}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              {detailContent}
+            </div>
+          </div>
+        </main>
+      ) : (
+        <div className="grid min-h-[calc(100vh-56px)] grid-cols-[4rem_minmax(0,1fr)]">
+          <NavRail active={section} />
 
-        <main className={`relative flex min-w-0 flex-1 flex-col ${!isMobile ? "ml-16" : ""}`}>
-          {/* Desktop layout: side-by-side panels */}
-          {!isMobile ? (
+          <main className="relative flex min-w-0 flex-col">
             <div className="flex flex-1 gap-0">
               {/* List panel (contacts list, briefs list, etc.) */}
               <section
@@ -330,17 +377,9 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
                 </section>
               ) : null}
             </div>
-          ) : (
-            /* Mobile layout: stacked vertically */
-            <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
-              {listContent}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                {detailContent}
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
+          </main>
+        </div>
+      )}
 
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}

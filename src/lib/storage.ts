@@ -20,7 +20,7 @@
  * =============================================================================
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Read a value from localStorage with JSON parsing
@@ -107,28 +107,18 @@ export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((
   const [state, setState] = useState<T>(initial);
   const [ready, setReady] = useState(false);
 
-  // Keep a ref to the initial value so the effect always has the latest
-  // fallback without needing it in the dependency array (avoids infinite loops
-  // when `initial` is an object/array created inline).
-  const initialRef = useRef(initial);
-  initialRef.current = initial;
-
-  // Keep a ref to the key for the updater closure
-  const keyRef = useRef(key);
-  keyRef.current = key;
-
   // After mount (and whenever the storage key changes), read from localStorage
   useEffect(() => {
-    const stored = readFromStorage<T>(key, initialRef.current);
+    const stored = readFromStorage<T>(key, initial);
     setState(stored);
     setReady(true);
-  }, [key]);
+  }, [initial, key]);
 
   // Wrapper that persists to localStorage on change
   const update = (val: T | ((prev: T) => T)) => {
     setState((prev) => {
       const next = typeof val === "function" ? (val as (prev: T) => T)(prev) : val;
-      writeToStorage(keyRef.current, next);
+      writeToStorage(key, next);
       return next;
     });
   };
