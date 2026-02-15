@@ -305,7 +305,7 @@ function DailyBriefDialog({
                 </div>
 
                 <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
-                  <div className="flex items-center justify-end">
+                  <div className="flex items-center justify-start">
                     <TomoAiBadge label="Tomo insight" />
                   </div>
                   <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
@@ -348,8 +348,8 @@ function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum
   }
   return (
     <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-      <path fill="currentColor" d="M7 5h7l3 3v11H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm6 .8V9h3.2L13 5.8Zm-3 6.7h4.5V14H10v-1.5Zm0 3h4.5V17H10v-1.5Z" />
-      <path fill="currentColor" d="M9.2 9.5 6 12.7 7.1 13.8l2.1-2.1L10.9 13l1.1-1.1-2.8-2.4Z" />
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path fill="currentColor" d="M12 8.3a1 1 0 0 1 1 1V12h2.2a1 1 0 1 1 0 2H12a1 1 0 0 1-1-1V9.3a1 1 0 0 1 1-1Z" />
     </svg>
   );
 }
