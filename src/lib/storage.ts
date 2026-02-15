@@ -107,12 +107,14 @@ export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((
   const [state, setState] = useState<T>(initial);
   const [ready, setReady] = useState(false);
 
-  // After mount (and whenever the storage key changes), read from localStorage
+  // After mount (and whenever the storage key changes), read from localStorage.
+  // Intentionally key-scoped only: many callers pass object/array literals as
+  // `initial`, and re-running on every render causes state churn.
   useEffect(() => {
     const stored = readFromStorage<T>(key, initial);
     setState(stored);
     setReady(true);
-  }, [initial, key]);
+  }, [key]);
 
   // Wrapper that persists to localStorage on change
   const update = (val: T | ((prev: T) => T)) => {

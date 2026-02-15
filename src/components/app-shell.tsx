@@ -111,8 +111,7 @@ function handleNavClick(
     return;
   }
 
-  // Keep navigation deterministic even if Link prefetch/client state glitches.
-  e.preventDefault();
+  // Prefer normal Link navigation path; this is only a non-blocking fallback.
   router.push(href);
 }
 
