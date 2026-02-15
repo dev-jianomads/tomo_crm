@@ -239,6 +239,8 @@ function DailyBriefDialog({
     insight: string;
   }[];
 }) {
+  const [showInsights, setShowInsights] = useState(true);
+
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -253,7 +255,9 @@ function DailyBriefDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:p-5"
+        className={`w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:p-5 ${
+          showInsights ? "max-w-2xl" : "max-w-xl"
+        }`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -262,19 +266,31 @@ function DailyBriefDialog({
             <h2 className="text-lg font-semibold accent-title">Daily Brief</h2>
             <p className="text-sm text-gray-600">A focused read on where attention should go right now.</p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            aria-label="Close Daily Brief"
-          >
-            X
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowInsights((prev) => !prev)}
+              className={`rounded-md border px-2 py-1.5 hover:bg-gray-50 ${
+                showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200"
+              }`}
+              aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+              title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+            >
+              <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              aria-label="Close Daily Brief"
+            >
+              X
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 space-y-3">
           {blocks.map((block) => (
             <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+              <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
                     <BriefSectionIcon kind={block.icon} />
@@ -304,12 +320,14 @@ function DailyBriefDialog({
                   ) : null}
                 </div>
 
-                <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
-                  <div className="flex items-center justify-start">
-                    <TomoAiBadge label="Tomo insight" />
+                {showInsights ? (
+                  <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
+                    <div className="flex items-center justify-start">
+                      <TomoAiBadge label="Tomo insight" />
+                    </div>
+                    <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
                   </div>
-                  <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
-                </div>
+                ) : null}
               </div>
             </section>
           ))}
