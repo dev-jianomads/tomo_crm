@@ -96,28 +96,30 @@ export default function HomePage() {
   }, [activeFundId]);
 
   const dailyBriefBlocks: {
+    icon: "followups" | "meetings" | "momentum" | "loops";
     title: string;
     subtitle: string;
     items: string[];
     secondarySubtitle?: string;
     secondaryItems?: string[];
-    note?: string;
     insight: string;
   }[] = [
     {
+      icon: "followups",
       title: "Priority Follow-ups",
       subtitle: "LP follow-ups due today",
       items: ["Blackstone - post-meeting note", "Endowment A - deck resend", "Family Office X - Q&A response"],
-      insight: "Based on /today follow-up queue and unresolved asks.",
+      insight: "Based on follow-up queue and unresolved asks.",
     },
     {
+      icon: "meetings",
       title: "Meetings Requiring Prep",
       subtitle: "Today's LP meetings",
       items: ["10:30 - Pension Fund B", "14:00 - FoF C"],
-      note: "TOMO auto-prepped context + last interaction",
-      insight: "Generated from commitments and linked brief context on /today.",
+      insight: "Generated from commitments and linked brief context.",
     },
     {
+      icon: "momentum",
       title: "Momentum Signals",
       subtitle: "Conversations heating up",
       items: ["Sovereign D - reply time accelerating", "Insurance Co E - increased engagement"],
@@ -126,10 +128,11 @@ export default function HomePage() {
       insight: "Derived from momentum and engagement trend signals.",
     },
     {
+      icon: "loops",
       title: "Open Execution Loops",
       subtitle: "Threads needing closure",
       items: ["Legal docs pending", "DDQ follow-up not sent"],
-      insight: "Compiled from outstanding tasks and open threads in /today.",
+      insight: "Compiled from outstanding tasks and open threads.",
     },
   ];
 
@@ -227,12 +230,12 @@ function DailyBriefDialog({
   open: boolean;
   onClose: () => void;
   blocks: {
+    icon: "followups" | "meetings" | "momentum" | "loops";
     title: string;
     subtitle: string;
     items: string[];
     secondarySubtitle?: string;
     secondaryItems?: string[];
-    note?: string;
     insight: string;
   }[];
 }) {
@@ -246,13 +249,6 @@ function DailyBriefDialog({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const sectionTone = [
-    "bg-slate-50/80 border-slate-200",
-    "bg-blue-50/70 border-blue-100",
-    "bg-amber-50/60 border-amber-100",
-    "bg-rose-50/60 border-rose-100",
-  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 sm:items-center" onClick={onClose}>
@@ -276,12 +272,10 @@ function DailyBriefDialog({
         </div>
 
         <div className="mt-4 space-y-3">
-          {blocks.map((block, idx) => (
-            <section key={block.title} className={`rounded-xl border px-3 py-3 ${sectionTone[idx % sectionTone.length]}`}>
+          {blocks.map((block) => (
+            <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3">
               <div className="flex items-start gap-2">
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[color:var(--accent-soft)] px-1.5 text-[11px] font-semibold text-[color:var(--accent-ink)]">
-                  {idx + 1}
-                </span>
+                <BriefSectionIcon kind={block.icon} />
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{block.title}</p>
                   <p className="text-xs text-gray-600">{block.subtitle}</p>
@@ -289,7 +283,7 @@ function DailyBriefDialog({
               </div>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
                 <div className="min-w-0 flex-1">
-                  <ul className="space-y-1.5 text-sm text-gray-800">
+                  <ul className="ml-4 space-y-1.5 text-sm text-gray-800">
                     {block.items.map((item) => (
                       <li key={item} className="flex items-start gap-2">
                         <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
@@ -299,7 +293,7 @@ function DailyBriefDialog({
                   </ul>
                   {block.secondarySubtitle ? <p className="mt-2 text-sm text-gray-700">{block.secondarySubtitle}</p> : null}
                   {block.secondaryItems?.length ? (
-                    <ul className="mt-1 space-y-1.5 text-sm text-gray-800">
+                    <ul className="ml-4 mt-1 space-y-1.5 text-sm text-gray-800">
                       {block.secondaryItems.map((item) => (
                         <li key={item} className="flex items-start gap-2">
                           <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
@@ -308,12 +302,11 @@ function DailyBriefDialog({
                       ))}
                     </ul>
                   ) : null}
-                  {block.note ? <p className="mt-2 text-xs text-gray-500">{block.note}</p> : null}
                 </div>
 
                 <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-semibold accent-title">Current snapshot</p>
+                    <p className="text-[11px] font-semibold accent-title">Tomo insight</p>
                     <TomoAiBadge label="Tomo insight" />
                   </div>
                   <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
@@ -324,6 +317,41 @@ function DailyBriefDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum" | "loops" }) {
+  const common = "h-4 w-4 text-[color:var(--accent)]";
+
+  if (kind === "followups") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
+        <path fill="currentColor" d="M7 4h8l4 4v12H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm7 1.5V9h3.5L14 5.5ZM9 11h8v1.5H9V11Zm0 3h8v1.5H9V14Z" />
+      </svg>
+    );
+  }
+  if (kind === "meetings") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M8 3h1.5v2H14V3h1.5v2H18a2 2 0 0 1 2 2v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a2 2 0 0 1 2-2h2V3Zm10.5 7.5h-13V18a1.5 1.5 0 0 0 1.5 1.5h10A1.5 1.5 0 0 0 18.5 18v-7.5Z"
+        />
+      </svg>
+    );
+  }
+  if (kind === "momentum") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
+        <path fill="currentColor" d="m4 16 5-5 3 3 6-7 2 1.7-8 9.3-3-3-3.7 3.7L4 16Zm0 4h16v1.5H4V20Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
+      <path fill="currentColor" d="M7 5h7l3 3v11H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm6 .8V9h3.2L13 5.8Zm-3 6.7h4.5V14H10v-1.5Zm0 3h4.5V17H10v-1.5Z" />
+      <path fill="currentColor" d="M9.2 9.5 6 12.7 7.1 13.8l2.1-2.1L10.9 13l1.1-1.1-2.8-2.4Z" />
+    </svg>
   );
 }
 
