@@ -269,7 +269,7 @@ function DailyBriefDialog({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowInsights((prev) => !prev)}
-              className={`rounded-md border px-2 py-1.5 hover:bg-gray-50 ${
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-md border hover:bg-gray-50 ${
                 showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200"
               }`}
               aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
@@ -279,7 +279,7 @@ function DailyBriefDialog({
             </button>
             <button
               onClick={onClose}
-              className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50"
               aria-label="Close Daily Brief"
             >
               X
