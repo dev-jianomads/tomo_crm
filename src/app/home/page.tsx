@@ -6,11 +6,11 @@
  * - Cross-link to Materials/Briefs for prep and Actions for execution
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
-import { actions, briefs, commitments } from "@/lib/mockData";
+import { actions, briefs, commitments, relationships } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 
@@ -25,7 +25,9 @@ export default function HomePage() {
   const router = useRouter();
   const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
+  const [showDailyBrief, setShowDailyBrief] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+  const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
 
   const addToast = (message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -93,12 +95,74 @@ export default function HomePage() {
     return briefs.filter((_, idx) => idx % 2 === 0);
   }, [activeFundId]);
 
+  const dailyBriefBlocks = useMemo(() => {
+    const priorityFollowUps = filteredActions.slice(0, 3).map((action) => {
+      if (action.type === "crm_update") {
+        return action.title.replace(/^Update CRM:\s*/i, "");
+      }
+      return action.title.replace(/^Approve outreach to\s*/i, "");
+    });
+
+    const meetingsRequiringPrep = sortedCommitments.slice(0, 2).map((commitment) => {
+      const time = commitment.datetime.replace(/\s*ET$/i, "");
+      return `${time} - ${commitment.lp}`;
+    });
+
+    const heating = relationships.filter((relationship) => relationship.band === "Heating Up").slice(0, 2);
+    const cooling = relationships.filter((relationship) => relationship.band === "Cooling" || relationship.band === "Stalled").slice(0, 1);
+
+    const momentumSignals = [
+      ...heating.map((relationship) => `${relationship.firm} - reply velocity ${relationship.velocity.toLowerCase()}`),
+      ...cooling.map((relationship) => `${relationship.firm} - ${relationship.lastInteraction} silence risk`),
+    ];
+
+    const openExecutionLoops = [
+      ...filteredActions
+        .filter((action) => action.status !== "approval")
+        .slice(0, 2)
+        .map((action) => action.title),
+      ...filteredBriefs
+        .filter((brief) => brief.openLoops > 0)
+        .slice(0, 1)
+        .map((brief) => `${brief.lp} brief - ${brief.openLoops} open loop${brief.openLoops > 1 ? "s" : ""}`),
+    ];
+
+    return [
+      {
+        title: "Priority Follow-ups",
+        subtitle: "LP follow-ups due today",
+        items: priorityFollowUps.length ? priorityFollowUps : ["No immediate follow-ups flagged"],
+      },
+      {
+        title: "Meetings Requiring Prep",
+        subtitle: "Today's LP meetings",
+        items: meetingsRequiringPrep.length ? meetingsRequiringPrep : ["No meetings requiring prep"],
+        note: "Tomo auto-prepped context + last interaction",
+      },
+      {
+        title: "Momentum Signals",
+        subtitle: "Conversations heating up and cooling",
+        items: momentumSignals.length ? momentumSignals : ["No major momentum shifts today"],
+      },
+      {
+        title: "Open Execution Loops",
+        subtitle: "Threads needing closure",
+        items: openExecutionLoops.length ? openExecutionLoops : ["No open loops"],
+      },
+    ];
+  }, [filteredActions, filteredBriefs, sortedCommitments, relationships]);
+
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <p className="text-base font-semibold accent-title">Today</p>
-          <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
+          <div className="flex items-center gap-2">
+            <button className="button-secondary" onClick={() => setShowDailyBrief(true)}>
+              Daily Brief
+            </button>
+            <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
+          </div>
         </div>
       </div>
 
@@ -168,8 +232,81 @@ export default function HomePage() {
         contextTitle={selectedTitle}
         assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
       />
+      <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
       <ToastViewport toasts={toasts} />
     </>
+  );
+}
+
+function DailyBriefDialog({
+  open,
+  onClose,
+  blocks,
+}: {
+  open: boolean;
+  onClose: () => void;
+  blocks: { title: string; subtitle: string; items: string[]; note?: string }[];
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 sm:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:p-5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
+            <h2 className="text-lg font-semibold accent-title">Daily Brief</h2>
+            <p className="text-sm text-gray-600">A focused read on where attention should go right now.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            aria-label="Close Daily Brief"
+          >
+            X
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {blocks.map((block, idx) => (
+            <section key={block.title} className="rounded-xl border border-gray-200 bg-white px-3 py-3">
+              <div className="flex items-start gap-2">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[color:var(--accent-soft)] px-1.5 text-[11px] font-semibold text-[color:var(--accent-ink)]">
+                  {idx + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{block.title}</p>
+                  <p className="text-xs text-gray-600">{block.subtitle}</p>
+                </div>
+              </div>
+
+              <ul className="mt-2 space-y-1.5 text-sm text-gray-800">
+                {block.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {block.note ? <p className="mt-2 text-xs text-gray-500">{block.note}</p> : null}
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
