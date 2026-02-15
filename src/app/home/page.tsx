@@ -307,7 +307,7 @@ function DailyBriefDialog({
                       </li>
                     ))}
                   </ul>
-                  {block.secondarySubtitle ? <p className="mt-2 text-sm text-gray-700">{block.secondarySubtitle}</p> : null}
+                  {block.secondarySubtitle ? <p className="mt-2 text-xs text-gray-600">{block.secondarySubtitle}</p> : null}
                   {block.secondaryItems?.length ? (
                     <ul className="ml-4 mt-1 space-y-1.5 text-sm text-gray-800">
                       {block.secondaryItems.map((item) => (
