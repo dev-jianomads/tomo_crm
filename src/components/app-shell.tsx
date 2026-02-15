@@ -165,7 +165,7 @@ function NavRail({ active }: { active: Section }) {
   };
 
   return (
-    <aside className="relative z-20 flex h-full w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/80 py-4">
+    <aside className="fixed bottom-0 left-0 top-14 z-[200] flex w-16 shrink-0 flex-col items-center justify-between border-r border-gray-200 bg-gray-50/90 py-4 pointer-events-auto">
       <div className="flex flex-col items-center gap-3">{primaryNav.map(renderItem)}</div>
       <div className="flex flex-col items-center gap-2">{secondaryNav.map(renderItem)}</div>
     </aside>
@@ -345,10 +345,10 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
           </div>
         </main>
       ) : (
-        <div className="grid min-h-[calc(100vh-56px)] grid-cols-[4rem_minmax(0,1fr)]">
+        <div className="min-h-[calc(100vh-56px)]">
           <NavRail active={section} />
 
-          <main className="relative flex min-w-0 flex-col">
+          <main className="relative ml-16 flex min-w-0 flex-col">
             <div className="flex flex-1 gap-0">
               {/* List panel (contacts list, briefs list, etc.) */}
               <section
