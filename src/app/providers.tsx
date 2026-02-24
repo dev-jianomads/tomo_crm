@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { FundProvider } from "@/components/fund-provider";
+import { Sonner } from "@/components/ui/sonner";
+import { VersionCheck } from "@/components/version-check";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -42,7 +44,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <FundProvider>{children}</FundProvider>;
+  return (
+    <FundProvider>
+      {children}
+      <VersionCheck />
+      <Sonner />
+    </FundProvider>
+  );
 }
 
 
