@@ -88,7 +88,7 @@ function WorkflowsPageContent() {
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">Workflows</p>
         <p className="mt-1 text-sm text-gray-600">
-          Playbooks run on schedule, check evidence, and create drafts.
+          Workflows run on schedule, check evidence, and create drafts.
         </p>
         <Link
           href="/targets"
@@ -143,7 +143,7 @@ function WorkflowsPageContent() {
                       disabled={!selectedPlaybookId}
                       className="rounded-md border border-[color:var(--accent)] px-2 py-1 text-[11px] font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
                     >
-                      Use in playbook
+                      Use in workflow
                     </button>
                   </div>
                 ))
@@ -170,7 +170,7 @@ function WorkflowsPageContent() {
           Chat with Tomo — {selectedPlaybook.name}
         </p>
         <p className="mt-1 text-sm text-gray-600">
-          Playbook rules and current targets are loaded. Ask to edit, change targets, or run.
+          Workflow rules and current targets are loaded. Ask to edit, change targets, or run.
         </p>
       </div>
       <div className="flex-1 min-h-0">
@@ -186,9 +186,9 @@ function WorkflowsPageContent() {
   ) : (
     <div className="flex h-full items-center justify-center p-8">
       <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-8 py-12 text-center">
-        <p className="text-sm font-medium text-gray-700">Select a playbook</p>
+        <p className="text-sm font-medium text-gray-700">Select a workflow</p>
         <p className="mt-1 text-xs text-gray-500">
-          Click a playbook on the left to open Tomo and configure it.
+          Click a workflow on the left to open Tomo and configure it.
         </p>
       </div>
     </div>
@@ -315,8 +315,8 @@ function WorkflowsTomoChat({
           id: crypto.randomUUID(),
           from: "tomo",
           text: playbookContext
-            ? `Got it. I'm working with the **${playbookName}** playbook. I can help you adjust the rules, change targets, or run a test. What would you like to do?`
-            : "How can I help with this playbook?",
+            ? `Got it. I'm working with the **${playbookName}** workflow. I can help you adjust the rules, change targets, or run a test. What would you like to do?`
+            : "How can I help with this workflow?",
           timestamp: Date.now(),
         },
       ]);
@@ -329,7 +329,7 @@ function WorkflowsTomoChat({
     const contextMessage: TomoMessage = {
       id: "context",
       from: "tomo",
-      text: `_Loaded playbook context. Current targets: ${targetsSummary}. Ready to configure._`,
+      text: `_Loaded workflow context. Current targets: ${targetsSummary}. Ready to configure._`,
       timestamp: Date.now(),
     };
     const withoutContext = messages[0]?.id === "context" ? messages.slice(1) : messages;

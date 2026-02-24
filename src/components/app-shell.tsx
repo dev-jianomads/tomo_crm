@@ -195,7 +195,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "relationships") return [...base, "Show last interaction", "Suggest next step"];
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
-    if (section === "workflows") return [...base, "Edit playbook rules", "Add target filters", "Test run"];
+    if (section === "workflows") return [...base, "Edit workflow rules", "Add target filters", "Test run"];
   if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];

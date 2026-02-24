@@ -140,16 +140,17 @@ export default function HomePage() {
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
   }, []);
 
   const userName = useMemo(() => {
     const email = session?.email ?? "";
     const match = email.match(/^([^@]+)/);
     const name = match ? match[1] : "";
-    return name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : "there";
+    const derived = name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : "";
+    return derived === "Test" || !derived ? "Ken" : derived;
   }, [session?.email]);
 
   const listContent = (
@@ -167,24 +168,28 @@ export default function HomePage() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
-        {/* Welcome + Tomo chatbox at top */}
-        <div className="space-y-3">
+        {/* Welcome + Tomo chatbox at top - center aligned */}
+        <div className="space-y-3 text-center">
           <h1 className="text-2xl font-bold text-gray-900">
             {greeting}, {userName}.
           </h1>
-          <TomoChatboxInline placeholder="Ask anything..." recentChat="Prep for call with Tom" />
+          <div className="flex justify-center">
+            <div className="w-full max-w-xl">
+              <TomoChatboxInline placeholder="Ask anything..." recentChat="Prep for call with Tom" />
+            </div>
+          </div>
 
-          {/* Suggested playbook cards - click navigates to /workflows */}
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-700">Suggested playbooks</p>
+          {/* Suggested workflow cards - click navigates to /workflows */}
+          <div className="space-y-2 text-left">
+            <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
                 <button
                   key={playbook.id}
                   onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-                  className="rounded-lg border border-gray-200 bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)]"
+                  className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
                 >
-                  <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
+                  <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
                   <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
                   {playbook.targetCount != null && playbook.targetCount > 0 ? (
                     <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
