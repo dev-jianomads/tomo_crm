@@ -7,7 +7,7 @@
  * - Selected playbook is injected as initial context including current targets (Option A)
  */
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -22,7 +22,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 type PlaybookTargetOverrides = Record<string, { targetListId?: string }>;
 
-export default function WorkflowsPage() {
+function WorkflowsPageContent() {
   const { ready } = useRequireSession();
   const searchParams = useSearchParams();
   const playbookIdFromUrl = searchParams.get("playbook");
@@ -215,6 +215,22 @@ export default function WorkflowsPage() {
           : undefined
       }
     />
+  );
+}
+
+export default function WorkflowsPage() {
+  return (
+    <Suspense fallback={<WorkflowsPageFallback />}>
+      <WorkflowsPageContent />
+    </Suspense>
+  );
+}
+
+function WorkflowsPageFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="text-sm text-gray-500">Loading workflows…</div>
+    </div>
   );
 }
 
