@@ -10,7 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
-import { TomoChatboxInline } from "@/components/tomo-chatbox-inline";
+import { TomoAssistant } from "@/components/tomo-assistant";
+import { useTomoChat } from "@/components/tomo-chat-context";
 import { actions, briefs, commitments } from "@/lib/mockData";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { useRequireSession } from "@/lib/auth";
@@ -21,6 +22,26 @@ type TodaySelection =
   | { type: "commitment"; id: string }
   | { type: "brief"; id: string }
   | null;
+
+/**
+ * Inline Tomo AI chat - reuses the same TomoAssistant from the dock.
+ * User can type, send, and Tomo AI replies with mock responses.
+ */
+function TomoChatInline() {
+  const tomo = useTomoChat();
+  if (!tomo) return null;
+  return (
+    <div className="min-h-[400px] rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+      <TomoAssistant
+        messages={tomo.messages}
+        onSend={tomo.onSend}
+        suggestions={tomo.suggestions}
+        contextLabel={tomo.contextLabel}
+        placeholder="Ask anything..."
+      />
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { ready, session } = useRequireSession();
@@ -174,8 +195,8 @@ export default function HomePage() {
             {greeting}, {userName}.
           </h1>
           <div className="flex justify-center">
-            <div className="w-full max-w-xl">
-              <TomoChatboxInline placeholder="Ask anything..." recentChat="Prep for call with Tom" />
+            <div className="w-full max-w-2xl">
+              <TomoChatInline />
             </div>
           </div>
 

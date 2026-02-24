@@ -42,7 +42,6 @@ import { usePathname } from "next/navigation";
 import {
   Cog6ToothIcon,
   HomeIcon,
-  MagnifyingGlassIcon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
   CpuChipIcon,
@@ -267,7 +266,13 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   );
 
   return (
-    <TomoChatProvider openAndSend={openAndSend}>
+    <TomoChatProvider
+      openAndSend={openAndSend}
+      messages={messages}
+      onSend={handleSend}
+      suggestions={suggestions}
+      contextLabel={contextLabel}
+    >
     <div className="min-h-screen bg-white text-gray-900">
       {/* Header */}
       <header className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
@@ -275,27 +280,25 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
           <span className="text-base font-semibold tracking-tight">Tomo</span>
         </div>
 
-        <div className="hidden md:flex w-96 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-          <input placeholder="Search across the workspace" className="flex-1 bg-transparent focus:outline-none" />
-        </div>
-
         <div className="flex items-center gap-3">
-          <div className="flex flex-col text-left">
-            <span className="text-[11px] uppercase tracking-wide text-gray-500">Fund</span>
-            <select
-              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none"
-              value={activeFundId}
-              onChange={(e) => setActiveFundId(e.target.value)}
-            >
-              <option value="all">All</option>
-              {funds.map((fund) => (
-                <option key={fund.id} value={fund.id}>
-                  {fund.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Fund selector hidden for now */}
+          {false && (
+            <div className="flex flex-col text-left">
+              <span className="text-[11px] uppercase tracking-wide text-gray-500">Fund</span>
+              <select
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none"
+                value={activeFundId}
+                onChange={(e) => setActiveFundId(e.target.value)}
+              >
+                <option value="all">All</option>
+                {funds.map((fund) => (
+                  <option key={fund.id} value={fund.id}>
+                    {fund.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-[color:var(--accent)] text-xs font-semibold text-white">
             JD
@@ -352,14 +355,16 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button to open Tomo */}
-      <button
-        onClick={() => setAssistantOpen(true)}
-        className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
-        aria-label="Open TOMO chat"
-      >
-        <img src="/icons/tomo-ai.png" alt="Tomo" className="h-5 w-5" />
-      </button>
+      {/* Floating action button to open Tomo - hidden on home page (chat UI is inline there) */}
+      {section !== "home" && (
+        <button
+          onClick={() => setAssistantOpen(true)}
+          className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
+          aria-label="Open TOMO chat"
+        >
+          <img src="/icons/tomo-ai.png" alt="Tomo" className="h-5 w-5" />
+        </button>
+      )}
 
       {/* Assistant surface */}
       {isMobile ? (
@@ -414,7 +419,7 @@ function AssistantDock({ open, onClose, children }: { open: boolean; onClose: ()
   return (
     <div className={`pointer-events-none fixed bottom-4 right-4 z-40 transition ${open ? "opacity-100" : "opacity-0"}`}>
       {open ? (
-        <div className="pointer-events-auto flex w-[360px] max-w-[90vw] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div className="pointer-events-auto flex w-[520px] max-w-[90vw] flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
             <p className="text-sm font-medium text-gray-900">TOMO</p>
             <button className="text-xs text-gray-500 hover:text-gray-700" onClick={onClose}>
