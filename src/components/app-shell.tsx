@@ -36,26 +36,27 @@
 
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ChatBubbleLeftEllipsisIcon,
   Cog6ToothIcon,
   HomeIcon,
   MagnifyingGlassIcon,
-  Squares2X2Icon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
+  CpuChipIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { TomoAssistant } from "@/components/tomo-assistant";
+import { TomoChatProvider } from "@/components/tomo-chat-context";
 import { initialMessages } from "@/lib/mock-data";
 import { usePersistentState } from "@/lib/storage";
 import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
-// IA labels (desktop order): TODAY, RELATIONSHIPS, TARGETS, ACTIVITY, SETTINGS
-type Section = "home" | "relationships" | "targets" | "activity" | "materials" | "settings" | "search";
+// IA labels (desktop order): TODAY, RELATIONSHIPS, WORKFLOWS, ACTIVITY, SETTINGS
+type Section = "home" | "relationships" | "workflows" | "targets" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -73,10 +74,11 @@ type AppShellProps = {
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
-  { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
+  { href: "/workflows", label: "Workflows", icon: CpuChipIcon, id: "workflows" },
 ];
 
 const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
+  { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
   { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
@@ -137,7 +139,11 @@ function NavRail({ active }: { active: Section }) {
  * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
  */
 function BottomNav({ active }: { active: Section }) {
-  const items = [...primaryNav, { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section }, { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section }];
+  const items = [
+    ...primaryNav,
+    { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section },
+    { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section },
+  ];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
       {items.map((item) => {
@@ -189,7 +195,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "relationships") return [...base, "Show last interaction", "Suggest next step"];
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
-    if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+    if (section === "workflows") return [...base, "Edit playbook rules", "Add target filters", "Test run"];
+  if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
@@ -251,7 +258,16 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   const suggestions = assistantChips?.length ? assistantChips : defaultChips;
   const contextLabel = contextTitle ? `${contextTitle} — ${activeFund}` : activeFund;
 
+  const openAndSend = useCallback(
+    (text: string) => {
+      setAssistantOpen(true);
+      handleSend(text);
+    },
+    [handleSend]
+  );
+
   return (
+    <TomoChatProvider openAndSend={openAndSend}>
     <div className="min-h-screen bg-white text-gray-900">
       {/* Header */}
       <header className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
@@ -363,6 +379,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </AssistantDock>
       )}
     </div>
+    </TomoChatProvider>
   );
 }
 

@@ -5,8 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
-type TargetFilter = { region: string; interest: string; stage: string; tier: string };
-type TargetList = { id: string; name: string; filters: TargetFilter; members: string[] };
+import { TargetFilter, TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
 
 const defaultFilters: TargetFilter = { region: "Any", interest: "Active", stage: "Heating", tier: "Tier 1-2" };
 const defaultMembers = ["Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel"];
@@ -14,7 +13,7 @@ const defaultMembers = ["Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel
 export default function TargetsPage() {
   const { ready } = useRequireSession();
   const [filters, setFilters] = useState<TargetFilter>(() => ({ ...defaultFilters }));
-  const [lists, setLists] = usePersistentState<TargetList[]>("tomo-target-lists", []);
+  const [lists, setLists] = usePersistentState<TargetList[]>(TARGET_LISTS_STORAGE_KEY, []);
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [listName, setListName] = useState("");
 

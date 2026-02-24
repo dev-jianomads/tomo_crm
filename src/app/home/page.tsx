@@ -10,7 +10,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
+import { TomoChatboxInline } from "@/components/tomo-chatbox-inline";
 import { actions, briefs, commitments } from "@/lib/mockData";
+import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 
@@ -21,7 +23,7 @@ type TodaySelection =
   | null;
 
 export default function HomePage() {
-  const { ready } = useRequireSession();
+  const { ready, session } = useRequireSession();
   const router = useRouter();
   const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
@@ -136,6 +138,20 @@ export default function HomePage() {
     },
   ];
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  const userName = useMemo(() => {
+    const email = session?.email ?? "";
+    const match = email.match(/^([^@]+)/);
+    const name = match ? match[1] : "";
+    return name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : "there";
+  }, [session?.email]);
+
   const listContent = (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
@@ -151,6 +167,35 @@ export default function HomePage() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+        {/* Welcome + Tomo chatbox at top */}
+        <div className="space-y-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {greeting}, {userName}.
+          </h1>
+          <TomoChatboxInline placeholder="Ask anything..." recentChat="Prep for call with Tom" />
+
+          {/* Suggested playbook cards - click navigates to /workflows */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700">Suggested playbooks</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
+                <button
+                  key={playbook.id}
+                  onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
+                  className="rounded-lg border border-gray-200 bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)]"
+                >
+                  <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
+                  <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
+                  {playbook.targetCount != null && playbook.targetCount > 0 ? (
+                    <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Existing content: What needs your attention, Coming up */}
         <TodayGroup
           title="What needs your attention"
           items={filteredActions.slice(0, 6).map((a, idx) => ({
