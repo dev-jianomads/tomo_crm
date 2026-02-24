@@ -183,7 +183,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
    * - Persisted to localStorage (current approach)
    * - Synced to Supabase for cross-device continuity
    */
-  const [messages, setMessages] = usePersistentState<TomoMessage[]>("tomo-chat", initialMessages);
+  const [messages, setMessages] = useState<TomoMessage[]>(initialMessages);
 
   /**
    * Context-aware suggestion chips for Tomo

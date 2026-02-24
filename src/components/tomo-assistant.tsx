@@ -138,7 +138,6 @@ export function TomoAssistant({
           */}
           {contextLabel ? <p className="text-xs text-gray-500">{contextLabel}</p> : null}
         </div>
-        <span className="text-xs text-gray-400">Always on</span>
       </div>
 
       {/* Quick suggestion chips */}
@@ -157,14 +156,14 @@ export function TomoAssistant({
       ) : null}
 
       {/* Message list */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-md border px-3 py-2 ${
+              className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
                 msg.from === "user"
-                  ? "border-blue-100 bg-blue-50 text-gray-900"
-                  : "tomo-ai-border bg-gray-50 tomo-ai-text"
+                  ? "border-blue-200 bg-blue-50 text-gray-900"
+                  : "border-gray-200 bg-gray-50 text-gray-900"
               }`}
             >
               {/* 
@@ -174,8 +173,8 @@ export function TomoAssistant({
                 - Tool call previews (email drafts, task creation, etc.)
                 - Action buttons
               */}
-              <p className="whitespace-pre-line">{msg.text}</p>
-              <span className={`mt-1 block text-[11px] ${msg.from === "user" ? "text-gray-400" : "tomo-ai-text"}`}>
+              <p className="whitespace-pre-line leading-relaxed">{msg.text}</p>
+              <span className="mt-1.5 block text-[11px] text-gray-400">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </span>
             </div>

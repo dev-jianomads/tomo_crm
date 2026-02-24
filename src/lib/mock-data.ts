@@ -243,14 +243,8 @@ export const initialMessages: TomoMessage[] = [
   {
     id: "m-1",
     from: "tomo",
-    text: "Hi, I'm TOMO. I stay pinned here to help with briefs, follow-ups, and anything in your workspace.",
-    timestamp: Date.now() - 1000 * 60 * 5,
-  },
-  {
-    id: "m-2",
-    from: "tomo",
-    text: "Select a contact, meeting, or task to see context-aware suggestions.",
-    timestamp: Date.now() - 1000 * 60 * 4,
+    text: "What can I help you with today?",
+    timestamp: Date.now(),
   },
 ];
 
