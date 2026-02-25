@@ -7,7 +7,7 @@
  * - Selected playbook is injected as initial context including current targets (Option A)
  */
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -41,6 +41,36 @@ function WorkflowsPageContent() {
     {}
   );
   const [recentTargetsOpen, setRecentTargetsOpen] = useState(false);
+  const [topPanelHeight, setTopPanelHeight] = usePersistentState<number>(
+    "tomo-workflows-split-height",
+    50
+  );
+  const [draggingRow, setDraggingRow] = useState(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  // Row resize handler (process flow / chat split)
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!draggingRow || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const newHeight = ((e.clientY - rect.top) / rect.height) * 100;
+      const clamped = Math.min(80, Math.max(20, newHeight));
+      setTopPanelHeight(clamped);
+    };
+    const handleUp = () => setDraggingRow(false);
+    if (draggingRow) {
+      document.body.classList.add("select-none");
+      document.body.style.cursor = "row-resize";
+    }
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      document.body.classList.remove("select-none");
+      document.body.style.cursor = "";
+    };
+  }, [draggingRow, setTopPanelHeight]);
 
   const selectedPlaybook = useMemo(
     () => suggestedPlaybooks.find((p) => p.id === selectedPlaybookId) ?? null,
@@ -174,15 +204,23 @@ function WorkflowsPageContent() {
           Workflow rules and current targets are loaded. Ask to edit, change targets, or run.
         </p>
       </div>
-      {/* 50/50 split: process flow top, Tomo chat bottom */}
-      <div className="flex flex-1 min-h-0 flex-col">
-        <div className="h-1/2 min-h-0 border-b border-gray-200 bg-gray-50/50">
+      {/* Resizable split: process flow top, Tomo chat bottom */}
+      <div ref={splitContainerRef} className="relative flex flex-1 min-h-0 flex-col">
+        <div
+          className="min-h-0 shrink-0 overflow-hidden border-b border-gray-200 bg-gray-50/50"
+          style={{ height: `${topPanelHeight}%` }}
+        >
           <WorkflowProcessFlow
             playbook={selectedPlaybook}
             targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
           />
         </div>
-        <div className="h-1/2 min-h-0">
+        <div
+          className="h-2 shrink-0 cursor-row-resize bg-gray-100 transition-colors hover:bg-blue-100 active:bg-blue-200"
+          onMouseDown={() => setDraggingRow(true)}
+          aria-label="Resize panes"
+        />
+        <div className="flex-1 min-h-0 overflow-hidden">
           <WorkflowsTomoChat
             messages={messages}
             setMessages={setMessages}
