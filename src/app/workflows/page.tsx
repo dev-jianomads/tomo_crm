@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAssistant } from "@/components/tomo-assistant";
+import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
 import { TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
 import { useRequireSession } from "@/lib/auth";
@@ -167,20 +168,29 @@ function WorkflowsPageContent() {
     <div className="flex h-full flex-col">
       <div className="border-b border-gray-200 bg-white px-4 py-3">
         <p className="text-xs uppercase tracking-wide text-gray-500">
-          Chat with Tomo — {selectedPlaybook.name}
+          {selectedPlaybook.name}
         </p>
         <p className="mt-1 text-sm text-gray-600">
           Workflow rules and current targets are loaded. Ask to edit, change targets, or run.
         </p>
       </div>
-      <div className="flex-1 min-h-0">
-        <WorkflowsTomoChat
-          messages={messages}
-          setMessages={setMessages}
-          playbookContext={chatContext}
-          playbookName={selectedPlaybook.name}
-          targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
-        />
+      {/* 50/50 split: process flow top, Tomo chat bottom */}
+      <div className="flex flex-1 min-h-0 flex-col">
+        <div className="h-1/2 min-h-0 border-b border-gray-200 bg-gray-50/50">
+          <WorkflowProcessFlow
+            playbook={selectedPlaybook}
+            targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
+          />
+        </div>
+        <div className="h-1/2 min-h-0">
+          <WorkflowsTomoChat
+            messages={messages}
+            setMessages={setMessages}
+            playbookContext={chatContext}
+            playbookName={selectedPlaybook.name}
+            targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
+          />
+        </div>
       </div>
     </div>
   ) : (
