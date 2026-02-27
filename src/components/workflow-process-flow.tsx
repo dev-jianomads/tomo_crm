@@ -50,16 +50,14 @@ export function WorkflowProcessFlow({
 }) {
   const { trigger, steps } = workflow;
   const prevWorkflow = useRef<WorkflowDefinition | null>(null);
+  const prevVersion = useRef(highlightVersion);
   const [changedSet, setChangedSet] = useState<Set<string>>(new Set());
-  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      prevWorkflow.current = workflow;
-      return;
-    }
-    if (highlightVersion === 0) {
+    const versionBumped = highlightVersion !== prevVersion.current;
+    prevVersion.current = highlightVersion;
+
+    if (!versionBumped || highlightVersion === 0) {
       prevWorkflow.current = workflow;
       return;
     }
