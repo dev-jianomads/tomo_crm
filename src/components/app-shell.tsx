@@ -221,48 +221,69 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     };
   }, [draggingColumn, setMiddleWidth]);
 
+  const suggestions = assistantChips?.length ? assistantChips : defaultChips;
+
+  // Hide chips as user selects them (reset when section changes)
+  const [usedChips, setUsedChips] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setUsedChips(new Set());
+  }, [section]);
+
+  const visibleSuggestions = useMemo(
+    () => suggestions.filter((s) => !usedChips.has(s)),
+    [suggestions, usedChips]
+  );
+
+  const contextLabel = contextTitle ? `${contextTitle} — ${activeFund}` : activeFund;
+
   /**
    * Handle sending message to Tomo AI
-   * 
+   *
    * CURRENT: Mock response with simulated delay
-   * 
+   *
    * PRODUCTION: Replace with actual API call
    * See tomo-assistant.tsx for detailed streaming implementation example
-   * 
+   *
    * The contextTitle is passed to Tomo so it knows what entity
    * the user is currently viewing (for context-aware responses)
    */
-  const handleSend = (text: string) => {
-    // Add user message immediately
-    const userMessage: TomoMessage = { id: crypto.randomUUID(), from: "user", text, timestamp: Date.now() };
-    setMessages((prev) => [...prev, userMessage]);
-    
-    // MOCK: Simulate AI response after delay
-    // PRODUCTION: Replace with streaming API call to /api/tomo/chat
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          from: "tomo",
-          text: contextTitle
-            ? `Pulling context on "${contextTitle}". Here's a concise next step: ${suggestionFromText(text)}`
-            : `Got it. I'll keep this in mind and suggest follow-ups.`,
-          timestamp: Date.now(),
-        },
-      ]);
-    }, 450);
-  };
+  const handleSend = useCallback(
+    (text: string) => {
+      if (suggestions.includes(text)) {
+        setUsedChips((prev) => new Set([...prev, text]));
+      }
+      // Add user message immediately
+      const userMessage: TomoMessage = { id: crypto.randomUUID(), from: "user", text, timestamp: Date.now() };
+      setMessages((prev) => [...prev, userMessage]);
 
-  const suggestions = assistantChips?.length ? assistantChips : defaultChips;
-  const contextLabel = contextTitle ? `${contextTitle} — ${activeFund}` : activeFund;
+      // MOCK: Simulate AI response after delay
+      // PRODUCTION: Replace with streaming API call to /api/tomo/chat
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            from: "tomo",
+            text: contextTitle
+              ? `Pulling context on "${contextTitle}". Here's a concise next step: ${suggestionFromText(text)}`
+              : `Got it. I'll keep this in mind and suggest follow-ups.`,
+            timestamp: Date.now(),
+          },
+        ]);
+      }, 450);
+    },
+    [suggestions, contextTitle]
+  );
 
   const openAndSend = useCallback(
     (text: string) => {
       setAssistantOpen(true);
+      if (suggestions.includes(text)) {
+        setUsedChips((prev) => new Set([...prev, text]));
+      }
       handleSend(text);
     },
-    [handleSend]
+    [handleSend, suggestions]
   );
 
   return (
@@ -270,7 +291,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       openAndSend={openAndSend}
       messages={messages}
       onSend={handleSend}
-      suggestions={suggestions}
+      suggestions={visibleSuggestions}
       contextLabel={contextLabel}
     >
     <div className="min-h-screen bg-white text-gray-900">
@@ -372,16 +393,14 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
           <AssistantSheet open={assistantOpen} onClose={() => setAssistantOpen(false)}>
             <TomoAssistant
               messages={messages}
-              onSend={(text) => {
-                handleSend(text);
-              }}
-              suggestions={suggestions}
+              onSend={handleSend}
+              suggestions={visibleSuggestions}
               contextLabel={contextLabel}
             />
           </AssistantSheet>
         ) : (
           <AssistantDock open={assistantOpen} onClose={() => setAssistantOpen(false)}>
-            <TomoAssistant messages={messages} onSend={handleSend} suggestions={suggestions} contextLabel={contextLabel} />
+            <TomoAssistant messages={messages} onSend={handleSend} suggestions={visibleSuggestions} contextLabel={contextLabel} />
           </AssistantDock>
         )
       )}
