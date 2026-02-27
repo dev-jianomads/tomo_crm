@@ -110,11 +110,7 @@ export function WorkflowProcessFlow({
             <div key={`${step.name}-${i}`} className="flex items-center">
               <Connector />
               <div
-                className={`flex w-[140px] shrink-0 flex-col rounded-lg border-2 px-3 py-2.5 shadow-sm transition-all duration-300 sm:w-[170px] ${
-                  step.type === "wait"
-                    ? "border-amber-200 bg-amber-50/50"
-                    : "border-gray-200 bg-white"
-                } ${glowFor(`step-${i}`)}`}
+                className={`flex w-[140px] shrink-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(`step-${i}`)}`}
               >
                 <span className="text-xs font-semibold text-gray-900 truncate">
                   {step.name}
@@ -123,7 +119,7 @@ export function WorkflowProcessFlow({
                   {step.description}
                 </span>
                 {step.duration && (
-                  <span className="mt-1 text-[10px] font-medium text-amber-600">
+                  <span className="mt-1 inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
                     {step.duration}
                   </span>
                 )}
