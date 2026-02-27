@@ -117,3 +117,9 @@ body {
 .tomo-ai-bg:hover {
   background: #ff8b79;
 }
+
+@keyframes ring-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 133, 255, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(99, 133, 255, 0); }
+  100% { box-shadow: 0 0 0 6px rgba(99, 133, 255, 0); }
+}

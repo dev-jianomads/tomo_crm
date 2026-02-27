@@ -6,6 +6,7 @@
  * Pattern: [Trigger] → [Step 1] → [Step 2] → ... → [+]
  */
 
+import { useEffect, useRef, useState } from "react";
 import type { WorkflowDefinition } from "@/lib/workflow-templates";
 
 function Connector() {
@@ -24,12 +25,31 @@ function Connector() {
   );
 }
 
+const GLOW_CLASS = "animate-[ring-pulse_1s_ease-out_2]";
+
 export function WorkflowProcessFlow({
   workflow,
+  highlightVersion = 0,
 }: {
   workflow: WorkflowDefinition;
+  highlightVersion?: number;
 }) {
   const { trigger, steps } = workflow;
+  const [glowing, setGlowing] = useState(false);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (highlightVersion === 0) return;
+    setGlowing(true);
+    const timer = setTimeout(() => setGlowing(false), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightVersion]);
+
+  const glowStyle = glowing ? GLOW_CLASS : "";
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -38,8 +58,10 @@ export function WorkflowProcessFlow({
       </p>
       <div className="flex flex-1 items-center overflow-x-auto px-4 py-3">
         <div className="flex items-stretch gap-0">
-          {/* Trigger card — wider to accommodate longer trigger text */}
-          <div className="flex w-[160px] shrink-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px]">
+          {/* Trigger card */}
+          <div
+            className={`flex w-[160px] shrink-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowStyle}`}
+          >
             <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">
               Trigger
             </span>
@@ -56,7 +78,7 @@ export function WorkflowProcessFlow({
                   step.type === "wait"
                     ? "border-amber-200 bg-amber-50/50"
                     : "border-gray-200 bg-white"
-                }`}
+                } ${glowStyle}`}
               >
                 <span className="text-xs font-semibold text-gray-900 truncate">
                   {step.name}

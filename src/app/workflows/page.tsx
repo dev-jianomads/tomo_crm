@@ -50,6 +50,7 @@ function WorkflowsPageContent() {
 
   // ── Workflow markdown state (in-memory, resets on playbook switch) ──────
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
+  const [highlightVersion, setHighlightVersion] = useState(0);
 
   const selectedPlaybook = useMemo(
     () => suggestedPlaybooks.find((p) => p.id === selectedPlaybookId) ?? null,
@@ -124,6 +125,7 @@ function WorkflowsPageContent() {
 
   const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
     setWorkflow(def);
+    setHighlightVersion((v) => v + 1);
   }, []);
 
   const recentLists = targetLists.slice(0, 3);
@@ -232,7 +234,7 @@ function WorkflowsPageContent() {
           className="min-h-0 shrink-0 overflow-hidden border-b border-gray-200 bg-gray-50/50"
           style={{ height: `${topPanelHeight}%` }}
         >
-          <WorkflowProcessFlow workflow={workflow} />
+          <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
         </div>
         <div
           className="h-2 shrink-0 cursor-row-resize bg-gray-100 transition-colors hover:bg-blue-100 active:bg-blue-200"
