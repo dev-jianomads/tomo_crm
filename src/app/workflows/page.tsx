@@ -1,25 +1,29 @@
 "use client";
 
-/**
- * WORKFLOWS page (/workflows) — Playbooks + Tomo Chat
- * - Left: Playbooks list + collapsible Recent target lists (Option C)
- * - Right: Tomo Chat UI (only visible when a playbook is selected)
- * - Selected playbook is injected as initial context including current targets (Option A)
- */
-
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
-import { TomoAssistant } from "@/components/tomo-assistant";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
 import { TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
-import { TomoMessage } from "@/lib/types";
-import { initialMessages } from "@/lib/mock-data";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import {
+  DEFAULT_TEMPLATES,
+  PLAYBOOK_SUGGESTIONS,
+  workflowToMarkdown,
+  workflowSummary,
+  type WorkflowDefinition,
+} from "@/lib/workflow-templates";
+import type { PlaybookType } from "@/lib/mockPlaybooks";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 type PlaybookTargetOverrides = Record<string, { targetListId?: string }>;
 
@@ -30,10 +34,6 @@ function WorkflowsPageContent() {
 
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(
     () => playbookIdFromUrl || null
-  );
-  const [messages, setMessages] = usePersistentState<TomoMessage[]>(
-    "tomo-workflows-chat",
-    initialMessages
   );
   const [targetLists] = usePersistentState<TargetList[]>(TARGET_LISTS_STORAGE_KEY, []);
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookTargetOverrides>(
@@ -48,7 +48,25 @@ function WorkflowsPageContent() {
   const [draggingRow, setDraggingRow] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Row resize handler (process flow / chat split)
+  // ── Workflow markdown state (in-memory, resets on playbook switch) ──────
+  const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
+
+  const selectedPlaybook = useMemo(
+    () => suggestedPlaybooks.find((p) => p.id === selectedPlaybookId) ?? null,
+    [selectedPlaybookId]
+  );
+
+  // Load default template when playbook changes
+  useEffect(() => {
+    if (selectedPlaybook) {
+      const template = DEFAULT_TEMPLATES[selectedPlaybook.type];
+      setWorkflow(template);
+    } else {
+      setWorkflow(null);
+    }
+  }, [selectedPlaybook]);
+
+  // Row resize handler
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
       if (!draggingRow || !splitContainerRef.current) return;
@@ -72,12 +90,6 @@ function WorkflowsPageContent() {
     };
   }, [draggingRow, setTopPanelHeight]);
 
-  const selectedPlaybook = useMemo(
-    () => suggestedPlaybooks.find((p) => p.id === selectedPlaybookId) ?? null,
-    [selectedPlaybookId]
-  );
-
-  // Resolve effective targets for a playbook (list or filters)
   const getPlaybookTargetsSummary = useMemo(() => {
     return (playbook: Playbook): string => {
       const override = playbookOverrides[playbook.id];
@@ -105,12 +117,14 @@ function WorkflowsPageContent() {
     }));
   };
 
-  // When a playbook is selected, inject it as context including current targets
-  const chatContext = useMemo(() => {
-    if (!selectedPlaybook) return null;
-    const targetsSummary = getPlaybookTargetsSummary(selectedPlaybook);
-    return `[Playbook context]\n${selectedPlaybook.name}\n${selectedPlaybook.summary}\n\nCurrent targets: ${targetsSummary}. Ask to change.\n\nYou're helping configure or run this playbook. The user can ask to edit rules, change targets, or test it.`;
-  }, [selectedPlaybook, getPlaybookTargetsSummary]);
+  const handleResetWorkflow = useCallback(() => {
+    if (!selectedPlaybook) return;
+    setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+  }, [selectedPlaybook]);
+
+  const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
+    setWorkflow(def);
+  }, []);
 
   const recentLists = targetLists.slice(0, 3);
 
@@ -142,7 +156,6 @@ function WorkflowsPageContent() {
           ))}
         </div>
 
-        {/* Collapsible Recent target lists (Option C) */}
         <div className="rounded-lg border border-gray-200 bg-gray-50/60">
           <button
             onClick={() => setRecentTargetsOpen((o) => !o)}
@@ -194,26 +207,32 @@ function WorkflowsPageContent() {
     </div>
   );
 
-  const detailContent = selectedPlaybook ? (
+  const detailContent = selectedPlaybook && workflow ? (
     <div className="flex h-full flex-col">
-      <div className="border-b border-gray-200 bg-white px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-gray-500">
-          {selectedPlaybook.name}
-        </p>
-        <p className="mt-1 text-sm text-gray-600">
-          Workflow rules and current targets are loaded. Ask to edit, change targets, or run.
-        </p>
+      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            {selectedPlaybook.name}
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
+            Chat with Tomo to modify this workflow. Changes reset on refresh.
+          </p>
+        </div>
+        <button
+          onClick={handleResetWorkflow}
+          className="flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
+          title="Reset to default"
+        >
+          <ArrowPathIcon className="h-3.5 w-3.5" />
+          Reset
+        </button>
       </div>
-      {/* Resizable split: process flow top, Tomo chat bottom */}
       <div ref={splitContainerRef} className="relative flex flex-1 min-h-0 flex-col">
         <div
           className="min-h-0 shrink-0 overflow-hidden border-b border-gray-200 bg-gray-50/50"
           style={{ height: `${topPanelHeight}%` }}
         >
-          <WorkflowProcessFlow
-            playbook={selectedPlaybook}
-            targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
-          />
+          <WorkflowProcessFlow workflow={workflow} />
         </div>
         <div
           className="h-2 shrink-0 cursor-row-resize bg-gray-100 transition-colors hover:bg-blue-100 active:bg-blue-200"
@@ -221,12 +240,11 @@ function WorkflowsPageContent() {
           aria-label="Resize panes"
         />
         <div className="flex-1 min-h-0 overflow-hidden">
-          <WorkflowsTomoChat
-            messages={messages}
-            setMessages={setMessages}
-            playbookContext={chatContext}
+          <WorkflowTomoChat
+            workflow={workflow}
             playbookName={selectedPlaybook.name}
-            targetsSummary={getPlaybookTargetsSummary(selectedPlaybook)}
+            playbookType={selectedPlaybook.type}
+            onWorkflowUpdate={handleWorkflowUpdate}
           />
         </div>
       </div>
@@ -254,11 +272,10 @@ function WorkflowsPageContent() {
       assistantChips={
         selectedPlaybook
           ? [
-              "Edit wait days",
-              "Change reply definition",
-              "Add target filters",
-              "Test on last 5",
-              "Turn on",
+              "Add a wait step",
+              "Remove the last step",
+              "Change the trigger",
+              "Add an escalation step",
             ]
           : undefined
       }
@@ -333,71 +350,199 @@ function PlaybookCard({
   );
 }
 
-function WorkflowsTomoChat({
-  messages,
-  setMessages,
-  playbookContext,
-  playbookName,
-  targetsSummary,
-}: {
-  messages: TomoMessage[];
-  setMessages: React.Dispatch<React.SetStateAction<TomoMessage[]>>;
-  playbookContext: string | null;
-  playbookName: string;
-  targetsSummary: string;
-}) {
-  const handleSend = (text: string) => {
-    const userMessage: TomoMessage = {
-      id: crypto.randomUUID(),
-      from: "user",
-      text,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
+// ── AI-powered workflow chat ────────────────────────────────────────────────
 
-    // Mock: simulate AI response with playbook-aware reply
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          from: "tomo",
-          text: playbookContext
-            ? `Got it. I'm working with the **${playbookName}** workflow. I can help you adjust the rules, change targets, or run a test. What would you like to do?`
-            : "How can I help with this workflow?",
-          timestamp: Date.now(),
-        },
-      ]);
-    }, 400);
+import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import type { UIMessage } from "ai";
+
+function WorkflowTomoChat({
+  workflow,
+  playbookName,
+  playbookType,
+  onWorkflowUpdate,
+}: {
+  workflow: WorkflowDefinition;
+  playbookName: string;
+  playbookType: PlaybookType;
+  onWorkflowUpdate: (def: WorkflowDefinition) => void;
+}) {
+  const currentMarkdown = workflowToMarkdown(workflow);
+  const endRef = useRef<HTMLDivElement>(null);
+  const welcomeText = workflowSummary(workflow, playbookType);
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/tomo/chat" }),
+    []
+  );
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport,
+    onToolCall: ({ toolCall }) => {
+      if (toolCall.toolName === "update_workflow") {
+        const input = toolCall.input as {
+          title: string;
+          trigger: string;
+          steps: WorkflowDefinition["steps"];
+        };
+        onWorkflowUpdate({
+          title: input.title,
+          trigger: input.trigger,
+          steps: input.steps,
+        });
+      }
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
+  const suggestions = PLAYBOOK_SUGGESTIONS[playbookType];
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isStreaming) return;
+    sendMessage({
+      text: `---WORKFLOW_CONTEXT_START---\n${currentMarkdown}\n---WORKFLOW_CONTEXT_END---\n${trimmed}`,
+    });
   };
 
-  // Prepend a system message with playbook context and targets if we have it
-  const displayMessages = useMemo(() => {
-    if (!playbookContext) return messages;
-    const contextMessage: TomoMessage = {
-      id: "context",
-      from: "tomo",
-      text: `_Loaded workflow context. Current targets: ${targetsSummary}. Ready to configure._`,
-      timestamp: Date.now(),
-    };
-    const withoutContext = messages[0]?.id === "context" ? messages.slice(1) : messages;
-    return [contextMessage, ...withoutContext];
-  }, [messages, playbookContext, targetsSummary]);
+  return (
+    <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white">
+      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-gray-900">TOMO AI</p>
+          <p className="text-xs text-gray-500">{playbookName}</p>
+        </div>
+        {messages.length > 0 && (
+          <button
+            onClick={() => setMessages([])}
+            className="text-xs text-gray-400 hover:text-gray-600 transition"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Context-aware suggestion chips */}
+      <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
+        {suggestions.map((chip) => (
+          <button
+            key={chip}
+            onClick={() => handleSend(chip)}
+            disabled={isStreaming}
+            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+        {/* Initial workflow summary (always visible at top) */}
+        <div className="flex justify-start">
+          <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+            <p className="whitespace-pre-line leading-relaxed">{welcomeText}</p>
+          </div>
+        </div>
+        {messages.map((msg) => (
+          <ChatBubble key={msg.id} message={msg} />
+        ))}
+        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* Input */}
+      <ChatInput onSend={handleSend} disabled={isStreaming} playbookName={playbookName} />
+    </div>
+  );
+}
+
+function ChatBubble({ message }: { message: UIMessage }) {
+  const isUser = message.role === "user";
+
+  const textContent = message.parts
+    ?.filter((p) => p.type === "text")
+    .map((p) => p.text)
+    .join("")
+    ?? "";
+
+  // For user messages, strip the injected context prefix and show only the user request
+  const displayText = isUser
+    ? textContent.replace(/---WORKFLOW_CONTEXT_START---[\s\S]*?---WORKFLOW_CONTEXT_END---\n?/, "")
+    : textContent;
+
+  if (!displayText.trim()) return null;
 
   return (
-    <TomoAssistant
-      messages={displayMessages}
-      onSend={handleSend}
-      suggestions={[
-        "Change targets",
-        "Edit wait days",
-        "Change reply definition",
-        "Add target filters",
-        "Test on last 5",
-        "Turn on",
-      ]}
-      contextLabel={playbookName}
-      placeholder={`Ask about ${playbookName}…`}
-    />
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
+          isUser
+            ? "border-blue-200 bg-blue-50 text-gray-900"
+            : "border-gray-200 bg-gray-50 text-gray-900"
+        }`}
+      >
+        <p className="whitespace-pre-line leading-relaxed">{displayText}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChatInput({
+  onSend,
+  disabled,
+  playbookName,
+}: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+  playbookName: string;
+}) {
+  const [input, setInput] = useState("");
+
+  const handleSubmit = () => {
+    if (!input.trim() || disabled) return;
+    onSend(input);
+    setInput("");
+  };
+
+  return (
+    <div className="border-t border-gray-200 px-3 py-3">
+      <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={`Ask Tomo about ${playbookName}…`}
+          disabled={disabled}
+          className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={disabled || !input.trim()}
+          className="flex h-9 w-9 items-center justify-center rounded-md tomo-ai-bg text-white transition disabled:opacity-50"
+          aria-label="Send to TOMO"
+        >
+          <PaperAirplaneIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
