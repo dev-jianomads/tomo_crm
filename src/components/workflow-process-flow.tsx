@@ -4,10 +4,13 @@
  * Visual process flow for a workflow/playbook.
  * Renders from a WorkflowDefinition (parsed from markdown).
  * Pattern: [Trigger] → [Step 1] → [Step 2] → ... → [+]
+ *
+ * When highlightVersion bumps, only cards that actually changed
+ * (or were newly added) get the pulse-glow animation.
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { WorkflowDefinition } from "@/lib/workflow-templates";
+import type { WorkflowDefinition, WorkflowStep } from "@/lib/workflow-templates";
 
 function Connector() {
   return (
@@ -25,7 +28,18 @@ function Connector() {
   );
 }
 
-const GLOW_CLASS = "animate-[ring-pulse_1s_ease-out_2]";
+const GLOW_CLASS = "animate-[ring-pulse_1s_ease-out_3]";
+
+function stepEquals(a: WorkflowStep | undefined, b: WorkflowStep | undefined): boolean {
+  if (!a || !b) return false;
+  return (
+    a.name === b.name &&
+    a.type === b.type &&
+    a.description === b.description &&
+    (a.duration ?? "") === (b.duration ?? "") &&
+    (a.condition ?? "") === (b.condition ?? "")
+  );
+}
 
 export function WorkflowProcessFlow({
   workflow,
@@ -35,21 +49,45 @@ export function WorkflowProcessFlow({
   highlightVersion?: number;
 }) {
   const { trigger, steps } = workflow;
-  const [glowing, setGlowing] = useState(false);
+  const prevWorkflow = useRef<WorkflowDefinition | null>(null);
+  const [changedSet, setChangedSet] = useState<Set<string>>(new Set());
   const isFirstRender = useRef(true);
 
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      prevWorkflow.current = workflow;
       return;
     }
-    if (highlightVersion === 0) return;
-    setGlowing(true);
-    const timer = setTimeout(() => setGlowing(false), 2000);
-    return () => clearTimeout(timer);
-  }, [highlightVersion]);
+    if (highlightVersion === 0) {
+      prevWorkflow.current = workflow;
+      return;
+    }
 
-  const glowStyle = glowing ? GLOW_CLASS : "";
+    const prev = prevWorkflow.current;
+    const changed = new Set<string>();
+
+    if (!prev || prev.trigger !== workflow.trigger) {
+      changed.add("trigger");
+    }
+
+    const maxLen = Math.max(prev?.steps.length ?? 0, workflow.steps.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (!stepEquals(prev?.steps[i], workflow.steps[i])) {
+        changed.add(`step-${i}`);
+      }
+    }
+
+    prevWorkflow.current = workflow;
+
+    if (changed.size === 0) return;
+
+    setChangedSet(changed);
+    const timer = setTimeout(() => setChangedSet(new Set()), 3000);
+    return () => clearTimeout(timer);
+  }, [highlightVersion, workflow]);
+
+  const glowFor = (key: string) => (changedSet.has(key) ? GLOW_CLASS : "");
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -60,7 +98,7 @@ export function WorkflowProcessFlow({
         <div className="flex items-stretch gap-0">
           {/* Trigger card */}
           <div
-            className={`flex w-[160px] shrink-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowStyle}`}
+            className={`flex w-[160px] shrink-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
           >
             <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">
               Trigger
@@ -78,7 +116,7 @@ export function WorkflowProcessFlow({
                   step.type === "wait"
                     ? "border-amber-200 bg-amber-50/50"
                     : "border-gray-200 bg-white"
-                } ${glowStyle}`}
+                } ${glowFor(`step-${i}`)}`}
               >
                 <span className="text-xs font-semibold text-gray-900 truncate">
                   {step.name}
