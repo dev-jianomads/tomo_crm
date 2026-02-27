@@ -28,7 +28,15 @@ function Connector() {
   );
 }
 
-const GLOW_CLASS = "animate-[ring-pulse_1s_ease-out_3]";
+function TomoUpdatedLabel() {
+  return (
+    <span className="mt-1.5 text-[10px] font-medium animate-pulse" style={{ color: "#ff8a65" }}>
+      Tomo updated
+    </span>
+  );
+}
+
+const GLOW_CLASS = "animate-[ring-pulse_1s_ease-out_5]";
 
 function stepEquals(a: WorkflowStep | undefined, b: WorkflowStep | undefined): boolean {
   if (!a || !b) return false;
@@ -81,11 +89,12 @@ export function WorkflowProcessFlow({
     if (changed.size === 0) return;
 
     setChangedSet(changed);
-    const timer = setTimeout(() => setChangedSet(new Set()), 3000);
+    const timer = setTimeout(() => setChangedSet(new Set()), 5000);
     return () => clearTimeout(timer);
   }, [highlightVersion, workflow]);
 
-  const glowFor = (key: string) => (changedSet.has(key) ? GLOW_CLASS : "");
+  const isGlowing = (key: string) => changedSet.has(key);
+  const glowFor = (key: string) => (isGlowing(key) ? GLOW_CLASS : "");
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -95,37 +104,46 @@ export function WorkflowProcessFlow({
       <div className="flex flex-1 items-center overflow-x-auto px-4 py-3">
         <div className="flex items-stretch gap-0">
           {/* Trigger card */}
-          <div
-            className={`flex w-[160px] shrink-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
-          >
-            <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">
-              Trigger
-            </span>
-            <span className="mt-0.5 text-xs font-semibold text-gray-900 leading-tight line-clamp-3">
-              {trigger}
-            </span>
+          <div className="flex shrink-0 flex-col items-center">
+            <div
+              className={`flex w-[160px] flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
+            >
+              <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">
+                Trigger
+              </span>
+              <span className="mt-0.5 text-xs font-semibold text-gray-900 leading-tight line-clamp-3">
+                {trigger}
+              </span>
+            </div>
+            {isGlowing("trigger") && <TomoUpdatedLabel />}
           </div>
 
-          {steps.map((step, i) => (
-            <div key={`${step.name}-${i}`} className="flex items-center">
-              <Connector />
-              <div
-                className={`flex w-[140px] shrink-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(`step-${i}`)}`}
-              >
-                <span className="text-xs font-semibold text-gray-900 truncate">
-                  {step.name}
-                </span>
-                <span className="mt-0.5 text-[10px] text-gray-500 leading-tight line-clamp-3">
-                  {step.description}
-                </span>
-                {step.duration && (
-                  <span className="mt-1 inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                    {step.duration}
-                  </span>
-                )}
+          {steps.map((step, i) => {
+            const key = `step-${i}`;
+            return (
+              <div key={`${step.name}-${i}`} className="flex items-center">
+                <Connector />
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`flex w-[140px] flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)}`}
+                  >
+                    <span className="text-xs font-semibold text-gray-900 truncate">
+                      {step.name}
+                    </span>
+                    <span className="mt-0.5 text-[10px] text-gray-500 leading-tight line-clamp-3">
+                      {step.description}
+                    </span>
+                    {step.duration && (
+                      <span className="mt-1 inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                        {step.duration}
+                      </span>
+                    )}
+                  </div>
+                  {isGlowing(key) && <TomoUpdatedLabel />}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Add step card */}
           <Connector />
