@@ -355,8 +355,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button to open Tomo - hidden on home page (chat UI is inline there) */}
-      {section !== "home" && (
+      {/* Floating action button to open Tomo - hidden on home & workflows (chat UI is inline there) */}
+      {section !== "home" && section !== "workflows" && (
         <button
           onClick={() => setAssistantOpen(true)}
           className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
@@ -366,22 +366,24 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </button>
       )}
 
-      {/* Assistant surface */}
-      {isMobile ? (
-        <AssistantSheet open={assistantOpen} onClose={() => setAssistantOpen(false)}>
-          <TomoAssistant
-            messages={messages}
-            onSend={(text) => {
-              handleSend(text);
-            }}
-            suggestions={suggestions}
-            contextLabel={contextLabel}
-          />
-        </AssistantSheet>
-      ) : (
-        <AssistantDock open={assistantOpen} onClose={() => setAssistantOpen(false)}>
-          <TomoAssistant messages={messages} onSend={handleSend} suggestions={suggestions} contextLabel={contextLabel} />
-        </AssistantDock>
+      {/* Assistant surface - hidden on workflows (has its own inline AI chat) */}
+      {section !== "workflows" && (
+        isMobile ? (
+          <AssistantSheet open={assistantOpen} onClose={() => setAssistantOpen(false)}>
+            <TomoAssistant
+              messages={messages}
+              onSend={(text) => {
+                handleSend(text);
+              }}
+              suggestions={suggestions}
+              contextLabel={contextLabel}
+            />
+          </AssistantSheet>
+        ) : (
+          <AssistantDock open={assistantOpen} onClose={() => setAssistantOpen(false)}>
+            <TomoAssistant messages={messages} onSend={handleSend} suggestions={suggestions} contextLabel={contextLabel} />
+          </AssistantDock>
+        )
       )}
     </div>
     </TomoChatProvider>
