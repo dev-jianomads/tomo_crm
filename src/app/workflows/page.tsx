@@ -396,7 +396,12 @@ function WorkflowTomoChat({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const suggestions = PLAYBOOK_SUGGESTIONS[playbookType];
+  const allSuggestions = PLAYBOOK_SUGGESTIONS[playbookType];
+  const [usedChips, setUsedChips] = useState<Set<string>>(new Set());
+  const visibleSuggestions = useMemo(
+    () => allSuggestions.filter((s) => !usedChips.has(s)),
+    [allSuggestions, usedChips]
+  );
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -405,6 +410,9 @@ function WorkflowTomoChat({
   const handleSend = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
+    if (allSuggestions.includes(trimmed)) {
+      setUsedChips((prev) => new Set([...prev, trimmed]));
+    }
     sendMessage({
       text: `---WORKFLOW_CONTEXT_START---\n${currentMarkdown}\n---WORKFLOW_CONTEXT_END---\n${trimmed}`,
     });
@@ -428,18 +436,20 @@ function WorkflowTomoChat({
       </div>
 
       {/* Context-aware suggestion chips */}
-      <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
-        {suggestions.map((chip) => (
-          <button
-            key={chip}
-            onClick={() => handleSend(chip)}
-            disabled={isStreaming}
-            className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
-          >
-            {chip}
-          </button>
-        ))}
-      </div>
+      {visibleSuggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
+          {visibleSuggestions.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleSend(chip)}
+              disabled={isStreaming}
+              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
