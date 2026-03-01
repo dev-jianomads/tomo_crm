@@ -5,14 +5,14 @@
 
 import type { TargetFilter } from "./targets";
 
-export type PlaybookType = "follow_up" | "warm_cadence" | "re_engage" | "intro_tracking";
+export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response";
 
 export type Playbook = {
   id: string;
   name: string;
   type: PlaybookType;
   description: string;
-  summary: string; // short rule summary for chat context
+  summary: string;
   enabled: boolean;
   targetCount?: number;
   /** Link to saved target list (Option A) */
@@ -23,41 +23,42 @@ export type Playbook = {
 
 export const suggestedPlaybooks: Playbook[] = [
   {
-    id: "pb-follow-up",
-    name: "Follow-up after update",
-    type: "follow_up",
-    description: "Follow up 5 business days after sending an investor update if no reply.",
-    summary: "Follow-up after update: Wait 5 business days. Reply = same thread only. Max 1 attempt. Draft only.",
+    id: "pb-intro-tracker",
+    name: "Warm Intro Tracker",
+    type: "intro_tracker",
+    description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent.",
+    summary: "Intro tracker: Detect intro → log source credit → draft reply 24h → escalate if silent. Draft only.",
     enabled: true,
-    targetCount: 12,
-    targetFilters: { tier: "Tier 1-2", stage: "Heating" },
+    targetCount: 3,
+    targetFilters: { tier: "Tier 1", stage: "Heating" },
   },
   {
-    id: "pb-warm-cadence",
-    name: "Warm touch cadence",
-    type: "warm_cadence",
-    description: "Light touch every 21/45/90 days by tier. Skip if recent interaction.",
-    summary: "Warm cadence: A=21d, B=45d, C=90d. Skip inbound 14d / outbound 7d. Draft only.",
+    id: "pb-post-meeting",
+    name: "Post-Meeting Execution",
+    type: "post_meeting",
+    description: "Pull transcript, draft follow-up, require human approval before sending.",
+    summary: "Post-meeting: Extract transcript → draft follow-up → human approval → send & monitor. Draft only.",
     enabled: true,
-    targetCount: 28,
-    targetFilters: { region: "Any", tier: "Tier 1-2" },
+    targetCount: 8,
+    targetFilters: { tier: "Tier 1-2", stage: "Active" },
   },
   {
-    id: "pb-re-engage",
-    name: "Re-engage stale LP",
-    type: "re_engage",
-    description: "If no interaction in 120 days, sequence: nudge → value add → request call.",
-    summary: "Re-engage stale: 120d no touch. Sequence: nudge → value add → request call. Draft only.",
-    enabled: false,
-    targetCount: 5,
+    id: "pb-update-followup",
+    name: "Update → Follow-Up",
+    type: "update_followup",
+    description: "After monthly update, segment LPs by engagement and auto-draft follow-ups.",
+    summary: "Update follow-up: Segment by tier → track opens → auto-draft after 5d. Draft only.",
+    enabled: true,
+    targetCount: 24,
+    targetFilters: { tier: "Tier 1-2" },
   },
   {
-    id: "pb-intro-tracking",
-    name: "Intro tracking",
-    type: "intro_tracking",
-    description: "If someone introduces you, ensure reply within 24h. Remind if not replied.",
-    summary: "Intro tracking: Reply within 24h. Remind if not replied. Log outcome.",
+    id: "pb-ddq-response",
+    name: "DDQ Response Engine",
+    type: "ddq_response",
+    description: "Parse incoming DDQ, match historical answers, draft responses with citations.",
+    summary: "DDQ engine: Parse questionnaire → match answers → draft with citations → human review. Sandboxed.",
     enabled: false,
-    targetCount: 0,
+    targetCount: 1,
   },
 ];

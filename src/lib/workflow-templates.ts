@@ -16,105 +16,104 @@ export type WorkflowDefinition = {
 
 // ── Default templates per playbook type ─────────────────────────────────────
 
-const FOLLOW_UP: WorkflowDefinition = {
-  title: "Follow-up After Update",
-  trigger: "Investor update email sent",
+const INTRO_TRACKER: WorkflowDefinition = {
+  title: "Warm Intro Tracker",
+  trigger: "CC'd introduction email detected",
   steps: [
-    { name: "Wait", type: "wait", duration: "5 business days", description: "Allow time for organic reply" },
-    { name: "Check Reply", type: "action", description: "Scan thread for any response" },
-    { name: "Create Draft", type: "action", description: "Draft a gentle follow-up (max 1 attempt)", condition: "No reply detected" },
+    { name: "Detect & Log", type: "action", description: "Parse intro from Sarah Kim, log David Park (Redstone) with source credit" },
+    { name: "Draft Reply", type: "action", description: "Draft personalized reply to David Park within 24h" },
+    { name: "Wait", type: "wait", duration: "48h", description: "Monitor inbox for response from David Park" },
+    { name: "Escalate", type: "action", description: "Flag for manual follow-up, notify via Slack", condition: "No reply after 48h" },
   ],
 };
 
-const WARM_CADENCE: WorkflowDefinition = {
-  title: "Warm Touch Cadence",
-  trigger: "Scheduled cadence timer fires",
+const POST_MEETING: WorkflowDefinition = {
+  title: "Post-Meeting Execution Loop",
+  trigger: "Zoom meeting with Lisa Tanaka (Crestview) ends",
   steps: [
-    { name: "Wait", type: "wait", duration: "21 / 45 / 90 days by tier", description: "Tier-based interval" },
-    { name: "Check Skip", type: "action", description: "Skip if inbound 14d or outbound 7d", condition: "Recent interaction found" },
-    { name: "Create Draft", type: "action", description: "Draft a light-touch message" },
+    { name: "Extract & Summarize", type: "action", description: "Pull transcript, extract objections, commitments, next steps" },
+    { name: "Draft Follow-Up", type: "action", description: "Draft tailored email with attached materials, log CRM summary" },
+    { name: "Wait for Approval", type: "wait", duration: "Human review", description: "Human must approve outbound email before sending" },
+    { name: "Send & Monitor", type: "action", description: "Send approved email, set next touch date, watch for reply" },
   ],
 };
 
-const RE_ENGAGE: WorkflowDefinition = {
-  title: "Re-engage Stale LP",
-  trigger: "No interaction detected for 120+ days",
+const UPDATE_FOLLOWUP: WorkflowDefinition = {
+  title: "Update → Follow-Up Conversion",
+  trigger: "Monthly investor update sent",
   steps: [
-    { name: "Nudge", type: "action", description: "Send initial re-engagement touch" },
-    { name: "Wait", type: "wait", duration: "14 days", description: "Allow time for response" },
-    { name: "Value Add", type: "action", description: "Share relevant insight or update", condition: "No reply to nudge" },
-    { name: "Wait", type: "wait", duration: "14 days", description: "Final wait period" },
-    { name: "Request Call", type: "action", description: "Propose a brief catch-up call", condition: "Still no reply" },
+    { name: "Segment & Track", type: "action", description: "Segment LPs by tier, monitor opens/clicks from Marcus Chen and others" },
+    { name: "Wait", type: "wait", duration: "5 business days", description: "Allow time for organic engagement" },
+    { name: "Auto-Draft Follow-Up", type: "action", description: "Draft personalized follow-up based on pipeline stage and engagement", condition: "Low engagement detected" },
   ],
 };
 
-const INTRO_TRACKING: WorkflowDefinition = {
-  title: "Warm LP Intro Tracker",
-  trigger: "Someone CCs an introduction email",
+const DDQ_RESPONSE: WorkflowDefinition = {
+  title: "DDQ Response Engine",
+  trigger: "DDQ received from Rachel Novak (Oakmont)",
   steps: [
-    { name: "Detect Intro", type: "action", description: "Scan inbox for CC'd introductions" },
-    { name: "Log Contact", type: "action", description: "Log contact details in CRM with intro source" },
-    { name: "Draft Reply", type: "action", description: "Draft reply for review, remind to send within 24h" },
-    { name: "Wait for Reply", type: "wait", duration: "48h", description: "Monitor inbox for LP reply" },
-    { name: "Escalate", type: "action", description: "Flag for manual follow-up if LP is silent", condition: "No reply after wait" },
+    { name: "Parse & Match", type: "action", description: "Parse questionnaire sections, match to historical answers with citations" },
+    { name: "Draft Responses", type: "action", description: "Pull latest policy docs, draft answers, flag sensitive/legal sections" },
+    { name: "Wait for Review", type: "wait", duration: "Human review", description: "Human reviews flagged sections — no fabrication policy enforced" },
+    { name: "Finalize & Track", type: "action", description: "Version-lock approved responses, track completion state" },
   ],
 };
 
 export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
-  follow_up: FOLLOW_UP,
-  warm_cadence: WARM_CADENCE,
-  re_engage: RE_ENGAGE,
-  intro_tracking: INTRO_TRACKING,
+  intro_tracker: INTRO_TRACKER,
+  post_meeting: POST_MEETING,
+  update_followup: UPDATE_FOLLOWUP,
+  ddq_response: DDQ_RESPONSE,
 };
 
 // ── Context-aware suggestion chips per playbook type ────────────────────────
 
 export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {
-  follow_up: [
-    "Change wait to 3 business days",
-    "Add a second follow-up if Jamie still hasn't replied",
-    "Escalate to a call request after 2 failed attempts",
-    "Only trigger for Tier 1 LPs like Northwind",
-  ],
-  warm_cadence: [
-    "Make Tier 1 cadence weekly for Alex & Jamie",
-    "Add a step to check deck engagement first",
-    "Skip LPs who opened the last investor update",
-    "Add a personalized note referencing Q4 performance",
-  ],
-  re_engage: [
-    "Shorten wait to 7 days — Samir's been quiet too long",
-    "Add a touch sharing the Q4 Performance Deck",
-    "Change trigger to 90 days instead of 120",
-    "Remove the call request step",
-  ],
-  intro_tracking: [
-    "Add a thank-you note to the introducer",
+  intro_tracker: [
+    "Add a thank-you to Sarah Kim",
     "Change wait to 24 hours",
-    "Add a step to schedule a meeting after reply",
-    "Escalate to Slack if no reply after 72 hours",
+    "Add a step to schedule a meeting with David",
+    "Escalate to Slack if no reply after 72h",
+  ],
+  post_meeting: [
+    "Skip transcript step for informal chats",
+    "Add a deck attachment for Crestview",
+    "Change approval to auto-send for Tier 2",
+    "Add a reminder if Lisa hasn't replied in 5 days",
+  ],
+  update_followup: [
+    "Shorten wait to 3 business days",
+    "Only trigger for Tier 1 LPs like Marcus",
+    "Add a call scheduling step for high-engagement LPs",
+    "Skip LPs who already replied to the update",
+  ],
+  ddq_response: [
+    "Flag all legal sections for manual review",
+    "Add a step to cross-check Fund III data",
+    "Change review wait to 24h deadline",
+    "Auto-attach audited financials from Oakmont request",
   ],
 };
 
 // ── Mock context blurbs per playbook type ───────────────────────────────────
 
 const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
-  follow_up:
-    `Currently targeting 12 Tier 1-2 LPs in Heating stage.\n` +
-    `Recent activity: Jamie Chen (Peakline) opened deck 3x but no reply. ` +
-    `Alex Morgan (Northwind) last touched 3d ago via call.`,
-  warm_cadence:
-    `Running across 28 LPs. Tier-based intervals: A=21d, B=45d, C=90d.\n` +
-    `Alex Morgan is due for a touch in 4 days. ` +
-    `Priya Desai (Lumen) last contacted 14d ago — no reply.`,
-  re_engage:
-    `5 LPs flagged as stale (120+ days). Samir Patel (Harborlight) ` +
-    `hasn't responded in 21d and has 0 open loops.\n` +
-    `Priya Desai (Lumen) momentum is Cooling — 3 open loops.`,
-  intro_tracking:
-    `No active intros being tracked yet.\n` +
-    `Last intro logged: Jamie Chen introduced via Alex Morgan's network. ` +
-    `Reply pending from Peakline Partners.`,
+  intro_tracker:
+    `Tracking 3 active intros.\n` +
+    `Latest: Sarah Kim (Meridian Capital) CC'd intro to David Park (Redstone Partners) 6h ago. ` +
+    `Reply window closes in 18h. No response from David yet.`,
+  post_meeting:
+    `8 meetings this month across Tier 1-2 LPs.\n` +
+    `Last meeting: Lisa Tanaka (Crestview Capital) — 45 min Zoom, ended 2h ago. ` +
+    `Transcript ready. Follow-up draft pending approval.`,
+  update_followup:
+    `Monthly update sent to 24 LPs 3 days ago.\n` +
+    `Marcus Chen (Blueridge Ventures) opened 4x but no reply. ` +
+    `12 LPs opened, 6 haven't opened yet. 2 follow-up drafts queued.`,
+  ddq_response:
+    `1 active DDQ in progress.\n` +
+    `Rachel Novak (Oakmont Fund of Funds) sent a 47-question DDQ 2 days ago. ` +
+    `31 answers matched from historical responses. 8 flagged for legal review.`,
 };
 
 // ── Welcome summary for initial chat context ────────────────────────────────
