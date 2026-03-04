@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { ApprovalDrawer } from "@/components/approval-drawer";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -49,6 +50,7 @@ export default function HomePage() {
   const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [showDailyBrief, setShowDailyBrief] = useState(false);
+  const [approvalDrawerOpen, setApprovalDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
 
@@ -62,8 +64,19 @@ export default function HomePage() {
 
   const completeAndReset = () => {
     setSelection(null);
+    setApprovalDrawerOpen(false);
     router.replace("/home");
   };
+
+  // Open approval drawer when selecting an action that needs approval or has a draft
+  useEffect(() => {
+    if (selection?.type === "action") {
+      const action = actions.find((a) => a.id === selection.id);
+      setApprovalDrawerOpen(Boolean(action && (action.status === "approval" || action.draft)));
+    } else {
+      setApprovalDrawerOpen(false);
+    }
+  }, [selection]);
 
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
@@ -283,6 +296,17 @@ export default function HomePage() {
     <div className="h-full overflow-y-auto p-4">
       {!selection ? (
         <Placeholder title="Select an item to open details." />
+      ) : selection.type === "action" && approvalDrawerOpen ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
+          <p className="text-sm font-medium text-gray-700">Review in drawer</p>
+          <p className="text-xs text-gray-500">The approval drawer is open. Close it to view details here.</p>
+          <button
+            onClick={() => setApprovalDrawerOpen(false)}
+            className="button-secondary text-sm"
+          >
+            Close drawer
+          </button>
+        </div>
       ) : selection.type === "action" ? (
         <ActionDetail actionId={selection.id} onToast={addToast} onComplete={completeAndReset} />
       ) : selection.type === "commitment" ? (
@@ -311,6 +335,19 @@ export default function HomePage() {
         assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
       />
       <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
+      {selection?.type === "action" && selectedAction ? (
+        <ApprovalDrawer
+          open={approvalDrawerOpen}
+          onClose={() => setApprovalDrawerOpen(false)}
+          title={selectedAction.title}
+        >
+          <ActionDetail
+            actionId={selection.id}
+            onToast={addToast}
+            onComplete={completeAndReset}
+          />
+        </ApprovalDrawer>
+      ) : null}
       <ToastViewport toasts={toasts} />
     </>
   );
