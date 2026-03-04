@@ -82,6 +82,21 @@ export default function HomePage() {
     return actions.filter((_, idx) => idx % 2 === 0); // stub: pretend alternate items match the selected fund
   }, [activeFundId]);
 
+  /** Sort by urgency: approval first, then overdue, then blocked, then in_progress */
+  const sortedActionItems = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const urgencyOrder = { approval: 0, blocked: 1, in_progress: 2 };
+    return [...filteredActions].sort((a, b) => {
+      const aOverdue = a.dueDate ? a.dueDate < today : false;
+      const bOverdue = b.dueDate ? b.dueDate < today : false;
+      const aScore = urgencyOrder[a.status as keyof typeof urgencyOrder] ?? 3;
+      const bScore = urgencyOrder[b.status as keyof typeof urgencyOrder] ?? 3;
+      if (aScore !== bScore) return aScore - bScore;
+      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+      return 0;
+    });
+  }, [filteredActions]);
+
   const filteredCommitments = useMemo(() => {
     if (activeFundId === "all") return commitments;
     return commitments.filter((_, idx) => idx % 2 === 1);
@@ -224,15 +239,23 @@ export default function HomePage() {
         {/* Existing content: What needs your attention, Coming up */}
         <TodayGroup
           title="What needs your attention"
-          items={filteredActions.slice(0, 6).map((a, idx) => ({
-            id: a.id,
-            title: a.title,
-            meta: a.trigger,
-            extra: idx % 2 === 0 ? "Due today • draft ready" : "Fresh evidence added",
-            type: "action" as const,
-            status: a.status,
-            date: idx % 2 === 0 ? "Updated yesterday" : "As of today",
-          }))}
+          items={sortedActionItems.slice(0, 6).map((a) => {
+            const today = new Date().toISOString().slice(0, 10);
+            const isOverdue = a.dueDate ? a.dueDate < today : false;
+            const chips: string[] = [];
+            if (a.status === "approval") chips.push("Needs approval");
+            if (isOverdue) chips.push("Overdue");
+            return {
+              id: a.id,
+              title: a.title,
+              meta: a.trigger,
+              extra: a.draft ? "Draft ready" : "Fresh evidence added",
+              type: "action" as const,
+              status: a.status,
+              date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
+              chips: chips.length ? chips : undefined,
+            };
+          })}
           activeId={selection?.type === "action" ? selection.id : undefined}
           onSelect={(id) => setSelection({ type: "action", id })}
           dense={!selection}
@@ -451,7 +474,16 @@ function TodayGroup({
   dense = false,
 }: {
   title: string;
-  items: { id: string; title: string; meta: string; type: "action" | "commitment" | "brief"; status?: string; extra?: string; date?: string }[];
+  items: {
+    id: string;
+    title: string;
+    meta: string;
+    type: "action" | "commitment" | "brief";
+    status?: string;
+    extra?: string;
+    date?: string;
+    chips?: string[];
+  }[];
   onSelect: (id: string) => void;
   activeId?: string;
   dense?: boolean;
@@ -469,12 +501,19 @@ function TodayGroup({
             }`}
           >
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">{item.title}</p>
                 <p className="text-xs text-gray-600">{item.meta}</p>
-                {!dense && item.extra ? <p className="text-[11px] text-gray-500">{item.extra}</p> : null}
+                {item.chips?.length ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {item.chips.map((chip) => (
+                      <UrgencyChip key={chip} kind={chip} />
+                    ))}
+                  </div>
+                ) : null}
+                {!dense && item.extra ? <p className="mt-0.5 text-[11px] text-gray-500">{item.extra}</p> : null}
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex shrink-0 flex-col items-end gap-1">
                 {item.status ? <StatusPill status={item.status} /> : null}
                 {item.date ? <span className="text-[11px] text-gray-500">{item.date}</span> : null}
               </div>
@@ -499,6 +538,20 @@ function StatusPill({ status }: { status: string }) {
       ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
       : "bg-blue-50 text-blue-700";
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{map[status] ?? status}</span>;
+}
+
+function UrgencyChip({ kind }: { kind: string }) {
+  const styles =
+    kind === "Needs approval"
+      ? "bg-amber-50 text-amber-800 border-amber-200"
+      : kind === "Overdue"
+      ? "bg-red-50 text-red-800 border-red-200"
+      : "bg-gray-100 text-gray-700 border-gray-200";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${styles}`}>
+      {kind}
+    </span>
+  );
 }
 
 function ActionDetail({

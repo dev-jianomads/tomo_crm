@@ -57,6 +57,8 @@ export type ActionItem = {
   draft?: string;
   autoApproveType?: boolean; // UI preference only (mock)
   activityLog: { id: string; ts: string; actor: "TOMO" | "User"; summary: string }[];
+  /** ISO date string (YYYY-MM-DD) for overdue detection */
+  dueDate?: string;
 };
 
 export type Commitment = {
@@ -158,6 +160,7 @@ export const actions: ActionItem[] = [
     evidence: ["Deck v4 ready", "Last touch 3d ago", "Momentum trending up"],
     type: "outreach",
     draft: "Hi Alex — quick pulse on Q4 performance and next steps for your allocation...",
+    dueDate: "2025-03-04",
     activityLog: [
       { id: "al1", ts: "Today 09:10", actor: "TOMO", summary: "Drafted outreach v1" },
       { id: "al2", ts: "Today 09:12", actor: "TOMO", summary: "Suggested send time tomorrow 9am ET" },
@@ -171,6 +174,7 @@ export const actions: ActionItem[] = [
     evidence: ["Opened deck 3 times", "Last reply 9d ago", "No meeting booked"],
     type: "scheduling",
     suggestedUpdates: ["Propose 30m next Tuesday", "Offer async summary if scheduling fails"],
+    dueDate: "2025-03-02",
     activityLog: [
       { id: "al3", ts: "Yesterday 15:04", actor: "TOMO", summary: "Sent scheduling options" },
       { id: "al4", ts: "Today 08:20", actor: "TOMO", summary: "No response yet" },
@@ -184,6 +188,7 @@ export const actions: ActionItem[] = [
     evidence: ["No reply after 2 follow-ups", "Opened performance note once", "Stall risk rising"],
     type: "crm_update",
     suggestedUpdates: ["Interest: Q4 allocation", "Next step: send performance data", "Stall risk: High"],
+    dueDate: "2025-03-01",
     activityLog: [
       { id: "al5", ts: "Today 07:55", actor: "TOMO", summary: "Flagged stall risk" },
       { id: "al6", ts: "Today 08:10", actor: "User", summary: "Marked as blocked" },
