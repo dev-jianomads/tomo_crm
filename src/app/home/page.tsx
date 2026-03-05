@@ -742,9 +742,9 @@ function ActionDetail({
           {action.workflowPlaybookId ? (
             <button
               onClick={() => router.push(`/workflows?playbook=${action.workflowPlaybookId}`)}
-              className="button-secondary text-xs"
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition tomo-ai-bg hover:bg-[#ff8b79]"
             >
-              View workflow
+              → workflow
             </button>
           ) : null}
           <StatusPill status={action.status} />

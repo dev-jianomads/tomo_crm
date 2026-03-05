@@ -92,8 +92,8 @@ export function ContextDrawer({
           </div>
         </div>
 
-        {/* Section 3: Tomo Chat — fixed height, always visible */}
-        <div className="shrink-0 border-t border-gray-100 p-4">
+        {/* Section 3: Tomo Chat — fixed height, always visible, never overlaps Section 4 */}
+        <div className="flex h-[252px] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4">
           {section3Content ?? (
             <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
               Tomo chat (coming soon)
