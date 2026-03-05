@@ -61,8 +61,8 @@ export default function HomePage() {
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
 
-  // Top/bottom split ratio (25–75%), persisted
-  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 50);
+  // Top/bottom split ratio (25–75%), persisted. Default 70% for chatbox (slider up).
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
@@ -250,19 +250,19 @@ export default function HomePage() {
               Daily Brief
             </button>
           </div>
-          <div className="min-h-[200px] flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="min-h-[200px] flex-1 overflow-hidden">
             <TomoChatInline />
           </div>
         </div>
 
-        {/* Resize handle */}
+        {/* Resize handle - no border, minimal */}
         <div
           role="separator"
           aria-label="Resize top and bottom sections"
-          className={`flex shrink-0 cursor-row-resize items-center justify-center border-y border-gray-200 bg-gray-50 py-1 hover:bg-gray-100 ${draggingSplit ? "bg-gray-100" : ""}`}
+          className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
           onMouseDown={() => setDraggingSplit(true)}
         >
-          <div className="h-1 w-12 rounded-full bg-gray-300" />
+          <div className="h-1 w-12 rounded-full bg-gray-200" />
         </div>
 
         {/* Bottom: attention | coming up */}
