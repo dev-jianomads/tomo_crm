@@ -203,7 +203,7 @@ export default function HomePage() {
   }, [session?.email]);
 
   const listContent = (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* No page header: global header provides context; Daily Brief inline with greeting to save vertical space */}
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Top half: Tomo chat UI */}
@@ -225,67 +225,73 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Bottom half: What needs your attention, Coming up, Suggested workflows */}
-        <div className="flex-1 overflow-auto px-4 py-3">
-          <div className="space-y-4">
-            {/* Suggested workflow cards - click navigates to /workflows */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
-                  <button
-                    key={playbook.id}
-                    onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-                    className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
-                  >
-                    <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
-                    <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
-                    {playbook.targetCount != null && playbook.targetCount > 0 ? (
-                      <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
+        {/* Bottom half: fixed height, no main scroll. Side-by-side: attention | coming up */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
+          {/* Suggested workflows - compact row */}
+          <div className="shrink-0 space-y-2 pb-3">
+            <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
+                <button
+                  key={playbook.id}
+                  onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
+                  className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
+                >
+                  <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
+                  <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
+                  {playbook.targetCount != null && playbook.targetCount > 0 ? (
+                    <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
+                  ) : null}
+                </button>
+              ))}
             </div>
+          </div>
 
-            <TodayGroup
-              title="What needs your attention"
-              items={sortedActionItems.slice(0, 6).map((a) => {
-                const today = new Date().toISOString().slice(0, 10);
-                const isOverdue = a.dueDate ? a.dueDate < today : false;
-                const chips: string[] = [];
-                if (a.status === "approval") chips.push("Needs approval");
-                if (isOverdue) chips.push("Overdue");
-                return {
-                  id: a.id,
-                  title: a.title,
-                  meta: a.trigger,
-                  extra: a.draft ? "Draft ready" : "Fresh evidence added",
-                  type: "action" as const,
-                  status: a.status,
-                  date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
-                  chips: chips.length ? chips : undefined,
-                };
-              })}
-              activeId={selection?.type === "action" ? selection.id : undefined}
-              onSelect={(id) => setSelection({ type: "action", id })}
-              dense={!selection}
-            />
-
-            <TodayGroup
-              title="Coming up"
-              items={sortedCommitments.map((c) => ({
-                id: c.id,
-                title: c.title,
-                meta: `${c.datetime} • ${c.lp}`,
-                extra: c.window === "today" ? "Happening today" : "Within 72h",
-                type: "commitment" as const,
-                date: c.datetime,
-              }))}
-              activeId={selection?.type === "commitment" ? selection.id : undefined}
-              onSelect={(id) => setSelection({ type: "commitment", id })}
-              dense={!selection}
-            />
+          {/* Side-by-side: What needs your attention | Coming up */}
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex min-h-0 flex-col overflow-hidden">
+              <TodayGroup
+                title="What needs your attention"
+                items={sortedActionItems.slice(0, 6).map((a) => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  const isOverdue = a.dueDate ? a.dueDate < today : false;
+                  const chips: string[] = [];
+                  if (a.status === "approval") chips.push("Needs approval");
+                  if (isOverdue) chips.push("Overdue");
+                  return {
+                    id: a.id,
+                    title: a.title,
+                    meta: a.trigger,
+                    extra: a.draft ? "Draft ready" : "Fresh evidence added",
+                    type: "action" as const,
+                    status: a.status,
+                    date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
+                    chips: chips.length ? chips : undefined,
+                  };
+                })}
+                activeId={selection?.type === "action" ? selection.id : undefined}
+                onSelect={(id) => setSelection({ type: "action", id })}
+                dense={!selection}
+                scrollable
+              />
+            </div>
+            <div className="flex min-h-0 flex-col overflow-hidden">
+              <TodayGroup
+                title="Coming up"
+                items={sortedCommitments.map((c) => ({
+                  id: c.id,
+                  title: c.title,
+                  meta: `${c.datetime} • ${c.lp}`,
+                  extra: c.window === "today" ? "Happening today" : "Within 72h",
+                  type: "commitment" as const,
+                  date: c.datetime,
+                }))}
+                activeId={selection?.type === "commitment" ? selection.id : undefined}
+                onSelect={(id) => setSelection({ type: "commitment", id })}
+                dense={!selection}
+                scrollable
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -509,6 +515,7 @@ function TodayGroup({
   onSelect,
   activeId,
   dense = false,
+  scrollable = false,
 }: {
   title: string;
   items: {
@@ -524,11 +531,12 @@ function TodayGroup({
   onSelect: (id: string) => void;
   activeId?: string;
   dense?: boolean;
+  scrollable?: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-base font-semibold accent-title">{title}</p>
-      <div className="space-y-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <p className="shrink-0 text-base font-semibold accent-title">{title}</p>
+      <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto" : ""}`}>
         {items.map((item) => (
           <button
             key={item.id}

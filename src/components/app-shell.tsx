@@ -337,7 +337,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
             <div className="flex flex-1 gap-0">
               {/* List panel (contacts list, briefs list, etc.) */}
               <section
-                className="flex-shrink-0 border-r border-gray-200"
+                className="flex min-h-0 flex-shrink-0 flex-col overflow-hidden border-r border-gray-200"
                 style={{ width: detailVisible ? `calc(${middleWidth}% - 8px)` : "calc(100% - 8px)" }}
               >
                 {listContent}
