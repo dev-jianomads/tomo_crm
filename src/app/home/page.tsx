@@ -26,21 +26,28 @@ type TodaySelection =
   | null;
 
 /**
- * Inline Tomo AI chat - reuses the same TomoAssistant from the dock.
- * User can type, send, and Tomo AI replies with mock responses.
+ * Inline Tomo AI chat - minimal prompt-only view for Today page.
+ * No chips, no initial message; centered, half-width.
  */
 function TomoChatInline() {
   const tomo = useTomoChat();
   if (!tomo) return null;
+  const messagesWithoutGreeting = tomo.messages.filter(
+    (m) => m.text !== "What can I help you with today?"
+  );
   return (
-    <div className="flex h-full min-h-[280px] flex-col rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-      <TomoAssistant
-        messages={tomo.messages}
-        onSend={tomo.onSend}
-        suggestions={tomo.suggestions}
-        contextLabel={tomo.contextLabel}
-        placeholder="Ask anything..."
-      />
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden">
+      <div className="flex h-full w-full max-w-[50%] min-w-[240px] flex-col px-4">
+        <div className="flex h-full flex-col overflow-hidden">
+          <TomoAssistant
+            messages={messagesWithoutGreeting}
+            onSend={tomo.onSend}
+            suggestions={[]}
+            contextLabel={tomo.contextLabel}
+            placeholder="Ask anything..."
+          />
+        </div>
+      </div>
     </div>
   );
 }

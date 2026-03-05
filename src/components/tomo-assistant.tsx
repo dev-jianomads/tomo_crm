@@ -129,7 +129,7 @@ export function TomoAssistant({
   return (
     <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white">
       {/* Header with context indicator */}
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
         <div>
           <p className="text-sm font-medium text-gray-900">TOMO AI</p>
           {/* 
@@ -155,8 +155,8 @@ export function TomoAssistant({
         </div>
       ) : null}
 
-      {/* Message list */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+      {/* Message list - min-h-0 allows shrinking so input stays visible */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
             <div
@@ -184,8 +184,8 @@ export function TomoAssistant({
         <div ref={endRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-gray-200 px-3 py-3">
+      {/* Input area - shrink-0 so prompt stays visible when container is resized */}
+      <div className="shrink-0 border-t border-gray-200 px-3 py-3">
         <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <input
             value={input}
