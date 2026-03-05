@@ -32,7 +32,7 @@ function TomoChatInline() {
   const tomo = useTomoChat();
   if (!tomo) return null;
   return (
-    <div className="min-h-[400px] rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="flex h-full min-h-[280px] flex-col rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
       <TomoAssistant
         messages={tomo.messages}
         onSend={tomo.onSend}
@@ -204,90 +204,90 @@ export default function HomePage() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-base font-semibold accent-title">Today</p>
-          <div className="flex items-center gap-2">
-            <button className="button-secondary" onClick={() => setShowDailyBrief(true)}>
+      {/* No page header: global header provides context; Daily Brief inline with greeting to save vertical space */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Top half: Tomo chat UI */}
+        <div className="flex min-h-0 shrink-0 flex-col border-b border-gray-200 bg-white px-4 py-3 lg:min-h-[50%]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold text-gray-900">
+              {greeting}, {userName}.
+            </h1>
+            <button
+              className="button-secondary shrink-0 text-sm"
+              onClick={() => setShowDailyBrief(true)}
+              aria-label="Open Daily Brief"
+            >
               Daily Brief
             </button>
-            <img src="/tomo-logo.png" alt="Tomo logo" className="h-8 w-8 rounded" />
           </div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
-        {/* Welcome + Tomo chatbox at top - center aligned */}
-        <div className="space-y-3 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {greeting}, {userName}.
-          </h1>
-          <div className="flex justify-center">
-            <div className="w-full max-w-2xl">
-              <TomoChatInline />
-            </div>
-          </div>
-
-          {/* Suggested workflow cards - click navigates to /workflows */}
-          <div className="space-y-2 text-left">
-            <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
-                <button
-                  key={playbook.id}
-                  onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-                  className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
-                >
-                  <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
-                  <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
-                  {playbook.targetCount != null && playbook.targetCount > 0 ? (
-                    <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
+          <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <TomoChatInline />
           </div>
         </div>
 
-        {/* Existing content: What needs your attention, Coming up */}
-        <TodayGroup
-          title="What needs your attention"
-          items={sortedActionItems.slice(0, 6).map((a) => {
-            const today = new Date().toISOString().slice(0, 10);
-            const isOverdue = a.dueDate ? a.dueDate < today : false;
-            const chips: string[] = [];
-            if (a.status === "approval") chips.push("Needs approval");
-            if (isOverdue) chips.push("Overdue");
-            return {
-              id: a.id,
-              title: a.title,
-              meta: a.trigger,
-              extra: a.draft ? "Draft ready" : "Fresh evidence added",
-              type: "action" as const,
-              status: a.status,
-              date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
-              chips: chips.length ? chips : undefined,
-            };
-          })}
-          activeId={selection?.type === "action" ? selection.id : undefined}
-          onSelect={(id) => setSelection({ type: "action", id })}
-          dense={!selection}
-        />
+        {/* Bottom half: What needs your attention, Coming up, Suggested workflows */}
+        <div className="flex-1 overflow-auto px-4 py-3">
+          <div className="space-y-4">
+            {/* Suggested workflow cards - click navigates to /workflows */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
+                  <button
+                    key={playbook.id}
+                    onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
+                    className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
+                  >
+                    <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
+                    <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
+                    {playbook.targetCount != null && playbook.targetCount > 0 ? (
+                      <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <TodayGroup
-          title="Coming up"
-          items={sortedCommitments.map((c) => ({
-            id: c.id,
-            title: c.title,
-            meta: `${c.datetime} • ${c.lp}`,
-            extra: c.window === "today" ? "Happening today" : "Within 72h",
-            type: "commitment" as const,
-            date: c.datetime,
-          }))}
-          activeId={selection?.type === "commitment" ? selection.id : undefined}
-          onSelect={(id) => setSelection({ type: "commitment", id })}
-          dense={!selection}
-        />
+            <TodayGroup
+              title="What needs your attention"
+              items={sortedActionItems.slice(0, 6).map((a) => {
+                const today = new Date().toISOString().slice(0, 10);
+                const isOverdue = a.dueDate ? a.dueDate < today : false;
+                const chips: string[] = [];
+                if (a.status === "approval") chips.push("Needs approval");
+                if (isOverdue) chips.push("Overdue");
+                return {
+                  id: a.id,
+                  title: a.title,
+                  meta: a.trigger,
+                  extra: a.draft ? "Draft ready" : "Fresh evidence added",
+                  type: "action" as const,
+                  status: a.status,
+                  date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
+                  chips: chips.length ? chips : undefined,
+                };
+              })}
+              activeId={selection?.type === "action" ? selection.id : undefined}
+              onSelect={(id) => setSelection({ type: "action", id })}
+              dense={!selection}
+            />
+
+            <TodayGroup
+              title="Coming up"
+              items={sortedCommitments.map((c) => ({
+                id: c.id,
+                title: c.title,
+                meta: `${c.datetime} • ${c.lp}`,
+                extra: c.window === "today" ? "Happening today" : "Within 72h",
+                type: "commitment" as const,
+                date: c.datetime,
+              }))}
+              activeId={selection?.type === "commitment" ? selection.id : undefined}
+              onSelect={(id) => setSelection({ type: "commitment", id })}
+              dense={!selection}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
