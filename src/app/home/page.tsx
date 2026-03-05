@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { ApprovalDrawer } from "@/components/approval-drawer";
+import { ContextDrawer } from "@/components/context-drawer";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -113,6 +113,23 @@ export default function HomePage() {
   const selectedAction = selection?.type === "action" ? actions.find((a) => a.id === selection.id) : null;
   const selectedCommitment = selection?.type === "commitment" ? commitments.find((c) => c.id === selection.id) : null;
   const selectedBrief = selection?.type === "brief" ? briefs.find((b) => b.id === selection.id) : null;
+
+  const getActivityLogEntries = useCallback(() => {
+    if (!selection) return [];
+    if (selection.type === "action") {
+      const a = actions.find((x) => x.id === selection.id);
+      return (a?.activityLog ?? []).map((e) => ({ id: e.id, ts: e.ts, actor: e.actor, summary: e.summary }));
+    }
+    if (selection.type === "commitment") {
+      return [
+        { ts: "Yesterday 3:20 PM", actor: "User" as const, summary: "Call — Discussed allocation timing and next steps." },
+        { ts: "Tue 11:00 AM", actor: "User" as const, summary: "Meeting — Reviewed Q4 results; asked for updated deck." },
+        { ts: "Mon 9:05 AM", actor: "User" as const, summary: "Email — Shared performance snapshot + follow-up agenda." },
+      ];
+    }
+    if (selection.type === "brief") return [];
+    return [];
+  }, [selection]);
 
   const filteredActions = useMemo(() => {
     if (activeFundId === "all") return actions;
@@ -336,28 +353,36 @@ export default function HomePage() {
         assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
       />
       <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
-      <ApprovalDrawer
+      <ContextDrawer
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
         title={selectedTitle ?? "Details"}
-      >
-        {selection?.type === "action" ? (
-          <ActionDetail
-            actionId={selection.id}
-            onToast={addToast}
-            onComplete={closeDrawerAndReset}
-          />
-        ) : selection?.type === "commitment" ? (
-          <CommitmentDetail
-            commitment={selectedCommitment}
-            brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
-            onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
-            onCreateAction={() => router.push("/activity")}
-          />
-        ) : selection?.type === "brief" ? (
-          <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
-        ) : null}
-      </ApprovalDrawer>
+        section1Content={
+          selection?.type === "action" ? (
+            <ActionDetail
+              actionId={selection.id}
+              onToast={addToast}
+              onComplete={closeDrawerAndReset}
+              detailsOnly
+            />
+          ) : selection?.type === "commitment" ? (
+            <CommitmentDetail
+              commitment={selectedCommitment}
+              brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
+              onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
+              onCreateAction={() => router.push("/activity")}
+              detailsOnly
+            />
+          ) : selection?.type === "brief" ? (
+            <BriefDetail
+              brief={selectedBrief}
+              onCreateAction={() => router.push("/activity")}
+              detailsOnly
+            />
+          ) : null
+        }
+        section4Entries={getActivityLogEntries()}
+      />
       <ToastViewport toasts={toasts} />
     </>
   );
@@ -633,10 +658,12 @@ function ActionDetail({
   actionId,
   onToast,
   onComplete,
+  detailsOnly = false,
 }: {
   actionId: string;
   onToast: (message: string) => void;
   onComplete: () => void;
+  detailsOnly?: boolean;
 }) {
   const router = useRouter();
   const action = actions.find((a) => a.id === actionId);
@@ -709,7 +736,7 @@ function ActionDetail({
         </ul>
       </div>
 
-      {action.draft ? (
+      {detailsOnly ? null : action.draft ? (
         <div className="space-y-2 rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -732,7 +759,7 @@ function ActionDetail({
         </div>
       ) : null}
 
-      {action.suggestedUpdates?.length ? (
+      {detailsOnly ? null : action.suggestedUpdates?.length ? (
         isCrmUpdate ? (
           <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
             <div className="flex items-center justify-between">
@@ -836,6 +863,7 @@ function ActionDetail({
         )
       ) : null}
 
+      {detailsOnly ? null : (
       <div className="flex flex-wrap gap-2">
         {isScheduling ? (
           <button
@@ -865,8 +893,9 @@ function ActionDetail({
           </>
         )}
       </div>
+      )}
 
-      {isScheduling && showAvailability ? (
+      {detailsOnly ? null : isScheduling && showAvailability ? (
         <div className="space-y-3 rounded-md border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800">
           <div className="flex items-center justify-between">
             <p className="font-medium text-gray-900">Weekly availability</p>
@@ -938,8 +967,9 @@ function ActionDetail({
         </div>
       ) : null}
 
-      <SuggestedWorkflows />
+      {detailsOnly ? null : <SuggestedWorkflows />}
 
+      {detailsOnly ? null : (
       <div className="space-y-1 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
         <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Activity log</p>
         {action.activityLog.slice(-5).map((log) => (
@@ -950,6 +980,7 @@ function ActionDetail({
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -959,11 +990,13 @@ function CommitmentDetail({
   brief,
   onOpenBrief,
   onCreateAction,
+  detailsOnly = false,
 }: {
   commitment: { id: string; title: string; datetime: string; lp: string } | undefined | null;
   brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
   onCreateAction: () => void;
+  detailsOnly?: boolean;
 }) {
   if (!commitment) return <Placeholder title="No commitment selected" />;
   return (
@@ -976,16 +1009,19 @@ function CommitmentDetail({
           <p className="text-sm text-gray-600">{commitment.lp}</p>
         </div>
       </div>
-      <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
-        <div className="flex items-center justify-between">
-          <p className="font-medium text-gray-900">Meeting prep</p>
-          <TomoAiBadge label="Tomo insight" />
-        </div>
-        <p className="text-sm tomo-ai-text">Keep the next move tight and confirm owner.</p>
-      </div>
-      {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
-      <SuggestedWorkflows />
-      <MockActivityBox />
+      {detailsOnly ? null : (
+        <>
+          <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-gray-900">Meeting prep</p>
+              <TomoAiBadge label="Tomo insight" />
+            </div>
+            <p className="text-sm tomo-ai-text">Keep the next move tight and confirm owner.</p>
+          </div>
+          {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
+          <SuggestedWorkflows />
+        </>
+      )}
     </div>
   );
 }
@@ -995,11 +1031,13 @@ function BriefDetail({
   onCreateAction,
   onOpenBrief,
   compact = false,
+  detailsOnly = false,
 }: {
   brief: (typeof briefs)[number] | null | undefined;
   onCreateAction: () => void;
   onOpenBrief?: (id: string) => void;
   compact?: boolean;
+  detailsOnly?: boolean;
 }) {
   if (!brief) return <Placeholder title="No brief selected" />;
   return (
@@ -1014,59 +1052,63 @@ function BriefDetail({
         </div>
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{brief.status}</span>
       </div>
-      <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-        <div className="flex items-center justify-between">
-          <p className="font-medium text-gray-900">Summary</p>
-          <TomoAiBadge label="Tomo summary" />
-        </div>
-        <p className="text-sm tomo-ai-text">{brief.summary}</p>
-      </div>
-      {!compact ? (
+      {detailsOnly ? null : (
         <>
           <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
             <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Agenda</p>
-              <TomoAiBadge label="Tomo draft" />
+              <p className="font-medium text-gray-900">Summary</p>
+              <TomoAiBadge label="Tomo summary" />
             </div>
-            <ul className="mt-1 space-y-1 tomo-ai-text">
-              {brief.agenda.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm tomo-ai-text">{brief.summary}</p>
           </div>
-          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Commitments</p>
-              <TomoAiBadge label="Tomo draft" />
-            </div>
-            <ul className="mt-1 space-y-1 tomo-ai-text">
-              {brief.commitments.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+          {!compact ? (
+            <>
+              <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-gray-900">Agenda</p>
+                  <TomoAiBadge label="Tomo draft" />
+                </div>
+                <ul className="mt-1 space-y-1 tomo-ai-text">
+                  {brief.agenda.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-gray-900">Commitments</p>
+                  <TomoAiBadge label="Tomo draft" />
+                </div>
+                <ul className="mt-1 space-y-1 tomo-ai-text">
+                  {brief.commitments.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+          {!compact ? <SuggestedWorkflows /> : null}
+          <div className="flex flex-wrap gap-2">
+            <button className="button-primary" onClick={onCreateAction}>
+              Create follow-up action
+            </button>
+            <button className="button-secondary" onClick={onCreateAction}>
+              Draft email
+            </button>
+            {onOpenBrief ? (
+              <button className="button-secondary" onClick={() => onOpenBrief(brief.id)}>
+                Open full brief
+              </button>
+            ) : null}
           </div>
         </>
-      ) : null}
-      {!compact ? <SuggestedWorkflows /> : null}
-      <div className="flex flex-wrap gap-2">
-        <button className="button-primary" onClick={onCreateAction}>
-          Create follow-up action
-        </button>
-        <button className="button-secondary" onClick={onCreateAction}>
-          Draft email
-        </button>
-        {onOpenBrief ? (
-          <button className="button-secondary" onClick={() => onOpenBrief(brief.id)}>
-            Open full brief
-          </button>
-        ) : null}
-      </div>
+      )}
     </div>
   );
 }
