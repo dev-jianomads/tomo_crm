@@ -29,7 +29,7 @@ export const suggestedPlaybooks: Playbook[] = [
     description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent.",
     summary: "Intro tracker: Detect intro → log source credit → draft reply 24h → escalate if silent. Draft only.",
     enabled: true,
-    targetCount: 3,
+    targetCount: 1,
     targetFilters: { tier: "Tier 1", stage: "Heating" },
   },
   {
@@ -39,7 +39,7 @@ export const suggestedPlaybooks: Playbook[] = [
     description: "Pull transcript, draft follow-up, require human approval before sending.",
     summary: "Post-meeting: Extract transcript → draft follow-up → human approval → send & monitor. Draft only.",
     enabled: true,
-    targetCount: 8,
+    targetCount: 1,
     targetFilters: { tier: "Tier 1-2", stage: "Active" },
   },
   {
