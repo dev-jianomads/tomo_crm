@@ -6,7 +6,7 @@
  * - Cross-link to Materials/Briefs for prep and Actions for execution
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ApprovalDrawer } from "@/components/approval-drawer";
@@ -17,6 +17,7 @@ import { actions, briefs, commitments } from "@/lib/mockData";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
+import { usePersistentState } from "@/lib/storage";
 
 type TodaySelection =
   | { type: "action"; id: string }
@@ -52,6 +53,34 @@ export default function HomePage() {
   const [showDailyBrief, setShowDailyBrief] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
+
+  // Top/bottom split ratio (25–75%), persisted
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 50);
+  const [draggingSplit, setDraggingSplit] = useState(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!draggingSplit) return;
+    const handleMove = (e: MouseEvent) => {
+      const el = splitContainerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const newRatio = ((e.clientY - rect.top) / rect.height) * 100;
+      const clamped = Math.min(75, Math.max(25, newRatio));
+      setSplitRatio(clamped);
+    };
+    const stop = () => setDraggingSplit(false);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", stop);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", stop);
+    };
+  }, [draggingSplit, setSplitRatio]);
 
   const addToast = (message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -192,10 +221,16 @@ export default function HomePage() {
 
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* No page header: global header provides context; Daily Brief inline with greeting to save vertical space */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* Top half: Tomo chat UI */}
-        <div className="flex min-h-0 shrink-0 flex-col border-b border-gray-200 bg-white px-4 py-3 lg:min-h-[50%]">
+      {/* Resizable top/bottom split */}
+      <div
+        ref={splitContainerRef}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        {/* Top: Tomo chat UI */}
+        <div
+          className="flex min-h-[160px] min-w-0 flex-col overflow-hidden bg-white px-4 py-3"
+          style={{ flex: `${splitRatio} 1 0` }}
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900">
               {greeting}, {userName}.
@@ -208,13 +243,26 @@ export default function HomePage() {
               Daily Brief
             </button>
           </div>
-          <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="min-h-[200px] flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <TomoChatInline />
           </div>
         </div>
 
-        {/* Bottom half: fixed height, no main scroll. Side-by-side: attention | coming up */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
+        {/* Resize handle */}
+        <div
+          role="separator"
+          aria-label="Resize top and bottom sections"
+          className={`flex shrink-0 cursor-row-resize items-center justify-center border-y border-gray-200 bg-gray-50 py-1 hover:bg-gray-100 ${draggingSplit ? "bg-gray-100" : ""}`}
+          onMouseDown={() => setDraggingSplit(true)}
+        >
+          <div className="h-1 w-12 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Bottom: attention | coming up */}
+        <div
+          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
+          style={{ flex: `${100 - splitRatio} 1 0` }}
+        >
           {/* Side-by-side: What needs your attention | Coming up */}
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-h-0 flex-col overflow-hidden">
