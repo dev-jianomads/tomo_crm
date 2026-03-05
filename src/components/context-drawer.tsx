@@ -82,7 +82,7 @@ export function ContextDrawer({
           {/* Section 1: Content Details */}
           <div className="border-b border-gray-100 p-4">{section1Content}</div>
 
-          {/* Section 2: Tomo Assistance (placeholder) */}
+          {/* Section 2: Tomo Assistance */}
           <div className="border-b border-gray-100 p-4">
             {section2Content ?? (
               <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center text-xs text-gray-500">
@@ -90,15 +90,15 @@ export function ContextDrawer({
               </div>
             )}
           </div>
+        </div>
 
-          {/* Section 3: Tomo Chat (placeholder) */}
-          <div className="p-4">
-            {section3Content ?? (
-              <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/50 px-4 py-8 text-center text-xs text-gray-500">
-                Tomo chat (coming soon)
-              </div>
-            )}
-          </div>
+        {/* Section 3: Tomo Chat — fixed height, always visible */}
+        <div className="shrink-0 border-t border-gray-100 p-4">
+          {section3Content ?? (
+            <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
+              Tomo chat (coming soon)
+            </div>
+          )}
         </div>
 
         {/* Section 4: Activity Log — fixed at bottom */}

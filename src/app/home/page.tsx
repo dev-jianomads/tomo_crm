@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoAssistance } from "@/components/drawer-section-2-tomo-assistance";
+import { DrawerSection3TomoChat } from "@/components/drawer-section-3-tomo-chat";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -397,6 +398,15 @@ export default function HomePage() {
                 return <DrawerSection2TomoAssistance blocks={assistance.blocks} />;
               })()
             : null
+        }
+        section3Content={
+          selection ? (
+            <DrawerSection3TomoChat
+              suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
+              contextLabel={selectedTitle ?? undefined}
+              entityKey={selection.id}
+            />
+          ) : null
         }
         section4Entries={getActivityLogEntries()}
       />
