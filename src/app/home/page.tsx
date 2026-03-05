@@ -255,23 +255,23 @@ export default function HomePage() {
                 items={sortedActionItems.slice(0, 6).map((a) => {
                   const today = new Date().toISOString().slice(0, 10);
                   const isOverdue = a.dueDate ? a.dueDate < today : false;
-                  const chips: string[] = [];
-                  if (a.status === "approval") chips.push("Needs approval");
-                  if (isOverdue) chips.push("Overdue");
+                  const pills: string[] = [];
+                  if (a.status === "approval") pills.push("Needs approval");
+                  else if (a.status === "in_progress") pills.push("In progress");
+                  else if (a.status === "blocked") pills.push("Blocked");
+                  if (isOverdue) pills.push("Overdue");
+                  if (a.draft) pills.push("Draft ready");
                   return {
                     id: a.id,
                     title: a.title,
                     meta: a.trigger,
-                    extra: a.draft ? "Draft ready" : "Fresh evidence added",
+                    extra: undefined,
                     type: "action" as const,
-                    status: a.status,
-                    date: a.dueDate === today ? "Due today" : a.dueDate && a.dueDate < today ? "Past due" : "As of today",
-                    chips: chips.length ? chips : undefined,
+                    pills,
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "action", id })}
-                dense={!selection}
                 scrollable
               />
             </div>
@@ -282,13 +282,12 @@ export default function HomePage() {
                   id: c.id,
                   title: c.title,
                   meta: `${c.datetime} • ${c.lp}`,
-                  extra: c.window === "today" ? "Happening today" : "Within 72h",
+                  extra: undefined,
                   type: "commitment" as const,
-                  date: c.datetime,
+                  pills: c.window === "today" ? ["Happening today"] : ["Within 72h"],
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "commitment", id })}
-                dense={!selection}
                 scrollable
               />
             </div>
@@ -514,7 +513,6 @@ function TodayGroup({
   items,
   onSelect,
   activeId,
-  dense = false,
   scrollable = false,
 }: {
   title: string;
@@ -523,10 +521,8 @@ function TodayGroup({
     title: string;
     meta: string;
     type: "action" | "commitment" | "brief";
-    status?: string;
     extra?: string;
-    date?: string;
-    chips?: string[];
+    pills: string[];
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -545,24 +541,19 @@ function TodayGroup({
               activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                <p className="text-xs text-gray-600">{item.meta}</p>
-                {item.chips?.length ? (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {item.chips.map((chip) => (
-                      <UrgencyChip key={chip} kind={chip} />
-                    ))}
-                  </div>
-                ) : null}
-                {!dense && item.extra ? <p className="mt-0.5 text-[11px] text-gray-500">{item.extra}</p> : null}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                {item.status ? <StatusPill status={item.status} /> : null}
-                {item.date ? <span className="text-[11px] text-gray-500">{item.date}</span> : null}
-              </div>
+            {/* Row 1: title (left) | pills (right) */}
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
+              {item.pills.length > 0 ? (
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  {item.pills.map((pill) => (
+                    <UrgencyChip key={pill} kind={pill} />
+                  ))}
+                </div>
+              ) : null}
             </div>
+            {/* Row 2: meta (left) */}
+            <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
           </button>
         ))}
       </div>
@@ -591,9 +582,17 @@ function UrgencyChip({ kind }: { kind: string }) {
       ? "bg-amber-50 text-amber-800 border-amber-200"
       : kind === "Overdue"
       ? "bg-red-50 text-red-800 border-red-200"
+      : kind === "Blocked"
+      ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)] border-[color:var(--peach)]"
+      : kind === "In progress"
+      ? "bg-blue-50 text-blue-700 border-blue-200"
+      : kind === "Draft ready"
+      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+      : kind === "Happening today" || kind === "Within 72h"
+      ? "bg-gray-100 text-gray-700 border-gray-200"
       : "bg-gray-100 text-gray-700 border-gray-200";
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${styles}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${styles}`}>
       {kind}
     </span>
   );
