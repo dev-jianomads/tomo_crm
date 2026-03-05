@@ -215,26 +215,6 @@ export default function HomePage() {
 
         {/* Bottom half: fixed height, no main scroll. Side-by-side: attention | coming up */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
-          {/* Suggested workflows - compact row */}
-          <div className="shrink-0 space-y-2 pb-3">
-            <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2).map((playbook) => (
-                <button
-                  key={playbook.id}
-                  onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-                  className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
-                >
-                  <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
-                  <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
-                  {playbook.targetCount != null && playbook.targetCount > 0 ? (
-                    <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Side-by-side: What needs your attention | Coming up */}
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-h-0 flex-col overflow-hidden">
@@ -544,6 +524,32 @@ function StatusPill({ status }: { status: string }) {
       ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
       : "bg-blue-50 text-blue-700";
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{map[status] ?? status}</span>;
+}
+
+function SuggestedWorkflows() {
+  const router = useRouter();
+  const playbooks = suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2);
+  if (!playbooks.length) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {playbooks.map((playbook) => (
+          <button
+            key={playbook.id}
+            onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
+            className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
+          >
+            <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
+            <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
+            {playbook.targetCount != null && playbook.targetCount > 0 ? (
+              <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function UrgencyChip({ kind }: { kind: string }) {
@@ -866,6 +872,8 @@ function ActionDetail({
         </div>
       ) : null}
 
+      <SuggestedWorkflows />
+
       <div className="space-y-1 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
         <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Activity log</p>
         {action.activityLog.slice(-5).map((log) => (
@@ -910,6 +918,7 @@ function CommitmentDetail({
         <p className="text-sm tomo-ai-text">Keep the next move tight and confirm owner.</p>
       </div>
       {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
+      <SuggestedWorkflows />
       <MockActivityBox />
     </div>
   );
@@ -978,6 +987,7 @@ function BriefDetail({
           </div>
         </>
       ) : null}
+      {!compact ? <SuggestedWorkflows /> : null}
       <div className="flex flex-wrap gap-2">
         <button className="button-primary" onClick={onCreateAction}>
           Create follow-up action
