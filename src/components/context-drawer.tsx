@@ -59,7 +59,7 @@ export function ContextDrawer({
 
       {/* Drawer panel */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
@@ -93,9 +93,9 @@ export function ContextDrawer({
         </div>
 
         {/* Section 3: Tomo Chat — fixed height, always visible, never overlaps Section 4 */}
-        <div className="flex h-[252px] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4">
+        <div className="flex h-[312px] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4">
           {section3Content ?? (
-            <div className="flex h-[220px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
+            <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
               Tomo chat (coming soon)
             </div>
           )}

@@ -73,13 +73,14 @@ export function DrawerSection3TomoChat({ suggestions, contextLabel, entityKey }:
   const displaySuggestions = suggestions.length ? suggestions : FALLBACK_SUGGESTIONS;
 
   return (
-    <div className="h-[220px] min-h-[220px] shrink-0">
+    <div className="h-[280px] min-h-[280px] shrink-0">
       <TomoAssistant
         messages={messages}
         onSend={onSend}
         suggestions={displaySuggestions}
         contextLabel={contextLabel}
         placeholder="Ask about this card..."
+        hideSuggestionsWhenActive
       />
     </div>
   );

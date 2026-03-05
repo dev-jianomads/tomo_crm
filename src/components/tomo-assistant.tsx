@@ -85,6 +85,8 @@ type TomoAssistantProps = {
   suggestions?: string[];
   contextLabel?: string;
   placeholder?: string;
+  /** When true, hide suggestion chips once conversation has started (frees space for chat) */
+  hideSuggestionsWhenActive?: boolean;
 };
 
 /**
@@ -110,6 +112,7 @@ export function TomoAssistant({
   suggestions = [],
   contextLabel,
   placeholder = "Ask TOMO anything…",
+  hideSuggestionsWhenActive = false,
 }: TomoAssistantProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -140,8 +143,8 @@ export function TomoAssistant({
         </div>
       </div>
 
-      {/* Quick suggestion chips */}
-      {suggestions.length ? (
+      {/* Quick suggestion chips — collapse when active to give chat more space */}
+      {suggestions.length && !(hideSuggestionsWhenActive && messages.length > 0) ? (
         <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
           {suggestions.map((chip) => (
             <button
