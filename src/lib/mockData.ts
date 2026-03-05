@@ -59,6 +59,8 @@ export type ActionItem = {
   activityLog: { id: string; ts: string; actor: "TOMO" | "User"; summary: string }[];
   /** ISO date string (YYYY-MM-DD) for overdue detection */
   dueDate?: string;
+  /** Link to workflow playbook — shows "View workflow" in drawer */
+  workflowPlaybookId?: string;
 };
 
 export type Commitment = {
@@ -153,6 +155,21 @@ export const relationships: Relationship[] = [
 
 export const actions: ActionItem[] = [
   {
+    id: "a3",
+    title: "Update CRM: Lumen interest and next step",
+    status: "blocked",
+    trigger: "No response in 5d",
+    evidence: ["No reply after 2 follow-ups", "Opened performance note once", "Stall risk rising"],
+    type: "crm_update",
+    suggestedUpdates: ["Stall risk: Rising", "Status: Blocked"],
+    dueDate: "2025-03-01",
+    activityLog: [
+      { id: "al5", ts: "5d ago", actor: "User", summary: "Initial reach out" },
+      { id: "al6", ts: "2d ago", actor: "User", summary: "Follow-up" },
+    ],
+    workflowPlaybookId: "pb-no-response-stall",
+  },
+  {
     id: "a1",
     title: "Approve outreach to Northwind on Q4 performance",
     status: "approval",
@@ -178,20 +195,6 @@ export const actions: ActionItem[] = [
     activityLog: [
       { id: "al3", ts: "Yesterday 15:04", actor: "TOMO", summary: "Sent scheduling options" },
       { id: "al4", ts: "Today 08:20", actor: "TOMO", summary: "No response yet" },
-    ],
-  },
-  {
-    id: "a3",
-    title: "Update CRM: Lumen interest and next step",
-    status: "blocked",
-    trigger: "No response after 2 touches in 10d",
-    evidence: ["No reply after 2 follow-ups", "Opened performance note once", "Stall risk rising"],
-    type: "crm_update",
-    suggestedUpdates: ["Interest: Q4 allocation", "Next step: send performance data", "Stall risk: High"],
-    dueDate: "2025-03-01",
-    activityLog: [
-      { id: "al5", ts: "Today 07:55", actor: "TOMO", summary: "Flagged stall risk" },
-      { id: "al6", ts: "Today 08:10", actor: "User", summary: "Marked as blocked" },
     ],
   },
 ];

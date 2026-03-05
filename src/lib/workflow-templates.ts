@@ -48,6 +48,17 @@ const UPDATE_FOLLOWUP: WorkflowDefinition = {
   ],
 };
 
+const NO_RESPONSE_STALL: WorkflowDefinition = {
+  title: "No Response → Re-engage",
+  trigger: "No response in 5d",
+  steps: [
+    { name: "Flag as Blocked", type: "action", description: "Mark LP as blocked, add to attention list" },
+    { name: "Suggest CRM Updates", type: "action", description: "Propose stall risk, status updates — user applies via Tomo chat" },
+    { name: "Set Reminder", type: "action", description: "Set a 3-day reminder to re-engage" },
+    { name: "Wait", type: "wait", duration: "Until user re-engages", description: "User applies updates, sets reminder, then re-contacts LP" },
+  ],
+};
+
 const DDQ_RESPONSE: WorkflowDefinition = {
   title: "DDQ Response Engine",
   trigger: "DDQ received from Rachel Novak (Oakmont)",
@@ -63,6 +74,7 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
   intro_tracker: INTRO_TRACKER,
   post_meeting: POST_MEETING,
   update_followup: UPDATE_FOLLOWUP,
+  no_response_stall: NO_RESPONSE_STALL,
   ddq_response: DDQ_RESPONSE,
 };
 
@@ -87,6 +99,12 @@ export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {
     "Add a call scheduling step for high-engagement LPs",
     "Skip LPs who already replied to the update",
   ],
+  no_response_stall: [
+    "Change trigger to 3 days",
+    "Add step to draft re-engagement email",
+    "Skip CRM update for Tier 2 LPs",
+    "Add Slack notification when LP goes silent",
+  ],
   ddq_response: [
     "Flag all legal sections for manual review",
     "Add a step to cross-check Fund III data",
@@ -110,6 +128,10 @@ const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
     `Monthly update sent to 24 LPs 3 days ago.\n` +
     `Marcus Chen (Blueridge Ventures) opened 4x but no reply. ` +
     `12 LPs opened, 6 haven't opened yet. 2 follow-up drafts queued.`,
+  no_response_stall:
+    `Lumen LP: No response after 2 touches (5d ago, 2d ago).\n` +
+    `Workflow flagged as blocked. CRM updates suggested (stall risk, status). ` +
+    `Set a 3-day reminder to re-engage. Card visible in Today.`,
   ddq_response:
     `1 active DDQ in progress.\n` +
     `Rachel Novak (Oakmont Fund of Funds) sent a 47-question DDQ 2 days ago. ` +

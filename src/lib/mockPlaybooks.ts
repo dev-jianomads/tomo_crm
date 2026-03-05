@@ -5,7 +5,7 @@
 
 import type { TargetFilter } from "./targets";
 
-export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response";
+export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response" | "no_response_stall";
 
 export type Playbook = {
   id: string;
@@ -50,6 +50,16 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Update follow-up: Segment by tier → track opens → auto-draft after 5d. Draft only.",
     enabled: true,
     targetCount: 24,
+    targetFilters: { tier: "Tier 1-2" },
+  },
+  {
+    id: "pb-no-response-stall",
+    name: "No Response → Re-engage",
+    type: "no_response_stall",
+    description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+    summary: "No response 5d: Flag blocked → suggest CRM updates → set reminder. Links to Today card.",
+    enabled: true,
+    targetCount: 1,
     targetFilters: { tier: "Tier 1-2" },
   },
   {

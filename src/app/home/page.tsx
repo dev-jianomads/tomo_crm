@@ -119,10 +119,10 @@ export default function HomePage() {
     return actions.filter((_, idx) => idx % 2 === 0); // stub: pretend alternate items match the selected fund
   }, [activeFundId]);
 
-  /** Sort by urgency: approval first, then overdue, then blocked, then in_progress */
+  /** Sort by urgency: blocked first, then approval, then in_progress (CRM update card before Northwind) */
   const sortedActionItems = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const urgencyOrder = { approval: 0, blocked: 1, in_progress: 2 };
+    const urgencyOrder = { blocked: 0, approval: 1, in_progress: 2 };
     return [...filteredActions].sort((a, b) => {
       const aOverdue = a.dueDate ? a.dueDate < today : false;
       const bOverdue = b.dueDate ? b.dueDate < today : false;
@@ -638,6 +638,7 @@ function ActionDetail({
   onToast: (message: string) => void;
   onComplete: () => void;
 }) {
+  const router = useRouter();
   const action = actions.find((a) => a.id === actionId);
   const [showAvailability, setShowAvailability] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -683,7 +684,17 @@ function ActionDetail({
           <h3 className="text-lg font-semibold accent-title">{crmTitle}</h3>
           <p className="text-sm text-gray-600">Why: {action.trigger}</p>
         </div>
-        <StatusPill status={action.status} />
+        <div className="flex items-center gap-2">
+          {action.workflowPlaybookId ? (
+            <button
+              onClick={() => router.push(`/workflows?playbook=${action.workflowPlaybookId}`)}
+              className="button-secondary text-xs"
+            >
+              View workflow
+            </button>
+          ) : null}
+          <StatusPill status={action.status} />
+        </div>
       </div>
 
       <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
