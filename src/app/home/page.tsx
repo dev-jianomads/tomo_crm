@@ -50,7 +50,6 @@ export default function HomePage() {
   const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [showDailyBrief, setShowDailyBrief] = useState(false);
-  const [approvalDrawerOpen, setApprovalDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
 
@@ -62,21 +61,10 @@ export default function HomePage() {
     }, 5000);
   };
 
-  const completeAndReset = () => {
+  const closeDrawerAndReset = () => {
     setSelection(null);
-    setApprovalDrawerOpen(false);
     router.replace("/home");
   };
-
-  // Open approval drawer when selecting an action that needs approval or has a draft
-  useEffect(() => {
-    if (selection?.type === "action") {
-      const action = actions.find((a) => a.id === selection.id);
-      setApprovalDrawerOpen(Boolean(action && (action.status === "approval" || action.draft)));
-    } else {
-      setApprovalDrawerOpen(false);
-    }
-  }, [selection]);
 
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
@@ -297,35 +285,8 @@ export default function HomePage() {
     </div>
   );
 
-  const detailContent = (
-    <div className="h-full overflow-y-auto p-4">
-      {!selection ? (
-        <Placeholder title="Select an item to open details." />
-      ) : selection.type === "action" && approvalDrawerOpen ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
-          <p className="text-sm font-medium text-gray-700">Review in drawer</p>
-          <p className="text-xs text-gray-500">The approval drawer is open. Close it to view details here.</p>
-          <button
-            onClick={() => setApprovalDrawerOpen(false)}
-            className="button-secondary text-sm"
-          >
-            Close drawer
-          </button>
-        </div>
-      ) : selection.type === "action" ? (
-        <ActionDetail actionId={selection.id} onToast={addToast} onComplete={completeAndReset} />
-      ) : selection.type === "commitment" ? (
-        <CommitmentDetail
-          commitment={selectedCommitment}
-          brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
-          onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
-          onCreateAction={() => router.push("/activity")}
-        />
-      ) : selection.type === "brief" ? (
-        <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
-      ) : null}
-    </div>
-  );
+  // Detail column hidden on Today; all detail views use fly-in drawer instead
+  const detailContent = <div className="h-full" aria-hidden="true" />;
 
   if (!ready) return null;
 
@@ -335,24 +296,33 @@ export default function HomePage() {
         section="home"
         listContent={listContent}
         detailContent={detailContent}
-        detailVisible={Boolean(selection)}
+        detailVisible={false}
         contextTitle={selectedTitle}
         assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
       />
       <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
-      {selection?.type === "action" && selectedAction ? (
-        <ApprovalDrawer
-          open={approvalDrawerOpen}
-          onClose={() => setApprovalDrawerOpen(false)}
-          title={selectedAction.title}
-        >
+      <ApprovalDrawer
+        open={Boolean(selection)}
+        onClose={closeDrawerAndReset}
+        title={selectedTitle ?? "Details"}
+      >
+        {selection?.type === "action" ? (
           <ActionDetail
             actionId={selection.id}
             onToast={addToast}
-            onComplete={completeAndReset}
+            onComplete={closeDrawerAndReset}
           />
-        </ApprovalDrawer>
-      ) : null}
+        ) : selection?.type === "commitment" ? (
+          <CommitmentDetail
+            commitment={selectedCommitment}
+            brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
+            onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
+            onCreateAction={() => router.push("/activity")}
+          />
+        ) : selection?.type === "brief" ? (
+          <BriefDetail brief={selectedBrief} onCreateAction={() => router.push("/activity")} />
+        ) : null}
+      </ApprovalDrawer>
       <ToastViewport toasts={toasts} />
     </>
   );
