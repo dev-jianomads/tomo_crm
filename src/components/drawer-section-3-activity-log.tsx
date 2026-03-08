@@ -11,10 +11,10 @@ export type ActivityLogEntry = {
 };
 
 /**
- * Section 4: Activity log at bottom of drawer.
+ * Section 3: Activity log at bottom of drawer.
  * Accordion — collapsed by default to free vertical space for other sections.
  */
-export function DrawerSection4ActivityLog({ entries }: { entries: ActivityLogEntry[] }) {
+export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEntry[] }) {
   const [expanded, setExpanded] = useState(false);
 
   if (!entries.length) return null;

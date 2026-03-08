@@ -10,13 +10,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
-import { DrawerSection2TomoAssistance } from "@/components/drawer-section-2-tomo-assistance";
-import { DrawerSection3TomoChat } from "@/components/drawer-section-3-tomo-chat";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import { actions, briefs, commitments } from "@/lib/mockData";
-import { getTomoAssistance } from "@/lib/mockTomoAssistance";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
@@ -384,31 +381,7 @@ export default function HomePage() {
             />
           ) : null
         }
-        section2Content={
-          selection
-            ? (() => {
-                const assistance = getTomoAssistance(selection.id);
-                if (!assistance?.blocks.length) {
-                  return (
-                    <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center text-xs text-gray-500">
-                      No suggestions yet
-                    </div>
-                  );
-                }
-                return <DrawerSection2TomoAssistance blocks={assistance.blocks} />;
-              })()
-            : null
-        }
-        section3Content={
-          selection ? (
-            <DrawerSection3TomoChat
-              suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
-              contextLabel={selectedTitle ?? undefined}
-              entityKey={selection.id}
-            />
-          ) : null
-        }
-        section4Entries={getActivityLogEntries()}
+        section3Entries={getActivityLogEntries()}
       />
       <ToastViewport toasts={toasts} />
     </>

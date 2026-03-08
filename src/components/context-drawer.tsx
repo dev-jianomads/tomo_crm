@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { DrawerSection4ActivityLog, type ActivityLogEntry } from "./drawer-section-4-activity-log";
+import { DrawerSection3ActivityLog, type ActivityLogEntry } from "./drawer-section-3-activity-log";
 
 export type DrawerSelection =
   | { type: "action"; id: string }
@@ -16,16 +16,14 @@ type ContextDrawerProps = {
   title?: string;
   /** Section 1: Content details (entity header, evidence, metadata) */
   section1Content: ReactNode;
-  /** Section 2: Tomo assistance (placeholder for Phase 2) */
+  /** Section 2: Tomo Chat (Phase 2 — placeholder for now) */
   section2Content?: ReactNode;
-  /** Section 3: Tomo chat (placeholder for Phase 3) */
-  section3Content?: ReactNode;
-  /** Section 4: Activity log entries */
-  section4Entries: ActivityLogEntry[];
+  /** Section 3: Activity log entries */
+  section3Entries: ActivityLogEntry[];
 };
 
 /**
- * 4-section contextual drawer: Content Details → Tomo Assistance → Tomo Chat → Activity Log.
+ * 3-section contextual drawer: Content Details → Tomo Chat → Activity Log.
  * Slides in from the right. Mobile: side fly-in (same as desktop).
  */
 export function ContextDrawer({
@@ -34,8 +32,7 @@ export function ContextDrawer({
   title = "Details",
   section1Content,
   section2Content,
-  section3Content,
-  section4Entries,
+  section3Entries,
 }: ContextDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -77,32 +74,22 @@ export function ContextDrawer({
           </button>
         </div>
 
-        {/* Sections 1 & 2: scroll together */}
+        {/* Section 1: Content Details — scrollable */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* Section 1: Content Details */}
           <div className="border-b border-gray-100 p-4">{section1Content}</div>
-
-          {/* Section 2: Tomo Assistance */}
-          <div className="border-b border-gray-100 p-4">
-            {section2Content ?? (
-              <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center text-xs text-gray-500">
-                Tomo assistance (coming soon)
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Section 3: Tomo Chat — fixed height, always visible, never overlaps Section 4 */}
+        {/* Section 2: Tomo Chat — fixed height, placeholder until Phase 2 */}
         <div className="flex h-[312px] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4">
-          {section3Content ?? (
+          {section2Content ?? (
             <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
               Tomo chat (coming soon)
             </div>
           )}
         </div>
 
-        {/* Section 4: Activity Log — fixed at bottom */}
-        <DrawerSection4ActivityLog entries={section4Entries} />
+        {/* Section 3: Activity Log — fixed at bottom */}
+        <DrawerSection3ActivityLog entries={section3Entries} />
       </aside>
     </>
   );
