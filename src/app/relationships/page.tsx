@@ -62,8 +62,43 @@ export default function RelationshipsPage() {
     };
   }, [draggingSplit, setSplitRatio]);
 
+  const [tomoPrompt, setTomoPrompt] = useState("");
+
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  /** Parse natural language and apply to filters (Option A: client-side heuristic) */
+  const applyTomoPrompt = () => {
+    const text = tomoPrompt.trim().toLowerCase();
+    if (!text) return;
+    setTomoPrompt("");
+    const updates: Partial<FilterState> = {};
+    // Band
+    if (/\b(cooling|cool)\b/.test(text)) updates.band = "Cooling";
+    else if (/\b(heating|heat(?:ing)?\s*up)\b/.test(text)) updates.band = "Heating Up";
+    else if (/\b(stalled|stall)\b/.test(text)) updates.band = "Stalled";
+    else if (/\b(active[- ]?stable|stable|active)\b/.test(text)) updates.band = "Active-Stable";
+    // Momentum trend
+    if (/\b(high\s+momentum|momentum\s+up|heating\s+up)\b/.test(text)) updates.momentumTrend = "Up";
+    else if (/\b(low\s+momentum|momentum\s+down|cooling)\b/.test(text)) updates.momentumTrend = "Down";
+    else if (/\b(flat|steady|stable\s+momentum)\b/.test(text)) updates.momentumTrend = "Flat";
+    else if (/\b(up|rising)\b/.test(text) && !updates.momentumTrend) updates.momentumTrend = "Up";
+    else if (/\b(down|falling)\b/.test(text) && !updates.momentumTrend) updates.momentumTrend = "Down";
+    // Velocity
+    if (/\b(fast|quick)\b/.test(text)) updates.velocity = "Fast";
+    else if (/\b(slow)\b/.test(text)) updates.velocity = "Slow";
+    else if (/\b(moderate|medium)\b/.test(text)) updates.velocity = "Moderate";
+    // Open loops
+    if (/\b(open\s+loops?|with\s+loops?|has\s+loops?|loops?\s+open)\b/.test(text)) updates.hasOpenLoops = true;
+    // Reset
+    if (/\b(clear|reset|show\s+all)\b/.test(text)) {
+      setFilters(DEFAULT_FILTERS);
+      return;
+    }
+    if (Object.keys(updates).length > 0) {
+      setFilters((prev) => ({ ...prev, ...updates }));
+    }
   };
 
   const filtered = useMemo(() => {
@@ -96,6 +131,24 @@ export default function RelationshipsPage() {
       >
         <p className="text-xs uppercase tracking-wide text-gray-500">Relationships</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex w-full min-w-[200px] flex-1 items-center gap-2 rounded-md border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/5 px-3 py-2 sm:max-w-[320px]">
+            <span className="text-[color:var(--accent)]" aria-hidden>✦</span>
+            <input
+              value={tomoPrompt}
+              onChange={(e) => setTomoPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && applyTomoPrompt()}
+              placeholder="Ask Tomo to filter: e.g. 'show cooling relationships' or 'high momentum LPs'"
+              className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+              aria-label="Natural language filter prompt"
+            />
+            <button
+              type="button"
+              onClick={applyTomoPrompt}
+              className="shrink-0 rounded px-2 py-1 text-xs font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent)]/10"
+            >
+              Apply
+            </button>
+          </div>
           <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 sm:max-w-[200px]">
             <input
               value={filters.query}
