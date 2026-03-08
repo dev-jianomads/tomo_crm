@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Bars3Icon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { relationships, Relationship } from "@/lib/mockData";
@@ -36,6 +37,7 @@ export default function RelationshipsPage() {
 
   // Top/bottom split ratio (20% filter header / 80% content default)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 20);
+  const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
@@ -224,30 +226,63 @@ export default function RelationshipsPage() {
         className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
         style={{ flex: `${100 - splitRatio} 1 0` }}
       >
-        <div className="flex-1 space-y-2 overflow-auto">
-          {filtered.map((rel) => (
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs text-gray-500">{filtered.length} relationship{filtered.length !== 1 ? "s" : ""}</span>
+          <div className="flex gap-1">
             <button
-              key={rel.id}
-              onClick={() => setActiveId(rel.id)}
-              className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                activeId === rel.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`rounded p-1.5 transition ${
+                viewMode === "list"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               }`}
+              aria-label="List view"
+              aria-pressed={viewMode === "list"}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold accent-title">{rel.name}</p>
-                  <p className="text-xs text-gray-600">{rel.firm}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
-                  {rel.openLoops ? <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">{rel.openLoops} emails</span> : null}
-                </div>
-              </div>
-              <p className="text-xs text-gray-600">Last: {rel.lastInteraction}</p>
-              <p className="text-xs text-gray-600">Next move: {rel.nextMove}</p>
+              <Bars3Icon className="h-4 w-4" />
             </button>
-          ))}
-          {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+            <button
+              type="button"
+              onClick={() => setViewMode("card")}
+              className={`rounded p-1.5 transition ${
+                viewMode === "card"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              }`}
+              aria-label="Card view"
+              aria-pressed={viewMode === "card"}
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {viewMode === "list" ? (
+            <div className="space-y-2">
+              {filtered.map((rel) => (
+                <RelationshipListItem
+                  key={rel.id}
+                  rel={rel}
+                  isActive={activeId === rel.id}
+                  onSelect={() => setActiveId(rel.id)}
+                />
+              ))}
+              {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 pb-2 md:grid-cols-3">
+              {filtered.map((rel) => (
+                <RelationshipCard
+                  key={rel.id}
+                  rel={rel}
+                  isActive={activeId === rel.id}
+                  onSelect={() => setActiveId(rel.id)}
+                />
+              ))}
+              {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -267,6 +302,78 @@ export default function RelationshipsPage() {
       contextTitle={active?.name}
       assistantChips={["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
     />
+  );
+}
+
+function RelationshipListItem({
+  rel,
+  isActive,
+  onSelect,
+}: {
+  rel: Relationship;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-full rounded-md border px-3 py-2 text-left transition ${
+        isActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold accent-title">{rel.name}</p>
+          <p className="text-xs text-gray-600">{rel.firm}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
+          {rel.openLoops ? (
+            <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">
+              {rel.openLoops} emails
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <p className="text-xs text-gray-600">Last: {rel.lastInteraction}</p>
+      <p className="text-xs text-gray-600">Next move: {rel.nextMove}</p>
+    </button>
+  );
+}
+
+function RelationshipCard({
+  rel,
+  isActive,
+  onSelect,
+}: {
+  rel: Relationship;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex flex-col rounded-md border px-3 py-3 text-left transition ${
+        isActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold accent-title">{rel.name}</p>
+          <p className="truncate text-xs text-gray-600">{rel.firm}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
+          {rel.openLoops ? (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700">
+              {rel.openLoops}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <p className="mt-2 line-clamp-1 text-xs text-gray-600">Last: {rel.lastInteraction}</p>
+      <p className="line-clamp-1 text-xs text-gray-600">Next: {rel.nextMove}</p>
+    </button>
   );
 }
 
