@@ -100,7 +100,7 @@ export function DrawerSection2TomoChat({
       {/* Messages area */}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
         {/* Tomo's initial message (static, always first) */}
-        {initialMessage ? <TomoMessageContent message={initialMessage} /> : null}
+        <TomoMessageContent message={initialMessage ?? { text: "What can I help you with?" }} />
 
         {/* AI conversation */}
         {messages.map((msg) => (

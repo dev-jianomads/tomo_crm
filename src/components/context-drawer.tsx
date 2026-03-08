@@ -10,13 +10,13 @@ export type DrawerSelection =
   | { type: "brief"; id: string }
   | null;
 
-type ContextDrawerProps = {
+export type ContextDrawerProps = {
   open: boolean;
   onClose: () => void;
   title?: string;
   /** Section 1: Content details (entity header, evidence, metadata) */
   section1Content: ReactNode;
-  /** Section 2: Tomo Chat (Phase 2 — placeholder for now) */
+  /** Section 2: Tomo Chat (initial message + AI conversation) */
   section2Content?: ReactNode;
   /** Section 3: Activity log entries */
   section3Entries: ActivityLogEntry[];
@@ -25,6 +25,7 @@ type ContextDrawerProps = {
 /**
  * 3-section contextual drawer: Content Details → Tomo Chat → Activity Log.
  * Slides in from the right. Mobile: side fly-in (same as desktop).
+ * Designed for reuse across Today, Relationships, Activity, Materials pages.
  */
 export function ContextDrawer({
   open,
@@ -74,12 +75,12 @@ export function ContextDrawer({
           </button>
         </div>
 
-        {/* Section 1: Content Details — scrollable */}
+        {/* Section 1: Content Details */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="border-b border-gray-100 p-4">{section1Content}</div>
         </div>
 
-        {/* Section 2: Tomo Chat — fixed height, placeholder until Phase 2 */}
+        {/* Section 2: Tomo Chat */}
         <div className="flex h-[312px] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4">
           {section2Content ?? (
             <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
@@ -88,7 +89,7 @@ export function ContextDrawer({
           )}
         </div>
 
-        {/* Section 3: Activity Log — fixed at bottom */}
+        {/* Section 3: Activity Log */}
         <DrawerSection3ActivityLog entries={section3Entries} />
       </aside>
     </>
