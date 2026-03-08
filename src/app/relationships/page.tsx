@@ -1,16 +1,45 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { relationships, Relationship } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
+import { usePersistentState } from "@/lib/storage";
 
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(() => relationships[0]?.id ?? null);
+
+  // Top/bottom split ratio (20% filter header / 80% content default)
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 20);
+  const [draggingSplit, setDraggingSplit] = useState(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!draggingSplit) return;
+    const handleMove = (e: MouseEvent) => {
+      const el = splitContainerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const newRatio = ((e.clientY - rect.top) / rect.height) * 100;
+      const clamped = Math.min(80, Math.max(20, newRatio));
+      setSplitRatio(clamped);
+    };
+    const stop = () => setDraggingSplit(false);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", stop);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", stop);
+    };
+  }, [draggingSplit, setSplitRatio]);
 
   const filtered = relationships.filter(
     (rel) => rel.name.toLowerCase().includes(query.toLowerCase()) || rel.firm.toLowerCase().includes(query.toLowerCase())
@@ -18,8 +47,12 @@ export default function RelationshipsPage() {
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
 
   const listContent = (
-    <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
+    <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Top: Filter header */}
+      <div
+        className="flex min-h-[80px] shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white px-4 py-3"
+        style={{ flex: `${splitRatio} 1 0` }}
+      >
         <p className="text-xs uppercase tracking-wide text-gray-500">Relationships</p>
         <div className="mt-3 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
           <input
@@ -31,43 +64,52 @@ export default function RelationshipsPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-auto px-4 py-3">
-        {filtered.map((rel) => (
-          <button
-            key={rel.id}
-            onClick={() => setActiveId(rel.id)}
-            className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              activeId === rel.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold accent-title">{rel.name}</p>
-                <p className="text-xs text-gray-600">{rel.firm}</p>
+      {/* Resize handle */}
+      <div
+        role="separator"
+        aria-label="Resize filter and content sections"
+        className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+        onMouseDown={() => setDraggingSplit(true)}
+      >
+        <div className="h-1 w-12 rounded-full bg-gray-200" />
+      </div>
+
+      {/* Bottom: Content area */}
+      <div
+        className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
+        style={{ flex: `${100 - splitRatio} 1 0` }}
+      >
+        <div className="flex-1 space-y-2 overflow-auto">
+          {filtered.map((rel) => (
+            <button
+              key={rel.id}
+              onClick={() => setActiveId(rel.id)}
+              className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                activeId === rel.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold accent-title">{rel.name}</p>
+                  <p className="text-xs text-gray-600">{rel.firm}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
+                  {rel.openLoops ? <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">{rel.openLoops} emails</span> : null}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
-                {rel.openLoops ? <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">{rel.openLoops} emails</span> : null}
-              </div>
-            </div>
-            <p className="text-xs text-gray-600">Last: {rel.lastInteraction}</p>
-            <p className="text-xs text-gray-600">Next move: {rel.nextMove}</p>
-          </button>
-        ))}
-        {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+              <p className="text-xs text-gray-600">Last: {rel.lastInteraction}</p>
+              <p className="text-xs text-gray-600">Next move: {rel.nextMove}</p>
+            </button>
+          ))}
+          {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+        </div>
       </div>
     </div>
   );
 
-  const detailContent = (
-    <div className="h-full overflow-auto p-4">
-      {!active ? (
-        <Placeholder title="Select a relationship to view the brief." />
-      ) : (
-        <RelationshipDetail relationship={active} />
-      )}
-    </div>
-  );
+  // Detail column hidden; drawer will be used in Phase 5
+  const detailContent = <div className="h-full" aria-hidden="true" />;
 
   if (!ready) return null;
 
@@ -76,6 +118,7 @@ export default function RelationshipsPage() {
       section="relationships"
       listContent={listContent}
       detailContent={detailContent}
+      detailVisible={false}
       contextTitle={active?.name}
       assistantChips={["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
     />
