@@ -5,12 +5,33 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { relationships, Relationship } from "@/lib/mockData";
+import type { MomentumTrend } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
+const BAND_OPTIONS = ["All", "Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
+const MOMENTUM_OPTIONS = ["All", "Up", "Flat", "Down"] as const;
+const VELOCITY_OPTIONS = ["All", "Fast", "Moderate", "Slow"] as const;
+
+type FilterState = {
+  query: string;
+  band: (typeof BAND_OPTIONS)[number];
+  momentumTrend: (typeof MOMENTUM_OPTIONS)[number];
+  velocity: (typeof VELOCITY_OPTIONS)[number];
+  hasOpenLoops: boolean | "all";
+};
+
+const DEFAULT_FILTERS: FilterState = {
+  query: "",
+  band: "All",
+  momentumTrend: "All",
+  velocity: "All",
+  hasOpenLoops: "all",
+};
+
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters", DEFAULT_FILTERS);
   const [activeId, setActiveId] = useState<string | null>(() => relationships[0]?.id ?? null);
 
   // Top/bottom split ratio (20% filter header / 80% content default)
@@ -41,26 +62,97 @@ export default function RelationshipsPage() {
     };
   }, [draggingSplit, setSplitRatio]);
 
-  const filtered = relationships.filter(
-    (rel) => rel.name.toLowerCase().includes(query.toLowerCase()) || rel.firm.toLowerCase().includes(query.toLowerCase())
-  );
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const filtered = useMemo(() => {
+    return relationships.filter((rel) => {
+      const matchesQuery =
+        !filters.query.trim() ||
+        rel.name.toLowerCase().includes(filters.query.toLowerCase()) ||
+        rel.firm.toLowerCase().includes(filters.query.toLowerCase());
+      const matchesBand = filters.band === "All" || rel.band === filters.band;
+      const matchesMomentum =
+        filters.momentumTrend === "All" ||
+        rel.momentumTrend === (filters.momentumTrend.toLowerCase() as MomentumTrend);
+      const matchesVelocity =
+        filters.velocity === "All" || rel.velocity === filters.velocity;
+      const matchesOpenLoops =
+        filters.hasOpenLoops === "all" ||
+        (filters.hasOpenLoops === true && rel.openLoops > 0) ||
+        (filters.hasOpenLoops === false && rel.openLoops === 0);
+      return matchesQuery && matchesBand && matchesMomentum && matchesVelocity && matchesOpenLoops;
+    });
+  }, [filters]);
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
 
   const listContent = (
     <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Top: Filter header */}
       <div
-        className="flex min-h-[80px] shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white px-4 py-3"
+        className="flex min-h-[80px] shrink-0 flex-col overflow-auto border-b border-gray-200 bg-white px-4 py-3"
         style={{ flex: `${splitRatio} 1 0` }}
       >
         <p className="text-xs uppercase tracking-wide text-gray-500">Relationships</p>
-        <div className="mt-3 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search relationships"
-            className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-          />
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 sm:max-w-[200px]">
+            <input
+              value={filters.query}
+              onChange={(e) => updateFilter("query", e.target.value)}
+              placeholder="Search name, firm"
+              className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+            />
+          </div>
+          <select
+            value={filters.band}
+            onChange={(e) => updateFilter("band", e.target.value as FilterState["band"])}
+            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
+          >
+            {BAND_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+          <div className="flex flex-wrap gap-1">
+            {MOMENTUM_OPTIONS.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() =>
+                  updateFilter("momentumTrend", filters.momentumTrend === opt ? "All" : opt)
+                }
+                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  filters.momentumTrend === opt
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+          <select
+            value={filters.velocity}
+            onChange={(e) => updateFilter("velocity", e.target.value as FilterState["velocity"])}
+            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
+          >
+            {VELOCITY_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              checked={filters.hasOpenLoops === true}
+              onChange={(e) => updateFilter("hasOpenLoops", e.target.checked ? true : "all")}
+              className="h-3.5 w-3.5 rounded border-gray-300"
+            />
+            Open loops
+          </label>
         </div>
       </div>
 
