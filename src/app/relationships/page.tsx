@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bars3Icon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
+import { ContextDrawer } from "@/components/context-drawer";
+import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
+import { getTomoAssistance } from "@/lib/mockTomoAssistance";
 import { relationships, Relationship } from "@/lib/mockData";
 import type { MomentumTrend } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
@@ -123,6 +126,20 @@ export default function RelationshipsPage() {
     });
   }, [filters]);
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
+
+  const activityLogEntries = useMemo(() => {
+    if (!activeId) return [];
+    return [
+      { id: "1", ts: "Yesterday 3:20 PM", actor: "User" as const, summary: "Call — Reviewed allocation timeline and updated next steps." },
+      { id: "2", ts: "Tue 11:00 AM", actor: "User" as const, summary: "Meeting — Walked through Q4 performance; asked for follow-up." },
+      { id: "3", ts: "Mon 9:05 AM", actor: "User" as const, summary: "Email — Sent performance snapshot + availability options." },
+    ];
+  }, [activeId]);
+
+  const drawerSelection = useMemo(
+    () => (activeId ? { type: "relationship" as const, id: activeId } : undefined),
+    [activeId]
+  );
 
   const listContent = (
     <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -288,20 +305,47 @@ export default function RelationshipsPage() {
     </div>
   );
 
-  // Detail column hidden; drawer will be used in Phase 5
+  // Detail column hidden; drawer used for selection
   const detailContent = <div className="h-full" aria-hidden="true" />;
 
   if (!ready) return null;
 
   return (
-    <AppShell
-      section="relationships"
-      listContent={listContent}
-      detailContent={detailContent}
-      detailVisible={false}
-      contextTitle={active?.name}
-      assistantChips={["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
-    />
+    <>
+      <AppShell
+        section="relationships"
+        listContent={listContent}
+        detailContent={detailContent}
+        detailVisible={false}
+        contextTitle={active?.name}
+        assistantChips={["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
+      />
+      <ContextDrawer
+        open={Boolean(activeId)}
+        onClose={() => setActiveId(null)}
+        title={active?.name ?? "Relationship"}
+        section1Content={
+          active ? (
+            <RelationshipDetail relationship={active} />
+          ) : (
+            <div className="text-sm text-gray-500">Select a relationship</div>
+          )
+        }
+        section2Content={
+          activeId ? (
+            <DrawerSection2TomoChat
+              initialMessage={getTomoAssistance(activeId)?.initialMessage}
+              suggestions={getTomoAssistance(activeId)?.suggestedPrompts ?? ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
+              contextLabel={active?.name}
+              entityKey={activeId}
+              selection={drawerSelection}
+              assistanceContext={getTomoAssistance(activeId)}
+            />
+          ) : undefined
+        }
+        section3Entries={activityLogEntries}
+      />
+    </>
   );
 }
 

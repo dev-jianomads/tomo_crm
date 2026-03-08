@@ -120,6 +120,48 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     },
     suggestedPrompts: ["Create follow-up action", "Draft email", "Open full brief"],
   },
+
+  // r1–r4: Relationships (Alex Morgan, Jamie Chen, Priya Desai, Samir Patel)
+  r1: {
+    initialMessage: {
+      text: "Northwind momentum is heating up. Good time to share the Q4 performance deck.",
+      blocks: [
+        { kind: "draft", content: "Hi Alex — quick pulse on Q4 performance and next steps for your allocation...", type: "email" },
+        { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
+      ],
+    },
+    suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
+  },
+  r2: {
+    initialMessage: {
+      text: "Peakline is stable; schedule the allocation review to keep momentum.",
+      blocks: [
+        { kind: "draft", content: "Hi Jamie — Tomo found a 30m slot next Tuesday. Want me to send the invite?", type: "invite" },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+      ],
+    },
+    suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
+  },
+  r3: {
+    initialMessage: {
+      text: "Lumen momentum is cooling — no reply in 14 days. Suggest a concise update to re-engage.",
+      blocks: [
+        { kind: "draft", content: "Hi Priya — brief Q4 snapshot and one question: still interested in the allocation window?", type: "email" },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+      ],
+    },
+    suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
+  },
+  r4: {
+    initialMessage: {
+      text: "Harborlight is stalled. Re-engage with a performance snapshot to test interest.",
+      blocks: [
+        { kind: "draft", content: "Hi Samir — Q4 performance snapshot attached. Happy to walk through when you have 15 minutes.", type: "email" },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+      ],
+    },
+    suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
+  },
 };
 
 export function getTomoAssistance(entityId: string): TomoAssistance | null {
