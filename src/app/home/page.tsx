@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
+import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
+import { getTomoAssistance } from "@/lib/mockTomoAssistance";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -380,6 +382,16 @@ export default function HomePage() {
               detailsOnly
             />
           ) : null
+        }
+        section2Content={
+          selection ? (
+            <DrawerSection2TomoChat
+              initialMessage={getTomoAssistance(selection.id)?.initialMessage}
+              suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
+              contextLabel={selectedTitle ?? undefined}
+              entityKey={selection.id}
+            />
+          ) : undefined
         }
         section3Entries={getActivityLogEntries()}
       />
