@@ -1,67 +1,72 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { TomoMessageContent } from "./tomo-message-content";
-import type { TomoInitialMessage } from "@/lib/mockTomoAssistance";
-import type { TomoMessage } from "@/lib/types";
+import type { TomoInitialMessage, TomoAssistance } from "@/lib/mockTomoAssistance";
 
 const FALLBACK_SUGGESTIONS = ["Explain why urgent", "Draft follow-up", "Propose times", "Create action"];
-
-function mockResponse(input: string, contextLabel?: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("apply") || lower.includes("approve")) return "Done. Updates applied.";
-  if (lower.includes("reject")) return "Rejected. I won't suggest this again for this card.";
-  if (lower.includes("reminder")) return "Reminder set for 3 days from now.";
-  if (lower.includes("explain")) return "Based on the evidence and engagement signals, this is the recommended next step.";
-  if (lower.includes("tone") || lower.includes("shorter")) return "Here's a revised version with that adjustment.";
-  if (lower.includes("workflow") || lower.includes("playbook")) return "This workflow runs when the trigger fires. You can edit it on the Workflows page.";
-  if (contextLabel) return `Pulling context on "${contextLabel}". Here's a concise next step.`;
-  return "Got it. I'll keep this in mind and suggest follow-ups.";
-}
 
 type DrawerSection2TomoChatProps = {
   initialMessage?: TomoInitialMessage;
   suggestions: string[];
   contextLabel?: string;
   entityKey: string;
+  selection?: { type: string; id: string };
+  assistanceContext?: TomoAssistance | null;
 };
 
 /**
- * Section 2: Tomo Chat — Tomo speaks first with initialMessage, then mock conversation.
- * Phase 3 replaces mock with useChat + Vercel AI SDK.
+ * Section 2: Tomo Chat — Tomo speaks first with initialMessage, then AI conversation via Vercel AI SDK.
  */
-export function DrawerSection2TomoChat({ initialMessage, suggestions, contextLabel, entityKey }: DrawerSection2TomoChatProps) {
-  const [messages, setMessages] = useState<TomoMessage[]>([]);
+export function DrawerSection2TomoChat({
+  initialMessage,
+  suggestions,
+  contextLabel,
+  entityKey,
+  selection,
+  assistanceContext,
+}: DrawerSection2TomoChatProps) {
   const [input, setInput] = useState("");
-  const entityKeyRef = useRef(entityKey);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/tomo/drawer-chat",
+        body: {
+          entityId: entityKey,
+          selection,
+          assistanceContext: assistanceContext ?? null,
+        },
+      }),
+    [entityKey, selection, assistanceContext]
+  );
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport,
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
 
   useEffect(() => {
-    entityKeyRef.current = entityKey;
     setMessages([]);
     setInput("");
-  }, [entityKey]);
+  }, [entityKey, setMessages]);
 
-  const handleSend = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      setInput("");
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-      const capturedKey = entityKeyRef.current;
-      const userMsg: TomoMessage = { id: crypto.randomUUID(), from: "user", text: trimmed, timestamp: Date.now() };
-      setMessages((prev) => [...prev, userMsg]);
-
-      setTimeout(() => {
-        if (entityKeyRef.current !== capturedKey) return;
-        setMessages((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), from: "tomo", text: mockResponse(trimmed, contextLabel), timestamp: Date.now() },
-        ]);
-      }, 400);
-    },
-    [contextLabel]
-  );
+  const handleSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isStreaming) return;
+    setInput("");
+    sendMessage({ text: trimmed });
+  };
 
   const displaySuggestions = suggestions.length ? suggestions : FALLBACK_SUGGESTIONS;
   const showChips = messages.length === 0;
@@ -83,7 +88,8 @@ export function DrawerSection2TomoChat({ initialMessage, suggestions, contextLab
             <button
               key={chip}
               onClick={() => handleSend(chip)}
-              className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              disabled={isStreaming}
+              className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
             >
               {chip}
             </button>
@@ -96,20 +102,25 @@ export function DrawerSection2TomoChat({ initialMessage, suggestions, contextLab
         {/* Tomo's initial message (static, always first) */}
         {initialMessage ? <TomoMessageContent message={initialMessage} /> : null}
 
-        {/* Conversation */}
+        {/* AI conversation */}
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[85%] rounded-lg border px-3 py-2 ${
-                msg.from === "user"
-                  ? "border-blue-200 bg-blue-50 text-gray-900"
-                  : "border-gray-200 bg-gray-50 text-gray-900"
-              }`}
-            >
-              <p className="whitespace-pre-line leading-relaxed text-sm">{msg.text}</p>
+          <ChatBubble key={msg.id} message={msg} />
+        ))}
+
+        {/* Streaming indicator */}
+        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+              </div>
             </div>
           </div>
-        ))}
+        )}
+
+        <div ref={endRef} />
       </div>
 
       {/* Input */}
@@ -125,16 +136,42 @@ export function DrawerSection2TomoChat({ initialMessage, suggestions, contextLab
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about this card..."
-            className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400"
+            disabled={isStreaming}
+            className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isStreaming}
             className="text-gray-400 transition hover:text-gray-600 disabled:opacity-30"
           >
             <PaperAirplaneIcon className="h-4 w-4" />
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ChatBubble({ message }: { message: UIMessage }) {
+  const isUser = message.role === "user";
+
+  const textContent = message.parts
+    ?.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join("") ?? "";
+
+  if (!textContent.trim()) return null;
+
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+          isUser
+            ? "border-blue-200 bg-blue-50 text-gray-900"
+            : "border-gray-200 bg-gray-50 text-gray-900"
+        }`}
+      >
+        <p className="whitespace-pre-line leading-relaxed text-sm">{textContent}</p>
       </div>
     </div>
   );

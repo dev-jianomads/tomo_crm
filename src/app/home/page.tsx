@@ -390,6 +390,8 @@ export default function HomePage() {
               suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
               contextLabel={selectedTitle ?? undefined}
               entityKey={selection.id}
+              selection={selection}
+              assistanceContext={getTomoAssistance(selection.id)}
             />
           ) : undefined
         }
