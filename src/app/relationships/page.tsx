@@ -629,11 +629,6 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
           <StatusField label="Next move" value={relationship.nextMove} />
         </div>
       </section>
-
-      {/* Recent Activity — accordion collapsed by default */}
-      <Accordion title="RECENT ACTIVITY">
-        <MockRecentActivityBoxContent />
-      </Accordion>
     </div>
   );
 }
@@ -674,44 +669,7 @@ function StatusField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Accordion({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-md border border-gray-200 bg-white">
-      <button className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-900" onClick={() => setOpen((v) => !v)}>
-        <div>
-          <p>{title}</p>
-          {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
-        </div>
-        <span className="text-xs text-gray-500">{open ? "Hide" : "Show"}</span>
-      </button>
-      {open ? <div className="border-t border-gray-100 px-3 py-2">{children}</div> : null}
-    </div>
-  );
-}
-
 function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
 }
 
-const RECENT_ACTIVITY_ITEMS = [
-  { ts: "Yesterday 3:20 PM", type: "Call", note: "Reviewed allocation timeline and updated next steps." },
-  { ts: "Tue 11:00 AM", type: "Meeting", note: "Walked through Q4 performance; asked for follow-up." },
-  { ts: "Mon 9:05 AM", type: "Email", note: "Sent performance snapshot + availability options." },
-];
-
-function MockRecentActivityBoxContent() {
-  return (
-    <div className="space-y-2">
-      {RECENT_ACTIVITY_ITEMS.map((item) => (
-        <div key={`${item.ts}-${item.type}`} className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-gray-900">{item.type}</p>
-            <p className="text-xs text-gray-600">{item.note}</p>
-          </div>
-          <span className="text-[11px] text-gray-500 whitespace-nowrap">{item.ts}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
