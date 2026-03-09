@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Bars3Icon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
@@ -422,39 +421,12 @@ function RelationshipCard({
 }
 
 function RelationshipDetail({ relationship }: { relationship: Relationship }) {
-  const router = useRouter();
-
-  const snapshot = useMemo(() => {
-    const direction =
-      relationship.momentumTrend === "up"
-        ? "Momentum is heating up"
-        : relationship.momentumTrend === "down"
-          ? "Momentum is cooling"
-          : "Momentum is steady";
-    const pace = `Pace feels ${relationship.velocity.toLowerCase()}.`;
-    const next = relationship.nextMove ? `Next to watch: ${relationship.nextMove}.` : "";
-    return `${direction}. ${pace} ${next}`.trim();
-  }, [relationship]);
-
   const stallRisk =
     relationship.band === "Stalled" || relationship.momentumTrend === "down"
       ? "High"
       : relationship.momentumTrend === "flat"
         ? "Medium"
         : "Low";
-  const openLoopItems = [
-    "Confirm timing for the next allocation step",
-    "Close the loop on the latest performance send",
-    "Re-affirm interest level before quarter-end",
-  ].slice(0, 3);
-
-  const keyChanges = [
-    "Momentum softened after no reply to last update.",
-    "Recent deck opens suggest renewed interest.",
-    "Meeting request sent; awaiting confirmation.",
-  ];
-
-  const materialsEngagement = "Mixed engagement; recent deck opens nudged momentum slightly up.";
 
   return (
     <div className="space-y-3">
@@ -470,16 +442,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         </div>
       </div>
 
-      {/* Section 1 — Current Snapshot */}
-      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold accent-title">Current snapshot</p>
-          <TomoAiBadge label="Tomo insight" />
-        </div>
-        <p className="mt-1 text-sm tomo-ai-text">{snapshot}</p>
-      </section>
-
-      {/* Section 2 — Relationship Status */}
+      {/* Relationship status — CRM facts only */}
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
         <p className="text-sm font-semibold accent-title">Relationship status</p>
         <div className="mt-2 grid gap-2 text-sm text-gray-800 sm:grid-cols-2">
@@ -490,51 +453,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         </div>
       </section>
 
-      {/* Section 3 — Open Emails */}
-      <section className="rounded-md border tomo-ai-border bg-white px-3 py-2">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold accent-title">Open Emails</p>
-        </div>
-        <div className="mt-1">
-          <TomoAiBadge label="Tomo suggestions" />
-        </div>
-        <ul className="mt-2 space-y-1 text-sm tomo-ai-text">
-          {openLoopItems.map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full tomo-ai-bg" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Section 4 — Key Changes Over Time */}
-      <Accordion title="KEY CHANGES OVER TIME">
-        <div className="mb-2">
-          <TomoAiBadge label="Tomo insight" />
-        </div>
-        <ul className="space-y-1 text-sm tomo-ai-text">
-          {keyChanges.map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-600" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </Accordion>
-
-      {/* Section 6 — Engagement with Materials */}
-      <Accordion title="Engagement with Materials">
-        <div className="mb-2">
-          <TomoAiBadge label="Tomo insight" />
-        </div>
-        <div className="text-sm tomo-ai-text">{materialsEngagement}</div>
-        <button className="mt-2 text-sm text-blue-700 hover:underline" onClick={() => router.push(`/materials?lp=${encodeURIComponent(relationship.name)}`)}>
-          View details
-        </button>
-      </Accordion>
-
-      {/* Section 7 — Recent Activity */}
+      {/* Recent Activity */}
       <MockRecentActivityBox />
     </div>
   );

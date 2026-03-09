@@ -7,7 +7,9 @@ export type TomoMessageBlock =
   | { kind: "crm_table"; rows: { field: string; current: string; update: string; reason: string }[] }
   | { kind: "draft"; content: string; type?: "email" | "invite" }
   | { kind: "brief"; summary?: string; agenda?: string[]; commitments?: string[] }
-  | { kind: "workflow_link"; playbookId: string; name: string; description: string };
+  | { kind: "workflow_link"; playbookId: string; name: string; description: string }
+  | { kind: "snapshot"; text: string }
+  | { kind: "open_emails"; items: string[] };
 
 export type TomoInitialMessage = {
   text: string;
@@ -122,10 +124,13 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   },
 
   // r1–r4: Relationships (Alex Morgan, Jamie Chen, Priya Desai, Samir Patel)
+  // Snapshot + Open emails merged into initial message (Section 2); Section 1 = CRM facts only
   r1: {
     initialMessage: {
       text: "Northwind momentum is heating up. Good time to share the Q4 performance deck.",
       blocks: [
+        { kind: "snapshot", text: "Momentum is heating up. Pace feels fast. Next to watch: Share Q4 performance deck." },
+        { kind: "open_emails", items: ["Confirm timing for the next allocation step", "Close the loop on the latest performance send", "Re-affirm interest level before quarter-end"] },
         { kind: "draft", content: "Hi Alex — quick pulse on Q4 performance and next steps for your allocation...", type: "email" },
         { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
       ],
@@ -136,6 +141,8 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     initialMessage: {
       text: "Peakline is stable; schedule the allocation review to keep momentum.",
       blocks: [
+        { kind: "snapshot", text: "Momentum is steady. Pace feels moderate. Next to watch: Schedule allocation review." },
+        { kind: "open_emails", items: ["Confirm timing for the next allocation step", "Close the loop on the latest performance send", "Re-affirm interest level before quarter-end"] },
         { kind: "draft", content: "Hi Jamie — Tomo found a 30m slot next Tuesday. Want me to send the invite?", type: "invite" },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
@@ -146,6 +153,8 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     initialMessage: {
       text: "Lumen momentum is cooling — no reply in 14 days. Suggest a concise update to re-engage.",
       blocks: [
+        { kind: "snapshot", text: "Momentum is cooling. Pace feels slow. Next to watch: Send concise update + ask for feedback." },
+        { kind: "open_emails", items: ["Confirm timing for the next allocation step", "Close the loop on the latest performance send", "Re-affirm interest level before quarter-end"] },
         { kind: "draft", content: "Hi Priya — brief Q4 snapshot and one question: still interested in the allocation window?", type: "email" },
         { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
@@ -156,6 +165,8 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     initialMessage: {
       text: "Harborlight is stalled. Re-engage with a performance snapshot to test interest.",
       blocks: [
+        { kind: "snapshot", text: "Momentum is cooling. Pace feels slow. Next to watch: Re-engage with performance snapshot." },
+        { kind: "open_emails", items: ["Confirm timing for the next allocation step", "Close the loop on the latest performance send", "Re-affirm interest level before quarter-end"] },
         { kind: "draft", content: "Hi Samir — Q4 performance snapshot attached. Happy to walk through when you have 15 minutes.", type: "email" },
         { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],

@@ -111,6 +111,28 @@ function BlockRenderer({
         </button>
       );
 
+    case "snapshot":
+      return (
+        <div className="rounded-md border border-gray-100 bg-white px-3 py-2 text-sm text-gray-700">
+          {block.text}
+        </div>
+      );
+
+    case "open_emails":
+      return (
+        <div className="rounded-md border border-gray-100 bg-white px-3 py-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Open emails to address</p>
+          <ul className="mt-2 space-y-1 text-sm text-gray-700">
+            {block.items.map((item) => (
+              <li key={item} className="flex items-start gap-2">
+                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+
     default:
       return null;
   }
