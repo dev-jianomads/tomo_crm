@@ -376,8 +376,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button to open Tomo - hidden on home & workflows (chat UI is inline there) */}
-      {section !== "home" && section !== "workflows" && (
+      {/* Floating action button to open Tomo - hidden on home, workflows, relationships (chat UI is inline or in drawer) */}
+      {section !== "home" && section !== "workflows" && section !== "relationships" && (
         <button
           onClick={() => setAssistantOpen(true)}
           className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
