@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bars3Icon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
@@ -32,6 +32,15 @@ const DEFAULT_FILTERS: FilterState = {
   hasOpenLoops: "all",
 };
 
+type SortColumn = "name" | "firm" | "momentum" | "last" | "next" | "emails";
+type SortDirection = "asc" | "desc";
+
+/** Parse "Xd ago" from lastInteraction for sort order (lower = more recent) */
+function parseDaysAgo(s: string): number {
+  const m = s.match(/(\d+)\s*d/);
+  return m ? parseInt(m[1], 10) : 999;
+}
+
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
   const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters", DEFAULT_FILTERS);
@@ -40,6 +49,8 @@ export default function RelationshipsPage() {
   // Top/bottom split ratio (20% filter header / 80% content default)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 20);
   const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
+  const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
+  const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +135,46 @@ export default function RelationshipsPage() {
       return matchesQuery && matchesBand && matchesMomentum && matchesVelocity && matchesOpenLoops;
     });
   }, [filters]);
+
+  const handleSort = (col: SortColumn) => {
+    if (sortColumn === col) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(col);
+      setSortDirection(col === "momentum" || col === "last" || col === "emails" ? "desc" : "asc");
+    }
+  };
+
+  const sortedFiltered = useMemo(() => {
+    const arr = [...filtered];
+    const mult = sortDirection === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortColumn) {
+        case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "firm":
+          cmp = a.firm.localeCompare(b.firm);
+          break;
+        case "momentum":
+          cmp = a.momentumScore - b.momentumScore;
+          break;
+        case "last":
+          cmp = parseDaysAgo(a.lastInteraction) - parseDaysAgo(b.lastInteraction);
+          break;
+        case "next":
+          cmp = a.nextMove.localeCompare(b.nextMove);
+          break;
+        case "emails":
+          cmp = a.openLoops - b.openLoops;
+          break;
+      }
+      return mult * cmp;
+    });
+    return arr;
+  }, [filtered, sortColumn, sortDirection]);
+
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
 
   const activityLogEntries = useMemo(() => {
@@ -275,20 +326,68 @@ export default function RelationshipsPage() {
         </div>
         <div className="flex-1 overflow-auto">
           {viewMode === "list" ? (
-            <div className="space-y-2">
-              {filtered.map((rel) => (
-                <RelationshipListItem
-                  key={rel.id}
-                  rel={rel}
-                  isActive={activeId === rel.id}
-                  onSelect={() => setActiveId(rel.id)}
-                />
-              ))}
-              {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+            <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
+              <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+                  <tr className="border-b border-gray-200">
+                    <SortableTh
+                      label="Name"
+                      active={sortColumn === "name"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("name")}
+                    />
+                    <SortableTh
+                      label="Firm"
+                      active={sortColumn === "firm"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("firm")}
+                    />
+                    <SortableTh
+                      label="Momentum"
+                      active={sortColumn === "momentum"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("momentum")}
+                      highlight
+                    />
+                    <SortableTh
+                      label="Last"
+                      active={sortColumn === "last"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("last")}
+                    />
+                    <SortableTh
+                      label="Next move"
+                      active={sortColumn === "next"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("next")}
+                    />
+                    <SortableTh
+                      label="Emails"
+                      active={sortColumn === "emails"}
+                      direction={sortDirection}
+                      onClick={() => handleSort("emails")}
+                      highlight
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedFiltered.map((rel) => (
+                    <RelationshipTableRow
+                      key={rel.id}
+                      rel={rel}
+                      isActive={activeId === rel.id}
+                      onSelect={() => setActiveId(rel.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+              {!sortedFiltered.length ? (
+                <div className="px-4 py-8 text-center text-sm text-gray-500">No relationships match.</div>
+              ) : null}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 pb-2 md:grid-cols-3">
-              {filtered.map((rel) => (
+              {sortedFiltered.map((rel) => (
                 <RelationshipCard
                   key={rel.id}
                   rel={rel}
@@ -296,7 +395,7 @@ export default function RelationshipsPage() {
                   onSelect={() => setActiveId(rel.id)}
                 />
               ))}
-              {!filtered.length ? <Placeholder title="No relationships match." /> : null}
+              {!sortedFiltered.length ? <Placeholder title="No relationships match." /> : null}
             </div>
           )}
         </div>
@@ -347,7 +446,37 @@ export default function RelationshipsPage() {
   );
 }
 
-function RelationshipListItem({
+function SortableTh({
+  label,
+  active,
+  direction,
+  onClick,
+  highlight,
+}: {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+  highlight?: boolean;
+}) {
+  const Icon = direction === "asc" ? ChevronUpIcon : ChevronDownIcon;
+  return (
+    <th className="px-3 py-2.5">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`flex items-center gap-1 font-medium transition hover:text-gray-900 ${
+          active ? "text-gray-900" : "text-gray-600"
+        } ${highlight ? "text-[color:var(--accent)]" : ""}`}
+      >
+        {label}
+        <Icon className={`h-4 w-4 shrink-0 ${active ? "opacity-100" : "opacity-40"}`} aria-hidden />
+      </button>
+    </th>
+  );
+}
+
+function RelationshipTableRow({
   rel,
   isActive,
   onSelect,
@@ -357,29 +486,32 @@ function RelationshipListItem({
   onSelect: () => void;
 }) {
   return (
-    <button
+    <tr
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
-      className={`w-full rounded-md border px-3 py-2 text-left transition ${
-        isActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      className={`cursor-pointer border-b border-gray-100 transition last:border-b-0 ${
+        isActive ? "border-l-4 border-l-blue-500 bg-blue-50" : "hover:bg-gray-50"
       }`}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold accent-title">{rel.name}</p>
-          <p className="text-xs text-gray-600">{rel.firm}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
-          {rel.openLoops ? (
-            <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-700">
-              {rel.openLoops} emails
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <p className="text-xs text-gray-600">Last: {rel.lastInteraction}</p>
-      <p className="text-xs text-gray-600">Next move: {rel.nextMove}</p>
-    </button>
+      <td className="px-3 py-2.5 font-semibold accent-title">{rel.name}</td>
+      <td className="px-3 py-2.5 text-gray-600">{rel.firm}</td>
+      <td className="px-3 py-2.5">
+        <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} prominent />
+      </td>
+      <td className="px-3 py-2.5 text-gray-600">{rel.lastInteraction}</td>
+      <td className="px-3 py-2.5 text-gray-600">{rel.nextMove}</td>
+      <td className="px-3 py-2.5">
+        {rel.openLoops > 0 ? (
+          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
+            {rel.openLoops} emails
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -457,11 +589,29 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
   );
 }
 
-function MomentumChip({ score, trend }: { score: number; trend: Relationship["momentumTrend"] }) {
+function MomentumChip({
+  score,
+  trend,
+  prominent,
+}: {
+  score: number;
+  trend: Relationship["momentumTrend"];
+  prominent?: boolean;
+}) {
   const trendIcon = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
+  const trendStyles =
+    trend === "up"
+      ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/60"
+      : trend === "down"
+        ? "bg-rose-100 text-rose-800 ring-1 ring-rose-200/60"
+        : "bg-amber-100 text-amber-800 ring-1 ring-amber-200/60";
+  const sizeClass = prominent ? "px-3 py-1.5 text-xs font-semibold" : "px-2.5 py-1 text-[11px] font-medium";
   return (
-    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
-      {score} {trendIcon}
+    <span className={`inline-flex items-center gap-0.5 rounded-full ${trendStyles} ${sizeClass}`}>
+      <span>{score}</span>
+      <span className="font-bold" aria-label={`Trend: ${trend}`}>
+        {trendIcon}
+      </span>
     </span>
   );
 }
