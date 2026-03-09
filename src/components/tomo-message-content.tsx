@@ -62,8 +62,27 @@ function BlockRenderer({
 
     case "draft":
       return (
-        <div className="rounded-md border border-gray-100 bg-white px-3 py-2 text-sm text-gray-700 whitespace-pre-line">
-          {block.content}
+        <div className="rounded-md border border-gray-200 bg-white px-3 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--accent)]">Drafted by Tomo</span>
+            <span className="text-[11px] text-gray-500">{block.type === "invite" ? "Invite" : "Email"}</span>
+          </div>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{block.content}</p>
+          <p className="mt-3 text-sm text-gray-600">Want me to send? Edit?</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            >
+              Send
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Edit
+            </button>
+          </div>
         </div>
       );
 
@@ -115,21 +134,6 @@ function BlockRenderer({
       return (
         <div className="rounded-md border border-gray-100 bg-white px-3 py-2 text-sm text-gray-700">
           {block.text}
-        </div>
-      );
-
-    case "open_emails":
-      return (
-        <div className="rounded-md border border-gray-100 bg-white px-3 py-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Open emails to address</p>
-          <ul className="mt-2 space-y-1 text-sm text-gray-700">
-            {block.items.map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
         </div>
       );
 
