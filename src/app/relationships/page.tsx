@@ -335,7 +335,6 @@ export default function RelationshipsPage() {
             <DrawerSection2TomoChat
               initialMessage={getTomoAssistance(activeId)?.initialMessage}
               suggestions={getTomoAssistance(activeId)?.suggestedPrompts ?? ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
-              contextLabel={active?.name}
               entityKey={activeId}
               selection={drawerSelection}
               assistanceContext={getTomoAssistance(activeId)}
@@ -429,23 +428,20 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         : "Low";
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Relationship</p>
-          <h2 className="text-lg font-semibold accent-title">{relationship.name}</h2>
-          <p className="text-sm text-gray-600">{relationship.firm}</p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
+    <div className="space-y-2">
+      {/* Firm + status only — name is in drawer header */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-gray-600">{relationship.firm}</p>
+        <div className="flex items-center gap-2">
           <MomentumChip score={relationship.momentumScore} trend={relationship.momentumTrend} />
-          <span className="text-xs text-gray-600">{relationship.band}</span>
+          <span className="text-xs text-gray-500">{relationship.band}</span>
         </div>
       </div>
 
       {/* Relationship status — CRM facts only */}
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-sm font-semibold accent-title">Relationship status</p>
-        <div className="mt-2 grid gap-2 text-sm text-gray-800 sm:grid-cols-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Relationship status</p>
+        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
           <StatusField label="Momentum" value={`${relationship.momentumScore} ${relationship.momentumTrend === "up" ? "↑" : relationship.momentumTrend === "down" ? "↓" : "→"}`} />
           <StatusField label="Pace" value={relationship.velocity} />
           <StatusField label="Stall risk" value={stallRisk} />

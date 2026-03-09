@@ -75,13 +75,13 @@ export function ContextDrawer({
           </button>
         </div>
 
-        {/* Section 1: Content Details */}
+        {/* Section 1: Content Details — compact to maximize Tomo chat space */}
         <div className="min-h-0 min-w-0 shrink overflow-y-auto">
-          <div className="border-b border-gray-100 p-4">{section1Content}</div>
+          <div className="border-b border-gray-100 px-4 py-3">{section1Content}</div>
         </div>
 
         {/* Section 2: Tomo Chat */}
-        <div className="flex min-h-[312px] flex-1 flex-col overflow-hidden border-t border-gray-100 p-4">
+        <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden border-t border-gray-100 p-4">
           {section2Content ?? (
             <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
               Tomo chat (coming soon)

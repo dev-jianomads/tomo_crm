@@ -73,12 +73,10 @@ export function DrawerSection2TomoChat({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-3 py-2">
-        <div>
-          <p className="text-sm font-medium text-gray-900">TOMO AI</p>
-          {contextLabel ? <p className="text-xs text-gray-500">{contextLabel}</p> : null}
-        </div>
+      {/* Header — compact; contextLabel omitted when redundant (e.g. same as drawer title) */}
+      <div className="flex shrink-0 items-center border-b border-gray-200 px-3 py-1.5">
+        <p className="text-xs font-medium text-gray-900">TOMO AI</p>
+        {contextLabel ? <p className="ml-2 text-[11px] text-gray-500">— {contextLabel}</p> : null}
       </div>
 
       {/* Suggestion chips — visible until user sends first message */}
