@@ -35,6 +35,27 @@ const DEFAULT_FILTERS: FilterState = {
 type SortColumn = "name" | "firm" | "momentum" | "last" | "next" | "emails";
 type SortDirection = "asc" | "desc";
 
+const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
+  { key: "name", label: "Name" },
+  { key: "firm", label: "Firm" },
+  { key: "momentum", label: "Momentum", highlight: true },
+  { key: "last", label: "Last" },
+  { key: "next", label: "Next move" },
+  { key: "emails", label: "Emails", highlight: true },
+];
+
+const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
+  name: 140,
+  firm: 120,
+  momentum: 100,
+  last: 130,
+  next: 200,
+  emails: 90,
+};
+
+const MIN_COLUMN_WIDTH = 60;
+const MAX_COLUMN_WIDTH = 400;
+
 /** Parse "Xd ago" from lastInteraction for sort order (lower = more recent) */
 function parseDaysAgo(s: string): number {
   const m = s.match(/(\d+)\s*d/);
@@ -51,6 +72,12 @@ export default function RelationshipsPage() {
   const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
+  const [columnWidths, setColumnWidths] = usePersistentState<Record<SortColumn, number>>(
+    "tomo-relationships-column-widths",
+    DEFAULT_COLUMN_WIDTHS
+  );
+  const [resizingColumn, setResizingColumn] = useState<SortColumn | null>(null);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +102,39 @@ export default function RelationshipsPage() {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [draggingSplit, setSplitRatio]);
+  }, [draggingSplit]);
+
+  useEffect(() => {
+    if (!resizingColumn) return;
+    const handleMove = (e: MouseEvent) => {
+      const start = resizeStartRef.current;
+      if (!start) return;
+      const delta = e.clientX - start.x;
+      const newWidth = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, start.width + delta));
+      setColumnWidths((prev) => ({ ...prev, [resizingColumn]: newWidth }));
+    };
+    const stop = () => {
+      setResizingColumn(null);
+      resizeStartRef.current = null;
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", stop);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", stop);
+    };
+  }, [resizingColumn]);
+
+  const handleResizeStart = (col: SortColumn, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(col);
+    resizeStartRef.current = { x: e.clientX, width: columnWidths[col] };
+  };
 
   const [tomoPrompt, setTomoPrompt] = useState("");
 
@@ -327,47 +386,26 @@ export default function RelationshipsPage() {
         <div className="flex-1 overflow-auto">
           {viewMode === "list" ? (
             <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
-              <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[640px] table-fixed border-collapse text-left text-sm">
+                <colgroup>
+                  {TABLE_COLUMNS.map((col) => (
+                    <col key={col.key} style={{ width: columnWidths[col.key] }} />
+                  ))}
+                </colgroup>
                 <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
                   <tr className="border-b border-gray-200">
-                    <SortableTh
-                      label="Name"
-                      active={sortColumn === "name"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("name")}
-                    />
-                    <SortableTh
-                      label="Firm"
-                      active={sortColumn === "firm"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("firm")}
-                    />
-                    <SortableTh
-                      label="Momentum"
-                      active={sortColumn === "momentum"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("momentum")}
-                      highlight
-                    />
-                    <SortableTh
-                      label="Last"
-                      active={sortColumn === "last"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("last")}
-                    />
-                    <SortableTh
-                      label="Next move"
-                      active={sortColumn === "next"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("next")}
-                    />
-                    <SortableTh
-                      label="Emails"
-                      active={sortColumn === "emails"}
-                      direction={sortDirection}
-                      onClick={() => handleSort("emails")}
-                      highlight
-                    />
+                    {TABLE_COLUMNS.map((col) => (
+                      <SortableTh
+                        key={col.key}
+                        columnKey={col.key}
+                        label={col.label}
+                        active={sortColumn === col.key}
+                        direction={sortDirection}
+                        onClick={() => handleSort(col.key)}
+                        highlight={col.highlight}
+                        onResizeStart={(e) => handleResizeStart(col.key, e)}
+                      />
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -447,31 +485,42 @@ export default function RelationshipsPage() {
 }
 
 function SortableTh({
+  columnKey,
   label,
   active,
   direction,
   onClick,
   highlight,
+  onResizeStart,
 }: {
+  columnKey: SortColumn;
   label: string;
   active: boolean;
   direction: SortDirection;
   onClick: () => void;
   highlight?: boolean;
+  onResizeStart: (e: React.MouseEvent) => void;
 }) {
   const Icon = direction === "asc" ? ChevronUpIcon : ChevronDownIcon;
   return (
-    <th className="px-3 py-2.5">
+    <th className="relative min-w-0 px-3 py-2.5">
       <button
         type="button"
         onClick={onClick}
-        className={`flex items-center gap-1 font-medium transition hover:text-gray-900 ${
+        className={`flex w-full items-center gap-1 font-medium transition hover:text-gray-900 ${
           active ? "text-gray-900" : "text-gray-600"
         } ${highlight ? "text-[color:var(--accent)]" : ""}`}
       >
-        {label}
+        <span className="truncate">{label}</span>
         <Icon className={`h-4 w-4 shrink-0 ${active ? "opacity-100" : "opacity-40"}`} aria-hidden />
       </button>
+      <div
+        role="separator"
+        aria-label={`Resize ${label} column`}
+        onMouseDown={onResizeStart}
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none hover:bg-blue-200/50 active:bg-blue-300/50"
+        style={{ marginRight: -3 }}
+      />
     </th>
   );
 }
@@ -495,13 +544,13 @@ function RelationshipTableRow({
         isActive ? "border-l-4 border-l-blue-500 bg-blue-50" : "hover:bg-gray-50"
       }`}
     >
-      <td className="px-3 py-2.5 font-semibold accent-title">{rel.name}</td>
-      <td className="px-3 py-2.5 text-gray-600">{rel.firm}</td>
+      <td className="max-w-0 truncate px-3 py-2.5 font-semibold accent-title" title={rel.name}>{rel.name}</td>
+      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.firm}>{rel.firm}</td>
       <td className="px-3 py-2.5">
         <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} prominent />
       </td>
-      <td className="px-3 py-2.5 text-gray-600">{rel.lastInteraction}</td>
-      <td className="px-3 py-2.5 text-gray-600">{rel.nextMove}</td>
+      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.lastInteraction}>{rel.lastInteraction}</td>
+      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.nextMove}>{rel.nextMove}</td>
       <td className="px-3 py-2.5">
         {rel.openLoops > 0 ? (
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
