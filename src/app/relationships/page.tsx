@@ -36,7 +36,7 @@ const DEFAULT_FILTERS: FilterState = {
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
   const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters", DEFAULT_FILTERS);
-  const [activeId, setActiveId] = useState<string | null>(() => relationships[0]?.id ?? null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // Top/bottom split ratio (20% filter header / 80% content default)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 20);
