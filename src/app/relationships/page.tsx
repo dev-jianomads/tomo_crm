@@ -67,8 +67,8 @@ export default function RelationshipsPage() {
   const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters", DEFAULT_FILTERS);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Top/bottom split ratio (20% filter header / 80% content default)
-  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 20);
+  // Top/bottom split ratio (12% filter header / 88% content default)
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 12);
   const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
@@ -88,7 +88,7 @@ export default function RelationshipsPage() {
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const newRatio = ((e.clientY - rect.top) / rect.height) * 100;
-      const clamped = Math.min(80, Math.max(20, newRatio));
+      const clamped = Math.min(80, Math.max(10, newRatio));
       setSplitRatio(clamped);
     };
     const stop = () => setDraggingSplit(false);
