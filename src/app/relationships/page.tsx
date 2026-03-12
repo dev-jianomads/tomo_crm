@@ -18,26 +18,86 @@ import {
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
-type SortColumn = "name" | "firm" | "momentum" | "last" | "next" | "emails";
+type SortColumn =
+  | "name"
+  | "firm"
+  | "days"
+  | "momentum"
+  | "band"
+  | "stage"
+  | "tier"
+  | "nextMove"
+  | "openLoops"
+  | "owner"
+  | "investorType"
+  | "strategyFit"
+  | "strategyType"
+  | "lpLocation"
+  | "investmentRemit"
+  | "typicalCheckSize"
+  | "fundSizePreference"
+  | "source"
+  | "lastFundHistory"
+  | "decisionTimeline"
+  | "fiscalYearEnd"
+  | "consultantDependent"
+  | "esgRequired";
 type SortDirection = "asc" | "desc";
 
+/** Primary columns (left) → secondary (scroll right) */
 const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
   { key: "name", label: "Name" },
   { key: "firm", label: "Firm" },
+  { key: "days", label: "Days", highlight: true },
   { key: "momentum", label: "Momentum", highlight: true },
-  { key: "last", label: "Last" },
-  { key: "next", label: "Next move" },
-  { key: "emails", label: "Emails", highlight: true },
+  { key: "band", label: "Band" },
+  { key: "stage", label: "Stage" },
+  { key: "tier", label: "Tier" },
+  { key: "nextMove", label: "Next move" },
+  { key: "openLoops", label: "Open loops", highlight: true },
+  { key: "owner", label: "Owner" },
+  { key: "investorType", label: "Investor type" },
+  { key: "strategyFit", label: "Strategy fit" },
+  { key: "strategyType", label: "Strategy type" },
+  { key: "lpLocation", label: "Location" },
+  { key: "investmentRemit", label: "Investment remit" },
+  { key: "typicalCheckSize", label: "Typical check" },
+  { key: "fundSizePreference", label: "Fund size pref" },
+  { key: "source", label: "Source" },
+  { key: "lastFundHistory", label: "Last fund" },
+  { key: "decisionTimeline", label: "Decision timeline" },
+  { key: "fiscalYearEnd", label: "Fiscal year end" },
+  { key: "consultantDependent", label: "Consultant" },
+  { key: "esgRequired", label: "ESG required" },
 ];
 
 const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
   name: 140,
-  firm: 120,
-  momentum: 100,
-  last: 130,
-  next: 200,
-  emails: 90,
+  firm: 140,
+  days: 70,
+  momentum: 90,
+  band: 110,
+  stage: 120,
+  tier: 80,
+  nextMove: 180,
+  openLoops: 80,
+  owner: 100,
+  investorType: 120,
+  strategyFit: 110,
+  strategyType: 110,
+  lpLocation: 100,
+  investmentRemit: 100,
+  typicalCheckSize: 90,
+  fundSizePreference: 100,
+  source: 100,
+  lastFundHistory: 110,
+  decisionTimeline: 90,
+  fiscalYearEnd: 90,
+  consultantDependent: 110,
+  esgRequired: 90,
 };
+
+const TABLE_MIN_WIDTH = Object.values(DEFAULT_COLUMN_WIDTHS).reduce((a, b) => a + b, 0);
 
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
@@ -55,9 +115,13 @@ export default function RelationshipsPage() {
   const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
-  const [columnWidths, setColumnWidths] = usePersistentState<Record<SortColumn, number>>(
-    "tomo-relationships-column-widths",
+  const [columnWidths, setColumnWidths] = usePersistentState<Record<string, number>>(
+    "tomo-relationships-column-widths-v2",
     DEFAULT_COLUMN_WIDTHS
+  );
+  const effectiveColumnWidths = useMemo(
+    () => ({ ...DEFAULT_COLUMN_WIDTHS, ...columnWidths }) as Record<SortColumn, number>,
+    [columnWidths]
   );
   const [resizingColumn, setResizingColumn] = useState<SortColumn | null>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
@@ -94,7 +158,7 @@ export default function RelationshipsPage() {
       if (!start) return;
       const delta = e.clientX - start.x;
       const newWidth = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, start.width + delta));
-      setColumnWidths((prev) => ({ ...prev, [resizingColumn]: newWidth }));
+      setColumnWidths((prev) => ({ ...DEFAULT_COLUMN_WIDTHS, ...prev, [resizingColumn]: newWidth }));
     };
     const stop = () => {
       setResizingColumn(null);
@@ -116,7 +180,7 @@ export default function RelationshipsPage() {
     e.preventDefault();
     e.stopPropagation();
     setResizingColumn(col);
-    resizeStartRef.current = { x: e.clientX, width: columnWidths[col] };
+    resizeStartRef.current = { x: e.clientX, width: effectiveColumnWidths[col] };
   };
 
   const [tomoPrompt, setTomoPrompt] = useState("");
@@ -148,12 +212,13 @@ export default function RelationshipsPage() {
     [filterCriteria]
   );
 
+  const DESC_DEFAULT_COLS: SortColumn[] = ["days", "momentum", "openLoops"];
   const handleSort = (col: SortColumn) => {
     if (sortColumn === col) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortColumn(col);
-      setSortDirection(col === "momentum" || col === "last" || col === "emails" ? "desc" : "asc");
+      setSortDirection(DESC_DEFAULT_COLS.includes(col) ? "desc" : "asc");
     }
   };
 
@@ -169,17 +234,70 @@ export default function RelationshipsPage() {
         case "firm":
           cmp = a.firm.localeCompare(b.firm);
           break;
-        case "momentum":
+        case "days":
           cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
           break;
-        case "last":
-          cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
+        case "momentum": {
+          const rank: Record<string, number> = { "Heating up": 3, "Stable": 2, "Cooling": 1 };
+          cmp = (rank[a.momentumDirection] ?? 0) - (rank[b.momentumDirection] ?? 0);
           break;
-        case "next":
+        }
+        case "band":
+          cmp = a.band.localeCompare(b.band);
+          break;
+        case "stage":
+          cmp = a.stage.localeCompare(b.stage);
+          break;
+        case "tier":
+          cmp = a.tier.localeCompare(b.tier);
+          break;
+        case "nextMove":
           cmp = a.nextMove.localeCompare(b.nextMove);
           break;
-        case "emails":
+        case "openLoops":
           cmp = a.openLoops - b.openLoops;
+          break;
+        case "owner":
+          cmp = a.relationshipOwner.localeCompare(b.relationshipOwner);
+          break;
+        case "investorType":
+          cmp = a.investorType.localeCompare(b.investorType);
+          break;
+        case "strategyFit":
+          cmp = a.strategyFit.localeCompare(b.strategyFit);
+          break;
+        case "strategyType":
+          cmp = a.strategyType.localeCompare(b.strategyType);
+          break;
+        case "lpLocation":
+          cmp = a.lpLocation.localeCompare(b.lpLocation);
+          break;
+        case "investmentRemit":
+          cmp = a.investmentRemit.localeCompare(b.investmentRemit);
+          break;
+        case "typicalCheckSize":
+          cmp = a.typicalCheckSize.localeCompare(b.typicalCheckSize);
+          break;
+        case "fundSizePreference":
+          cmp = a.fundSizePreference.localeCompare(b.fundSizePreference);
+          break;
+        case "source":
+          cmp = a.source.localeCompare(b.source);
+          break;
+        case "lastFundHistory":
+          cmp = a.lastFundHistory.localeCompare(b.lastFundHistory);
+          break;
+        case "decisionTimeline":
+          cmp = a.decisionTimeline.localeCompare(b.decisionTimeline);
+          break;
+        case "fiscalYearEnd":
+          cmp = a.fiscalYearEnd.localeCompare(b.fiscalYearEnd);
+          break;
+        case "consultantDependent":
+          cmp = a.consultantDependent.localeCompare(b.consultantDependent);
+          break;
+        case "esgRequired":
+          cmp = a.esgRequired.localeCompare(b.esgRequired);
           break;
       }
       return mult * cmp;
@@ -306,10 +424,13 @@ export default function RelationshipsPage() {
         <div className="flex-1 overflow-auto">
           {viewMode === "list" ? (
             <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
-              <table className="w-full min-w-[640px] table-fixed border-collapse text-left text-sm">
+              <table
+                className="border-collapse text-left text-sm"
+                style={{ minWidth: TABLE_MIN_WIDTH, tableLayout: "fixed" }}
+              >
                 <colgroup>
                   {TABLE_COLUMNS.map((col) => (
-                    <col key={col.key} style={{ width: columnWidths[col.key] }} />
+                    <col key={col.key} style={{ width: effectiveColumnWidths[col.key], minWidth: effectiveColumnWidths[col.key] }} />
                   ))}
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
@@ -333,6 +454,7 @@ export default function RelationshipsPage() {
                     <RelationshipTableRow
                       key={rel.id}
                       rel={rel}
+                      columns={TABLE_COLUMNS}
                       isActive={activeId === rel.id}
                       onSelect={() => setActiveId(rel.id)}
                     />
@@ -422,8 +544,12 @@ function SortableTh({
   onResizeStart: (e: React.MouseEvent) => void;
 }) {
   const Icon = direction === "asc" ? ChevronUpIcon : ChevronDownIcon;
+  const isSticky = columnKey === "name";
   return (
-    <th className="relative min-w-0 px-3 py-2.5">
+    <th
+      className={`relative min-w-0 px-3 py-2.5 ${isSticky ? "sticky left-0 z-10 bg-gray-50" : ""}`}
+      style={isSticky ? { boxShadow: "2px 0 4px -2px rgba(0,0,0,0.1)" } : undefined}
+    >
       <button
         type="button"
         onClick={onClick}
@@ -447,10 +573,12 @@ function SortableTh({
 
 function RelationshipTableRow({
   rel,
+  columns,
   isActive,
   onSelect,
 }: {
   rel: Relationship;
+  columns: { key: SortColumn; label: string; highlight?: boolean }[];
   isActive: boolean;
   onSelect: () => void;
 }) {
@@ -460,28 +588,169 @@ function RelationshipTableRow({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
-      className={`cursor-pointer border-b border-gray-100 transition last:border-b-0 ${
+      className={`group cursor-pointer border-b border-gray-100 transition last:border-b-0 ${
         isActive ? "border-l-4 border-l-blue-500 bg-blue-50" : "hover:bg-gray-50"
       }`}
     >
-      <td className="max-w-0 truncate px-3 py-2.5 font-semibold accent-title" title={rel.name}>{rel.name}</td>
-      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.firm}>{rel.firm}</td>
-      <td className="px-3 py-2.5">
-        <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} prominent />
-      </td>
-      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>{formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</td>
-      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.nextMove}>{rel.nextMove}</td>
-      <td className="px-3 py-2.5">
-        {rel.openLoops > 0 ? (
-          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
-            {rel.openLoops} emails
-          </span>
-        ) : (
-          <span className="text-xs text-gray-400">—</span>
-        )}
-      </td>
+      {columns.map((col) => (
+        <TableCell key={col.key} rel={rel} columnKey={col.key} isActive={isActive} />
+      ))}
     </tr>
   );
+}
+
+function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey: SortColumn; isActive: boolean }) {
+  const baseClass = "max-w-0 truncate px-3 py-2.5 text-gray-600";
+  const accentClass = "font-semibold accent-title";
+  const stickyNameClass = `sticky left-0 z-[1] ${isActive ? "bg-blue-50" : "bg-white group-hover:bg-gray-50"} ${baseClass} ${accentClass}`;
+  switch (columnKey) {
+    case "name":
+      return (
+        <td className={stickyNameClass} title={rel.name} style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.1)" }}>
+          {rel.name}
+        </td>
+      );
+    case "firm":
+      return (
+        <td className={baseClass} title={rel.firm}>
+          {rel.firm}
+        </td>
+      );
+    case "days":
+      return (
+        <td className={baseClass} title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>
+          {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
+        </td>
+      );
+    case "momentum":
+      return (
+        <td className="px-3 py-2.5">
+          <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} prominent />
+        </td>
+      );
+    case "band":
+      return (
+        <td className={baseClass} title={rel.band}>
+          {rel.band}
+        </td>
+      );
+    case "stage":
+      return (
+        <td className={baseClass} title={rel.stage}>
+          {rel.stage}
+        </td>
+      );
+    case "tier":
+      return (
+        <td className={baseClass} title={rel.tier}>
+          {rel.tier}
+        </td>
+      );
+    case "nextMove":
+      return (
+        <td className={baseClass} title={rel.nextMove}>
+          {rel.nextMove}
+        </td>
+      );
+    case "openLoops":
+      return (
+        <td className="px-3 py-2.5">
+          {rel.openLoops > 0 ? (
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
+              {rel.openLoops}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400">—</span>
+          )}
+        </td>
+      );
+    case "owner":
+      return (
+        <td className={baseClass} title={rel.relationshipOwner}>
+          {rel.relationshipOwner}
+        </td>
+      );
+    case "investorType":
+      return (
+        <td className={baseClass} title={rel.investorType}>
+          {rel.investorType}
+        </td>
+      );
+    case "strategyFit":
+      return (
+        <td className={baseClass} title={rel.strategyFit}>
+          {rel.strategyFit}
+        </td>
+      );
+    case "strategyType":
+      return (
+        <td className={baseClass} title={rel.strategyType}>
+          {rel.strategyType}
+        </td>
+      );
+    case "lpLocation":
+      return (
+        <td className={baseClass} title={rel.lpLocation}>
+          {rel.lpLocation}
+        </td>
+      );
+    case "investmentRemit":
+      return (
+        <td className={baseClass} title={rel.investmentRemit}>
+          {rel.investmentRemit}
+        </td>
+      );
+    case "typicalCheckSize":
+      return (
+        <td className={baseClass} title={rel.typicalCheckSize}>
+          {rel.typicalCheckSize}
+        </td>
+      );
+    case "fundSizePreference":
+      return (
+        <td className={baseClass} title={rel.fundSizePreference}>
+          {rel.fundSizePreference}
+        </td>
+      );
+    case "source":
+      return (
+        <td className={baseClass} title={rel.sourceDetail ? `${rel.source} (${rel.sourceDetail})` : rel.source}>
+          {rel.sourceDetail ? `${rel.source} (${rel.sourceDetail})` : rel.source}
+        </td>
+      );
+    case "lastFundHistory":
+      return (
+        <td className={baseClass} title={rel.lastFundHistory}>
+          {rel.lastFundHistory}
+        </td>
+      );
+    case "decisionTimeline":
+      return (
+        <td className={baseClass} title={rel.decisionTimeline}>
+          {rel.decisionTimeline}
+        </td>
+      );
+    case "fiscalYearEnd":
+      return (
+        <td className={baseClass} title={rel.fiscalYearEnd}>
+          {rel.fiscalYearEnd}
+        </td>
+      );
+    case "consultantDependent":
+      return (
+        <td className={baseClass} title={rel.consultantDependent}>
+          {rel.consultantDependent}
+        </td>
+      );
+    case "esgRequired":
+      return (
+        <td className={baseClass} title={rel.esgRequired}>
+          {rel.esgRequired}
+        </td>
+      );
+    default:
+      return <td className={baseClass}>—</td>;
+  }
 }
 
 function RelationshipCard({
