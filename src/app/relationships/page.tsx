@@ -209,7 +209,10 @@ export default function RelationshipsPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to parse filter");
+      if (!res.ok) {
+        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error ?? "Failed to parse filter");
+        throw new Error(msg);
+      }
       if (data.filters != null) {
         setFilterCriteria(data.filters);
         setTomoPrompt("");

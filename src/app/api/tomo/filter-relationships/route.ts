@@ -119,6 +119,14 @@ For days: "no contact in X days" → { min: X }; "contacted in last X days" → 
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[filter-relationships] OPENAI_API_KEY is not set");
+      return Response.json(
+        { error: "OpenAI API key not configured. Set OPENAI_API_KEY in your environment.", filters: null },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const { prompt, currentFilters = {} } = body as {
       prompt?: string;
@@ -151,9 +159,16 @@ export async function POST(req: Request) {
 
     return Response.json({ filters: currentFilters });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const isAuthError = /api[_-]?key|401|unauthorized/i.test(message);
     console.error("[filter-relationships]", err);
+
     return Response.json(
-      { error: "Failed to parse filter", filters: null },
+      {
+        error: "Failed to parse filter",
+        detail: process.env.NODE_ENV === "development" || isAuthError ? message : undefined,
+        filters: null,
+      },
       { status: 500 }
     );
   }
