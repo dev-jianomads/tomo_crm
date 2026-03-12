@@ -5,35 +5,18 @@ import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon } from "@hero
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
-import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { relationships, Relationship, formatDaysSinceContact, MOMENTUM_DIRECTION_OPTIONS, TIER_OPTIONS, STAGE_OPTIONS } from "@/lib/mockData";
+import { relationships, Relationship, formatDaysSinceContact } from "@/lib/mockData";
 import type { MomentumDirection } from "@/lib/mockData";
+import {
+  applyFilters,
+  parseFilterPromptHeuristic,
+  validateAndMergeFilters,
+  EMPTY_CRITERIA,
+  type StructuredFilterCriteria,
+} from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
-
-const BAND_FILTER_OPTIONS = ["All", "Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
-const MOMENTUM_FILTER_OPTIONS = ["All", "Heating up", "Stable", "Cooling"] as const;
-const TIER_FILTER_OPTIONS = ["All", "Tier 1", "Tier 2", "Tier 3"] as const;
-const STAGE_FILTER_OPTIONS = ["All", ...STAGE_OPTIONS] as const;
-
-type FilterState = {
-  query: string;
-  band: (typeof BAND_FILTER_OPTIONS)[number];
-  momentumDirection: (typeof MOMENTUM_FILTER_OPTIONS)[number];
-  tier: (typeof TIER_FILTER_OPTIONS)[number];
-  stage: (typeof STAGE_FILTER_OPTIONS)[number];
-  hasOpenLoops: boolean | "all";
-};
-
-const DEFAULT_FILTERS: FilterState = {
-  query: "",
-  band: "All",
-  momentumDirection: "All",
-  tier: "All",
-  stage: "All",
-  hasOpenLoops: "all",
-};
 
 type SortColumn = "name" | "firm" | "momentum" | "last" | "next" | "emails";
 type SortDirection = "asc" | "desc";
@@ -61,7 +44,10 @@ const MAX_COLUMN_WIDTH = 400;
 
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
-  const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters-v2", DEFAULT_FILTERS);
+  const [filterCriteria, setFilterCriteria] = usePersistentState<StructuredFilterCriteria>(
+    "tomo-relationships-filters-v3",
+    EMPTY_CRITERIA
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Top/bottom split ratio (12% filter header / 88% content default)
@@ -135,61 +121,32 @@ export default function RelationshipsPage() {
 
   const [tomoPrompt, setTomoPrompt] = useState("");
 
-  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  /** Parse natural language and apply to filters (Option A: client-side heuristic) */
+  /** Parse natural language → validate with Zod → apply filters (Phase 1: heuristic) */
   const applyTomoPrompt = () => {
-    const text = tomoPrompt.trim().toLowerCase();
+    const text = tomoPrompt.trim();
     if (!text) return;
-    setTomoPrompt("");
-    const updates: Partial<FilterState> = {};
-    // Band
-    if (/\b(cooling|cool)\b/.test(text)) updates.band = "Cooling";
-    else if (/\b(heating|heat(?:ing)?\s*up)\b/.test(text)) updates.band = "Heating Up";
-    else if (/\b(stalled|stall)\b/.test(text)) updates.band = "Stalled";
-    else if (/\b(active[- ]?stable|stable|active)\b/.test(text)) updates.band = "Active-Stable";
-    // Momentum direction
-    if (/\b(high\s+momentum|momentum\s+up|heating\s+up)\b/.test(text)) updates.momentumDirection = "Heating up";
-    else if (/\b(low\s+momentum|momentum\s+down|cooling)\b/.test(text)) updates.momentumDirection = "Cooling";
-    else if (/\b(flat|steady|stable\s+momentum)\b/.test(text)) updates.momentumDirection = "Stable";
-    else if (/\b(up|rising)\b/.test(text) && !updates.momentumDirection) updates.momentumDirection = "Heating up";
-    else if (/\b(down|falling)\b/.test(text) && !updates.momentumDirection) updates.momentumDirection = "Cooling";
-    // Tier
-    if (/\b(tier\s*1|t1)\b/.test(text)) updates.tier = "Tier 1";
-    else if (/\b(tier\s*2|t2)\b/.test(text)) updates.tier = "Tier 2";
-    else if (/\b(tier\s*3|t3)\b/.test(text)) updates.tier = "Tier 3";
-    // Open loops
-    if (/\b(open\s+loops?|with\s+loops?|has\s+loops?|loops?\s+open)\b/.test(text)) updates.hasOpenLoops = true;
-    // Reset
-    if (/\b(clear|reset|show\s+all)\b/.test(text)) {
-      setFilters(DEFAULT_FILTERS);
+    if (/\b(clear|reset|show\s+all)\b/i.test(text)) {
+      setFilterCriteria(EMPTY_CRITERIA);
+      setTomoPrompt("");
       return;
     }
-    if (Object.keys(updates).length > 0) {
-      setFilters((prev) => ({ ...prev, ...updates }));
+    const updates = parseFilterPromptHeuristic(text);
+    const validated = validateAndMergeFilters(filterCriteria, updates);
+    if (validated) {
+      setFilterCriteria(validated);
+      setTomoPrompt("");
     }
   };
 
-  const filtered = useMemo(() => {
-    return relationships.filter((rel) => {
-      const matchesQuery =
-        !filters.query.trim() ||
-        rel.name.toLowerCase().includes(filters.query.toLowerCase()) ||
-        rel.firm.toLowerCase().includes(filters.query.toLowerCase());
-      const matchesBand = filters.band === "All" || rel.band === filters.band;
-      const matchesMomentum =
-        filters.momentumDirection === "All" || rel.momentumDirection === filters.momentumDirection;
-      const matchesTier = filters.tier === "All" || rel.tier === filters.tier;
-      const matchesStage = filters.stage === "All" || rel.stage === filters.stage;
-      const matchesOpenLoops =
-        filters.hasOpenLoops === "all" ||
-        (filters.hasOpenLoops === true && rel.openLoops > 0) ||
-        (filters.hasOpenLoops === false && rel.openLoops === 0);
-      return matchesQuery && matchesBand && matchesMomentum && matchesTier && matchesStage && matchesOpenLoops;
-    });
-  }, [filters]);
+  const clearFilters = () => {
+    setFilterCriteria(EMPTY_CRITERIA);
+    setTomoPrompt("");
+  };
+
+  const filtered = useMemo(
+    () => applyFilters(relationships, filterCriteria),
+    [filterCriteria]
+  );
 
   const handleSort = (col: SortColumn) => {
     if (sortColumn === col) {
@@ -248,99 +205,51 @@ export default function RelationshipsPage() {
 
   const listContent = (
     <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Top: Filter header */}
+      {/* Top: AI filter prompt — all-in, no traditional toggles */}
       <div
-        className="flex min-h-[80px] shrink-0 flex-col overflow-auto border-b border-gray-200 bg-white px-4 py-3"
+        className="flex min-h-[120px] shrink-0 flex-col overflow-auto border-b border-gray-200 bg-white px-4 py-3"
         style={{ flex: `${splitRatio} 1 0` }}
       >
         <p className="text-xs uppercase tracking-wide text-gray-500">Relationships</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex w-full min-w-[200px] flex-1 items-center gap-2 rounded-md border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/5 px-3 py-2 sm:max-w-[320px]">
-            <span className="text-[color:var(--accent)]" aria-hidden>✦</span>
-            <input
-              value={tomoPrompt}
-              onChange={(e) => setTomoPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && applyTomoPrompt()}
-              placeholder="Ask Tomo to filter: e.g. 'show cooling relationships' or 'high momentum LPs'"
-              className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-              aria-label="Natural language filter prompt"
-            />
-            <button
-              type="button"
-              onClick={applyTomoPrompt}
-              className="shrink-0 rounded px-2 py-1 text-xs font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent)]/10"
-            >
-              Apply
-            </button>
-          </div>
-          <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 sm:max-w-[200px]">
-            <input
-              value={filters.query}
-              onChange={(e) => updateFilter("query", e.target.value)}
-              placeholder="Search name, firm"
-              className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-            />
-          </div>
-          <select
-            value={filters.band}
-            onChange={(e) => updateFilter("band", e.target.value as FilterState["band"])}
-            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
-          >
-            {BAND_FILTER_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-wrap gap-1">
-            {MOMENTUM_FILTER_OPTIONS.map((opt) => (
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="flex flex-col gap-2 rounded-md border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/5 p-3 sm:flex-row sm:items-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="tomo-filter-prompt" className="text-xs font-medium text-gray-600">
+                Ask Tomo to filter
+              </label>
+              <textarea
+                id="tomo-filter-prompt"
+                value={tomoPrompt}
+                onChange={(e) => setTomoPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    applyTomoPrompt();
+                  }
+                }}
+                placeholder='e.g. "show Tier 1 LPs with no contact in 14 days" or "cooling relationships" or "family offices in North America" — type "clear" to reset'
+                rows={3}
+                className="min-h-[72px] w-full resize-y bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                aria-label="Natural language filter prompt"
+              />
+            </div>
+            <div className="flex shrink-0 gap-2">
               <button
-                key={opt}
                 type="button"
-                onClick={() =>
-                  updateFilter("momentumDirection", filters.momentumDirection === opt ? "All" : opt)
-                }
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  filters.momentumDirection === opt
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                onClick={applyTomoPrompt}
+                className="rounded-md bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
               >
-                {opt}
+                Apply
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-          <select
-            value={filters.tier}
-            onChange={(e) => updateFilter("tier", e.target.value as FilterState["tier"])}
-            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
-          >
-            {TIER_FILTER_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.stage}
-            onChange={(e) => updateFilter("stage", e.target.value as FilterState["stage"])}
-            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
-          >
-            {STAGE_FILTER_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-700">
-            <input
-              type="checkbox"
-              checked={filters.hasOpenLoops === true}
-              onChange={(e) => updateFilter("hasOpenLoops", e.target.checked ? true : "all")}
-              className="h-3.5 w-3.5 rounded border-gray-300"
-            />
-            Open loops
-          </label>
         </div>
       </div>
 
@@ -360,7 +269,11 @@ export default function RelationshipsPage() {
         style={{ flex: `${100 - splitRatio} 1 0` }}
       >
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs text-gray-500">{filtered.length} relationship{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-gray-500">
+            {Object.keys(filterCriteria).length > 0
+              ? `Showing ${filtered.length} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
+              : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
+          </span>
           <div className="flex gap-1">
             <button
               type="button"
