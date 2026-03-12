@@ -841,6 +841,7 @@ function RelationshipCard({
 }
 
 function RelationshipDetail({ relationship }: { relationship: Relationship }) {
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const stallRisk =
     relationship.band === "Stalled" || relationship.momentumDirection === "Cooling"
       ? relationship.daysSinceLastMeaningfulContact >= 30
@@ -859,47 +860,67 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
         </div>
       </div>
 
-      {/* Tier 1 — Prioritisation */}
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Prioritisation</p>
-        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-          <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
-          <StatusField label="Stage" value={relationship.stage} />
-          <StatusField label="Momentum" value={relationship.momentumDirection} />
-          <StatusField label="Tier" value={relationship.tier} />
-          <StatusField label="Owner" value={relationship.relationshipOwner} />
-          <StatusField label="Stall risk" value={stallRisk} />
-          <StatusField label="Next move" value={relationship.nextMove} className="sm:col-span-2" />
-        </div>
-      </section>
+      {/* Collapsible accordion: Prioritisation, Targeting, Sequencing */}
+      <div className="rounded-md border border-gray-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setDetailsExpanded((e) => !e)}
+          className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-50"
+          aria-expanded={detailsExpanded}
+        >
+          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Details</span>
+          {detailsExpanded ? (
+            <ChevronUpIcon className="h-4 w-4 text-gray-400" aria-hidden />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 text-gray-400" aria-hidden />
+          )}
+        </button>
+        {detailsExpanded && (
+          <div className="space-y-2 border-t border-gray-100 px-3 py-2">
+            {/* Tier 1 — Prioritisation */}
+            <section>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Prioritisation</p>
+              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+                <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
+                <StatusField label="Stage" value={relationship.stage} />
+                <StatusField label="Momentum" value={relationship.momentumDirection} />
+                <StatusField label="Tier" value={relationship.tier} />
+                <StatusField label="Owner" value={relationship.relationshipOwner} />
+                <StatusField label="Stall risk" value={stallRisk} />
+                <StatusField label="Next move" value={relationship.nextMove} className="sm:col-span-2" />
+              </div>
+            </section>
 
-      {/* Tier 2 — Targeting */}
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Targeting</p>
-        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-          <StatusField label="Investor type" value={relationship.investorType} />
-          <StatusField label="Strategy fit" value={relationship.strategyFit} />
-          <StatusField label="Strategy type" value={relationship.strategyType} />
-          <StatusField label="Location" value={relationship.lpLocation} />
-          <StatusField label="Investment remit" value={relationship.investmentRemit} />
-          <StatusField label="Typical check" value={relationship.typicalCheckSize} />
-          <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
-        </div>
-      </section>
+            {/* Tier 2 — Targeting */}
+            <section>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Targeting</p>
+              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+                <StatusField label="Investor type" value={relationship.investorType} />
+                <StatusField label="Strategy fit" value={relationship.strategyFit} />
+                <StatusField label="Strategy type" value={relationship.strategyType} />
+                <StatusField label="Location" value={relationship.lpLocation} />
+                <StatusField label="Investment remit" value={relationship.investmentRemit} />
+                <StatusField label="Typical check" value={relationship.typicalCheckSize} />
+                <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
+              </div>
+            </section>
 
-      {/* Tier 3 — Sequencing */}
-      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sequencing</p>
-        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-          <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
-          <StatusField label="Last fund" value={relationship.lastFundHistory} />
-          <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
-          <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
-          <StatusField label="Consultant" value={relationship.consultantDependent} />
-          {relationship.consultantName && <StatusField label="Consultant name" value={relationship.consultantName} />}
-          <StatusField label="ESG required" value={relationship.esgRequired} />
-        </div>
-      </section>
+            {/* Tier 3 — Sequencing */}
+            <section>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sequencing</p>
+              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+                <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
+                <StatusField label="Last fund" value={relationship.lastFundHistory} />
+                <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
+                <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
+                <StatusField label="Consultant" value={relationship.consultantDependent} />
+                {relationship.consultantName && <StatusField label="Consultant name" value={relationship.consultantName} />}
+                <StatusField label="ESG required" value={relationship.esgRequired} />
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
