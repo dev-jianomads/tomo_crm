@@ -279,7 +279,7 @@ export function formatFilterSummary(criteria: StructuredFilterCriteria): string 
     parts.push(`in ${l}`);
   }
   const days = criteria.daysSinceLastMeaningfulContact;
-  if (days && days !== "all") {
+  if (days) {
     if (days.min != null) parts.push(`no contact in ${days.min}+ days`);
     else if (days.max != null) parts.push(`contacted in last ${days.max} days`);
   }

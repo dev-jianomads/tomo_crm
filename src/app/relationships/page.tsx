@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
@@ -98,7 +98,9 @@ const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
   esgRequired: 90,
 };
 
-const TABLE_MIN_WIDTH = Object.values(DEFAULT_COLUMN_WIDTHS).reduce((a, b) => a + b, 0);
+const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = Object.fromEntries(
+  TABLE_COLUMNS.map((c) => [c.key, true])
+) as Record<SortColumn, boolean>;
 
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
@@ -120,6 +122,15 @@ export default function RelationshipsPage() {
     "tomo-relationships-column-widths-v2",
     DEFAULT_COLUMN_WIDTHS
   );
+  const [columnVisibility, setColumnVisibility] = usePersistentState<Record<string, boolean>>(
+    "tomo-relationships-column-visibility",
+    DEFAULT_COLUMN_VISIBILITY
+  );
+  const visibleColumns = useMemo(
+    () =>
+      TABLE_COLUMNS.filter((col) => columnVisibility[col.key] !== false),
+    [columnVisibility]
+  );
   const effectiveColumnWidths = useMemo(
     () => ({ ...DEFAULT_COLUMN_WIDTHS, ...columnWidths }) as Record<SortColumn, number>,
     [columnWidths]
@@ -128,6 +139,29 @@ export default function RelationshipsPage() {
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const [columnsPopoverOpen, setColumnsPopoverOpen] = useState(false);
+  const columnsPopoverRef = useRef<HTMLDivElement>(null);
+
+  const effectiveSortColumn = useMemo(() => {
+    const visibleKeys = new Set(visibleColumns.map((c) => c.key));
+    return visibleKeys.has(sortColumn) ? sortColumn : visibleColumns[0]?.key ?? "name";
+  }, [visibleColumns, sortColumn]);
+
+  const tableMinWidth = useMemo(
+    () => visibleColumns.reduce((sum, col) => sum + effectiveColumnWidths[col.key], 0),
+    [visibleColumns, effectiveColumnWidths]
+  );
+
+  useEffect(() => {
+    if (!columnsPopoverOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (columnsPopoverRef.current && !columnsPopoverRef.current.contains(e.target as Node)) {
+        setColumnsPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [columnsPopoverOpen]);
 
   useEffect(() => {
     if (!draggingSplit) return;
@@ -257,9 +291,10 @@ export default function RelationshipsPage() {
   const sortedFiltered = useMemo(() => {
     const arr = [...filtered];
     const mult = sortDirection === "asc" ? 1 : -1;
+    const col = effectiveSortColumn;
     arr.sort((a, b) => {
       let cmp = 0;
-      switch (sortColumn) {
+      switch (col) {
         case "name":
           cmp = a.name.localeCompare(b.name);
           break;
@@ -335,7 +370,7 @@ export default function RelationshipsPage() {
       return mult * cmp;
     });
     return arr;
-  }, [filtered, sortColumn, sortDirection]);
+  }, [filtered, effectiveSortColumn, sortDirection]);
 
   const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
 
@@ -443,7 +478,66 @@ export default function RelationshipsPage() {
               ) : null;
             })()}
           </div>
-          <div className="flex shrink-0 gap-1">
+          <div className="relative flex shrink-0 gap-1" ref={columnsPopoverRef}>
+            <button
+              type="button"
+              onClick={() => setColumnsPopoverOpen((o) => !o)}
+              className={`rounded p-1.5 transition ${
+                columnsPopoverOpen ? "bg-blue-100 text-blue-700" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              }`}
+              aria-label="Choose columns"
+              aria-expanded={columnsPopoverOpen}
+              aria-haspopup="true"
+            >
+              <ViewColumnsIcon className="h-4 w-4" />
+            </button>
+            {columnsPopoverOpen && (
+              <div
+                className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-2 shadow-lg"
+                role="menu"
+              >
+                <div className="border-b border-gray-100 px-3 py-2">
+                  <p className="text-xs font-medium text-gray-700">Show columns</p>
+                </div>
+                <div className="max-h-64 overflow-y-auto px-2 py-1">
+                  {TABLE_COLUMNS.map((col) => (
+                    <label
+                      key={col.key}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
+                      role="menuitemcheckbox"
+                      aria-checked={columnVisibility[col.key] !== false}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={columnVisibility[col.key] !== false}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          if (!checked) {
+                            const visibleCount = TABLE_COLUMNS.filter((c) => columnVisibility[c.key] !== false).length;
+                            if (visibleCount <= 1) return;
+                          }
+                          setColumnVisibility((prev) => ({
+                            ...prev,
+                            [col.key]: checked,
+                          }));
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="truncate">{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="border-t border-gray-100 px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => setColumnVisibility({ ...DEFAULT_COLUMN_VISIBILITY })}
+                    className="w-full rounded px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    Show all
+                  </button>
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setViewMode("list")}
@@ -477,21 +571,21 @@ export default function RelationshipsPage() {
             <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
               <table
                 className="border-collapse text-left text-sm"
-                style={{ minWidth: TABLE_MIN_WIDTH, tableLayout: "fixed" }}
+                style={{ minWidth: tableMinWidth, tableLayout: "fixed" }}
               >
                 <colgroup>
-                  {TABLE_COLUMNS.map((col) => (
+                  {visibleColumns.map((col) => (
                     <col key={col.key} style={{ width: effectiveColumnWidths[col.key], minWidth: effectiveColumnWidths[col.key] }} />
                   ))}
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
                   <tr className="border-b border-gray-200">
-                    {TABLE_COLUMNS.map((col) => (
+                    {visibleColumns.map((col) => (
                       <SortableTh
                         key={col.key}
                         columnKey={col.key}
                         label={col.label}
-                        active={sortColumn === col.key}
+                        active={effectiveSortColumn === col.key}
                         direction={sortDirection}
                         onClick={() => handleSort(col.key)}
                         highlight={col.highlight}
@@ -505,7 +599,7 @@ export default function RelationshipsPage() {
                     <RelationshipTableRow
                       key={rel.id}
                       rel={rel}
-                      columns={TABLE_COLUMNS}
+                      columns={visibleColumns}
                       isActive={activeId === rel.id}
                       onSelect={() => setActiveId(rel.id)}
                     />
