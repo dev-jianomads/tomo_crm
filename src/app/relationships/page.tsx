@@ -423,13 +423,13 @@ export default function RelationshipsPage() {
         className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
         style={{ flex: `${100 - splitRatio} 1 0` }}
       >
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs text-gray-500">
+        <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-xs text-gray-500">
             {Object.keys(filterCriteria).length > 0
               ? `Showing ${filtered.length} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
               : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
           </span>
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
