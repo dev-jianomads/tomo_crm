@@ -184,21 +184,49 @@ export default function RelationshipsPage() {
   };
 
   const [tomoPrompt, setTomoPrompt] = useState("");
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
-  /** Parse natural language → validate with Zod → apply filters (Phase 1: heuristic) */
-  const applyTomoPrompt = () => {
+  /** Parse natural language → API (Phase 3) or heuristic fallback */
+  const applyTomoPrompt = async () => {
     const text = tomoPrompt.trim();
     if (!text) return;
     if (/\b(clear|reset|show\s+all)\b/i.test(text)) {
       setFilterCriteria(EMPTY_CRITERIA);
       setTomoPrompt("");
+      setFilterError(null);
       return;
     }
-    const updates = parseFilterPromptHeuristic(text);
-    const validated = validateAndMergeFilters(filterCriteria, updates);
-    if (validated) {
-      setFilterCriteria(validated);
-      setTomoPrompt("");
+    setFilterLoading(true);
+    setFilterError(null);
+    try {
+      const res = await fetch("/api/tomo/filter-relationships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: text,
+          currentFilters: filterCriteria,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to parse filter");
+      if (data.filters != null) {
+        setFilterCriteria(data.filters);
+        setTomoPrompt("");
+        setFilterError(null);
+      } else {
+        throw new Error("No filters returned");
+      }
+    } catch (err) {
+      setFilterError(err instanceof Error ? err.message : "Filter failed");
+      const updates = parseFilterPromptHeuristic(text);
+      const validated = validateAndMergeFilters(filterCriteria, updates);
+      if (validated) {
+        setFilterCriteria(validated);
+        setTomoPrompt("");
+      }
+    } finally {
+      setFilterLoading(false);
     }
   };
 
@@ -342,7 +370,7 @@ export default function RelationshipsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    applyTomoPrompt();
+                    void applyTomoPrompt();
                   }
                 }}
                 placeholder='e.g. "show Tier 1 LPs with no contact in 14 days" or "cooling relationships" or "family offices in North America" — type "clear" to reset'
@@ -351,21 +379,30 @@ export default function RelationshipsPage() {
                 aria-label="Natural language filter prompt"
               />
             </div>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={applyTomoPrompt}
-                className="rounded-md bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-              >
-                Apply
-              </button>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Clear
-              </button>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+              {filterError && (
+                <span className="text-xs text-amber-600" role="status">
+                  {filterError} — used fallback
+                </span>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void applyTomoPrompt()}
+                  disabled={filterLoading}
+                  className="rounded-md bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {filterLoading ? "Applying…" : "Apply"}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  disabled={filterLoading}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
         </div>
