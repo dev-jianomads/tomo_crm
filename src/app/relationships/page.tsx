@@ -7,28 +7,31 @@ import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { relationships, Relationship } from "@/lib/mockData";
-import type { MomentumTrend } from "@/lib/mockData";
+import { relationships, Relationship, formatDaysSinceContact, MOMENTUM_DIRECTION_OPTIONS, TIER_OPTIONS, STAGE_OPTIONS } from "@/lib/mockData";
+import type { MomentumDirection } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
-const BAND_OPTIONS = ["All", "Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
-const MOMENTUM_OPTIONS = ["All", "Up", "Flat", "Down"] as const;
-const VELOCITY_OPTIONS = ["All", "Fast", "Moderate", "Slow"] as const;
+const BAND_FILTER_OPTIONS = ["All", "Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
+const MOMENTUM_FILTER_OPTIONS = ["All", "Heating up", "Stable", "Cooling"] as const;
+const TIER_FILTER_OPTIONS = ["All", "Tier 1", "Tier 2", "Tier 3"] as const;
+const STAGE_FILTER_OPTIONS = ["All", ...STAGE_OPTIONS] as const;
 
 type FilterState = {
   query: string;
-  band: (typeof BAND_OPTIONS)[number];
-  momentumTrend: (typeof MOMENTUM_OPTIONS)[number];
-  velocity: (typeof VELOCITY_OPTIONS)[number];
+  band: (typeof BAND_FILTER_OPTIONS)[number];
+  momentumDirection: (typeof MOMENTUM_FILTER_OPTIONS)[number];
+  tier: (typeof TIER_FILTER_OPTIONS)[number];
+  stage: (typeof STAGE_FILTER_OPTIONS)[number];
   hasOpenLoops: boolean | "all";
 };
 
 const DEFAULT_FILTERS: FilterState = {
   query: "",
   band: "All",
-  momentumTrend: "All",
-  velocity: "All",
+  momentumDirection: "All",
+  tier: "All",
+  stage: "All",
   hasOpenLoops: "all",
 };
 
@@ -56,15 +59,9 @@ const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
 
-/** Parse "Xd ago" from lastInteraction for sort order (lower = more recent) */
-function parseDaysAgo(s: string): number {
-  const m = s.match(/(\d+)\s*d/);
-  return m ? parseInt(m[1], 10) : 999;
-}
-
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
-  const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters", DEFAULT_FILTERS);
+  const [filters, setFilters] = usePersistentState<FilterState>("tomo-relationships-filters-v2", DEFAULT_FILTERS);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Top/bottom split ratio (12% filter header / 88% content default)
@@ -153,16 +150,16 @@ export default function RelationshipsPage() {
     else if (/\b(heating|heat(?:ing)?\s*up)\b/.test(text)) updates.band = "Heating Up";
     else if (/\b(stalled|stall)\b/.test(text)) updates.band = "Stalled";
     else if (/\b(active[- ]?stable|stable|active)\b/.test(text)) updates.band = "Active-Stable";
-    // Momentum trend
-    if (/\b(high\s+momentum|momentum\s+up|heating\s+up)\b/.test(text)) updates.momentumTrend = "Up";
-    else if (/\b(low\s+momentum|momentum\s+down|cooling)\b/.test(text)) updates.momentumTrend = "Down";
-    else if (/\b(flat|steady|stable\s+momentum)\b/.test(text)) updates.momentumTrend = "Flat";
-    else if (/\b(up|rising)\b/.test(text) && !updates.momentumTrend) updates.momentumTrend = "Up";
-    else if (/\b(down|falling)\b/.test(text) && !updates.momentumTrend) updates.momentumTrend = "Down";
-    // Velocity
-    if (/\b(fast|quick)\b/.test(text)) updates.velocity = "Fast";
-    else if (/\b(slow)\b/.test(text)) updates.velocity = "Slow";
-    else if (/\b(moderate|medium)\b/.test(text)) updates.velocity = "Moderate";
+    // Momentum direction
+    if (/\b(high\s+momentum|momentum\s+up|heating\s+up)\b/.test(text)) updates.momentumDirection = "Heating up";
+    else if (/\b(low\s+momentum|momentum\s+down|cooling)\b/.test(text)) updates.momentumDirection = "Cooling";
+    else if (/\b(flat|steady|stable\s+momentum)\b/.test(text)) updates.momentumDirection = "Stable";
+    else if (/\b(up|rising)\b/.test(text) && !updates.momentumDirection) updates.momentumDirection = "Heating up";
+    else if (/\b(down|falling)\b/.test(text) && !updates.momentumDirection) updates.momentumDirection = "Cooling";
+    // Tier
+    if (/\b(tier\s*1|t1)\b/.test(text)) updates.tier = "Tier 1";
+    else if (/\b(tier\s*2|t2)\b/.test(text)) updates.tier = "Tier 2";
+    else if (/\b(tier\s*3|t3)\b/.test(text)) updates.tier = "Tier 3";
     // Open loops
     if (/\b(open\s+loops?|with\s+loops?|has\s+loops?|loops?\s+open)\b/.test(text)) updates.hasOpenLoops = true;
     // Reset
@@ -183,15 +180,14 @@ export default function RelationshipsPage() {
         rel.firm.toLowerCase().includes(filters.query.toLowerCase());
       const matchesBand = filters.band === "All" || rel.band === filters.band;
       const matchesMomentum =
-        filters.momentumTrend === "All" ||
-        rel.momentumTrend === (filters.momentumTrend.toLowerCase() as MomentumTrend);
-      const matchesVelocity =
-        filters.velocity === "All" || rel.velocity === filters.velocity;
+        filters.momentumDirection === "All" || rel.momentumDirection === filters.momentumDirection;
+      const matchesTier = filters.tier === "All" || rel.tier === filters.tier;
+      const matchesStage = filters.stage === "All" || rel.stage === filters.stage;
       const matchesOpenLoops =
         filters.hasOpenLoops === "all" ||
         (filters.hasOpenLoops === true && rel.openLoops > 0) ||
         (filters.hasOpenLoops === false && rel.openLoops === 0);
-      return matchesQuery && matchesBand && matchesMomentum && matchesVelocity && matchesOpenLoops;
+      return matchesQuery && matchesBand && matchesMomentum && matchesTier && matchesStage && matchesOpenLoops;
     });
   }, [filters]);
 
@@ -217,10 +213,10 @@ export default function RelationshipsPage() {
           cmp = a.firm.localeCompare(b.firm);
           break;
         case "momentum":
-          cmp = a.momentumScore - b.momentumScore;
+          cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
           break;
         case "last":
-          cmp = parseDaysAgo(a.lastInteraction) - parseDaysAgo(b.lastInteraction);
+          cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
           break;
         case "next":
           cmp = a.nextMove.localeCompare(b.nextMove);
@@ -290,22 +286,22 @@ export default function RelationshipsPage() {
             onChange={(e) => updateFilter("band", e.target.value as FilterState["band"])}
             className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
           >
-            {BAND_OPTIONS.map((opt) => (
+            {BAND_FILTER_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
             ))}
           </select>
           <div className="flex flex-wrap gap-1">
-            {MOMENTUM_OPTIONS.map((opt) => (
+            {MOMENTUM_FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt}
                 type="button"
                 onClick={() =>
-                  updateFilter("momentumTrend", filters.momentumTrend === opt ? "All" : opt)
+                  updateFilter("momentumDirection", filters.momentumDirection === opt ? "All" : opt)
                 }
                 className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  filters.momentumTrend === opt
+                  filters.momentumDirection === opt
                     ? "bg-blue-100 text-blue-700"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
@@ -315,11 +311,22 @@ export default function RelationshipsPage() {
             ))}
           </div>
           <select
-            value={filters.velocity}
-            onChange={(e) => updateFilter("velocity", e.target.value as FilterState["velocity"])}
+            value={filters.tier}
+            onChange={(e) => updateFilter("tier", e.target.value as FilterState["tier"])}
             className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
           >
-            {VELOCITY_OPTIONS.map((opt) => (
+            {TIER_FILTER_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.stage}
+            onChange={(e) => updateFilter("stage", e.target.value as FilterState["stage"])}
+            className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
+          >
+            {STAGE_FILTER_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
@@ -547,9 +554,9 @@ function RelationshipTableRow({
       <td className="max-w-0 truncate px-3 py-2.5 font-semibold accent-title" title={rel.name}>{rel.name}</td>
       <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.firm}>{rel.firm}</td>
       <td className="px-3 py-2.5">
-        <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} prominent />
+        <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} prominent />
       </td>
-      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.lastInteraction}>{rel.lastInteraction}</td>
+      <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>{formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</td>
       <td className="max-w-0 truncate px-3 py-2.5 text-gray-600" title={rel.nextMove}>{rel.nextMove}</td>
       <td className="px-3 py-2.5">
         {rel.openLoops > 0 ? (
@@ -586,7 +593,7 @@ function RelationshipCard({
           <p className="truncate text-xs text-gray-600">{rel.firm}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <MomentumChip score={rel.momentumScore} trend={rel.momentumTrend} />
+          <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} />
           {rel.openLoops ? (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700">
               {rel.openLoops}
@@ -594,7 +601,7 @@ function RelationshipCard({
           ) : null}
         </div>
       </div>
-      <p className="mt-2 line-clamp-1 text-xs text-gray-600">Last: {rel.lastInteraction}</p>
+      <p className="mt-2 line-clamp-1 text-xs text-gray-600">Last: {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</p>
       <p className="line-clamp-1 text-xs text-gray-600">Next: {rel.nextMove}</p>
     </button>
   );
@@ -602,31 +609,62 @@ function RelationshipCard({
 
 function RelationshipDetail({ relationship }: { relationship: Relationship }) {
   const stallRisk =
-    relationship.band === "Stalled" || relationship.momentumTrend === "down"
-      ? "High"
-      : relationship.momentumTrend === "flat"
-        ? "Medium"
-        : "Low";
+    relationship.band === "Stalled" || relationship.momentumDirection === "Cooling"
+      ? relationship.daysSinceLastMeaningfulContact >= 30
+        ? "High"
+        : "Medium"
+      : "Low";
 
   return (
-    <div className="space-y-2">
-      {/* Firm + status only — name is in drawer header */}
+    <div className="space-y-3">
+      {/* Firm + status — name is in drawer header */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-gray-600">{relationship.firm}</p>
         <div className="flex items-center gap-2">
-          <MomentumChip score={relationship.momentumScore} trend={relationship.momentumTrend} />
+          <MomentumChip direction={relationship.momentumDirection} days={relationship.daysSinceLastMeaningfulContact} />
           <span className="text-xs text-gray-500">{relationship.band}</span>
         </div>
       </div>
 
-      {/* Relationship status — CRM facts only */}
+      {/* Tier 1 — Prioritisation */}
       <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Relationship status</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Prioritisation</p>
         <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-          <StatusField label="Momentum" value={`${relationship.momentumScore} ${relationship.momentumTrend === "up" ? "↑" : relationship.momentumTrend === "down" ? "↓" : "→"}`} />
-          <StatusField label="Pace" value={relationship.velocity} />
+          <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
+          <StatusField label="Stage" value={relationship.stage} />
+          <StatusField label="Momentum" value={relationship.momentumDirection} />
+          <StatusField label="Tier" value={relationship.tier} />
+          <StatusField label="Owner" value={relationship.relationshipOwner} />
           <StatusField label="Stall risk" value={stallRisk} />
-          <StatusField label="Next move" value={relationship.nextMove} />
+          <StatusField label="Next move" value={relationship.nextMove} className="sm:col-span-2" />
+        </div>
+      </section>
+
+      {/* Tier 2 — Targeting */}
+      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Targeting</p>
+        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+          <StatusField label="Investor type" value={relationship.investorType} />
+          <StatusField label="Strategy fit" value={relationship.strategyFit} />
+          <StatusField label="Strategy type" value={relationship.strategyType} />
+          <StatusField label="Location" value={relationship.lpLocation} />
+          <StatusField label="Investment remit" value={relationship.investmentRemit} />
+          <StatusField label="Typical check" value={relationship.typicalCheckSize} />
+          <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
+        </div>
+      </section>
+
+      {/* Tier 3 — Sequencing */}
+      <section className="rounded-md border border-gray-200 bg-white px-3 py-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sequencing</p>
+        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+          <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
+          <StatusField label="Last fund" value={relationship.lastFundHistory} />
+          <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
+          <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
+          <StatusField label="Consultant" value={relationship.consultantDependent} />
+          {relationship.consultantName && <StatusField label="Consultant name" value={relationship.consultantName} />}
+          <StatusField label="ESG required" value={relationship.esgRequired} />
         </div>
       </section>
     </div>
@@ -634,35 +672,35 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
 }
 
 function MomentumChip({
-  score,
-  trend,
+  direction,
+  days,
   prominent,
 }: {
-  score: number;
-  trend: Relationship["momentumTrend"];
+  direction: MomentumDirection;
+  days: number;
   prominent?: boolean;
 }) {
-  const trendIcon = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
+  const icon = direction === "Heating up" ? "↑" : direction === "Cooling" ? "↓" : "→";
   const trendStyles =
-    trend === "up"
+    direction === "Heating up"
       ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/60"
-      : trend === "down"
+      : direction === "Cooling"
         ? "bg-rose-100 text-rose-800 ring-1 ring-rose-200/60"
         : "bg-amber-100 text-amber-800 ring-1 ring-amber-200/60";
   const sizeClass = prominent ? "px-3 py-1.5 text-xs font-semibold" : "px-2.5 py-1 text-[11px] font-medium";
   return (
     <span className={`inline-flex items-center gap-0.5 rounded-full ${trendStyles} ${sizeClass}`}>
-      <span>{score}</span>
-      <span className="font-bold" aria-label={`Trend: ${trend}`}>
-        {trendIcon}
+      <span>{days}d</span>
+      <span className="font-bold" aria-label={`Momentum: ${direction}`}>
+        {icon}
       </span>
     </span>
   );
 }
 
-function StatusField({ label, value }: { label: string; value: string }) {
+function StatusField({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
       <p className="text-sm text-gray-900">{value}</p>
     </div>

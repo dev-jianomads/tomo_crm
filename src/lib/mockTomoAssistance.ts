@@ -185,6 +185,22 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   },
 };
 
+/** Generic fallback for relationships r5–r50 (no custom Tomo entry) */
+const RELATIONSHIP_FALLBACK: TomoAssistance = {
+  initialMessage: {
+    text: "Here's a snapshot of this relationship. I can help draft outreach, propose next steps, or create actions.",
+    blocks: [
+      { kind: "snapshot", text: "Select an action below to get started. I can summarize recent threads, draft outreach, or suggest the next move based on stage and momentum." },
+      { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
+    ],
+  },
+  suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
+};
+
 export function getTomoAssistance(entityId: string): TomoAssistance | null {
-  return tomoAssistanceByEntity[entityId] ?? null;
+  const specific = tomoAssistanceByEntity[entityId];
+  if (specific) return specific;
+  // Generic fallback for relationships r5–r50
+  if (/^r\d+$/.test(entityId)) return RELATIONSHIP_FALLBACK;
+  return null;
 }

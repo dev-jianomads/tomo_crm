@@ -6,18 +6,99 @@
 export type MomentumTrend = "up" | "flat" | "down";
 export type Velocity = "Fast" | "Moderate" | "Slow";
 
+// ── Relationship enum constants (Tier 1–4 schema) ───────────────────────────
+export const STAGE_OPTIONS = ["First contact", "Deck sent", "Met", "Active diligence", "DD", "Soft circle", "Closed", "Pass"] as const;
+export const MOMENTUM_DIRECTION_OPTIONS = ["Heating up", "Stable", "Cooling"] as const;
+export const TIER_OPTIONS = ["Tier 1", "Tier 2", "Tier 3"] as const;
+export const RELATIONSHIP_OWNER_OPTIONS = ["You", "IR Person", "Placement Agent", "Unassigned"] as const;
+export const INVESTOR_TYPE_OPTIONS = ["Family office", "Endowment", "Pension fund", "Sovereign wealth fund", "Fund-of-funds", "UHNW", "Insurance", "Foundation"] as const;
+export const STRATEGY_FIT_OPTIONS = ["Active mandate", "Fully allocated", "No mandate", "Unknown"] as const;
+export const STRATEGY_TYPE_OPTIONS = ["Global macro", "Long/short equity", "Multi-strat", "Credit", "Quant", "Other"] as const;
+export const LP_LOCATION_OPTIONS = ["North America", "EMEA", "APAC", "LATAM", "Other"] as const;
+export const INVESTMENT_REMIT_OPTIONS = ["Global", "US only", "Europe only", "Asia only", "Emerging markets", "Other"] as const;
+export const TYPICAL_CHECK_SIZE_OPTIONS = ["<$5M", "$5–25M", "$25–50M", "$50–100M", "$100M+", "Unknown"] as const;
+export const FUND_SIZE_PREFERENCE_OPTIONS = ["No cap", "≤5% of fund", "≤10% of fund", "Unknown"] as const;
+export const SOURCE_OPTIONS = ["Direct", "Placement agent", "Conference", "Warm intro", "Other"] as const;
+export const LAST_FUND_HISTORY_OPTIONS = ["New prospect", "Invested Fund I", "Invested Fund II", "Re-upped", "Passed", "Unknown"] as const;
+export const DECISION_TIMELINE_OPTIONS = ["Q1", "Q2", "Q3", "Q4", "Ad hoc", "Unknown"] as const;
+export const FISCAL_YEAR_END_OPTIONS = ["Jan", "Mar", "Jun", "Sep", "Dec", "Unknown"] as const;
+export const CONSULTANT_DEPENDENT_OPTIONS = ["Direct", "Consultant-dependent", "Unknown"] as const;
+export const ESG_REQUIRED_OPTIONS = ["Yes", "No", "Unknown"] as const;
+export const BAND_OPTIONS = ["Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
+export const CONTACT_SENIORITY_OPTIONS = ["CIO", "Director", "Analyst", "Other"] as const;
+
+export type Stage = (typeof STAGE_OPTIONS)[number];
+export type MomentumDirection = (typeof MOMENTUM_DIRECTION_OPTIONS)[number];
+export type RelationshipTier = (typeof TIER_OPTIONS)[number];
+export type RelationshipOwner = (typeof RELATIONSHIP_OWNER_OPTIONS)[number];
+export type InvestorType = (typeof INVESTOR_TYPE_OPTIONS)[number];
+export type StrategyFit = (typeof STRATEGY_FIT_OPTIONS)[number];
+export type StrategyType = (typeof STRATEGY_TYPE_OPTIONS)[number];
+export type LpLocation = (typeof LP_LOCATION_OPTIONS)[number];
+export type InvestmentRemit = (typeof INVESTMENT_REMIT_OPTIONS)[number];
+export type TypicalCheckSize = (typeof TYPICAL_CHECK_SIZE_OPTIONS)[number];
+export type FundSizePreference = (typeof FUND_SIZE_PREFERENCE_OPTIONS)[number];
+export type Source = (typeof SOURCE_OPTIONS)[number];
+export type LastFundHistory = (typeof LAST_FUND_HISTORY_OPTIONS)[number];
+export type DecisionTimeline = (typeof DECISION_TIMELINE_OPTIONS)[number];
+export type FiscalYearEnd = (typeof FISCAL_YEAR_END_OPTIONS)[number];
+export type ConsultantDependent = (typeof CONSULTANT_DEPENDENT_OPTIONS)[number];
+export type EsgRequired = (typeof ESG_REQUIRED_OPTIONS)[number];
+export type Band = (typeof BAND_OPTIONS)[number];
+export type ContactSeniority = (typeof CONTACT_SENIORITY_OPTIONS)[number];
+
+/**
+ * Relationship — full IR prioritisation schema (26 fields).
+ * Tier 1: Prioritisation | Tier 2: Targeting | Tier 3: Sequencing | Tier 4: Nice-to-have
+ */
 export type Relationship = {
   id: string;
   name: string;
   firm: string;
-  momentumScore: number;
-  momentumTrend: MomentumTrend;
-  velocity: Velocity;
-  lastInteraction: string;
+  // Tier 1 — Prioritisation
+  daysSinceLastMeaningfulContact: number;
+  stage: Stage;
+  momentumDirection: MomentumDirection;
+  tier: RelationshipTier;
+  relationshipOwner: RelationshipOwner;
+  // Tier 2 — Targeting
+  investorType: InvestorType;
+  strategyFit: StrategyFit;
+  strategyType: StrategyType;
+  lpLocation: LpLocation;
+  investmentRemit: InvestmentRemit;
+  typicalCheckSize: TypicalCheckSize;
+  fundSizePreference: FundSizePreference;
+  // Tier 3 — Sequencing
+  source: Source;
+  sourceDetail?: string;
+  lastFundHistory: LastFundHistory;
+  lastFundCheckSize?: TypicalCheckSize;
+  decisionTimeline: DecisionTimeline;
+  fiscalYearEnd: FiscalYearEnd;
+  consultantDependent: ConsultantDependent;
+  consultantName?: string;
+  esgRequired: EsgRequired;
+  // Tier 4 — Nice-to-have
+  lastMeetingDate?: string;
+  contactSeniority?: ContactSeniority;
+  // Common
   nextMove: string;
   openLoops: number;
-  band: "Heating Up" | "Active-Stable" | "Cooling" | "Stalled";
+  /** Derived from momentumDirection + days for filter/display */
+  band: Band;
 };
+
+/** Format days since contact for display (e.g. "3d ago", "14d ago") */
+export function formatDaysSinceContact(days: number): string {
+  if (days <= 0) return "Today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  if (days < 14) return "1w ago";
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  if (days < 60) return "1mo ago";
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 export type ActionStatus = "approval" | "in_progress" | "blocked";
 
@@ -102,56 +183,176 @@ export type ActivityLogEntry = {
   summary: string;
 };
 
-export const relationships: Relationship[] = [
-  {
-    id: "r1",
-    name: "Alex Morgan",
-    firm: "Northwind Capital",
-    momentumScore: 82,
-    momentumTrend: "up",
-    velocity: "Fast",
-    lastInteraction: "3d ago (call)",
-    nextMove: "Share Q4 performance deck",
-    openLoops: 2,
-    band: "Heating Up",
-  },
-  {
-    id: "r2",
-    name: "Jamie Chen",
-    firm: "Peakline Partners",
-    momentumScore: 67,
-    momentumTrend: "flat",
-    velocity: "Moderate",
-    lastInteraction: "9d ago (email)",
-    nextMove: "Schedule allocation review",
-    openLoops: 1,
-    band: "Active-Stable",
-  },
-  {
-    id: "r3",
-    name: "Priya Desai",
-    firm: "Lumen LP",
-    momentumScore: 48,
-    momentumTrend: "down",
-    velocity: "Slow",
-    lastInteraction: "14d ago (no reply)",
-    nextMove: "Send concise update + ask for feedback",
-    openLoops: 3,
-    band: "Cooling",
-  },
-  {
-    id: "r4",
-    name: "Samir Patel",
-    firm: "Harborlight Advisors",
-    momentumScore: 29,
-    momentumTrend: "down",
-    velocity: "Slow",
-    lastInteraction: "21d ago",
-    nextMove: "Re-engage with performance snapshot",
-    openLoops: 0,
-    band: "Stalled",
-  },
+/** Seed data for relationship generator */
+const RELATIONSHIP_NAMES = [
+  "Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel", "Elena Vasquez", "Marcus Webb", "Yuki Tanaka",
+  "David Kim", "Sarah Mitchell", "James O'Brien", "Ana Costa", "Michael Zhang", "Rachel Foster", "Thomas Wright",
+  "Nina Patel", "Christopher Lee", "Olivia Martinez", "Daniel Brown", "Sophie Laurent", "Robert Chen",
+  "Emma Wilson", "William Davis", "Isabella Garcia", "Benjamin Taylor", "Mia Anderson", "Lucas Thompson",
+  "Charlotte White", "Henry Clark", "Amelia Lewis", "Alexander Hall", "Harper Young", "Sebastian King",
+  "Evelyn Scott", "Jack Green", "Abigail Adams", "Owen Baker", "Emily Nelson", "Liam Carter", "Elizabeth Hill",
+  "Noah Mitchell", "Chloe Roberts", "Mason Turner", "Grace Phillips", "Ethan Campbell", "Victoria Parker",
+  "Aiden Evans", "Zoey Edwards", "Logan Collins", "Lily Stewart", "Jackson Morris",
 ];
+const RELATIONSHIP_FIRMS = [
+  "Northwind Capital", "Peakline Partners", "Lumen LP", "Harborlight Advisors", "Apex Family Office",
+  "Meridian Endowment", "Pacific Pension Fund", "Cascade Sovereign", "Summit Fund of Funds", "Horizon UHNW",
+  "Atlas Insurance", "Cedar Foundation", "Ridge Family Office", "Valley Endowment", "Stone Pension",
+  "Brook Sovereign", "Pine FoF", "Maple UHNW", "Oak Insurance", "Willow Foundation",
+  "Sage Family Office", "Ivy Endowment", "Fern Pension", "Moss Sovereign", "Reed FoF",
+  "Clover UHNW", "Hazel Insurance", "Birch Foundation", "Ash Family Office", "Elm Endowment",
+  "Spruce Pension", "Juniper Sovereign", "Laurel FoF", "Hawthorn UHNW", "Rowan Insurance",
+  "Alder Foundation", "Beech Family Office", "Chestnut Endowment", "Dogwood Pension", "Elder Sovereign",
+  "Fig FoF", "Ginkgo UHNW", "Hemlock Insurance", "Hickory Foundation", "Ironwood Family Office",
+  "Jacaranda Endowment", "Koa Pension", "Larch Sovereign", "Magnolia FoF", "Nettle UHNW",
+];
+
+/** Seeded random for deterministic mock data */
+function seededRandom(seed: number) {
+  return () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+}
+
+function pick<T>(arr: readonly T[], weights?: number[], rng = Math.random): T {
+  if (!weights) return arr[Math.floor(rng() * arr.length)]!;
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rng() * total;
+  for (let i = 0; i < arr.length; i++) {
+    r -= weights[i] ?? 0;
+    if (r <= 0) return arr[i]!;
+  }
+  return arr[arr.length - 1]!;
+}
+
+function generateRelationships(): Relationship[] {
+  const rels: Relationship[] = [];
+  const usedNames = new Set<string>();
+  const usedFirms = new Set<string>();
+
+  // r1–r4: Preserve original firms for cross-entity consistency (actions, briefs, commitments)
+  const preserved: Partial<Relationship>[] = [
+    { name: "Alex Morgan", firm: "Northwind Capital", daysSinceLastMeaningfulContact: 3, stage: "Active diligence", momentumDirection: "Heating up", tier: "Tier 1", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Direct", lastFundHistory: "Invested Fund II", decisionTimeline: "Q1", fiscalYearEnd: "Dec", consultantDependent: "Direct", esgRequired: "No", nextMove: "Share Q4 performance deck", openLoops: 2, band: "Heating Up", lastMeetingDate: "2025-02-15" },
+    { name: "Jamie Chen", firm: "Peakline Partners", daysSinceLastMeaningfulContact: 9, stage: "Deck sent", momentumDirection: "Stable", tier: "Tier 1", relationshipOwner: "IR Person", investorType: "Fund-of-funds", strategyFit: "Active mandate", strategyType: "Multi-strat", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$50–100M", fundSizePreference: "≤5% of fund", source: "Placement agent", lastFundHistory: "New prospect", decisionTimeline: "Q2", fiscalYearEnd: "Jun", consultantDependent: "Direct", esgRequired: "No", nextMove: "Schedule allocation review", openLoops: 1, band: "Active-Stable", lastMeetingDate: "2025-02-01" },
+    { name: "Priya Desai", firm: "Lumen LP", daysSinceLastMeaningfulContact: 14, stage: "Deck sent", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "EMEA", investmentRemit: "Europe only", typicalCheckSize: "$5–25M", fundSizePreference: "≤10% of fund", source: "Warm intro", sourceDetail: "Goldman cap intro", lastFundHistory: "New prospect", decisionTimeline: "Q3", fiscalYearEnd: "Mar", consultantDependent: "Direct", esgRequired: "Yes", nextMove: "Send concise update + ask for feedback", openLoops: 3, band: "Cooling" },
+    { name: "Samir Patel", firm: "Harborlight Advisors", daysSinceLastMeaningfulContact: 21, stage: "First contact", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "Placement Agent", investorType: "Endowment", strategyFit: "Fully allocated", strategyType: "Credit", lpLocation: "North America", investmentRemit: "US only", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Conference", lastFundHistory: "Passed", decisionTimeline: "Q4", fiscalYearEnd: "Jun", consultantDependent: "Consultant-dependent", consultantName: "Mercer", esgRequired: "Yes", nextMove: "Re-engage with performance snapshot", openLoops: 0, band: "Stalled" },
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const p = preserved[i]!;
+    rels.push({
+      id: `r${i + 1}`,
+      name: p.name!,
+      firm: p.firm!,
+      daysSinceLastMeaningfulContact: p.daysSinceLastMeaningfulContact!,
+      stage: p.stage!,
+      momentumDirection: p.momentumDirection!,
+      tier: p.tier!,
+      relationshipOwner: p.relationshipOwner!,
+      investorType: p.investorType!,
+      strategyFit: p.strategyFit!,
+      strategyType: p.strategyType!,
+      lpLocation: p.lpLocation!,
+      investmentRemit: p.investmentRemit!,
+      typicalCheckSize: p.typicalCheckSize!,
+      fundSizePreference: p.fundSizePreference!,
+      source: p.source!,
+      sourceDetail: p.sourceDetail,
+      lastFundHistory: p.lastFundHistory!,
+      lastFundCheckSize: p.lastFundCheckSize,
+      decisionTimeline: p.decisionTimeline!,
+      fiscalYearEnd: p.fiscalYearEnd!,
+      consultantDependent: p.consultantDependent!,
+      consultantName: p.consultantName,
+      esgRequired: p.esgRequired!,
+      lastMeetingDate: p.lastMeetingDate,
+      contactSeniority: p.contactSeniority,
+      nextMove: p.nextMove!,
+      openLoops: p.openLoops!,
+      band: p.band!,
+    });
+    usedNames.add(p.name!);
+    usedFirms.add(p.firm!);
+  }
+
+  // r5–r50: Generated with realistic distribution
+  const stages: Stage[] = ["First contact", "Deck sent", "Met", "Active diligence", "DD", "Soft circle", "Closed", "Pass"];
+  const momentumDirs: MomentumDirection[] = ["Heating up", "Stable", "Cooling"];
+  const tiers: RelationshipTier[] = ["Tier 1", "Tier 2", "Tier 3"];
+  const owners: RelationshipOwner[] = ["You", "IR Person", "Placement Agent", "Unassigned"];
+  const investorTypes: InvestorType[] = ["Family office", "Endowment", "Pension fund", "Sovereign wealth fund", "Fund-of-funds", "UHNW", "Insurance", "Foundation"];
+  const strategyFits: StrategyFit[] = ["Active mandate", "Fully allocated", "No mandate", "Unknown"];
+  const strategyTypes: StrategyType[] = ["Global macro", "Long/short equity", "Multi-strat", "Credit", "Quant", "Other"];
+  const lpLocs: LpLocation[] = ["North America", "EMEA", "APAC", "LATAM", "Other"];
+  const investmentRemits: InvestmentRemit[] = ["Global", "US only", "Europe only", "Asia only", "Emerging markets", "Other"];
+  const checkSizes: TypicalCheckSize[] = ["<$5M", "$5–25M", "$25–50M", "$50–100M", "$100M+", "Unknown"];
+  const fundPrefs: FundSizePreference[] = ["No cap", "≤5% of fund", "≤10% of fund", "Unknown"];
+  const sources: Source[] = ["Direct", "Placement agent", "Conference", "Warm intro", "Other"];
+  const fundHistories: LastFundHistory[] = ["New prospect", "Invested Fund I", "Invested Fund II", "Re-upped", "Passed", "Unknown"];
+  const decisionTimelines: DecisionTimeline[] = ["Q1", "Q2", "Q3", "Q4", "Ad hoc", "Unknown"];
+  const fiscalEnds: FiscalYearEnd[] = ["Jan", "Mar", "Jun", "Sep", "Dec", "Unknown"];
+  const consultantDeps: ConsultantDependent[] = ["Direct", "Consultant-dependent", "Unknown"];
+  const esgReqs: EsgRequired[] = ["Yes", "No", "Unknown"];
+  const bands: Band[] = ["Heating Up", "Active-Stable", "Cooling", "Stalled"];
+  const nextMoves = [
+    "Share Q4 performance deck", "Schedule allocation review", "Send concise update", "Re-engage with snapshot",
+    "Propose DD kickoff", "Send term sheet", "Follow up on deck", "Book intro call", "Share data room access",
+    "Confirm allocation window", "Send monthly update", "Schedule IC presentation", "Draft side letter",
+  ];
+
+  const namePool = RELATIONSHIP_NAMES.filter((n) => !usedNames.has(n));
+  const firmPool = RELATIONSHIP_FIRMS.filter((f) => !usedFirms.has(f));
+  const rng = seededRandom(12345);
+
+  for (let i = 4; i < 50; i++) {
+    const name = namePool[(i - 4) % namePool.length]!;
+    const firm = firmPool[(i - 4) % firmPool.length]!;
+    const momentumDir = pick(momentumDirs, [30, 40, 30], rng);
+    const days = pick(
+      [2, 5, 7, 9, 12, 14, 18, 21, 28, 35, 42, 56, 70, 90],
+      [8, 6, 5, 4, 4, 3, 3, 3, 2, 2, 1, 1, 1, 1],
+      rng
+    );
+    const band = days >= 45 && momentumDir === "Cooling" ? "Stalled" : momentumDir === "Heating up" ? "Heating Up" : momentumDir === "Cooling" ? "Cooling" : "Active-Stable";
+
+    rels.push({
+      id: `r${i + 1}`,
+      name,
+      firm,
+      daysSinceLastMeaningfulContact: days,
+      stage: pick(stages, [10, 15, 12, 8, 6, 5, 3, 5], rng),
+      momentumDirection: momentumDir,
+      tier: pick(tiers, [20, 50, 30], rng),
+      relationshipOwner: pick(owners, [40, 30, 20, 10], rng),
+      investorType: pick(investorTypes, undefined, rng),
+      strategyFit: pick(strategyFits, [50, 25, 15, 10], rng),
+      strategyType: pick(strategyTypes, [25, 30, 20, 15, 5, 5], rng),
+      lpLocation: pick(lpLocs, [45, 30, 15, 5, 5], rng),
+      investmentRemit: pick(investmentRemits, [60, 15, 10, 8, 5, 2], rng),
+      typicalCheckSize: pick(checkSizes, [15, 25, 25, 20, 10, 5], rng),
+      fundSizePreference: pick(fundPrefs, [50, 25, 15, 10], rng),
+      source: pick(sources, [30, 25, 15, 25, 5], rng),
+      sourceDetail: rng() < 0.15 ? "Goldman cap intro" : undefined,
+      lastFundHistory: pick(fundHistories, [35, 15, 15, 10, 15, 10], rng),
+      lastFundCheckSize: rng() < 0.4 ? pick(checkSizes, undefined, rng) : undefined,
+      decisionTimeline: pick(decisionTimelines, undefined, rng),
+      fiscalYearEnd: pick(fiscalEnds, undefined, rng),
+      consultantDependent: pick(consultantDeps, [60, 30, 10], rng),
+      consultantName: rng() < 0.2 ? pick(["Mercer", "Albourne", "Aon", "Callan", "NEPC"], undefined, rng) : undefined,
+      esgRequired: pick(esgReqs, [20, 60, 20], rng),
+      lastMeetingDate: rng() < 0.5 ? `2025-0${1 + (i % 3)}-${10 + (i % 18)}` : undefined,
+      contactSeniority: rng() < 0.6 ? pick(CONTACT_SENIORITY_OPTIONS, undefined, rng) : undefined,
+      nextMove: pick(nextMoves, undefined, rng),
+      openLoops: Math.floor(rng() * 4),
+      band,
+    });
+  }
+
+  return rels;
+}
+
+export const relationships: Relationship[] = generateRelationships();
 
 export const actions: ActionItem[] = [
   {
