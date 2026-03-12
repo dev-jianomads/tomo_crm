@@ -248,3 +248,50 @@ export function validateAndMergeFilters(
 }
 
 export const EMPTY_CRITERIA: StructuredFilterCriteria = {};
+
+/** Human-readable summary of active filters for display next to the count */
+export function formatFilterSummary(criteria: StructuredFilterCriteria): string {
+  const parts: string[] = [];
+
+  if (criteria.query?.trim()) {
+    parts.push(`"${criteria.query}"`);
+  }
+  if (criteria.tier && criteria.tier !== "All") {
+    const t = Array.isArray(criteria.tier) ? criteria.tier.join(", ") : criteria.tier;
+    parts.push(t);
+  }
+  if (criteria.band && criteria.band !== "All") {
+    const b = Array.isArray(criteria.band) ? criteria.band.join(", ") : criteria.band;
+    parts.push(b);
+  }
+  if (criteria.momentumDirection && criteria.momentumDirection !== "All") {
+    const m = Array.isArray(criteria.momentumDirection)
+      ? criteria.momentumDirection.join(", ")
+      : criteria.momentumDirection;
+    parts.push(m);
+  }
+  if (criteria.investorType && criteria.investorType !== "All") {
+    const i = Array.isArray(criteria.investorType) ? criteria.investorType.join(", ") : criteria.investorType;
+    parts.push(i);
+  }
+  if (criteria.lpLocation && criteria.lpLocation !== "All") {
+    const l = Array.isArray(criteria.lpLocation) ? criteria.lpLocation.join(", ") : criteria.lpLocation;
+    parts.push(`in ${l}`);
+  }
+  const days = criteria.daysSinceLastMeaningfulContact;
+  if (days && days !== "all") {
+    if (days.min != null) parts.push(`no contact in ${days.min}+ days`);
+    else if (days.max != null) parts.push(`contacted in last ${days.max} days`);
+  }
+  const loops = criteria.openLoops;
+  if (loops && loops !== "all") {
+    if (loops.min != null) parts.push("with open loops");
+  }
+  if (criteria.stage && criteria.stage !== "All") {
+    const s = Array.isArray(criteria.stage) ? criteria.stage.join(", ") : criteria.stage;
+    parts.push(s);
+  }
+
+  if (parts.length === 0) return "";
+  return `Tomo: ${parts.join(" • ")}`;
+}

@@ -10,6 +10,7 @@ import { relationships, Relationship, formatDaysSinceContact } from "@/lib/mockD
 import type { MomentumDirection } from "@/lib/mockData";
 import {
   applyFilters,
+  formatFilterSummary,
   parseFilterPromptHeuristic,
   validateAndMergeFilters,
   EMPTY_CRITERIA,
@@ -427,11 +428,21 @@ export default function RelationshipsPage() {
         style={{ flex: `${100 - splitRatio} 1 0` }}
       >
         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs text-gray-500">
-            {Object.keys(filterCriteria).length > 0
-              ? `Showing ${filtered.length} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
-              : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
-          </span>
+          <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
+            <span className="shrink-0 text-xs text-gray-500">
+              {Object.keys(filterCriteria).length > 0
+                ? `Showing ${filtered.length} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
+                : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
+            </span>
+            {(() => {
+              const summary = formatFilterSummary(filterCriteria);
+              return summary ? (
+                <span className="min-w-0 truncate text-xs font-medium peach-text" title={summary}>
+                  {summary}
+                </span>
+              ) : null;
+            })()}
+          </div>
           <div className="flex shrink-0 gap-1">
             <button
               type="button"
