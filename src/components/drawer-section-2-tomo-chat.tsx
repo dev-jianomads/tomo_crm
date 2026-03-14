@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
 import { TomoMessageContent } from "./tomo-message-content";
 import type { TomoInitialMessage, TomoAssistance } from "@/lib/mockTomoAssistance";
 
@@ -36,18 +37,42 @@ export function DrawerSection2TomoChat({
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/tomo/drawer-chat",
+        api: "/api/tomo/orchestrate",
         body: {
-          entityId: entityKey,
-          selection,
-          assistanceContext: assistanceContext ?? null,
+          context: {
+            surface: "drawer" as const,
+            page: selection?.type === "relationship" ? "relationships" : "home",
+            selection,
+            contextTitle: contextLabel,
+            assistanceContext: assistanceContext ?? null,
+          },
         },
       }),
-    [entityKey, selection, assistanceContext]
+    [selection, contextLabel, assistanceContext]
   );
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport,
+    onToolCall: ({ toolCall }) => {
+      if (toolCall.toolName === "update_crm") {
+        const input = toolCall.input as {
+          entityId?: string;
+          rows?: { field: string; update: string }[];
+          status?: string;
+          reminderDuration?: string;
+        };
+        const fields = input.rows?.map((r) => r.field) ?? [];
+        if (fields.length || input.status || input.reminderDuration) {
+          toast.success(
+            input.status
+              ? `Status set to ${input.status}`
+              : input.reminderDuration
+                ? `Reminder set for ${input.reminderDuration}`
+                : `CRM updated: ${fields.join(", ")}`
+          );
+        }
+      }
+    },
   });
 
   const isStreaming = status === "streaming" || status === "submitted";

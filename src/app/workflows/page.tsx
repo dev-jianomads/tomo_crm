@@ -372,9 +372,22 @@ function WorkflowTomoChat({
   const endRef = useRef<HTMLDivElement>(null);
   const welcomeText = workflowSummary(workflow, playbookType);
 
+  // Transport uses static config only. workflowContext is passed per-request in sendMessage
+  // to avoid stale context (useChat doesn't react to transport/body changes after init).
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/tomo/chat" }),
-    []
+    () =>
+      new DefaultChatTransport({
+        api: "/api/tomo/orchestrate",
+        body: {
+          context: {
+            surface: "workflow" as const,
+            page: "workflows",
+            playbookName,
+            playbookType,
+          },
+        },
+      }),
+    [playbookName, playbookType]
   );
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -413,9 +426,20 @@ function WorkflowTomoChat({
     if (allSuggestions.includes(trimmed)) {
       setUsedChips((prev) => new Set([...prev, trimmed]));
     }
-    sendMessage({
-      text: `---WORKFLOW_CONTEXT_START---\n${currentMarkdown}\n---WORKFLOW_CONTEXT_END---\n${trimmed}`,
-    });
+    sendMessage(
+      { text: trimmed },
+      {
+        body: {
+          context: {
+            surface: "workflow" as const,
+            page: "workflows",
+            workflowContext: currentMarkdown,
+            playbookName,
+            playbookType,
+          },
+        },
+      }
+    );
   };
 
   return (
@@ -485,16 +509,11 @@ function WorkflowTomoChat({
 function ChatBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
 
-  const textContent = message.parts
-    ?.filter((p) => p.type === "text")
-    .map((p) => p.text)
-    .join("")
-    ?? "";
-
-  // For user messages, strip the injected context prefix and show only the user request
-  const displayText = isUser
-    ? textContent.replace(/---WORKFLOW_CONTEXT_START---[\s\S]*?---WORKFLOW_CONTEXT_END---\n?/, "")
-    : textContent;
+  const displayText =
+    message.parts
+      ?.filter((p) => p.type === "text")
+      .map((p) => p.text)
+      .join("") ?? "";
 
   if (!displayText.trim()) return null;
 

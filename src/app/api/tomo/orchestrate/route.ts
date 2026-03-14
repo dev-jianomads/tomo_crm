@@ -23,7 +23,11 @@ import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
+export type OrchestratorSurface = "drawer" | "workflow" | "general";
+
 export type OrchestratorContext = {
+  /** Surface determines which tools are available. drawer=entity actions only, workflow=workflow only, general=all tools */
+  surface?: OrchestratorSurface;
   page?:
     | "home"
     | "relationships"
@@ -46,27 +50,42 @@ export type OrchestratorContext = {
 
 // ── System prompt builder ───────────────────────────────────────────────────
 
-function buildSystemPrompt(context: OrchestratorContext): string {
+function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSurface): string {
   const lines: string[] = [
     `You are Tomo, an AI assistant for a CRM tool used by fund managers.`,
-    `You help users filter relationships, edit workflows, update CRM records, and draft emails or meeting invites.`,
-    ``,
-    `You have access to 4 tools. Use the appropriate tool based on user intent:`,
-    ``,
-    `1. filter_relationships — When the user wants to filter the relationship list (e.g. "show Tier 1 LPs", "cooling relationships", "no contact in 14 days"). Only use when page is relationships or user explicitly asks to filter.`,
-    `2. update_workflow — When the user wants to add, remove, reorder, or modify workflow steps. Only use when workflowContext is provided (user is on Workflows page with a workflow selected).`,
-    `3. update_crm — When the user wants to apply CRM field updates, set a reminder, or change status (e.g. blocked, in progress) on an entity. Requires selection (entity id).`,
-    `4. draft_reply — When the user wants to draft an email or meeting invite. Can use selection/assistanceContext for context.`,
-    ``,
-    `Rules:`,
-    `- Be conversational but concise.`,
-    `- Only call a tool when the user clearly intends that action.`,
-    `- If unsure, respond with a clarifying question or helpful text.`,
-    `- Do not make up data. Only reference what is in the context.`,
-    `- When workflowContext is present, the user is editing a workflow — prefer update_workflow for add/remove/reorder requests.`,
-    `- When selection is present and user confirms CRM updates or status, use update_crm.`,
-    `- When user asks to filter (e.g. on Relationships page), use filter_relationships.`,
   ];
+
+  if (surface === "drawer") {
+    lines.push(
+      ``,
+      `You are in the drawer viewing a specific entity. You can ONLY help with entity actions:`,
+      `- update_crm: Apply CRM field updates, set a reminder, or change status (e.g. blocked, in progress)`,
+      `- draft_reply: Draft an email or meeting invite`,
+      ``,
+      `If the user asks to filter the list (e.g. "show Tier 1", "cooling relationships"), politely redirect: "Use the filter bar above to filter the list. For this relationship, I can help you apply updates, draft outreach, or set a reminder."`,
+      ``,
+      `Rules: Be conversational but concise. Only call a tool when the user clearly intends that action.`,
+    );
+  } else if (surface === "workflow") {
+    lines.push(
+      ``,
+      `You are editing a workflow. You can ONLY use update_workflow to add, remove, reorder, or modify steps and the trigger.`,
+      ``,
+      `Rules: Be conversational but concise. Always include ALL steps when updating — the tool replaces the entire workflow. Keep step names under 30 chars, descriptions under 80 chars.`,
+    );
+  } else {
+    lines.push(
+      ``,
+      `You have access to 4 tools. Use the appropriate tool based on user intent:`,
+      ``,
+      `1. filter_relationships — Filter the relationship list (e.g. "show Tier 1", "cooling relationships")`,
+      `2. update_workflow — Add, remove, reorder, or modify workflow steps (when workflowContext is present)`,
+      `3. update_crm — Apply CRM updates, set reminder, change status on an entity`,
+      `4. draft_reply — Draft an email or meeting invite`,
+      ``,
+      `Rules: Be conversational but concise. Only call a tool when the user clearly intends that action.`,
+    );
+  }
 
   if (context.page) {
     lines.push(``, `Current page: ${context.page}`);
@@ -135,14 +154,15 @@ export async function POST(req: Request) {
     return Response.json({ error: "messages must be an array" }, { status: 400 });
   }
 
-  const systemPrompt = buildSystemPrompt(context);
+  const surface: OrchestratorSurface = context.surface ?? "general";
+  const systemPrompt = buildSystemPrompt(context, surface);
 
-  const result = streamText({
-    model: openai("gpt-4o-mini"),
-    system: systemPrompt,
-    messages: await convertToModelMessages(messages as UIMessage[]),
-    tools: {
-      filter_relationships: tool({
+  // Build tools conditionally by surface
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tools: Record<string, any> = {};
+
+  if (surface === "general") {
+    tools.filter_relationships = tool({
         description:
           "Parse natural language into relationship filter criteria. Use when the user wants to filter the LP/relationship list (e.g. 'show Tier 1', 'cooling relationships', 'no contact in 14 days').",
         inputSchema: z.object({
@@ -160,24 +180,28 @@ export async function POST(req: Request) {
             fallback: result.fallback,
           };
         },
-      }),
+      });
+  }
 
-      update_workflow: tool({
-        description:
-          "Update the workflow definition. Use when the user wants to add, remove, reorder, or modify workflow steps or the trigger. Requires workflowContext to be present.",
-        inputSchema: workflowSchema,
-        execute: async (input) => {
-          const definition = {
-            title: input.title,
-            trigger: input.trigger,
-            steps: input.steps as WorkflowStep[],
-          };
-          const markdown = workflowToMarkdown(definition);
-          return { markdown, definition };
-        },
-      }),
+  if (surface === "general" || surface === "workflow") {
+    tools.update_workflow = tool({
+      description:
+        "Update the workflow definition. Use when the user wants to add, remove, reorder, or modify workflow steps or the trigger. Requires workflowContext to be present.",
+      inputSchema: workflowSchema,
+      execute: async (input) => {
+        const definition = {
+          title: input.title,
+          trigger: input.trigger,
+          steps: input.steps as WorkflowStep[],
+        };
+        const markdown = workflowToMarkdown(definition);
+        return { markdown, definition };
+      },
+    });
+  }
 
-      update_crm: tool({
+  if (surface === "general" || surface === "drawer") {
+    tools.update_crm = tool({
         description:
           "Apply CRM updates to an entity. Use when the user confirms they want to apply field updates, set a reminder, or change status (e.g. blocked, in progress). Requires selection with entity id.",
         inputSchema: z.object({
@@ -207,9 +231,9 @@ export async function POST(req: Request) {
             reminderDuration: reminderDuration ?? null,
           };
         },
-      }),
+      });
 
-      draft_reply: tool({
+    tools.draft_reply = tool({
         description:
           "Generate a draft email or meeting invite. Use when the user asks to draft, write, or compose an email or invite.",
         inputSchema: z.object({
@@ -233,8 +257,14 @@ export async function POST(req: Request) {
             context: draftContext ?? null,
           };
         },
-      }),
-    },
+      });
+  }
+
+  const result = streamText({
+    model: openai("gpt-4o-mini"),
+    system: systemPrompt,
+    messages: await convertToModelMessages(messages as UIMessage[]),
+    tools,
     stopWhen: stepCountIs(3),
   });
 
