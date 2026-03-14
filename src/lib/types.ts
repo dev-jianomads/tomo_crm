@@ -107,30 +107,6 @@ export type TaskItem = {
 };
 
 /**
- * Tomo Assistant Message - chat messages with Tomo AI
- * 
- * SUPABASE: Create `tomo_messages` table (optional - can use in-memory)
- * - id: uuid
- * - user_id: string
- * - from: enum('user', 'tomo')
- * - text: text
- * - timestamp: timestamp
- * - context_type: text (e.g., 'contact', 'meeting', 'task')
- * - context_id: text (id of the entity being discussed)
- * 
- * TOMO AI INTEGRATION:
- * - Messages are sent to POST /api/tomo/chat
- * - Response format: SSE stream or WebSocket (TBD)
- * - Include context (current view, selected entity) in requests
- */
-export type TomoMessage = {
-  id: string;
-  from: "user" | "tomo";
-  text: string;
-  timestamp: number;
-};
-
-/**
  * Onboarding State - tracks user's integration setup progress
  * 
  * SUPABASE: Can be stored in `users` table as JSONB or separate `user_integrations` table

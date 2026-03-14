@@ -73,7 +73,7 @@
 - Visual process flow (steps)
 - AI chat to edit workflows via `update_workflow` tool
 - Target lists linked to playbooks
-- Uses `/api/tomo/chat` with streaming
+- Uses `/api/tomo/orchestrate` with streaming (surface: workflow)
 
 ### Tomo Agent Access by Screen
 
@@ -141,13 +141,13 @@ Per product decisions, **momentum sections have been removed** from the app. Som
 - **Commitment** — title, datetime, lp, briefId, window
 - **TargetList** — name, filters, members
 - **WorkflowDefinition** — title, trigger, steps (action/wait)
-- **TomoMessage** — id, from, text, timestamp
+- **UIMessage** (from AI SDK) — used for Tomo chat; parts include text, tool calls
 
 ### API Routes
 
 | Route | Purpose |
 |-------|---------|
-| `POST /api/tomo/chat` | Workflow AI chat with `update_workflow` tool (streaming) |
+| `POST /api/tomo/orchestrate` | Unified Tomo agent (filter, workflow, crm, draft tools; surface: general/drawer/workflow) |
 | `GET /api/version` | Returns `version` and `buildId` for deploy detection |
 
 ### Storage (localStorage)

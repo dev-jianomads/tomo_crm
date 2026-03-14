@@ -69,7 +69,7 @@
  * =============================================================================
  */
 
-import { Contact, MeetingBrief, TaskItem, TomoMessage } from "./types";
+import { Contact, MeetingBrief, TaskItem } from "./types";
 
 type MomentumShiftDelta = {
   band: "Heating" | "Cooling" | "Stalled" | "Stable";
@@ -210,42 +210,6 @@ export const momentumShiftDeltas: MomentumShiftDelta[] = [
   { band: "Heating", delta: 3 },
   { band: "Cooling", delta: 2 },
   { band: "Stable", delta: 0 },
-];
-
-/**
- * Initial Tomo AI messages (shown on first load)
- * 
- * PRODUCTION:
- * - Can store conversation history in Supabase for continuity
- * - Or keep in-memory per session (privacy-first approach)
- * 
- * MESSAGE FLOW:
- * 1. User sends message → POST /api/tomo/chat
- * 2. Request includes: message, context (current page, selected entity)
- * 3. Tomo AI processes with context
- * 4. Response streamed back (SSE or WebSocket TBD)
- * 5. UI updates in real-time as tokens arrive
- * 
- * CONTEXT INJECTION:
- * ```
- * {
- *   message: "Draft a follow-up email",
- *   context: {
- *     page: "contacts",
- *     selectedContact: { id: "c1", name: "Alex Morgan", ... },
- *     recentInteractions: [...],
- *     userPreferences: { tone: "professional", length: "concise" }
- *   }
- * }
- * ```
- */
-export const initialMessages: TomoMessage[] = [
-  {
-    id: "m-1",
-    from: "tomo",
-    text: "What can I help you with today?",
-    timestamp: Date.now(),
-  },
 ];
 
 /**
