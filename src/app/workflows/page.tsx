@@ -15,7 +15,6 @@ import {
   DEFAULT_TEMPLATES,
   PLAYBOOK_SUGGESTIONS,
   workflowToMarkdown,
-  workflowSummary,
   type WorkflowDefinition,
 } from "@/lib/workflow-templates";
 import type { PlaybookType } from "@/lib/mockPlaybooks";
@@ -370,7 +369,6 @@ function WorkflowTomoChat({
 }) {
   const currentMarkdown = workflowToMarkdown(workflow);
   const endRef = useRef<HTMLDivElement>(null);
-  const welcomeText = workflowSummary(workflow, playbookType);
 
   // Transport uses static config only. workflowContext is passed per-request in sendMessage
   // to avoid stale context (useChat doesn't react to transport/body changes after init).
@@ -477,10 +475,10 @@ function WorkflowTomoChat({
 
       {/* Messages */}
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
-        {/* Initial workflow summary (always visible at top) */}
+        {/* Tomo's initial message */}
         <div className="flex justify-start">
           <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-            <p className="whitespace-pre-line leading-relaxed">{welcomeText}</p>
+            <p className="text-sm text-gray-900">Can I help you understand or update this workflow?</p>
           </div>
         </div>
         {messages.map((msg) => (

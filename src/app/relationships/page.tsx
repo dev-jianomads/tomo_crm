@@ -560,7 +560,7 @@ export default function RelationshipsPage() {
         section2Content={
           activeId ? (
             <DrawerSection2TomoChat
-              initialMessage={getTomoAssistance(activeId)?.initialMessage}
+              initialMessage={{ text: "Can I help you understand this relationship or update their record?" }}
               suggestions={getTomoAssistance(activeId)?.suggestedPrompts ?? ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
               entityKey={activeId}
               selection={drawerSelection}
