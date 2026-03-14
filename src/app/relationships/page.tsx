@@ -97,8 +97,24 @@ const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
   esgRequired: 90,
 };
 
+/** Primary columns visible by default (~1380px) so table fits on typical screens without horizontal overflow */
 const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = Object.fromEntries(
-  TABLE_COLUMNS.map((c) => [c.key, true])
+  TABLE_COLUMNS.map((c) => {
+    const secondary = [
+      "strategyType",
+      "lpLocation",
+      "investmentRemit",
+      "typicalCheckSize",
+      "fundSizePreference",
+      "source",
+      "lastFundHistory",
+      "decisionTimeline",
+      "fiscalYearEnd",
+      "consultantDependent",
+      "esgRequired",
+    ];
+    return [c.key, !secondary.includes(c.key)];
+  })
 ) as Record<SortColumn, boolean>;
 
 const MIN_COLUMN_WIDTH = 60;
@@ -122,7 +138,7 @@ export default function RelationshipsPage() {
     DEFAULT_COLUMN_WIDTHS
   );
   const [columnVisibility, setColumnVisibility] = usePersistentState<Record<string, boolean>>(
-    "tomo-relationships-column-visibility",
+    "tomo-relationships-column-visibility-v2",
     DEFAULT_COLUMN_VISIBILITY
   );
   const visibleColumns = useMemo(
@@ -469,7 +485,7 @@ export default function RelationshipsPage() {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div className="min-w-0 flex-1 overflow-auto">
           {viewMode === "list" ? (
             <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
               <table
