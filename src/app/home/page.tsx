@@ -29,24 +29,22 @@ type TodaySelection =
 
 /**
  * Inline Tomo AI chat - minimal prompt-only view for Today page.
- * No chips, no initial message; centered, half-width.
+ * No chips; centered, half-width. Uses orchestrator (surface: general).
  */
 function TomoChatInline() {
   const tomo = useTomoChat();
   if (!tomo) return null;
-  const messagesWithoutGreeting = tomo.messages.filter(
-    (m) => m.text !== "What can I help you with today?"
-  );
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden">
       <div className="flex h-full w-full max-w-[50%] min-w-[240px] flex-col px-4">
         <div className="flex h-full flex-col overflow-hidden">
           <TomoAssistant
-            messages={messagesWithoutGreeting}
+            messages={tomo.messages}
             onSend={tomo.onSend}
             suggestions={[]}
             contextLabel={tomo.contextLabel}
             placeholder="Ask anything..."
+            isStreaming={tomo.isStreaming}
           />
         </div>
       </div>

@@ -47,11 +47,11 @@ import {
   CpuChipIcon,
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { TomoChatProvider } from "@/components/tomo-chat-context";
-import { initialMessages } from "@/lib/mock-data";
 import { usePersistentState } from "@/lib/storage";
-import { TomoMessage } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, WORKFLOWS, ACTIVITY, SETTINGS
@@ -175,15 +175,25 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   
   // Assistant dock state (desktop + mobile)
   const [assistantOpen, setAssistantOpen] = useState(false);
-  
-  /**
-   * Chat messages with Tomo AI
-   * PRODUCTION: This could be:
-   * - In-memory only (privacy-first, no persistence)
-   * - Persisted to localStorage (current approach)
-   * - Synced to Supabase for cross-device continuity
-   */
-  const [messages, setMessages] = useState<TomoMessage[]>(initialMessages);
+
+  // Tomo AI chat via orchestrator (surface: general = all 4 tools).
+  // Transport uses static config only; section/contextTitle passed per-request in handleSend
+  // to avoid stale context (useChat doesn't react to transport changes after init).
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/tomo/orchestrate",
+        body: {
+          context: {
+            surface: "general" as const,
+          },
+        },
+      }),
+    []
+  );
+
+  const { messages, sendMessage, status } = useChat({ transport });
+  const isStreaming = status === "streaming" || status === "submitted";
 
   /**
    * Context-aware suggestion chips for Tomo
@@ -236,43 +246,25 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
 
   const contextLabel = contextTitle ? `${contextTitle} — ${activeFund}` : activeFund;
 
-  /**
-   * Handle sending message to Tomo AI
-   *
-   * CURRENT: Mock response with simulated delay
-   *
-   * PRODUCTION: Replace with actual API call
-   * See tomo-assistant.tsx for detailed streaming implementation example
-   *
-   * The contextTitle is passed to Tomo so it knows what entity
-   * the user is currently viewing (for context-aware responses)
-   */
   const handleSend = useCallback(
     (text: string) => {
       if (suggestions.includes(text)) {
         setUsedChips((prev) => new Set([...prev, text]));
       }
-      // Add user message immediately
-      const userMessage: TomoMessage = { id: crypto.randomUUID(), from: "user", text, timestamp: Date.now() };
-      setMessages((prev) => [...prev, userMessage]);
-
-      // MOCK: Simulate AI response after delay
-      // PRODUCTION: Replace with streaming API call to /api/tomo/chat
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            from: "tomo",
-            text: contextTitle
-              ? `Pulling context on "${contextTitle}". Here's a concise next step: ${suggestionFromText(text)}`
-              : `Got it. I'll keep this in mind and suggest follow-ups.`,
-            timestamp: Date.now(),
+      sendMessage(
+        { text },
+        {
+          body: {
+            context: {
+              surface: "general" as const,
+              page: section,
+              contextTitle: contextLabel,
+            },
           },
-        ]);
-      }, 450);
+        }
+      );
     },
-    [suggestions, contextTitle]
+    [suggestions, section, contextLabel, sendMessage]
   );
 
   const openAndSend = useCallback(
@@ -293,6 +285,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       onSend={handleSend}
       suggestions={visibleSuggestions}
       contextLabel={contextLabel}
+      isStreaming={isStreaming}
     >
     <div className="min-h-screen bg-white text-gray-900">
       {/* Header */}
@@ -396,11 +389,18 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               onSend={handleSend}
               suggestions={visibleSuggestions}
               contextLabel={contextLabel}
+              isStreaming={isStreaming}
             />
           </AssistantSheet>
         ) : (
           <AssistantDock open={assistantOpen} onClose={() => setAssistantOpen(false)}>
-            <TomoAssistant messages={messages} onSend={handleSend} suggestions={visibleSuggestions} contextLabel={contextLabel} />
+            <TomoAssistant
+              messages={messages}
+              onSend={handleSend}
+              suggestions={visibleSuggestions}
+              contextLabel={contextLabel}
+              isStreaming={isStreaming}
+            />
           </AssistantDock>
         )
       )}
@@ -454,16 +454,6 @@ function AssistantDock({ open, onClose, children }: { open: boolean; onClose: ()
   );
 }
 
-/**
- * Mock response generator based on user input
- * PRODUCTION: Remove this - responses come from Tomo AI API
- */
-function suggestionFromText(input: string) {
-  if (input.toLowerCase().includes("brief")) return "Here's a tighter brief plus 3 talking points.";
-  if (input.toLowerCase().includes("follow")) return "I drafted a follow-up. Review before sending.";
-  if (input.toLowerCase().includes("task")) return "I prioritized tasks and flagged any blockers.";
-  return "Logged and ready. Want me to draft a quick summary?";
-}
 
 
 

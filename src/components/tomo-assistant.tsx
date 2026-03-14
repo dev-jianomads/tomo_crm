@@ -77,16 +77,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import { TomoMessage } from "@/lib/types";
+import type { UIMessage } from "ai";
 
 type TomoAssistantProps = {
-  messages: TomoMessage[];
+  messages: UIMessage[];
   onSend: (text: string) => void;
   suggestions?: string[];
   contextLabel?: string;
   placeholder?: string;
   /** When true, hide suggestion chips once conversation has started (frees space for chat) */
   hideSuggestionsWhenActive?: boolean;
+  /** When true, show loading state and disable input */
+  isStreaming?: boolean;
 };
 
 /**
@@ -113,6 +115,7 @@ export function TomoAssistant({
   contextLabel,
   placeholder = "Ask TOMO anything…",
   hideSuggestionsWhenActive = false,
+  isStreaming = false,
 }: TomoAssistantProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -124,7 +127,7 @@ export function TomoAssistant({
 
   const handleSend = (text?: string) => {
     const value = (text ?? input).trim();
-    if (!value) return;
+    if (!value || isStreaming) return;
     onSend(value);
     setInput("");
   };
@@ -150,7 +153,8 @@ export function TomoAssistant({
             <button
               key={chip}
               onClick={() => handleSend(chip)}
-              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              disabled={isStreaming}
+              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
             >
               {chip}
             </button>
@@ -160,29 +164,39 @@ export function TomoAssistant({
 
       {/* Message list - min-h-0 allows shrinking so input stays visible */}
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
-                msg.from === "user"
-                  ? "border-blue-200 bg-blue-50 text-gray-900"
-                  : "border-gray-200 bg-gray-50 text-gray-900"
-              }`}
-            >
-              {/* 
-                PRODUCTION: For Tomo messages, support:
-                - Markdown rendering
-                - Code blocks
-                - Tool call previews (email drafts, task creation, etc.)
-                - Action buttons
-              */}
-              <p className="whitespace-pre-line leading-relaxed">{msg.text}</p>
-              <span className="mt-1.5 block text-[11px] text-gray-400">
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-              </span>
+        {messages.map((msg) => {
+          const textContent =
+            msg.parts
+              ?.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+              .map((p) => p.text)
+              .join("") ?? "";
+          if (!textContent.trim()) return null;
+          const isUser = msg.role === "user";
+          return (
+            <div key={msg.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
+                  isUser
+                    ? "border-blue-200 bg-blue-50 text-gray-900"
+                    : "border-gray-200 bg-gray-50 text-gray-900"
+                }`}
+              >
+                <p className="whitespace-pre-line leading-relaxed">{textContent}</p>
+              </div>
+            </div>
+          );
+        })}
+        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+              <div className="flex gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+              </div>
             </div>
           </div>
-        ))}
+        )}
         {/* Scroll anchor */}
         <div ref={endRef} />
       </div>
@@ -194,7 +208,8 @@ export function TomoAssistant({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            disabled={isStreaming}
+            className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -204,7 +219,8 @@ export function TomoAssistant({
           />
           <button
             onClick={() => handleSend()}
-            className="flex h-9 w-9 items-center justify-center rounded-md tomo-ai-bg text-white transition"
+            disabled={!input.trim() || isStreaming}
+            className="flex h-9 w-9 items-center justify-center rounded-md tomo-ai-bg text-white transition disabled:opacity-50"
             aria-label="Send to TOMO"
           >
             <PaperAirplaneIcon className="h-4 w-4" />
