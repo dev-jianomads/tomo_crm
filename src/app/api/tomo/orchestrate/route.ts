@@ -23,7 +23,7 @@ import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
-export type OrchestratorSurface = "drawer" | "workflow" | "general";
+export type OrchestratorSurface = "drawer" | "workflow" | "general" | "filter";
 
 export type OrchestratorContext = {
   /** Surface determines which tools are available. drawer=entity actions only, workflow=workflow only, general=all tools */
@@ -72,6 +72,15 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       `You are editing a workflow. You can ONLY use update_workflow to add, remove, reorder, or modify steps and the trigger.`,
       ``,
       `Rules: Be conversational but concise. Always include ALL steps when updating — the tool replaces the entire workflow. Keep step names under 30 chars, descriptions under 80 chars.`,
+    );
+  } else if (surface === "filter") {
+    lines.push(
+      ``,
+      `You are helping filter the relationship list. You can ONLY use filter_relationships to parse natural language into filter criteria.`,
+      ``,
+      `Examples: "show Tier 1", "cooling relationships", "no contact in 14 days", "family offices in North America". For "clear" or "show all", return empty filters.`,
+      ``,
+      `Rules: Be conversational but concise. Always call filter_relationships when the user describes a filter.`,
     );
   } else {
     lines.push(
@@ -161,7 +170,7 @@ export async function POST(req: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tools: Record<string, any> = {};
 
-  if (surface === "general") {
+  if (surface === "general" || surface === "filter") {
     tools.filter_relationships = tool({
         description:
           "Parse natural language into relationship filter criteria. Use when the user wants to filter the LP/relationship list (e.g. 'show Tier 1', 'cooling relationships', 'no contact in 14 days').",

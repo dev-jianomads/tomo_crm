@@ -11,11 +11,10 @@ import type { MomentumDirection } from "@/lib/mockData";
 import {
   applyFilters,
   formatFilterSummary,
-  parseFilterPromptHeuristic,
-  validateAndMergeFilters,
   EMPTY_CRITERIA,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
+import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
@@ -113,8 +112,8 @@ export default function RelationshipsPage() {
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Top/bottom split ratio (12% filter header / 88% content default)
-  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 12);
+  // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
   const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
@@ -218,59 +217,8 @@ export default function RelationshipsPage() {
     resizeStartRef.current = { x: e.clientX, width: effectiveColumnWidths[col] };
   };
 
-  const [tomoPrompt, setTomoPrompt] = useState("");
-  const [filterLoading, setFilterLoading] = useState(false);
-  const [filterError, setFilterError] = useState<string | null>(null);
-
-  /** Parse natural language → API (Phase 3) or heuristic fallback */
-  const applyTomoPrompt = async () => {
-    const text = tomoPrompt.trim();
-    if (!text) return;
-    if (/\b(clear|reset|show\s+all)\b/i.test(text)) {
-      setFilterCriteria(EMPTY_CRITERIA);
-      setTomoPrompt("");
-      setFilterError(null);
-      return;
-    }
-    setFilterLoading(true);
-    setFilterError(null);
-    try {
-      const res = await fetch("/api/tomo/filter-relationships", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: text,
-          currentFilters: filterCriteria,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error ?? "Failed to parse filter");
-        throw new Error(msg);
-      }
-      if (data.filters != null) {
-        setFilterCriteria(data.filters);
-        setTomoPrompt("");
-        setFilterError(null);
-      } else {
-        throw new Error("No filters returned");
-      }
-    } catch (err) {
-      setFilterError(err instanceof Error ? err.message : "Filter failed");
-      const updates = parseFilterPromptHeuristic(text);
-      const validated = validateAndMergeFilters(filterCriteria, updates);
-      if (validated) {
-        setFilterCriteria(validated);
-        setTomoPrompt("");
-      }
-    } finally {
-      setFilterLoading(false);
-    }
-  };
-
   const clearFilters = () => {
     setFilterCriteria(EMPTY_CRITERIA);
-    setTomoPrompt("");
   };
 
   const filtered = useMemo(
@@ -390,61 +338,16 @@ export default function RelationshipsPage() {
 
   const listContent = (
     <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Top: AI filter prompt — all-in, no traditional toggles */}
+      {/* Top: Tomo filter chat (Phase 5 — orchestrator with filter_relationships tool) */}
       <div
-        className="flex min-h-[120px] shrink-0 flex-col overflow-auto border-b border-gray-200 bg-white px-4 py-3"
+        className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white"
         style={{ flex: `${splitRatio} 1 0` }}
       >
-        <p className="text-xs uppercase tracking-wide text-gray-500">Relationships</p>
-        <div className="mt-3 flex flex-col gap-3">
-          <div className="flex flex-col gap-2 rounded-md border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/5 p-3 sm:flex-row sm:items-end">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="tomo-filter-prompt" className="text-xs font-medium text-gray-600">
-                Ask Tomo to filter
-              </label>
-              <textarea
-                id="tomo-filter-prompt"
-                value={tomoPrompt}
-                onChange={(e) => setTomoPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void applyTomoPrompt();
-                  }
-                }}
-                placeholder='e.g. "show Tier 1 LPs with no contact in 14 days" or "cooling relationships" or "family offices in North America" — type "clear" to reset'
-                rows={3}
-                className="min-h-[72px] w-full resize-y bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-                aria-label="Natural language filter prompt"
-              />
-            </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
-              {filterError && (
-                <span className="text-xs text-amber-600" role="status">
-                  {filterError} — used fallback
-                </span>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void applyTomoPrompt()}
-                  disabled={filterLoading}
-                  className="rounded-md bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  {filterLoading ? "Applying…" : "Apply"}
-                </button>
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  disabled={filterLoading}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RelationshipsFilterChat
+          currentFilters={filterCriteria}
+          onFiltersChange={setFilterCriteria}
+          onClearFilters={clearFilters}
+        />
       </div>
 
       {/* Resize handle */}
