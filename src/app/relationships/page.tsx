@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, FunnelIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
@@ -17,6 +17,8 @@ import {
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
+import { useFunds } from "@/components/fund-provider";
+import { usePipelines } from "@/lib/pipelines";
 import { toast } from "sonner";
 
 type SortColumn =
@@ -123,11 +125,16 @@ const MAX_COLUMN_WIDTH = 400;
 
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
+  const { funds, activeFundId } = useFunds();
+  const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
+  const { addPipeline } = usePipelines(activeFundId);
   const [filterCriteria, setFilterCriteria] = usePersistentState<StructuredFilterCriteria>(
     "tomo-relationships-filters-v3",
     EMPTY_CRITERIA
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
+  const [createPipelineName, setCreatePipelineName] = useState("");
 
   // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
@@ -353,6 +360,22 @@ export default function RelationshipsPage() {
     [activeId]
   );
 
+  const handleCreatePipeline = () => {
+    const trimmed = createPipelineName.trim();
+    if (!trimmed) {
+      toast.error("Enter a pipeline name");
+      return;
+    }
+    addPipeline({
+      name: trimmed,
+      fundId: effectiveFundId,
+      filterCriteria: { ...filterCriteria },
+    });
+    setCreatePipelineName("");
+    setCreatePipelineModalOpen(false);
+    toast.success(`Pipeline "${trimmed}" created`);
+  };
+
   const listContent = (
     <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top: Tomo filter chat (Phase 5 — orchestrator with filter_relationships tool) */}
@@ -399,6 +422,17 @@ export default function RelationshipsPage() {
             })()}
           </div>
           <div className="relative flex shrink-0 items-center gap-1" ref={columnsPopoverRef}>
+            {Object.keys(filterCriteria).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setCreatePipelineModalOpen(true)}
+                className="rounded p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Create pipeline"
+                title="Create pipeline from current filters"
+              >
+                <FunnelIcon className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => toast.info("Upload CSV coming soon")}
@@ -596,7 +630,81 @@ export default function RelationshipsPage() {
         }
         section3Entries={activityLogEntries}
       />
+      {createPipelineModalOpen && (
+        <CreatePipelineModal
+          pipelineName={createPipelineName}
+          onNameChange={setCreatePipelineName}
+          onClose={() => {
+            setCreatePipelineModalOpen(false);
+            setCreatePipelineName("");
+          }}
+          onCreate={handleCreatePipeline}
+          filteredCount={filtered.length}
+        />
+      )}
     </>
+  );
+}
+
+function CreatePipelineModal({
+  pipelineName,
+  onNameChange,
+  onClose,
+  onCreate,
+  filteredCount,
+}: {
+  pipelineName: string;
+  onNameChange: (v: string) => void;
+  onClose: () => void;
+  onCreate: () => void;
+  filteredCount: number;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4"
+      onClick={onClose}
+      aria-modal="true"
+    >
+      <div
+        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold text-gray-900">Create pipeline</h3>
+        <p className="mt-1 text-xs text-gray-500">{filteredCount} relationships in current filters</p>
+        <input
+          className="mt-3 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+          placeholder="Pipeline name"
+          value={pipelineName}
+          onChange={(e) => onNameChange(e.target.value)}
+          autoFocus
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={!pipelineName.trim()}
+            className="button-primary rounded-md px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
