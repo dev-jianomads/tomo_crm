@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
@@ -216,6 +216,39 @@ function PipelineDrawerContent({
     [byStage]
   );
 
+  const funnelRef = useRef<HTMLDivElement>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [linePoints, setLinePoints] = useState<{ top: string; bottom: string } | null>(null);
+
+  useLayoutEffect(() => {
+    const funnel = funnelRef.current;
+    if (!funnel) return;
+    const bars = barRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (bars.length < 2) return;
+
+    const funnelRect = funnel.getBoundingClientRect();
+    const stagesToLink = stageCounts.slice(0, -1);
+    if (stagesToLink.length < 2) return;
+
+    const topPoints: [number, number][] = [];
+    const bottomPoints: [number, number][] = [];
+
+    for (let i = 0; i < stagesToLink.length; i++) {
+      const bar = bars[i];
+      if (!bar) continue;
+      const rect = bar.getBoundingClientRect();
+      const x = rect.left - funnelRect.left + rect.width / 2;
+      const topY = rect.top - funnelRect.top;
+      const bottomY = rect.bottom - funnelRect.top;
+      topPoints.push([x, topY]);
+      bottomPoints.push([x, bottomY]);
+    }
+
+    const topPath = topPoints.map(([x, y]) => `${x},${y}`).join(" ");
+    const bottomPath = bottomPoints.map(([x, y]) => `${x},${y}`).join(" ");
+    setLinePoints({ top: topPath, bottom: bottomPath });
+  }, [stageCounts, selectedStage]);
+
   return (
     <div className="space-y-4">
       <div>
@@ -228,40 +261,68 @@ function PipelineDrawerContent({
       {/* Horizontal funnel — fixed width, height proportional to count, centered */}
       <div>
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Funnel by stage</p>
-        <div className="flex items-center justify-between gap-1 px-1" style={{ height: 100 }}>
-          {stageCounts.map(({ stage, count }) => {
-            const isSelected = selectedStage === stage;
-            const maxCount = Math.max(...stageCounts.map((s) => s.count), 1);
-            const barHeight = Math.max((count / maxCount) * 72, count > 0 ? 12 : 6);
-            const bgColor = STAGE_COLORS[stage];
-            const isPass = stage === "Pass";
-            return (
-              <button
-                key={stage}
-                type="button"
-                onClick={() => setSelectedStage(stage)}
-                title={`${stage}: ${count}`}
-                className={`flex flex-1 flex-col items-center gap-1 transition ${
-                  isSelected ? "ring-2 ring-[color:var(--accent)] ring-offset-1 rounded" : ""
-                }`}
-              >
-                <div className="flex flex-1 items-center justify-center w-full min-h-[60px]">
-                  <div
-                    className="w-4 min-w-4 rounded"
-                    style={{
-                      height: barHeight,
-                      backgroundColor: bgColor,
-                      boxShadow: isPass ? "none" : "0 1px 2px rgba(0,0,0,0.1)",
-                    }}
-                  />
-                </div>
-                <span className="truncate w-full text-center text-[10px] text-gray-700">
-                  {shortStageLabel(stage)}
-                </span>
-                <span className="text-[10px] font-semibold text-gray-600">{count}</span>
-              </button>
-            );
-          })}
+        <div ref={funnelRef} className="relative" style={{ height: 100 }}>
+          {linePoints && (
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              style={{ overflow: "visible" }}
+            >
+              <polyline
+                points={linePoints.top}
+                fill="none"
+                stroke="#d1d5db"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <polyline
+                points={linePoints.bottom}
+                fill="none"
+                stroke="#d1d5db"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+          <div className="relative flex items-center justify-between gap-1 px-1" style={{ height: 100 }}>
+            {stageCounts.map(({ stage, count }, i) => {
+              const isSelected = selectedStage === stage;
+              const maxCount = Math.max(...stageCounts.map((s) => s.count), 1);
+              const barHeight = Math.max((count / maxCount) * 72, count > 0 ? 12 : 6);
+              const bgColor = STAGE_COLORS[stage];
+              const isPass = stage === "Pass";
+              return (
+                <button
+                  key={stage}
+                  type="button"
+                  onClick={() => setSelectedStage(stage)}
+                  title={`${stage}: ${count}`}
+                  className={`flex flex-1 flex-col items-center gap-1 transition ${
+                    isSelected ? "ring-2 ring-[color:var(--accent)] ring-offset-1 rounded" : ""
+                  }`}
+                >
+                  <div className="flex flex-1 items-center justify-center w-full min-h-[60px]">
+                    <div
+                      ref={(el) => {
+                        barRefs.current[i] = el;
+                      }}
+                      className="w-4 min-w-4 rounded"
+                      style={{
+                        height: barHeight,
+                        backgroundColor: bgColor,
+                        boxShadow: isPass ? "none" : "0 1px 2px rgba(0,0,0,0.1)",
+                      }}
+                    />
+                  </div>
+                  <span className="truncate w-full text-center text-[10px] text-gray-700">
+                    {shortStageLabel(stage)}
+                  </span>
+                  <span className="text-[10px] font-semibold text-gray-600">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
