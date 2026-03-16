@@ -32,7 +32,7 @@ export type OrchestratorContext = {
     | "home"
     | "relationships"
     | "workflows"
-    | "targets"
+    | "pipeline"
     | "activity"
     | "materials"
     | "settings"

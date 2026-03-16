@@ -44,8 +44,8 @@ import {
   HomeIcon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
-  CpuChipIcon,
-  Squares2X2Icon,
+  ArrowPathRoundedSquareIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -54,8 +54,8 @@ import { TomoChatProvider } from "@/components/tomo-chat-context";
 import { usePersistentState } from "@/lib/storage";
 import { useFunds } from "@/components/fund-provider";
 
-// IA labels (desktop order): TODAY, RELATIONSHIPS, WORKFLOWS, ACTIVITY, SETTINGS
-type Section = "home" | "relationships" | "workflows" | "targets" | "activity" | "materials" | "settings" | "search";
+// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, ACTIVITY, SETTINGS
+type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" | "materials" | "settings" | "search";
 
 type AppShellProps = {
   section: Section;
@@ -73,11 +73,11 @@ type AppShellProps = {
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
-  { href: "/workflows", label: "Workflows", icon: CpuChipIcon, id: "workflows" },
+  { href: "/pipeline", label: "Pipeline", icon: FunnelIcon, id: "pipeline" },
+  { href: "/workflows", label: "Workflows", icon: ArrowPathRoundedSquareIcon, id: "workflows" },
 ];
 
 const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
-  { href: "/targets", label: "Targets", icon: Squares2X2Icon, id: "targets" },
   { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
@@ -205,7 +205,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "workflows") return [...base, "Edit workflow rules", "Add target filters", "Test run"];
-  if (section === "targets") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+  if (section === "pipeline") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;

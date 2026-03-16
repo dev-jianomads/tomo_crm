@@ -1,6 +1,6 @@
 /**
  * Shared types for target lists (audience for playbooks).
- * Used by /targets page and /workflows page.
+ * Used by /pipeline page and /workflows page.
  */
 
 export type TargetFilter = {

@@ -10,7 +10,7 @@ import { TargetFilter, TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/target
 const defaultFilters: TargetFilter = { region: "Any", interest: "Active", stage: "Heating", tier: "Tier 1-2" };
 const defaultMembers = ["Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel"];
 
-export default function TargetsPage() {
+export default function PipelinePage() {
   const { ready } = useRequireSession();
   const [filters, setFilters] = useState<TargetFilter>(() => ({ ...defaultFilters }));
   const [lists, setLists] = usePersistentState<TargetList[]>(TARGET_LISTS_STORAGE_KEY, []);
@@ -135,7 +135,7 @@ export default function TargetsPage() {
 
   return (
     <AppShell
-      section="targets"
+      section="pipeline"
       listContent={listContent}
       detailContent={detailContent}
       contextTitle={activeList?.name}
@@ -168,4 +168,3 @@ function FilterSelect({
     </label>
   );
 }
-

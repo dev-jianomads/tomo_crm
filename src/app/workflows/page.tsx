@@ -137,7 +137,7 @@ function WorkflowsPageContent() {
           Workflows run on schedule, check evidence, and create drafts.
         </p>
         <Link
-          href="/targets"
+          href="/pipeline"
           className="mt-2 inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
         >
           View target lists →
@@ -196,7 +196,7 @@ function WorkflowsPageContent() {
                 <p className="text-xs text-gray-500 py-2">No target lists yet.</p>
               )}
               <Link
-                href="/targets"
+                href="/pipeline"
                 className="block text-center text-xs text-[color:var(--accent)] hover:underline py-1"
               >
                 Create or manage lists →
