@@ -165,6 +165,7 @@ export default function PipelinePage() {
             <p className="text-sm text-gray-500">No pipeline selected</p>
           )
         }
+        hideSection2
         section3Entries={[]}
       />
     </>
@@ -212,26 +213,28 @@ function PipelineDrawerContent({
         </p>
       </div>
 
-      {/* Horizontal funnel */}
+      {/* Horizontal funnel — bar width proportional to count */}
       <div>
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Funnel by stage</p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex w-full gap-0.5 overflow-hidden rounded-md border border-gray-200 bg-gray-100 p-0.5">
           {stageCounts.map(({ stage, count }) => {
             const isSelected = selectedStage === stage;
+            const flexBasis = Math.max(count, 0.5);
             return (
               <button
                 key={stage}
                 type="button"
                 onClick={() => setSelectedStage(stage)}
                 title={`${stage}: ${count}`}
-                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left transition ${
+                className={`flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded px-1 py-2 transition ${
                   isSelected
-                    ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                    ? "bg-[color:var(--accent)] text-white ring-1 ring-[color:var(--accent)]"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
+                style={{ flex: `${flexBasis} 1 0` }}
               >
-                <span className="truncate text-[11px] font-medium text-gray-700 max-w-[72px]">{shortStageLabel(stage)}</span>
-                <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{count}</span>
+                <span className="truncate w-full text-center text-[10px] font-medium">{shortStageLabel(stage)}</span>
+                <span className="text-[11px] font-semibold">{count}</span>
               </button>
             );
           })}
