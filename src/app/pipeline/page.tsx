@@ -6,7 +6,7 @@ import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePipelines } from "@/lib/pipelines";
-import { relationships } from "@/lib/mockData";
+import { relationships, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
 import {
   applyFilters,
   formatFilterSummary,
@@ -171,21 +171,95 @@ export default function PipelinePage() {
   );
 }
 
-function PipelineDrawerContent({ pipeline }: { pipeline: { name: string; filterCriteria: StructuredFilterCriteria } }) {
-  const count = applyFilters(relationships, pipeline.filterCriteria).length;
-  const summary = formatFilterSummary(pipeline.filterCriteria);
+function groupByStage(rels: Relationship[]): Record<Stage, Relationship[]> {
+  const groups = {} as Record<Stage, Relationship[]>;
+  for (const stage of STAGE_OPTIONS) {
+    groups[stage] = rels.filter((r) => r.stage === stage);
+  }
+  return groups;
+}
+
+function shortStageLabel(stage: Stage): string {
+  if (stage === "Active diligence") return "Active dil";
+  return stage;
+}
+
+function PipelineDrawerContent({
+  pipeline,
+}: {
+  pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+}) {
+  const [selectedStage, setSelectedStage] = useState<Stage | null>(null);
+
+  const filteredRels = useMemo(
+    () => applyFilters(relationships, pipeline.filterCriteria),
+    [pipeline.filterCriteria]
+  );
+  const byStage = useMemo(() => groupByStage(filteredRels), [filteredRels]);
+  const total = filteredRels.length;
+
+  const stageCounts = useMemo(
+    () => STAGE_OPTIONS.map((s) => ({ stage: s, count: byStage[s].length })),
+    [byStage]
+  );
+
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
-      <p className="text-xs text-gray-600">
-        {count} relationship{count !== 1 ? "s" : ""}
-      </p>
-      {summary && (
-        <p className="text-xs text-gray-600" title={summary}>
-          {summary}
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
+        <p className="text-xs text-gray-600">
+          {total} relationship{total !== 1 ? "s" : ""}
         </p>
+      </div>
+
+      {/* Horizontal funnel */}
+      <div>
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Funnel by stage</p>
+        <div className="flex flex-wrap gap-1.5">
+          {stageCounts.map(({ stage, count }) => {
+            const isSelected = selectedStage === stage;
+            return (
+              <button
+                key={stage}
+                type="button"
+                onClick={() => setSelectedStage(stage)}
+                title={`${stage}: ${count}`}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left transition ${
+                  isSelected
+                    ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
+                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <span className="truncate text-[11px] font-medium text-gray-700 max-w-[72px]">{shortStageLabel(stage)}</span>
+                <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Expandable section: firms in selected stage */}
+      {selectedStage !== null && (
+        <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3">
+          <p className="mb-2 text-xs font-semibold text-gray-700">
+            {selectedStage} ({byStage[selectedStage].length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {byStage[selectedStage].length ? (
+              byStage[selectedStage].map((r) => (
+                <span
+                  key={r.id}
+                  className="inline-flex rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-gray-800 ring-1 ring-gray-200"
+                >
+                  {r.firm}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-gray-500">No relationships in this stage</span>
+            )}
+          </div>
+        </div>
       )}
-      <p className="text-[11px] text-gray-500">Funnel view coming in Stage 3</p>
     </div>
   );
 }
