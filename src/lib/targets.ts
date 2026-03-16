@@ -1,6 +1,9 @@
 /**
  * Shared types for target lists (audience for playbooks).
  * Used by /pipeline page and /workflows page.
+ *
+ * @deprecated Pipeline (src/lib/pipelines.ts) replaces TargetList.
+ * Workflows will migrate to Pipeline. Keep for backward compatibility until migration.
  */
 
 export type TargetFilter = {
