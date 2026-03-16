@@ -67,14 +67,29 @@ export default function PipelinePage() {
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
+          onFilterApplied={() => toast.success("Filters applied")}
         />
       </div>
 
       {/* Create pipeline */}
       <div className="shrink-0 space-y-2 border-t border-gray-200 bg-gray-50/50 p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-900">Create pipeline</p>
-          <span className="text-xs text-gray-500">{filteredCount} in preview</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-900">Create pipeline</p>
+            <span className="text-xs text-gray-500">
+              {Object.keys(filterCriteria).length > 0
+                ? `Showing ${filteredCount} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
+                : `${relationships.length} relationship${relationships.length !== 1 ? "s" : ""} (filter to create)`}
+            </span>
+          </div>
+          {Object.keys(filterCriteria).length > 0 && (() => {
+            const summary = formatFilterSummary(filterCriteria);
+            return summary ? (
+              <span className="min-w-0 truncate text-xs font-medium peach-text" title={summary}>
+                {summary}
+              </span>
+            ) : null;
+          })()}
         </div>
         <input
           className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
@@ -83,9 +98,13 @@ export default function PipelinePage() {
           onChange={(e) => setListName(e.target.value)}
         />
         <button
-          className="button-primary w-full"
+          className={`w-full rounded-md px-3 py-2 text-sm font-medium transition ${
+            Object.keys(filterCriteria).length === 0
+              ? "cursor-not-allowed bg-gray-200 text-gray-500"
+              : "button-primary"
+          }`}
           onClick={handleCreatePipeline}
-          disabled={!listName.trim()}
+          disabled={Object.keys(filterCriteria).length === 0 || !listName.trim()}
         >
           Create
         </button>

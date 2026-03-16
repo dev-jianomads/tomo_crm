@@ -20,6 +20,8 @@ type RelationshipsFilterChatProps = {
   currentFilters: StructuredFilterCriteria;
   onFiltersChange: (filters: StructuredFilterCriteria) => void;
   onClearFilters: () => void;
+  /** Called when Tomo applies filters via the tool (e.g. for toast confirmation) */
+  onFilterApplied?: () => void;
 };
 
 /**
@@ -30,6 +32,7 @@ export function RelationshipsFilterChat({
   currentFilters,
   onFiltersChange,
   onClearFilters,
+  onFilterApplied,
 }: RelationshipsFilterChatProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -65,6 +68,7 @@ export function RelationshipsFilterChat({
             | { success: false; error: string };
           if (result?.success && result.filters != null) {
             onFiltersChange(result.filters);
+            onFilterApplied?.();
           }
           break;
         }
