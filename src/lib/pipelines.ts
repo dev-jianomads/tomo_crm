@@ -20,7 +20,8 @@ export const PIPELINES_STORAGE_KEY = "tomo-pipelines-v1";
 
 /**
  * Generate 3 mock pipelines for fund-1 only (avoids duplication when viewing "all" funds).
- * Uses realistic StructuredFilterCriteria based on mock CRM.
+ * Uses realistic StructuredFilterCriteria based on mock CRM (50 relationships).
+ * Filters chosen to yield ~12–18 relationships each from the seeded distribution.
  */
 function generateMockPipelines(): Pipeline[] {
   const now = new Date().toISOString();
@@ -32,10 +33,9 @@ function generateMockPipelines(): Pipeline[] {
       name: "Q1 Target List",
       fundId,
       filterCriteria: {
-        tier: "Tier 1",
-        momentumDirection: "Heating up",
-        band: "Heating Up",
+        tier: ["Tier 1", "Tier 2"],
         lpLocation: "North America",
+        strategyFit: "Active mandate",
       },
       createdAt: now,
     },
@@ -44,9 +44,8 @@ function generateMockPipelines(): Pipeline[] {
       name: "Active Diligence Focus",
       fundId,
       filterCriteria: {
-        stage: "Active diligence",
+        stage: ["Active diligence", "DD", "Soft circle"],
         tier: ["Tier 1", "Tier 2"],
-        momentumDirection: "Heating up",
       },
       createdAt: now,
     },
@@ -55,7 +54,7 @@ function generateMockPipelines(): Pipeline[] {
       name: "Family Office Outreach",
       fundId,
       filterCriteria: {
-        investorType: "Family office",
+        investorType: ["Family office", "UHNW", "Endowment"],
         strategyFit: "Active mandate",
         lpLocation: ["North America", "EMEA"],
       },
