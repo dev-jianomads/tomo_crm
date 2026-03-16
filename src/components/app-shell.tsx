@@ -358,9 +358,11 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
             /* Mobile layout: stacked vertically */
             <div className="flex flex-col gap-4 px-4 pb-20 pt-4">
               {listContent}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                {detailContent}
-              </div>
+              {detailVisible && (
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  {detailContent}
+                </div>
+              )}
             </div>
           )}
         </main>

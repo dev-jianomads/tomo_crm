@@ -2,169 +2,190 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
-import { usePersistentState } from "@/lib/storage";
-
-import { TargetFilter, TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
-
-const defaultFilters: TargetFilter = { region: "Any", interest: "Active", stage: "Heating", tier: "Tier 1-2" };
-const defaultMembers = ["Alex Morgan", "Jamie Chen", "Priya Desai", "Samir Patel"];
+import { useFunds } from "@/components/fund-provider";
+import { usePipelines } from "@/lib/pipelines";
+import { relationships } from "@/lib/mockData";
+import {
+  applyFilters,
+  formatFilterSummary,
+  EMPTY_CRITERIA,
+  type StructuredFilterCriteria,
+} from "@/lib/relationshipFilters";
+import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
+import { toast } from "sonner";
 
 export default function PipelinePage() {
   const { ready } = useRequireSession();
-  const [filters, setFilters] = useState<TargetFilter>(() => ({ ...defaultFilters }));
-  const [lists, setLists] = usePersistentState<TargetList[]>(TARGET_LISTS_STORAGE_KEY, []);
-  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const { funds, activeFundId } = useFunds();
+  const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
+  const { pipelines, addPipeline, ready: pipelinesReady } = usePipelines(activeFundId);
+
+  const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
   const [listName, setListName] = useState("");
+  const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
 
-  const matchingMembers = useMemo(() => {
-    // Mock: vary members slightly by selected region/interest
-    return filters.stage === "Heating" || filters.interest === "Heating" ? defaultMembers.slice(0, 3) : defaultMembers;
-  }, [filters.interest, filters.stage]);
+  const filteredCount = useMemo(
+    () => applyFilters(relationships, filterCriteria).length,
+    [filterCriteria]
+  );
 
-  const activeList = lists.find((l) => l.id === activeListId) ?? null;
+  const clearFilters = () => setFilterCriteria({ ...EMPTY_CRITERIA });
 
-  const handleCreateList = () => {
+  const handleCreatePipeline = () => {
     const trimmed = listName.trim();
-    if (!trimmed) return;
-    const newList: TargetList = { id: crypto.randomUUID(), name: trimmed, filters, members: matchingMembers };
-    setLists((prev) => [newList, ...prev]);
-    setActiveListId(newList.id);
+    if (!trimmed) {
+      toast.error("Enter a pipeline name");
+      return;
+    }
+    addPipeline({
+      name: trimmed,
+      fundId: effectiveFundId,
+      filterCriteria: { ...filterCriteria },
+    });
     setListName("");
+    toast.success(`Pipeline "${trimmed}" created`);
   };
 
+  const handlePipelineClick = (id: string) => {
+    setActivePipelineId(id);
+  };
+
+  const handleDrawerClose = () => {
+    setActivePipelineId(null);
+  };
+
+  const activePipeline = pipelines.find((p) => p.id === activePipelineId);
+  const drawerOpen = activePipelineId !== null;
+
   const listContent = (
-    <div className="flex h-full flex-col gap-4 p-4">
-      <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold accent-title">Filters</p>
-          <button className="text-xs text-blue-700 hover:underline" onClick={() => setFilters({ ...defaultFilters })}>
-            Reset
-          </button>
-        </div>
-        <div className="grid gap-3">
-          <FilterSelect label="Region" value={filters.region} options={["Any", "North America", "Europe", "Asia"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, region: val }))} />
-          <FilterSelect label="Interest" value={filters.interest} options={["Active", "Heating", "Cooling"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, interest: val }))} />
-          <FilterSelect label="Stage" value={filters.stage} options={["Heating", "Active", "Cooling", "Stalled"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, stage: val }))} />
-          <FilterSelect label="Tier" value={filters.tier} options={["Tier 1-2", "Tier 3", "Prospect"].map((r) => ({ label: r, value: r }))} onChange={(val) => setFilters((prev) => ({ ...prev, tier: val }))} />
-        </div>
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Top: Filter chat */}
+      <div className="min-h-0 flex-1 overflow-hidden border-b border-gray-200">
+        <RelationshipsFilterChat
+          currentFilters={filterCriteria}
+          onFiltersChange={setFilterCriteria}
+          onClearFilters={clearFilters}
+        />
       </div>
 
-      <div className="space-y-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3">
+      {/* Create pipeline */}
+      <div className="shrink-0 space-y-2 border-t border-gray-200 bg-gray-50/50 p-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-900">Create list</p>
-          <span className="text-xs text-gray-500">{matchingMembers.length} in preview</span>
+          <p className="text-sm font-semibold text-gray-900">Create pipeline</p>
+          <span className="text-xs text-gray-500">{filteredCount} in preview</span>
         </div>
         <input
           className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-          placeholder="List name"
+          placeholder="Pipeline name"
           value={listName}
           onChange={(e) => setListName(e.target.value)}
         />
-        <button className="button-primary w-full" onClick={handleCreateList}>
+        <button
+          className="button-primary w-full"
+          onClick={handleCreatePipeline}
+          disabled={!listName.trim()}
+        >
           Create
         </button>
       </div>
-    </div>
-  );
 
-  const detailContent = (
-    <div className="flex h-full flex-col gap-3">
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <p className="text-sm font-semibold accent-title">Saved lists</p>
-          <span className="text-[11px] text-gray-500">{lists.length} total</span>
+      {/* Bottom: Pipeline list */}
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-gray-200">
+        <div className="border-b border-gray-100 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold accent-title">Pipelines</p>
+            <span className="text-[11px] text-gray-500">
+              {pipelines.length} {activeFundId === "all" ? "total" : "in fund"}
+            </span>
+          </div>
         </div>
         <div className="space-y-2 px-4 py-3">
-          {lists.length ? (
-            lists.map((list) => (
-              <button
-                key={list.id}
-                onClick={() => setActiveListId(list.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                  activeListId === list.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">{list.name}</p>
-                  <span className="text-xs text-gray-600">{list.members.length} members</span>
-                </div>
-                <p className="text-xs text-gray-600">
-                  Filters: {list.filters.region} • {list.filters.interest} • {list.filters.stage} • {list.filters.tier}
-                </p>
-              </button>
-            ))
-          ) : (
-            <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No saved lists yet.</div>
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <p className="text-sm font-semibold accent-title">List details</p>
-          <span className="text-[11px] text-gray-500">{activeList ? `${activeList.members.length} members` : "Select a list"}</span>
-        </div>
-        <div className="px-4 py-3">
-          {activeList ? (
-            <div className="space-y-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{activeList.name}</p>
-                <p className="text-xs text-gray-600">
-                  Filters: {activeList.filters.region} • {activeList.filters.interest} • {activeList.filters.stage} • {activeList.filters.tier}
-                </p>
-              </div>
-              <div className="space-y-1 text-sm text-gray-800">
-                {activeList.members.map((m) => (
-                  <div key={m} className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 px-2 py-1">
-                    <span>{m}</span>
-                    <span className="text-xs text-gray-500">Preview</span>
+          {pipelines.length ? (
+            pipelines.map((pipeline) => {
+              const count = applyFilters(relationships, pipeline.filterCriteria).length;
+              const summary = formatFilterSummary(pipeline.filterCriteria);
+              const isSelected = activePipelineId === pipeline.id;
+              return (
+                <button
+                  key={pipeline.id}
+                  onClick={() => handlePipelineClick(pipeline.id)}
+                  className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                    isSelected
+                      ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
+                    <span className="text-xs text-gray-600">{count} relationships</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  {summary ? (
+                    <p className="mt-0.5 truncate text-xs text-gray-600" title={summary}>
+                      {summary}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-xs text-gray-500">No filters</p>
+                  )}
+                </button>
+              );
+            })
           ) : (
-            <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">Select a list to view details.</div>
+            <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
+              No pipelines yet. Filter the CRM above and create one.
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 
-  if (!ready) return null;
+  if (!ready || !pipelinesReady) return null;
 
   return (
-    <AppShell
-      section="pipeline"
-      listContent={listContent}
-      detailContent={detailContent}
-      contextTitle={activeList?.name}
-      assistantChips={["Suggest filters", "Who should be added", "Tighten this list"]}
-    />
+    <>
+      <AppShell
+        section="pipeline"
+        listContent={listContent}
+        detailContent={null}
+        detailVisible={false}
+        contextTitle={activePipeline?.name}
+        assistantChips={["Suggest filters", "Who should be added", "Tighten this list"]}
+      />
+
+      <ContextDrawer
+        open={drawerOpen}
+        onClose={handleDrawerClose}
+        title={activePipeline?.name ?? "Pipeline"}
+        section1Content={
+          activePipeline ? (
+            <PipelineDrawerContent pipeline={activePipeline} />
+          ) : (
+            <p className="text-sm text-gray-500">No pipeline selected</p>
+          )
+        }
+        section3Entries={[]}
+      />
+    </>
   );
 }
 
-function FilterSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { label: string; value: string }[];
-  onChange: (value: string) => void;
-}) {
+function PipelineDrawerContent({ pipeline }: { pipeline: { name: string; filterCriteria: StructuredFilterCriteria } }) {
+  const count = applyFilters(relationships, pipeline.filterCriteria).length;
+  const summary = formatFilterSummary(pipeline.filterCriteria);
   return (
-    <label className="flex flex-col gap-1 text-xs text-gray-700">
-      <span className="text-[11px] uppercase tracking-wide text-gray-500">{label}</span>
-      <select className="rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none" value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
+      <p className="text-xs text-gray-600">
+        {count} relationship{count !== 1 ? "s" : ""}
+      </p>
+      {summary && (
+        <p className="text-xs text-gray-600" title={summary}>
+          {summary}
+        </p>
+      )}
+      <p className="text-[11px] text-gray-500">Funnel view coming in Stage 3</p>
+    </div>
   );
 }

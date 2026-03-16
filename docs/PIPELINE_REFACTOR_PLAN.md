@@ -109,15 +109,21 @@ export type Pipeline = {
 
 ### Stage 2: Pipeline page — list + create from filters
 
-**Goal:** Bottom half shows pipeline list; top half allows creating a pipeline from filters.
+**Goal:** Single-panel layout. Filter + create at top; pipeline list at bottom. Click pipeline → drawer slides in.
 
-1. Refactor pipeline page layout:
-   - **Top**: Filter UI (reuse `RelationshipsFilterChat` or a simplified filter panel) + "Create pipeline" (name input + button).
-   - **Bottom**: List of pipelines for current fund (name + `formatFilterSummary(filterCriteria)`).
-2. Wire `usePipelines(activeFundId)` for list and create; pass `fundId` when creating.
-3. Apply `applyFilters(relationships, pipeline.filterCriteria)` to get filtered relationships for each pipeline (used in Stage 3).
+1. **Single panel only** — No right panel by default. Use `detailVisible={false}` so AppShell shows only the left panel. (AppShell: hide mobile detail section when `detailVisible` is false.)
+2. **Left panel layout** (top → bottom):
+   - **Filter chat**: Reuse `RelationshipsFilterChat` for natural-language filtering.
+   - **Create pipeline**: Name input + Create button, with "X in preview" count.
+   - **Pipeline list**: Pipelines for current fund (name + `formatFilterSummary(filterCriteria)` + relationship count).
+3. **Drawer on pipeline click** — When user clicks a pipeline in the list, `ContextDrawer` slides in from the right with:
+   - Pipeline name, relationship count, filter summary.
+   - Placeholder: "Funnel view coming in Stage 3".
+   - **No Tomo chat yet** — Tomo appears in Stage 5 when user clicks a funnel section (stage).
+4. Wire `usePipelines(activeFundId)` for list and create; pass `fundId` when creating.
+5. Apply `applyFilters(relationships, pipeline.filterCriteria)` to get filtered relationships for each pipeline (used in Stage 3).
 
-**Deliverable:** User can create pipelines from pipeline page; list shows name + filter summary, scoped to active fund.
+**Deliverable:** Single panel with filter + create + pipeline list. Click pipeline → drawer with basic details. Tomo chat in drawer deferred to Stage 5 (funnel-section click).
 
 ---
 
