@@ -293,11 +293,6 @@ function groupByStage(rels: Relationship[]): Record<Stage, Relationship[]> {
   return groups;
 }
 
-function shortStageLabel(stage: Stage): string {
-  if (stage === "Active diligence") return "Active dil";
-  return stage;
-}
-
 /** Pale green → red spectrum, Pass = black */
 const STAGE_COLORS: Record<Stage, string> = {
   "First contact": "#c8e6c9",
@@ -480,8 +475,8 @@ function PipelineDrawerContent({
                       }}
                     />
                   </div>
-                  <span className="truncate w-full text-center text-[10px] text-gray-700">
-                    {shortStageLabel(stage)}
+                  <span className="line-clamp-2 break-words w-full text-center text-[10px] text-gray-700">
+                    {stage}
                   </span>
                   <span className="text-[10px] font-semibold text-gray-600">{count}</span>
                 </button>
