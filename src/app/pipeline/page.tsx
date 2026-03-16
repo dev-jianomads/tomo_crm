@@ -285,7 +285,7 @@ function PipelineDrawerContent({
               />
             </svg>
           )}
-          <div className="relative flex items-center justify-between gap-1 px-1" style={{ height: 100 }}>
+          <div className="relative flex items-center justify-between gap-px px-0.5" style={{ height: 100 }}>
             {stageCounts.map(({ stage, count }, i) => {
               const isSelected = selectedStage === stage;
               const maxCount = Math.max(...stageCounts.map((s) => s.count), 1);
@@ -307,7 +307,7 @@ function PipelineDrawerContent({
                       ref={(el) => {
                         barRefs.current[i] = el;
                       }}
-                      className="w-4 min-w-4 rounded"
+                      className="w-8 min-w-8 rounded"
                       style={{
                         height: barHeight,
                         backgroundColor: bgColor,
