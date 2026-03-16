@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
@@ -17,6 +17,7 @@ import {
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
+import { toast } from "sonner";
 
 type SortColumn =
   | "name"
@@ -397,7 +398,16 @@ export default function RelationshipsPage() {
               ) : null;
             })()}
           </div>
-          <div className="relative flex shrink-0 gap-1" ref={columnsPopoverRef}>
+          <div className="relative flex shrink-0 items-center gap-1" ref={columnsPopoverRef}>
+            <button
+              type="button"
+              onClick={() => toast.info("Upload CSV coming soon")}
+              className="rounded p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Upload CSV"
+              title="Upload CSV"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setColumnsPopoverOpen((o) => !o)}
