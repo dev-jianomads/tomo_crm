@@ -185,6 +185,18 @@ function shortStageLabel(stage: Stage): string {
   return stage;
 }
 
+/** Pale green → red spectrum, Pass = black */
+const STAGE_COLORS: Record<Stage, string> = {
+  "First contact": "#c8e6c9",
+  "Deck sent": "#a5d6a7",
+  "Met": "#81c784",
+  "Active diligence": "#ffeb3b",
+  "DD": "#ffb74d",
+  "Soft circle": "#ff8a65",
+  "Closed": "#f44336",
+  "Pass": "#000000",
+};
+
 function PipelineDrawerContent({
   pipeline,
 }: {
@@ -213,28 +225,40 @@ function PipelineDrawerContent({
         </p>
       </div>
 
-      {/* Horizontal funnel — bar width proportional to count */}
+      {/* Horizontal funnel — fixed width, height proportional to count, centered */}
       <div>
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Funnel by stage</p>
-        <div className="flex w-full gap-0.5 overflow-hidden rounded-md border border-gray-200 bg-gray-100 p-0.5">
+        <div className="flex items-center justify-between gap-1 px-1" style={{ height: 100 }}>
           {stageCounts.map(({ stage, count }) => {
             const isSelected = selectedStage === stage;
-            const flexBasis = Math.max(count, 0.5);
+            const maxCount = Math.max(...stageCounts.map((s) => s.count), 1);
+            const barHeight = Math.max((count / maxCount) * 72, count > 0 ? 12 : 6);
+            const bgColor = STAGE_COLORS[stage];
+            const isPass = stage === "Pass";
             return (
               <button
                 key={stage}
                 type="button"
                 onClick={() => setSelectedStage(stage)}
                 title={`${stage}: ${count}`}
-                className={`flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded px-1 py-2 transition ${
-                  isSelected
-                    ? "bg-[color:var(--accent)] text-white ring-1 ring-[color:var(--accent)]"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                className={`flex flex-1 flex-col items-center gap-1 transition ${
+                  isSelected ? "ring-2 ring-[color:var(--accent)] ring-offset-1 rounded" : ""
                 }`}
-                style={{ flex: `${flexBasis} 1 0` }}
               >
-                <span className="truncate w-full text-center text-[10px] font-medium">{shortStageLabel(stage)}</span>
-                <span className="text-[11px] font-semibold">{count}</span>
+                <div className="flex flex-1 items-center justify-center w-full min-h-[60px]">
+                  <div
+                    className="w-4 min-w-4 rounded"
+                    style={{
+                      height: barHeight,
+                      backgroundColor: bgColor,
+                      boxShadow: isPass ? "none" : "0 1px 2px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                </div>
+                <span className="truncate w-full text-center text-[10px] text-gray-700">
+                  {shortStageLabel(stage)}
+                </span>
+                <span className="text-[10px] font-semibold text-gray-600">{count}</span>
               </button>
             );
           })}
