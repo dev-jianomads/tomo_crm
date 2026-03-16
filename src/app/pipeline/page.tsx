@@ -307,7 +307,7 @@ function PipelineDrawerContent({
                       ref={(el) => {
                         barRefs.current[i] = el;
                       }}
-                      className="w-8 min-w-8 rounded"
+                      className="w-12 min-w-12 rounded"
                       style={{
                         height: barHeight,
                         backgroundColor: bgColor,
