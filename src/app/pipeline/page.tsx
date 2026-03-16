@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
@@ -15,6 +15,7 @@ import {
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
+import { usePersistentState } from "@/lib/storage";
 import { toast } from "sonner";
 
 export default function PipelinePage() {
@@ -26,6 +27,9 @@ export default function PipelinePage() {
   const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
   const [listName, setListName] = useState("");
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-pipeline-split-ratio", 35);
+  const [draggingSplit, setDraggingSplit] = useState(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredCount = useMemo(
     () => applyFilters(relationships, filterCriteria).length,
@@ -60,10 +64,36 @@ export default function PipelinePage() {
   const activePipeline = pipelines.find((p) => p.id === activePipelineId);
   const drawerOpen = activePipelineId !== null;
 
+  useEffect(() => {
+    if (!draggingSplit) return;
+    const handleMove = (e: MouseEvent) => {
+      const el = splitContainerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const newRatio = ((e.clientY - rect.top) / rect.height) * 100;
+      const clamped = Math.min(80, Math.max(10, newRatio));
+      setSplitRatio(clamped);
+    };
+    const stop = () => setDraggingSplit(false);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", stop);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", stop);
+    };
+  }, [draggingSplit, setSplitRatio]);
+
   const listContent = (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div ref={splitContainerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Top: Filter chat */}
-      <div className="min-h-0 flex-1 overflow-hidden border-b border-gray-200">
+      <div
+        className="min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200"
+        style={{ flex: `${splitRatio} 1 0`, display: "flex" }}
+      >
         <RelationshipsFilterChat
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
@@ -72,8 +102,23 @@ export default function PipelinePage() {
         />
       </div>
 
-      {/* Create pipeline */}
-      <div className="shrink-0 space-y-2 border-t border-gray-200 bg-gray-50/50 p-3">
+      {/* Resize handle */}
+      <div
+        role="separator"
+        aria-label="Resize filter and pipeline sections"
+        className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+        onMouseDown={() => setDraggingSplit(true)}
+      >
+        <div className="h-1 w-12 rounded-full bg-gray-200" />
+      </div>
+
+      {/* Bottom: Create pipeline + Pipeline list */}
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        style={{ flex: `${100 - splitRatio} 1 0` }}
+      >
+        {/* Create pipeline */}
+        <div className="shrink-0 space-y-2 border-b border-gray-200 bg-gray-50/50 p-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-900">Create pipeline</p>
@@ -109,10 +154,10 @@ export default function PipelinePage() {
         >
           Create
         </button>
-      </div>
+        </div>
 
-      {/* Bottom: Pipeline list */}
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-gray-200">
+        {/* Pipeline list */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="border-b border-gray-100 px-4 py-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold accent-title">Pipelines</p>
@@ -171,6 +216,7 @@ export default function PipelinePage() {
               No pipelines yet. Filter the CRM above and create one.
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
