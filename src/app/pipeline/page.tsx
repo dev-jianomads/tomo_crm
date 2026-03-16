@@ -93,7 +93,7 @@ export default function PipelinePage() {
         </div>
         <input
           className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-          placeholder="Pipeline name"
+          placeholder="Name your pipeline here"
           value={listName}
           onChange={(e) => setListName(e.target.value)}
         />
