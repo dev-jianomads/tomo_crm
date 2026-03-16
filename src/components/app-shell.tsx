@@ -324,13 +324,13 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         {/* Desktop navigation rail */}
         {!isMobile && <NavRail active={section} />}
 
-        <main className="relative flex w-full flex-1 flex-col">
+        <main className="relative flex min-w-0 w-full flex-1 flex-col overflow-x-hidden">
           {/* Desktop layout: side-by-side panels */}
           {!isMobile ? (
-            <div className="flex flex-1 gap-0">
+            <div className="flex min-w-0 flex-1 gap-0">
               {/* List panel (contacts list, briefs list, etc.) */}
               <section
-                className="flex min-h-0 flex-shrink-0 flex-col overflow-hidden border-r border-gray-200"
+                className="flex min-h-0 min-w-0 flex-shrink-0 flex-col overflow-hidden border-r border-gray-200"
                 style={{ width: detailVisible ? `calc(${middleWidth}% - 8px)` : "calc(100% - 8px)" }}
               >
                 {listContent}
