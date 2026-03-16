@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
@@ -20,7 +21,7 @@ export default function PipelinePage() {
   const { ready } = useRequireSession();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
-  const { pipelines, addPipeline, ready: pipelinesReady } = usePipelines(activeFundId);
+  const { pipelines, addPipeline, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
 
   const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
   const [listName, setListName] = useState("");
@@ -113,11 +114,26 @@ export default function PipelinePage() {
       {/* Bottom: Pipeline list */}
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-gray-200">
         <div className="border-b border-gray-100 px-4 py-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold accent-title">Pipelines</p>
-            <span className="text-[11px] text-gray-500">
-              {pipelines.length} {activeFundId === "all" ? "total" : "in fund"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-500">
+                {pipelines.length} {activeFundId === "all" ? "total" : "in fund"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  resetToMock();
+                  setActivePipelineId(null);
+                  toast.success("Reset to 3 demo pipelines");
+                }}
+                className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                title="Reset to 3 demo pipelines"
+                aria-label="Reset to demo"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
         <div className="space-y-2 px-4 py-3">

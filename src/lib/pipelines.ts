@@ -18,57 +18,50 @@ export type Pipeline = {
 
 export const PIPELINES_STORAGE_KEY = "tomo-pipelines-v1";
 
-/** Default fund IDs for mock pipelines (match fund-provider) */
-const DEFAULT_FUND_IDS = ["fund-1", "fund-2", "fund-3"];
-
 /**
- * Generate 2–3 mock pipelines per fund for initial load.
- * Uses realistic StructuredFilterCriteria.
+ * Generate 3 mock pipelines for fund-1 only (avoids duplication when viewing "all" funds).
+ * Uses realistic StructuredFilterCriteria based on mock CRM.
  */
 function generateMockPipelines(): Pipeline[] {
   const now = new Date().toISOString();
-  const pipelines: Pipeline[] = [];
+  const fundId = "fund-1";
 
-  for (const fundId of DEFAULT_FUND_IDS) {
-    pipelines.push(
-      {
-        id: `mock-pipeline-${fundId}-1`,
-        name: `Q1 Target List`,
-        fundId,
-        filterCriteria: {
-          tier: "Tier 1",
-          momentumDirection: "Heating up",
-          band: "Heating Up",
-          lpLocation: "North America",
-        },
-        createdAt: now,
+  return [
+    {
+      id: `mock-pipeline-${fundId}-1`,
+      name: "Q1 Target List",
+      fundId,
+      filterCriteria: {
+        tier: "Tier 1",
+        momentumDirection: "Heating up",
+        band: "Heating Up",
+        lpLocation: "North America",
       },
-      {
-        id: `mock-pipeline-${fundId}-2`,
-        name: `Active Diligence Focus`,
-        fundId,
-        filterCriteria: {
-          stage: "Active diligence",
-          tier: ["Tier 1", "Tier 2"],
-          momentumDirection: "Heating up",
-        },
-        createdAt: now,
+      createdAt: now,
+    },
+    {
+      id: `mock-pipeline-${fundId}-2`,
+      name: "Active Diligence Focus",
+      fundId,
+      filterCriteria: {
+        stage: "Active diligence",
+        tier: ["Tier 1", "Tier 2"],
+        momentumDirection: "Heating up",
       },
-      {
-        id: `mock-pipeline-${fundId}-3`,
-        name: `Family Office Outreach`,
-        fundId,
-        filterCriteria: {
-          investorType: "Family office",
-          strategyFit: "Active mandate",
-          lpLocation: ["North America", "EMEA"],
-        },
-        createdAt: now,
-      }
-    );
-  }
-
-  return pipelines;
+      createdAt: now,
+    },
+    {
+      id: `mock-pipeline-${fundId}-3`,
+      name: "Family Office Outreach",
+      fundId,
+      filterCriteria: {
+        investorType: "Family office",
+        strategyFit: "Active mandate",
+        lpLocation: ["North America", "EMEA"],
+      },
+      createdAt: now,
+    },
+  ];
 }
 
 function getInitialPipelines(): Pipeline[] {
@@ -81,6 +74,8 @@ export type UsePipelinesResult = {
   addPipeline: (p: Omit<Pipeline, "id" | "createdAt">) => void;
   updatePipeline: (id: string, updates: Partial<Pick<Pipeline, "name" | "filterCriteria">>) => void;
   removePipeline: (id: string) => void;
+  /** Reset to 3 mock pipelines (demo only) */
+  resetToMock: () => void;
   ready: boolean;
 };
 
@@ -121,11 +116,16 @@ export function usePipelines(fundId: string): UsePipelinesResult {
     setAllPipelines((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const resetToMock = () => {
+    setAllPipelines(generateMockPipelines());
+  };
+
   return {
     pipelines,
     addPipeline,
     updatePipeline,
     removePipeline,
+    resetToMock,
     ready,
   };
 }
