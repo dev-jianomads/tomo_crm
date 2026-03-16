@@ -38,7 +38,9 @@ export type OrchestratorContext = {
     | "settings"
     | "search";
   section?: string;
-  selection?: { type: string; id: string };
+  selection?:
+    | { type: string; id: string }
+    | { type: "pipeline_stage"; pipelineId: string; stage: string; relationshipIds: string[] };
   contextTitle?: string;
   workflowContext?: string;
   playbookName?: string;
@@ -100,7 +102,24 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     lines.push(``, `Current page: ${context.page}`);
   }
   if (context.selection) {
-    lines.push(`Selected entity: ${context.selection.type} (id: ${context.selection.id})`);
+    const sel = context.selection;
+    if (sel.type === "pipeline_stage") {
+      const ps = sel as {
+        type: "pipeline_stage";
+        pipelineId: string;
+        stage: string;
+        relationshipIds: string[];
+      };
+      lines.push(
+        ``,
+        `Selected pipeline stage: ${ps.pipelineId} / ${ps.stage}`,
+        `Relationship IDs in this stage (${ps.relationshipIds.length}): ${ps.relationshipIds.join(", ")}`,
+        `When updating CRM: use entityId for single updates, or pass relationshipIds for bulk updates.`,
+      );
+    } else {
+      const es = sel as { type: string; id: string };
+      lines.push(`Selected entity: ${es.type} (id: ${es.id})`);
+    }
   }
   if (context.contextTitle) {
     lines.push(`Context: ${context.contextTitle}`);
@@ -212,9 +231,16 @@ export async function POST(req: Request) {
   if (surface === "general" || surface === "drawer") {
     tools.update_crm = tool({
         description:
-          "Apply CRM updates to an entity. Use when the user confirms they want to apply field updates, set a reminder, or change status (e.g. blocked, in progress). Requires selection with entity id.",
+          "Apply CRM updates to an entity or multiple relationships. Use when the user confirms they want to apply field updates, set a reminder, or change status. Pass entityId for single updates, or relationshipIds for bulk updates (when viewing a pipeline stage).",
         inputSchema: z.object({
-          entityId: z.string().describe("The entity id (from selection)"),
+          entityId: z
+            .string()
+            .optional()
+            .describe("Single entity id (use for one relationship)"),
+          relationshipIds: z
+            .array(z.string())
+            .optional()
+            .describe("Multiple relationship ids for bulk updates (use when selection is pipeline_stage)"),
           rows: z
             .array(
               z.object({
@@ -230,11 +256,13 @@ export async function POST(req: Request) {
             .optional()
             .describe("Reminder duration, e.g. '3 days', '1 week'"),
         }),
-        execute: async ({ entityId, rows, status, reminderDuration }) => {
+        execute: async ({ entityId, relationshipIds, rows, status, reminderDuration }) => {
           // Stub: no persistence yet. Client onToolCall will handle UI updates.
+          const ids = relationshipIds ?? (entityId ? [entityId] : []);
           return {
             applied: true,
-            entityId,
+            entityId: entityId ?? null,
+            relationshipIds: ids,
             fields: rows?.map((r) => r.field) ?? [],
             status: status ?? null,
             reminderDuration: reminderDuration ?? null,

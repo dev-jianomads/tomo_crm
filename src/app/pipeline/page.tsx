@@ -15,6 +15,7 @@ import {
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
+import { PipelineStageTomoChat } from "@/components/pipeline-stage-tomo-chat";
 import { usePersistentState } from "@/lib/storage";
 import { toast } from "sonner";
 
@@ -27,6 +28,7 @@ export default function PipelinePage() {
   const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
   const [listName, setListName] = useState("");
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  const [selectedFunnelStage, setSelectedFunnelStage] = useState<Stage | null>(null);
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-pipeline-split-ratio", 35);
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +61,7 @@ export default function PipelinePage() {
 
   const handleDrawerClose = () => {
     setActivePipelineId(null);
+    setSelectedFunnelStage(null);
   };
 
   const activePipeline = pipelines.find((p) => p.id === activePipelineId);
@@ -238,15 +241,44 @@ export default function PipelinePage() {
       <ContextDrawer
         open={drawerOpen}
         onClose={handleDrawerClose}
-        title={activePipeline?.name ?? "Pipeline"}
+        title={
+          selectedFunnelStage
+            ? `${activePipeline?.name ?? "Pipeline"} — ${selectedFunnelStage}`
+            : (activePipeline?.name ?? "Pipeline")
+        }
         section1Content={
           activePipeline ? (
-            <PipelineDrawerContent pipeline={activePipeline} />
+            selectedFunnelStage ? (
+              <PipelineStageDrawerContent
+                pipeline={activePipeline}
+                stage={selectedFunnelStage}
+                onBack={() => setSelectedFunnelStage(null)}
+              />
+            ) : (
+              <PipelineDrawerContent
+                pipeline={activePipeline}
+                onStageClick={setSelectedFunnelStage}
+              />
+            )
           ) : (
             <p className="text-sm text-gray-500">No pipeline selected</p>
           )
         }
-        hideSection2
+        section2Content={
+          activePipeline && selectedFunnelStage ? (
+            <PipelineStageTomoChat
+              pipelineId={activePipeline.id}
+              pipelineName={activePipeline.name}
+              stage={selectedFunnelStage}
+              relationshipIds={(() => {
+                const filtered = applyFilters(relationships, activePipeline.filterCriteria);
+                const byStage = groupByStage(filtered);
+                return byStage[selectedFunnelStage].map((r) => r.id);
+              })()}
+            />
+          ) : undefined
+        }
+        hideSection2={!selectedFunnelStage}
         section3Entries={[]}
       />
     </>
@@ -278,10 +310,62 @@ const STAGE_COLORS: Record<Stage, string> = {
   "Pass": "#000000",
 };
 
-function PipelineDrawerContent({
+function PipelineStageDrawerContent({
   pipeline,
+  stage,
+  onBack,
 }: {
   pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+  stage: Stage;
+  onBack: () => void;
+}) {
+  const filteredRels = useMemo(
+    () => applyFilters(relationships, pipeline.filterCriteria),
+    [pipeline.filterCriteria]
+  );
+  const byStage = useMemo(() => groupByStage(filteredRels), [filteredRels]);
+  const relsInStage = byStage[stage];
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-xs text-gray-500 hover:text-gray-700"
+      >
+        ← Back to funnel
+      </button>
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
+        <p className="text-xs font-medium text-gray-600">{stage}</p>
+        <p className="text-xs text-gray-500">
+          {relsInStage.length} relationship{relsInStage.length !== 1 ? "s" : ""} in this stage
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {relsInStage.length ? (
+          relsInStage.map((r) => (
+            <span
+              key={r.id}
+              className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 ring-1 ring-gray-200"
+            >
+              {r.firm}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-gray-500">No relationships in this stage</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PipelineDrawerContent({
+  pipeline,
+  onStageClick,
+}: {
+  pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+  onStageClick: (stage: Stage) => void;
 }) {
   const [selectedStage, setSelectedStage] = useState<Stage | null>(null);
 
@@ -377,7 +461,7 @@ function PipelineDrawerContent({
                 <button
                   key={stage}
                   type="button"
-                  onClick={() => setSelectedStage(stage)}
+                  onClick={() => onStageClick(stage)}
                   title={`${stage}: ${count}`}
                   className={`flex flex-1 flex-col items-center gap-1 transition ${
                     isSelected ? "ring-2 ring-[color:var(--accent)] ring-offset-1 rounded" : ""

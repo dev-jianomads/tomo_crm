@@ -11,12 +11,17 @@ import type { TomoInitialMessage, TomoAssistance } from "@/lib/mockTomoAssistanc
 
 const FALLBACK_SUGGESTIONS = ["Explain why urgent", "Draft follow-up", "Propose times", "Create action"];
 
+export type DrawerSelection =
+  | { type: "relationship"; id: string }
+  | { type: "pipeline_stage"; pipelineId: string; stage: string; relationshipIds: string[] }
+  | { type: string; id: string };
+
 type DrawerSection2TomoChatProps = {
   initialMessage?: TomoInitialMessage;
   suggestions: string[];
   contextLabel?: string;
   entityKey: string;
-  selection?: { type: string; id: string };
+  selection?: DrawerSelection;
   assistanceContext?: TomoAssistance | null;
 };
 
@@ -41,7 +46,12 @@ export function DrawerSection2TomoChat({
         body: {
           context: {
             surface: "drawer" as const,
-            page: selection?.type === "relationship" ? "relationships" : "home",
+            page:
+              selection?.type === "relationship"
+                ? "relationships"
+                : selection?.type === "pipeline_stage"
+                  ? "pipeline"
+                  : "home",
             selection,
             contextTitle: contextLabel,
             assistanceContext: assistanceContext ?? null,
@@ -57,18 +67,21 @@ export function DrawerSection2TomoChat({
       if (toolCall.toolName === "update_crm") {
         const input = toolCall.input as {
           entityId?: string;
+          relationshipIds?: string[];
           rows?: { field: string; update: string }[];
           status?: string;
           reminderDuration?: string;
         };
         const fields = input.rows?.map((r) => r.field) ?? [];
+        const count = input.relationshipIds?.length ?? (input.entityId ? 1 : 0);
         if (fields.length || input.status || input.reminderDuration) {
+          const target = count > 1 ? `${count} relationships` : "CRM";
           toast.success(
             input.status
-              ? `Status set to ${input.status}`
+              ? `Status set to ${input.status}${count > 1 ? ` (${count} items)` : ""}`
               : input.reminderDuration
-                ? `Reminder set for ${input.reminderDuration}`
-                : `CRM updated: ${fields.join(", ")}`
+                ? `Reminder set for ${input.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
+                : `${target} updated: ${fields.join(", ") || "done"}`
           );
         }
       }
