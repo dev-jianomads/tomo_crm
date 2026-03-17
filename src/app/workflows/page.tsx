@@ -8,7 +8,8 @@ import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
-import { TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
+import { usePipelines, type Pipeline } from "@/lib/pipelines";
+import { useFunds } from "@/components/fund-provider";
 import { relationships } from "@/lib/mockData";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
@@ -26,19 +27,20 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 
-type PlaybookTargetOverrides = Record<string, { targetListId?: string }>;
+type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 
 function WorkflowsPageContent() {
   const { ready } = useRequireSession();
   const searchParams = useSearchParams();
   const playbookIdFromUrl = searchParams.get("playbook");
+  const { activeFundId } = useFunds();
+  const { pipelines } = usePipelines(activeFundId);
 
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(
     () => playbookIdFromUrl || null
   );
-  const [targetLists] = usePersistentState<TargetList[]>(TARGET_LISTS_STORAGE_KEY, []);
-  const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookTargetOverrides>(
-    "tomo-playbook-target-overrides",
+  const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
+    "tomo-playbook-pipeline-overrides",
     {}
   );
   const [recentTargetsOpen, setRecentTargetsOpen] = useState(false);
@@ -95,10 +97,15 @@ function WorkflowsPageContent() {
   const getPlaybookTargetsSummary = useMemo(() => {
     return (playbook: Playbook): string => {
       const override = playbookOverrides[playbook.id];
-      const targetListId = override?.targetListId ?? playbook.targetListId;
-      if (targetListId) {
-        const list = targetLists.find((l) => l.id === targetListId);
-        return list ? `List: ${list.name} (${list.members.length} members)` : "List (not found)";
+      const pipelineId = override?.pipelineId ?? playbook.pipelineId;
+      if (pipelineId) {
+        const pipeline = pipelines.find((p) => p.id === pipelineId);
+        if (!pipeline) return "Pipeline (not found)";
+        const count = applyFilters(relationships, pipeline.filterCriteria).length;
+        const summary = formatFilterSummary(pipeline.filterCriteria);
+        return summary
+          ? `Pipeline: ${pipeline.name} (${count}) — ${summary}`
+          : `Pipeline: ${pipeline.name} (${count})`;
       }
       const criteria = playbook.filterCriteria;
       if (criteria && Object.keys(criteria).length > 0) {
@@ -115,13 +122,13 @@ function WorkflowsPageContent() {
       }
       return "No targets set";
     };
-  }, [playbookOverrides, targetLists]);
+  }, [playbookOverrides, pipelines]);
 
-  const handleUseInPlaybook = (list: TargetList) => {
+  const handleUseInPlaybook = (pipeline: Pipeline) => {
     if (!selectedPlaybookId) return;
     setPlaybookOverrides((prev) => ({
       ...prev,
-      [selectedPlaybookId]: { targetListId: list.id },
+      [selectedPlaybookId]: { pipelineId: pipeline.id },
     }));
   };
 
@@ -135,7 +142,7 @@ function WorkflowsPageContent() {
     setHighlightVersion((v) => v + 1);
   }, []);
 
-  const recentLists = targetLists.slice(0, 3);
+  const recentPipelines = pipelines.slice(0, 3);
 
   const listContent = (
     <div className="flex h-full flex-col">
@@ -148,7 +155,7 @@ function WorkflowsPageContent() {
           href="/pipeline"
           className="mt-2 inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
         >
-          View target lists →
+          View pipelines →
         </Link>
       </div>
 
@@ -170,7 +177,7 @@ function WorkflowsPageContent() {
             onClick={() => setRecentTargetsOpen((o) => !o)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100/80"
           >
-            <span>Recent target lists</span>
+            <span>Recent pipelines</span>
             {recentTargetsOpen ? (
               <ChevronDownIcon className="h-4 w-4 text-gray-500" />
             ) : (
@@ -179,35 +186,39 @@ function WorkflowsPageContent() {
           </button>
           {recentTargetsOpen && (
             <div className="border-t border-gray-200 px-3 py-2 space-y-2">
-              {recentLists.length ? (
-                recentLists.map((list) => (
-                  <div
-                    key={list.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{list.name}</p>
-                      <p className="text-[11px] text-gray-500">
-                        {list.members.length} members • {list.filters.tier}, {list.filters.stage}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleUseInPlaybook(list)}
-                      disabled={!selectedPlaybookId}
-                      className="rounded-md border border-[color:var(--accent)] px-2 py-1 text-[11px] font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+              {recentPipelines.length ? (
+                recentPipelines.map((pipeline) => {
+                  const count = applyFilters(relationships, pipeline.filterCriteria).length;
+                  const summary = formatFilterSummary(pipeline.filterCriteria);
+                  return (
+                    <div
+                      key={pipeline.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2 py-2"
                     >
-                      Use in workflow
-                    </button>
-                  </div>
-                ))
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{pipeline.name}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {count} relationships • {summary || "All"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleUseInPlaybook(pipeline)}
+                        disabled={!selectedPlaybookId}
+                        className="rounded-md border border-[color:var(--accent)] px-2 py-1 text-[11px] font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                      >
+                        Use in workflow
+                      </button>
+                    </div>
+                  );
+                })
               ) : (
-                <p className="text-xs text-gray-500 py-2">No target lists yet.</p>
+                <p className="text-xs text-gray-500 py-2">No pipelines yet.</p>
               )}
               <Link
                 href="/pipeline"
                 className="block text-center text-xs text-[color:var(--accent)] hover:underline py-1"
               >
-                Create or manage lists →
+                Create or manage pipelines →
               </Link>
             </div>
           )}
