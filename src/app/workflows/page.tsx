@@ -113,13 +113,6 @@ function WorkflowsPageContent() {
         const summary = formatFilterSummary(criteria);
         return summary ? `${count} targets — ${summary}` : `${count} targets`;
       }
-      const filters = playbook.targetFilters;
-      if (filters && Object.keys(filters).length > 0) {
-        const parts = Object.entries(filters)
-          .filter(([, v]) => v)
-          .map(([k, v]) => `${k}: ${v}`);
-        return parts.length ? `Filters: ${parts.join(", ")}` : "No targets set";
-      }
       return "No targets set";
     };
   }, [playbookOverrides, pipelines]);
@@ -143,6 +136,22 @@ function WorkflowsPageContent() {
   }, []);
 
   const recentPipelines = pipelines.slice(0, 3);
+
+  const pipelineContext = useMemo(() => {
+    if (!selectedPlaybook) return null;
+    const override = playbookOverrides[selectedPlaybook.id];
+    const pipelineId = override?.pipelineId ?? selectedPlaybook.pipelineId;
+    if (!pipelineId) return null;
+    const pipeline = pipelines.find((p) => p.id === pipelineId);
+    if (!pipeline) return null;
+    const rels = applyFilters(relationships, pipeline.filterCriteria);
+    return {
+      pipelineId: pipeline.id,
+      pipelineName: pipeline.name,
+      relationshipIds: rels.map((r) => r.id),
+      relationshipCount: rels.length,
+    };
+  }, [selectedPlaybook, playbookOverrides, pipelines]);
 
   const listContent = (
     <div className="flex h-full flex-col">
@@ -264,6 +273,7 @@ function WorkflowsPageContent() {
             workflow={workflow}
             playbookName={selectedPlaybook.name}
             playbookType={selectedPlaybook.type}
+            pipelineContext={pipelineContext}
             onWorkflowUpdate={handleWorkflowUpdate}
           />
         </div>
@@ -379,11 +389,18 @@ function WorkflowTomoChat({
   workflow,
   playbookName,
   playbookType,
+  pipelineContext,
   onWorkflowUpdate,
 }: {
   workflow: WorkflowDefinition;
   playbookName: string;
   playbookType: PlaybookType;
+  pipelineContext: {
+    pipelineId: string;
+    pipelineName: string;
+    relationshipIds: string[];
+    relationshipCount: number;
+  } | null;
   onWorkflowUpdate: (def: WorkflowDefinition) => void;
 }) {
   const currentMarkdown = workflowToMarkdown(workflow);
@@ -453,6 +470,7 @@ function WorkflowTomoChat({
             workflowContext: currentMarkdown,
             playbookName,
             playbookType,
+            pipelineContext,
           },
         },
       }

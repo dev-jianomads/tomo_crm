@@ -45,6 +45,12 @@ export type OrchestratorContext = {
   workflowContext?: string;
   playbookName?: string;
   playbookType?: string;
+  pipelineContext?: {
+    pipelineId: string;
+    pipelineName: string;
+    relationshipIds: string[];
+    relationshipCount: number;
+  } | null;
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
   intentHint?: "filter" | "workflow" | "crm" | "draft" | "general";
@@ -75,6 +81,14 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ``,
       `Rules: Be conversational but concise. Always include ALL steps when updating — the tool replaces the entire workflow. Keep step names under 30 chars, descriptions under 80 chars.`,
     );
+    if (context.pipelineContext) {
+      const pc = context.pipelineContext;
+      lines.push(
+        ``,
+        `This workflow targets pipeline "${pc.pipelineName}" (${pc.relationshipCount} relationships).`,
+        `Relationship IDs: ${pc.relationshipIds.slice(0, 20).join(", ")}${pc.relationshipIds.length > 20 ? ` ... and ${pc.relationshipIds.length - 20} more` : ""}`,
+      );
+    }
   } else if (surface === "filter") {
     lines.push(
       ``,

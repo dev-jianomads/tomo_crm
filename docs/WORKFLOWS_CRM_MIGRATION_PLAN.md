@@ -447,16 +447,16 @@ If `TargetFilter` is only used for deprecated `targetFilters`, you can:
 
 ## Checklist
 
-- [ ] Step 1: Update Playbook type in mockPlaybooks.ts
-- [ ] Step 2: Update override type and storage key
-- [ ] Step 3: Replace TargetList with Pipeline (imports, hooks)
-- [ ] Step 4: Update getPlaybookTargetsSummary
-- [ ] Step 5: Update handleUseInPlaybook
-- [ ] Step 6: Update "Recent pipelines" section UI
-- [ ] Step 7: Update header links
-- [ ] Step 8: (Optional) Pass pipeline context to Tomo
-- [ ] Step 9: Clean up deprecated code
-- [ ] Step 10: Verify pipeline page
+- [x] Step 1: Update Playbook type in mockPlaybooks.ts
+- [x] Step 2: Update override type and storage key
+- [x] Step 3: Replace TargetList with Pipeline (imports, hooks)
+- [x] Step 4: Update getPlaybookTargetsSummary
+- [x] Step 5: Update handleUseInPlaybook
+- [x] Step 6: Update "Recent pipelines" section UI
+- [x] Step 7: Update header links
+- [x] Step 8: (Optional) Pass pipeline context to Tomo
+- [x] Step 9: Clean up deprecated code
+- [x] Step 10: Verify pipeline page
 
 ---
 

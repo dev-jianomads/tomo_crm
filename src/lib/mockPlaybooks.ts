@@ -3,7 +3,6 @@
  * Playbooks are OpenClaw-style: schedule + evidence + artifact + execute.
  */
 
-import type { TargetFilter } from "./targets";
 import type { StructuredFilterCriteria } from "./relationshipFilters";
 
 export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response" | "no_response_stall";
@@ -18,8 +17,6 @@ export type Playbook = {
   targetCount?: number;
   /** @deprecated Use pipelineId. Kept for backward compatibility. */
   targetListId?: string;
-  /** @deprecated Use filterCriteria. Kept for backward compatibility. */
-  targetFilters?: Partial<TargetFilter>;
   /** Link to saved pipeline (CRM filter) */
   pipelineId?: string;
   /** Inline filter criteria when no pipeline is linked */
