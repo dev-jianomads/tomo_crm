@@ -4,6 +4,7 @@
  */
 
 import type { TargetFilter } from "./targets";
+import type { StructuredFilterCriteria } from "./relationshipFilters";
 
 export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response" | "no_response_stall";
 
@@ -15,10 +16,14 @@ export type Playbook = {
   summary: string;
   enabled: boolean;
   targetCount?: number;
-  /** Link to saved target list (Option A) */
+  /** @deprecated Use pipelineId. Kept for backward compatibility. */
   targetListId?: string;
-  /** Inline filters when no list is linked (Option A) */
+  /** @deprecated Use filterCriteria. Kept for backward compatibility. */
   targetFilters?: Partial<TargetFilter>;
+  /** Link to saved pipeline (CRM filter) */
+  pipelineId?: string;
+  /** Inline filter criteria when no pipeline is linked */
+  filterCriteria?: Partial<StructuredFilterCriteria>;
 };
 
 export const suggestedPlaybooks: Playbook[] = [
@@ -30,7 +35,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Intro tracker: Detect intro → log source credit → draft reply 24h → escalate if silent. Draft only.",
     enabled: true,
     targetCount: 1,
-    targetFilters: { tier: "Tier 1", stage: "Heating" },
+    filterCriteria: { tier: "Tier 1", band: "Heating Up" },
   },
   {
     id: "pb-post-meeting",
@@ -40,7 +45,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Post-meeting: Extract transcript → draft follow-up → human approval → send & monitor. Draft only.",
     enabled: true,
     targetCount: 1,
-    targetFilters: { tier: "Tier 1-2", stage: "Active" },
+    filterCriteria: { tier: ["Tier 1", "Tier 2"], band: "Active-Stable" },
   },
   {
     id: "pb-update-followup",
@@ -50,7 +55,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Update follow-up: Segment by tier → track opens → auto-draft after 5d. Draft only.",
     enabled: true,
     targetCount: 24,
-    targetFilters: { tier: "Tier 1-2" },
+    filterCriteria: { tier: ["Tier 1", "Tier 2"] },
   },
   {
     id: "pb-no-response-stall",
@@ -60,7 +65,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "No response 5d: Flag blocked → suggest CRM updates → set reminder. Links to Today card.",
     enabled: true,
     targetCount: 1,
-    targetFilters: { tier: "Tier 1-2" },
+    filterCriteria: { tier: ["Tier 1", "Tier 2"] },
   },
   {
     id: "pb-ddq-response",

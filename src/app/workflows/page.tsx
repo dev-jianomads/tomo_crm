@@ -9,6 +9,8 @@ import { AppShell } from "@/components/app-shell";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
 import { TargetList, TARGET_LISTS_STORAGE_KEY } from "@/lib/targets";
+import { relationships } from "@/lib/mockData";
+import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 import {
@@ -97,6 +99,12 @@ function WorkflowsPageContent() {
       if (targetListId) {
         const list = targetLists.find((l) => l.id === targetListId);
         return list ? `List: ${list.name} (${list.members.length} members)` : "List (not found)";
+      }
+      const criteria = playbook.filterCriteria;
+      if (criteria && Object.keys(criteria).length > 0) {
+        const count = applyFilters(relationships, criteria).length;
+        const summary = formatFilterSummary(criteria);
+        return summary ? `${count} targets — ${summary}` : `${count} targets`;
       }
       const filters = playbook.targetFilters;
       if (filters && Object.keys(filters).length > 0) {
