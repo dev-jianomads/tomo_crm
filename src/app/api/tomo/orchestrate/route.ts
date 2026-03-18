@@ -67,12 +67,14 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     lines.push(
       ``,
       `You are in the drawer viewing a specific entity. You can ONLY help with entity actions:`,
-      `- update_crm: Apply CRM field updates, set a reminder, or change status (e.g. blocked, in progress)`,
+      `- update_crm: Apply CRM field updates (tier, stage, band, etc.), set a reminder, or change status`,
       `- draft_reply: Draft an email or meeting invite`,
+      ``,
+      `When the user asks for a simple CRM field update (e.g. "change tier to 3", "update stage to DD"), call update_crm immediately with the requested fields. Do NOT ask about reminders or other fields unless the user explicitly requests them.`,
       ``,
       `If the user asks to filter the list (e.g. "show Tier 1", "cooling relationships"), politely redirect: "Use the filter bar above to filter the list. For this relationship, I can help you apply updates, draft outreach, or set a reminder."`,
       ``,
-      `Rules: Be conversational but concise. Only call a tool when the user clearly intends that action.`,
+      `Rules: Be conversational but concise. Only call a tool when the user clearly intends that action. For simple field updates, execute without extra confirmation questions.`,
     );
   } else if (surface === "workflow") {
     lines.push(
@@ -245,7 +247,7 @@ export async function POST(req: Request) {
   if (surface === "general" || surface === "drawer") {
     tools.update_crm = tool({
         description:
-          "Apply CRM updates to an entity or multiple relationships. Use when the user confirms they want to apply field updates, set a reminder, or change status. Pass entityId for single updates, or relationshipIds for bulk updates (when viewing a pipeline stage).",
+          "Apply CRM field updates (tier, stage, band, etc.) to an entity. Use when the user wants to update a field — execute immediately without asking about reminders. Pass entityId for single updates, or relationshipIds for bulk updates. Only include reminderDuration when the user explicitly asks for a reminder.",
         inputSchema: z.object({
           entityId: z
             .string()

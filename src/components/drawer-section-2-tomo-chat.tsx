@@ -16,6 +16,14 @@ export type DrawerSelection =
   | { type: "pipeline_stage"; pipelineId: string; stage: string; relationshipIds: string[] }
   | { type: string; id: string };
 
+export type CrmUpdatePayload = {
+  entityId?: string;
+  relationshipIds?: string[];
+  rows?: { field: string; update: string }[];
+  status?: string;
+  reminderDuration?: string;
+};
+
 type DrawerSection2TomoChatProps = {
   initialMessage?: TomoInitialMessage;
   suggestions: string[];
@@ -23,6 +31,8 @@ type DrawerSection2TomoChatProps = {
   entityKey: string;
   selection?: DrawerSelection;
   assistanceContext?: TomoAssistance | null;
+  /** Called when update_crm tool runs — use to persist changes to mock/store */
+  onCrmUpdate?: (payload: CrmUpdatePayload) => void;
 };
 
 /**
@@ -35,6 +45,7 @@ export function DrawerSection2TomoChat({
   entityKey,
   selection,
   assistanceContext,
+  onCrmUpdate,
 }: DrawerSection2TomoChatProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -65,13 +76,8 @@ export function DrawerSection2TomoChat({
     transport,
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === "update_crm") {
-        const input = toolCall.input as {
-          entityId?: string;
-          relationshipIds?: string[];
-          rows?: { field: string; update: string }[];
-          status?: string;
-          reminderDuration?: string;
-        };
+        const input = toolCall.input as CrmUpdatePayload;
+        onCrmUpdate?.(input);
         const fields = input.rows?.map((r) => r.field) ?? [];
         const count = input.relationshipIds?.length ?? (input.entityId ? 1 : 0);
         if (fields.length || input.status || input.reminderDuration) {

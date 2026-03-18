@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, FunnelIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
@@ -123,6 +123,42 @@ const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = Object.fromEntrie
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
 
+/** Map AI field names to Relationship keys */
+const FIELD_TO_REL_KEY: Record<string, string> = {
+  tier: "tier",
+  stage: "stage",
+  band: "band",
+  owner: "relationshipOwner",
+  momentum: "momentumDirection",
+  nextMove: "nextMove",
+  openLoops: "openLoops",
+  investorType: "investorType",
+  strategyFit: "strategyFit",
+  strategyType: "strategyType",
+  lpLocation: "lpLocation",
+  investmentRemit: "investmentRemit",
+  typicalCheckSize: "typicalCheckSize",
+  fundSizePreference: "fundSizePreference",
+  source: "source",
+  lastFundHistory: "lastFundHistory",
+  decisionTimeline: "decisionTimeline",
+  fiscalYearEnd: "fiscalYearEnd",
+  consultantDependent: "consultantDependent",
+  esgRequired: "esgRequired",
+};
+
+function mergeWithOverrides(
+  base: Relationship[],
+  overrides: Record<string, Partial<Relationship>>
+): Relationship[] {
+  if (Object.keys(overrides).length === 0) return base;
+  return base.map((r) => {
+    const o = overrides[r.id];
+    if (!o) return r;
+    return { ...r, ...o };
+  });
+}
+
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
   const { funds, activeFundId } = useFunds();
@@ -149,6 +185,10 @@ export default function RelationshipsPage() {
     "tomo-relationships-column-visibility-v2",
     DEFAULT_COLUMN_VISIBILITY
   );
+  const [relationshipOverrides, setRelationshipOverrides] = usePersistentState<
+    Record<string, Partial<Relationship>>
+  >("tomo-relationship-overrides-v1", {});
+
   const visibleColumns = useMemo(
     () =>
       TABLE_COLUMNS.filter((col) => columnVisibility[col.key] !== false),
@@ -245,9 +285,14 @@ export default function RelationshipsPage() {
     setFilterCriteria(EMPTY_CRITERIA);
   };
 
+  const relationshipsWithOverrides = useMemo(
+    () => mergeWithOverrides(relationships, relationshipOverrides),
+    [relationshipOverrides]
+  );
+
   const filtered = useMemo(
-    () => applyFilters(relationships, filterCriteria),
-    [filterCriteria]
+    () => applyFilters(relationshipsWithOverrides, filterCriteria),
+    [relationshipsWithOverrides, filterCriteria]
   );
 
   const DESC_DEFAULT_COLS: SortColumn[] = ["days", "momentum", "openLoops"];
@@ -344,7 +389,10 @@ export default function RelationshipsPage() {
     return arr;
   }, [filtered, effectiveSortColumn, sortDirection]);
 
-  const active = useMemo(() => relationships.find((r) => r.id === activeId) ?? null, [activeId]);
+  const active = useMemo(
+    () => relationshipsWithOverrides.find((r) => r.id === activeId) ?? null,
+    [relationshipsWithOverrides, activeId]
+  );
 
   const activityLogEntries = useMemo(() => {
     if (!activeId) return [];
@@ -358,6 +406,32 @@ export default function RelationshipsPage() {
   const drawerSelection = useMemo(
     () => (activeId ? { type: "relationship" as const, id: activeId } : undefined),
     [activeId]
+  );
+
+  const handleCrmUpdate = useCallback(
+    (payload: {
+      entityId?: string;
+      relationshipIds?: string[];
+      rows?: { field: string; update: string }[];
+    }) => {
+      const ids = payload.relationshipIds ?? (payload.entityId ? [payload.entityId] : []);
+      const rows = payload.rows ?? [];
+      if (ids.length === 0 || rows.length === 0) return;
+      setRelationshipOverrides((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          const current = next[id] ?? {};
+          const merged: Partial<Relationship> = { ...current };
+          for (const { field, update } of rows) {
+            const key = FIELD_TO_REL_KEY[field] ?? field;
+            (merged as Record<string, unknown>)[key] = update;
+          }
+          next[id] = merged;
+        }
+        return next;
+      });
+    },
+    [setRelationshipOverrides]
   );
 
   const handleCreatePipeline = () => {
@@ -409,7 +483,7 @@ export default function RelationshipsPage() {
           <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
             <span className="shrink-0 text-xs text-gray-500">
               {Object.keys(filterCriteria).length > 0
-                ? `Showing ${filtered.length} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
+                ? `Showing ${filtered.length} of ${relationshipsWithOverrides.length} relationship${relationshipsWithOverrides.length !== 1 ? "s" : ""}`
                 : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
             </span>
             {(() => {
@@ -625,6 +699,7 @@ export default function RelationshipsPage() {
               entityKey={activeId}
               selection={drawerSelection}
               assistanceContext={getTomoAssistance(activeId)}
+              onCrmUpdate={handleCrmUpdate}
             />
           ) : undefined
         }
