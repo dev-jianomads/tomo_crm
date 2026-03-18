@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { PaperAirplaneIcon, WrenchScrewdriverIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { TomoMessageContent } from "./tomo-message-content";
 import type { TomoInitialMessage, TomoAssistance } from "@/lib/mockTomoAssistance";
@@ -35,6 +35,25 @@ type DrawerSection2TomoChatProps = {
   onCrmUpdate?: (payload: CrmUpdatePayload) => void;
 };
 
+/** Extract tool invocation parts from a message (works with both typed and dynamic tools) */
+function getToolParts(message: UIMessage) {
+  const parts: { toolName: string; state: string; input?: unknown; output?: unknown }[] = [];
+  for (const part of message.parts ?? []) {
+    // Typed tool parts: type === "tool-<name>"
+    if ("state" in part && typeof (part as Record<string, unknown>).state === "string") {
+      const p = part as Record<string, unknown>;
+      // Check for tool-<name> pattern or dynamic-tool
+      if (typeof p.type === "string" && p.type.startsWith("tool-")) {
+        const toolName = (p as { toolName?: string }).toolName ?? (p.type as string).replace(/^tool-/, "");
+        parts.push({ toolName, state: p.state as string, input: p.input, output: p.output });
+      } else if (p.type === "dynamic-tool" && typeof p.toolName === "string") {
+        parts.push({ toolName: p.toolName as string, state: p.state as string, input: p.input, output: p.output });
+      }
+    }
+  }
+  return parts;
+}
+
 /**
  * Section 2: Tomo Chat — Tomo speaks first with initialMessage, then AI conversation via Vercel AI SDK.
  */
@@ -49,6 +68,8 @@ export function DrawerSection2TomoChat({
 }: DrawerSection2TomoChatProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  // Track which tool calls we've already processed so we don't double-fire
+  const processedToolCalls = useRef<Set<string>>(new Set());
 
   const transport = useMemo(
     () =>
@@ -72,48 +93,64 @@ export function DrawerSection2TomoChat({
     [selection, contextLabel, assistanceContext]
   );
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport,
-    onFinish: ({ message }) => {
-      for (const part of message.parts ?? []) {
-        if (
-          part.type === "tool-update_crm" &&
-          "state" in part &&
-          part.state === "output-available" &&
-          part.output
-        ) {
-          const result = part.output as CrmUpdatePayload & { applied?: boolean };
-          if (!result?.applied) break;
+  // Stable ref for onCrmUpdate so useEffect always has the latest
+  const onCrmUpdateRef = useRef(onCrmUpdate);
+  onCrmUpdateRef.current = onCrmUpdate;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
 
-          // Fallback: use selection id when entityId is missing
-          const payload: CrmUpdatePayload =
-            !result.entityId && !result.relationshipIds?.length && selection?.type === "relationship"
-              ? { ...result, entityId: selection.id }
-              : result;
+  const applyCrmUpdate = useCallback((toolCallId: string, crmInput: unknown, crmOutput: unknown) => {
+    if (processedToolCalls.current.has(toolCallId)) return;
+    processedToolCalls.current.add(toolCallId);
 
-          onCrmUpdate?.(payload);
+    // Use output if it has rows, otherwise fall back to input
+    const result = (crmOutput ?? crmInput) as CrmUpdatePayload & { applied?: boolean };
+    if (!result) return;
 
-          const fields = result.rows?.map((r) => r.field) ?? [];
-          const count = result.relationshipIds?.length ?? (result.entityId ? 1 : 0);
-          if (fields.length || result.status || result.reminderDuration) {
-            const target = count > 1 ? `${count} relationships` : "CRM";
-            toast.success(
-              result.status
-                ? `Status set to ${result.status}${count > 1 ? ` (${count} items)` : ""}`
-                : result.reminderDuration
-                  ? `Reminder set for ${result.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
-                  : `${target} updated: ${fields.join(", ") || "done"}`
-            );
-          }
-          break;
-        }
-      }
-    },
-  });
+    // Fallback: use selection id when entityId is missing
+    const sel = selectionRef.current;
+    const payload: CrmUpdatePayload =
+      !result.entityId && !result.relationshipIds?.length && sel?.type === "relationship"
+        ? { ...result, entityId: sel.id }
+        : result;
+
+    onCrmUpdateRef.current?.(payload);
+
+    const fields = result.rows?.map((r) => r.field) ?? [];
+    const count = result.relationshipIds?.length ?? (result.entityId ? 1 : 0);
+    if (fields.length || result.status || result.reminderDuration) {
+      const target = count > 1 ? `${count} relationships` : "CRM";
+      toast.success(
+        result.status
+          ? `Status set to ${result.status}${count > 1 ? ` (${count} items)` : ""}`
+          : result.reminderDuration
+            ? `Reminder set for ${result.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
+            : `${target} updated: ${fields.join(", ") || "done"}`
+      );
+    }
+  }, []);
+
+  const { messages, sendMessage, status, setMessages } = useChat({ transport });
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Watch messages for tool results — robust detection that works with both
+  // typed (type: "tool-update_crm") and dynamic (type: "dynamic-tool") parts
   useEffect(() => {
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      const toolParts = getToolParts(msg);
+      for (const tp of toolParts) {
+        if (tp.toolName === "update_crm" && tp.state === "output-available") {
+          const toolCallId = (tp as { toolCallId?: string }).toolCallId ?? `${msg.id}-update_crm`;
+          applyCrmUpdate(toolCallId, tp.input, tp.output);
+        }
+      }
+    }
+  }, [messages, applyCrmUpdate]);
+
+  useEffect(() => {
+    processedToolCalls.current.clear();
     setMessages([]);
     setInput("");
   }, [entityKey, setMessages]);
@@ -134,13 +171,11 @@ export function DrawerSection2TomoChat({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header — compact; contextLabel omitted when redundant (e.g. same as drawer title) */}
       <div className="flex shrink-0 items-center border-b border-gray-200 px-3 py-1.5">
         <p className="text-xs font-medium text-gray-900">TOMO AI</p>
         {contextLabel ? <p className="ml-2 text-[11px] text-gray-500">— {contextLabel}</p> : null}
       </div>
 
-      {/* Suggestion chips — visible until user sends first message */}
       {showChips && displaySuggestions.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-3 py-2">
           {displaySuggestions.map((chip) => (
@@ -156,17 +191,13 @@ export function DrawerSection2TomoChat({
         </div>
       ) : null}
 
-      {/* Messages area */}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
-        {/* Tomo's initial message (static, always first) */}
         <TomoMessageContent message={initialMessage ?? { text: "What can I help you with?" }} />
 
-        {/* AI conversation */}
         {messages.map((msg) => (
           <ChatBubble key={msg.id} message={msg} />
         ))}
 
-        {/* Streaming indicator */}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
@@ -182,7 +213,6 @@ export function DrawerSection2TomoChat({
         <div ref={endRef} />
       </div>
 
-      {/* Input */}
       <div className="shrink-0 border-t border-gray-200 px-3 py-2">
         <form
           onSubmit={(e) => {
@@ -211,6 +241,46 @@ export function DrawerSection2TomoChat({
   );
 }
 
+/** Render a single tool invocation as a compact status chip */
+function ToolCallChip({ toolName, state, input }: { toolName: string; state: string; input?: unknown }) {
+  const label = toolName === "update_crm" ? "CRM Update" : toolName === "draft_reply" ? "Draft" : toolName;
+
+  const inputData = input as { rows?: { field: string; update: string }[] } | undefined;
+  const summary = inputData?.rows?.map((r) => `${r.field} → ${r.update}`).join(", ");
+
+  if (state === "input-streaming" || state === "input-available") {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">
+        <WrenchScrewdriverIcon className="h-3.5 w-3.5 animate-spin" />
+        <span className="font-medium">{label}</span>
+        <span className="text-amber-600">running…</span>
+      </div>
+    );
+  }
+
+  if (state === "output-available") {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs text-green-800">
+        <CheckCircleIcon className="h-3.5 w-3.5" />
+        <span className="font-medium">{label}</span>
+        {summary ? <span className="text-green-600">— {summary}</span> : <span className="text-green-600">done</span>}
+      </div>
+    );
+  }
+
+  if (state === "output-error") {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800">
+        <ExclamationCircleIcon className="h-3.5 w-3.5" />
+        <span className="font-medium">{label}</span>
+        <span className="text-red-600">failed</span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function ChatBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
 
@@ -219,19 +289,29 @@ function ChatBubble({ message }: { message: UIMessage }) {
     .map((p) => p.text)
     .join("") ?? "";
 
-  if (!textContent.trim()) return null;
+  // Extract tool parts for visual display
+  const toolParts = getToolParts(message);
+
+  if (!textContent.trim() && toolParts.length === 0) return null;
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-lg border px-3 py-2 ${
-          isUser
-            ? "border-blue-200 bg-blue-50 text-gray-900"
-            : "border-gray-200 bg-gray-50 text-gray-900"
-        }`}
-      >
-        <p className="whitespace-pre-line leading-relaxed text-sm">{textContent}</p>
-      </div>
+    <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
+      {/* Tool call indicators */}
+      {toolParts.map((tp, i) => (
+        <ToolCallChip key={`${tp.toolName}-${i}`} toolName={tp.toolName} state={tp.state} input={tp.input} />
+      ))}
+      {/* Text content */}
+      {textContent.trim() ? (
+        <div
+          className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+            isUser
+              ? "border-blue-200 bg-blue-50 text-gray-900"
+              : "border-gray-200 bg-gray-50 text-gray-900"
+          }`}
+        >
+          <p className="whitespace-pre-line leading-relaxed text-sm">{textContent}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
