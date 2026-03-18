@@ -2,13 +2,13 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
-import { usePipelines, type Pipeline } from "@/lib/pipelines";
+import { usePipelines } from "@/lib/pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { relationships } from "@/lib/mockData";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
@@ -32,7 +32,9 @@ type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 function WorkflowsPageContent() {
   const { ready } = useRequireSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const playbookIdFromUrl = searchParams.get("playbook");
+  const pipelineIdFromUrl = searchParams.get("pipelineId");
   const { activeFundId } = useFunds();
   const { pipelines } = usePipelines(activeFundId);
 
@@ -43,7 +45,8 @@ function WorkflowsPageContent() {
     "tomo-playbook-pipeline-overrides",
     {}
   );
-  const [recentTargetsOpen, setRecentTargetsOpen] = useState(false);
+  const [tomoDefaultOpen, setTomoDefaultOpen] = useState(true);
+  const [userDefinedOpen, setUserDefinedOpen] = useState(true);
   const [topPanelHeight, setTopPanelHeight] = usePersistentState<number>(
     "tomo-workflows-split-height",
     50
@@ -69,6 +72,23 @@ function WorkflowsPageContent() {
       setWorkflow(null);
     }
   }, [selectedPlaybook]);
+
+  // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and navigate
+  useEffect(() => {
+    if (!pipelineIdFromUrl || !pipelines.length) return;
+    const pipeline = pipelines.find((p) => p.id === pipelineIdFromUrl);
+    if (!pipeline) return;
+    const targetPlaybookId = playbookIdFromUrl || suggestedPlaybooks[0]?.id;
+    if (!targetPlaybookId) return;
+    setPlaybookOverrides((prev) => ({
+      ...prev,
+      [targetPlaybookId]: { pipelineId: pipeline.id },
+    }));
+    setSelectedPlaybookId(targetPlaybookId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("pipelineId");
+    router.replace(params.toString() ? `?${params}` : "/workflows", { scroll: false });
+  }, [pipelineIdFromUrl, pipelines, playbookIdFromUrl, router, searchParams, setPlaybookOverrides]);
 
   // Row resize handler
   useEffect(() => {
@@ -117,14 +137,6 @@ function WorkflowsPageContent() {
     };
   }, [playbookOverrides, pipelines]);
 
-  const handleUseInPlaybook = (pipeline: Pipeline) => {
-    if (!selectedPlaybookId) return;
-    setPlaybookOverrides((prev) => ({
-      ...prev,
-      [selectedPlaybookId]: { pipelineId: pipeline.id },
-    }));
-  };
-
   const handleResetWorkflow = useCallback(() => {
     if (!selectedPlaybook) return;
     setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
@@ -134,8 +146,6 @@ function WorkflowsPageContent() {
     setWorkflow(def);
     setHighlightVersion((v) => v + 1);
   }, []);
-
-  const recentPipelines = pipelines.slice(0, 3);
 
   const pipelineContext = useMemo(() => {
     if (!selectedPlaybook) return null;
@@ -169,66 +179,50 @@ function WorkflowsPageContent() {
       </div>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
-        <div className="space-y-2">
-          {suggestedPlaybooks.map((playbook) => (
-            <PlaybookCard
-              key={playbook.id}
-              playbook={playbook}
-              targetsSummary={getPlaybookTargetsSummary(playbook)}
-              isSelected={selectedPlaybookId === playbook.id}
-              onSelect={() => setSelectedPlaybookId(playbook.id)}
-            />
-          ))}
-        </div>
-
+        {/* Tomo Default accordion */}
         <div className="rounded-lg border border-gray-200 bg-gray-50/60">
           <button
-            onClick={() => setRecentTargetsOpen((o) => !o)}
+            onClick={() => setTomoDefaultOpen((o) => !o)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100/80"
           >
-            <span>Recent pipelines</span>
-            {recentTargetsOpen ? (
+            <span>Tomo Default</span>
+            {tomoDefaultOpen ? (
               <ChevronDownIcon className="h-4 w-4 text-gray-500" />
             ) : (
               <ChevronRightIcon className="h-4 w-4 text-gray-500" />
             )}
           </button>
-          {recentTargetsOpen && (
+          {tomoDefaultOpen && (
+            <div className="border-t border-gray-200 px-3 py-2">
+              <p className="text-xs text-gray-500 py-2">No default workflows yet.</p>
+            </div>
+          )}
+        </div>
+
+        {/* User Defined accordion */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50/60">
+          <button
+            onClick={() => setUserDefinedOpen((o) => !o)}
+            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100/80"
+          >
+            <span>User Defined</span>
+            {userDefinedOpen ? (
+              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+            )}
+          </button>
+          {userDefinedOpen && (
             <div className="border-t border-gray-200 px-3 py-2 space-y-2">
-              {recentPipelines.length ? (
-                recentPipelines.map((pipeline) => {
-                  const count = applyFilters(relationships, pipeline.filterCriteria).length;
-                  const summary = formatFilterSummary(pipeline.filterCriteria);
-                  return (
-                    <div
-                      key={pipeline.id}
-                      className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{pipeline.name}</p>
-                        <p className="text-[11px] text-gray-500">
-                          {count} relationships • {summary || "All"}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleUseInPlaybook(pipeline)}
-                        disabled={!selectedPlaybookId}
-                        className="rounded-md border border-[color:var(--accent)] px-2 py-1 text-[11px] font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
-                      >
-                        Use in workflow
-                      </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-xs text-gray-500 py-2">No pipelines yet.</p>
-              )}
-              <Link
-                href="/pipeline"
-                className="block text-center text-xs text-[color:var(--accent)] hover:underline py-1"
-              >
-                Create or manage pipelines →
-              </Link>
+              {suggestedPlaybooks.map((playbook) => (
+                <PlaybookCard
+                  key={playbook.id}
+                  playbook={playbook}
+                  targetsSummary={getPlaybookTargetsSummary(playbook)}
+                  isSelected={selectedPlaybookId === playbook.id}
+                  onSelect={() => setSelectedPlaybookId(playbook.id)}
+                />
+              ))}
             </div>
           )}
         </div>

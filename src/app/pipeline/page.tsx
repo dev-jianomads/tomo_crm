@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
@@ -191,27 +192,38 @@ export default function PipelinePage() {
               const summary = formatFilterSummary(pipeline.filterCriteria);
               const isSelected = activePipelineId === pipeline.id;
               return (
-                <button
+                <div
                   key={pipeline.id}
-                  onClick={() => handlePipelineClick(pipeline.id)}
                   className={`w-full rounded-md border px-3 py-2 text-left transition ${
                     isSelected
                       ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
                       : "border-gray-200 bg-white hover:border-gray-300"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
-                    <span className="text-xs text-gray-600">{count} relationships</span>
-                  </div>
-                  {summary ? (
-                    <p className="mt-0.5 truncate text-xs text-gray-600" title={summary}>
-                      {summary}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-xs text-gray-500">No filters</p>
-                  )}
-                </button>
+                  <button
+                    onClick={() => handlePipelineClick(pipeline.id)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
+                      <span className="text-xs text-gray-600">{count} relationships</span>
+                    </div>
+                    {summary ? (
+                      <p className="mt-0.5 truncate text-xs text-gray-600" title={summary}>
+                        {summary}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-xs text-gray-500">No filters</p>
+                    )}
+                  </button>
+                  <Link
+                    href={`/workflows?pipelineId=${pipeline.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-2 inline-block rounded-md border border-[color:var(--accent)] px-2 py-1 text-[11px] font-medium text-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] transition"
+                  >
+                    Use in workflow
+                  </Link>
+                </div>
               );
             })
           ) : (
