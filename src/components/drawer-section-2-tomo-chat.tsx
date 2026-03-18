@@ -109,9 +109,11 @@ export function DrawerSection2TomoChat({
 
     // Fallback: use selection id when entityId is missing
     const sel = selectionRef.current;
-    const payload: CrmUpdatePayload =
-      !result.entityId && !result.relationshipIds?.length && sel?.type === "relationship"
-        ? { ...result, entityId: sel.id }
+    const hasIds = !!(result.entityId || result.relationshipIds?.length);
+    const payload: CrmUpdatePayload = hasIds
+      ? result
+      : sel?.type === "relationship"
+        ? { ...result, entityId: sel.id, relationshipIds: undefined }
         : result;
 
     onCrmUpdateRef.current?.(payload);

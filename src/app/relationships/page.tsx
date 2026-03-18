@@ -391,7 +391,11 @@ export default function RelationshipsPage() {
       relationshipIds?: string[];
       rows?: { field: string; update: string }[];
     }) => {
-      const ids = payload.relationshipIds ?? (payload.entityId ? [payload.entityId] : []);
+      const ids = payload.relationshipIds?.length
+        ? payload.relationshipIds
+        : payload.entityId
+          ? [payload.entityId]
+          : [];
       const rows = payload.rows ?? [];
       if (ids.length === 0 || rows.length === 0) return;
       setRelationshipOverrides((prev) => {
