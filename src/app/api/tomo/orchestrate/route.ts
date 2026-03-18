@@ -278,13 +278,12 @@ export async function POST(req: Request) {
             .describe("Reminder duration, e.g. '3 days', '1 week'"),
         }),
         execute: async ({ entityId, relationshipIds, rows, status, reminderDuration }) => {
-          // Stub: no persistence yet. Client onToolCall will handle UI updates.
           const ids = relationshipIds ?? (entityId ? [entityId] : []);
           return {
             applied: true,
             entityId: entityId ?? null,
             relationshipIds: ids,
-            fields: rows?.map((r) => r.field) ?? [],
+            rows: rows ?? [],
             status: status ?? null,
             reminderDuration: reminderDuration ?? null,
           };

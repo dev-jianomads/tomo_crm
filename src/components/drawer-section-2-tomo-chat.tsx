@@ -74,26 +74,38 @@ export function DrawerSection2TomoChat({
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport,
-    onToolCall: ({ toolCall }) => {
-      if (toolCall.toolName === "update_crm") {
-        const input = toolCall.input as CrmUpdatePayload;
-        // Fallback: use selection id when entityId is missing (AI sometimes omits it)
-        const payload: CrmUpdatePayload =
-          !input.entityId && !input.relationshipIds?.length && selection?.type === "relationship"
-            ? { ...input, entityId: selection.id }
-            : input;
-        onCrmUpdate?.(payload);
-        const fields = input.rows?.map((r) => r.field) ?? [];
-        const count = input.relationshipIds?.length ?? (input.entityId ? 1 : 0);
-        if (fields.length || input.status || input.reminderDuration) {
-          const target = count > 1 ? `${count} relationships` : "CRM";
-          toast.success(
-            input.status
-              ? `Status set to ${input.status}${count > 1 ? ` (${count} items)` : ""}`
-              : input.reminderDuration
-                ? `Reminder set for ${input.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
-                : `${target} updated: ${fields.join(", ") || "done"}`
-          );
+    onFinish: ({ message }) => {
+      for (const part of message.parts ?? []) {
+        if (
+          part.type === "tool-update_crm" &&
+          "state" in part &&
+          part.state === "output-available" &&
+          part.output
+        ) {
+          const result = part.output as CrmUpdatePayload & { applied?: boolean };
+          if (!result?.applied) break;
+
+          // Fallback: use selection id when entityId is missing
+          const payload: CrmUpdatePayload =
+            !result.entityId && !result.relationshipIds?.length && selection?.type === "relationship"
+              ? { ...result, entityId: selection.id }
+              : result;
+
+          onCrmUpdate?.(payload);
+
+          const fields = result.rows?.map((r) => r.field) ?? [];
+          const count = result.relationshipIds?.length ?? (result.entityId ? 1 : 0);
+          if (fields.length || result.status || result.reminderDuration) {
+            const target = count > 1 ? `${count} relationships` : "CRM";
+            toast.success(
+              result.status
+                ? `Status set to ${result.status}${count > 1 ? ` (${count} items)` : ""}`
+                : result.reminderDuration
+                  ? `Reminder set for ${result.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
+                  : `${target} updated: ${fields.join(", ") || "done"}`
+            );
+          }
+          break;
         }
       }
     },
