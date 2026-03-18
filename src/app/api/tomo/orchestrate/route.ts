@@ -18,6 +18,7 @@ import {
   type WorkflowStep,
 } from "@/lib/workflow-templates";
 import { parseFilterPrompt } from "@/lib/parseFilterPrompt";
+import { CRM_UPDATE_FIELD_REFERENCE } from "@/lib/crmFieldSchema";
 import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 
@@ -70,7 +71,11 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       `- update_crm: Apply CRM field updates (tier, stage, band, etc.), set a reminder, or change status`,
       `- draft_reply: Draft an email or meeting invite`,
       ``,
-      `When the user asks for a simple CRM field update (e.g. "change tier to 3", "update stage to DD"), call update_crm immediately with the requested fields. Do NOT ask about reminders or other fields unless the user explicitly requests them.`,
+      `When the user asks for a CRM field update, you MUST call update_crm with entityId set to the selected entity's id. Do NOT ask about reminders or other fields unless the user explicitly requests them.`,
+      ``,
+      `CRITICAL: When performing a CRM update, you MUST call the update_crm tool — never claim an update was made in text without actually calling the tool. Pass entityId and rows with field/update. Use exact field names and values from the schema below.`,
+      ``,
+      CRM_UPDATE_FIELD_REFERENCE,
       ``,
       `If the user asks to filter the list (e.g. "show Tier 1", "cooling relationships"), politely redirect: "Use the filter bar above to filter the list. For this relationship, I can help you apply updates, draft outreach, or set a reminder."`,
       ``,
@@ -247,7 +252,7 @@ export async function POST(req: Request) {
   if (surface === "general" || surface === "drawer") {
     tools.update_crm = tool({
         description:
-          "Apply CRM field updates (tier, stage, band, etc.) to an entity. Use when the user wants to update a field — execute immediately without asking about reminders. Pass entityId for single updates, or relationshipIds for bulk updates. Only include reminderDuration when the user explicitly asks for a reminder.",
+          "Apply CRM field updates to an entity. Supports all Relationship fields: tier, stage, band, momentum, owner, investorType, strategyFit, strategyType, lpLocation, investmentRemit, typicalCheckSize, fundSizePreference, source, lastFundHistory, decisionTimeline, fiscalYearEnd, consultantDependent, esgRequired, nextMove, openLoops, sourceDetail, consultantName, lastMeetingDate, contactSeniority. Use exact field names and valid enum values. Pass entityId for single updates, or relationshipIds for bulk. Only include reminderDuration when the user explicitly asks.",
         inputSchema: z.object({
           entityId: z
             .string()
@@ -260,12 +265,12 @@ export async function POST(req: Request) {
           rows: z
             .array(
               z.object({
-                field: z.string(),
-                update: z.string(),
+                field: z.string().describe("CRM field name (tier, stage, band, owner, etc.)"),
+                update: z.string().describe("New value; use exact enum values where applicable"),
               })
             )
             .optional()
-            .describe("CRM field updates"),
+            .describe("CRM field updates; any Relationship field can be updated"),
           status: z.string().optional().describe("Status change, e.g. blocked, in progress"),
           reminderDuration: z
             .string()

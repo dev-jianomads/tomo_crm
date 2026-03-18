@@ -77,7 +77,12 @@ export function DrawerSection2TomoChat({
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === "update_crm") {
         const input = toolCall.input as CrmUpdatePayload;
-        onCrmUpdate?.(input);
+        // Fallback: use selection id when entityId is missing (AI sometimes omits it)
+        const payload: CrmUpdatePayload =
+          !input.entityId && !input.relationshipIds?.length && selection?.type === "relationship"
+            ? { ...input, entityId: selection.id }
+            : input;
+        onCrmUpdate?.(payload);
         const fields = input.rows?.map((r) => r.field) ?? [];
         const count = input.relationshipIds?.length ?? (input.entityId ? 1 : 0);
         if (fields.length || input.status || input.reminderDuration) {

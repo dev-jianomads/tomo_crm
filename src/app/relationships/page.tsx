@@ -14,6 +14,7 @@ import {
   EMPTY_CRITERIA,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
+import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
@@ -122,30 +123,6 @@ const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = Object.fromEntrie
 
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
-
-/** Map AI field names to Relationship keys */
-const FIELD_TO_REL_KEY: Record<string, string> = {
-  tier: "tier",
-  stage: "stage",
-  band: "band",
-  owner: "relationshipOwner",
-  momentum: "momentumDirection",
-  nextMove: "nextMove",
-  openLoops: "openLoops",
-  investorType: "investorType",
-  strategyFit: "strategyFit",
-  strategyType: "strategyType",
-  lpLocation: "lpLocation",
-  investmentRemit: "investmentRemit",
-  typicalCheckSize: "typicalCheckSize",
-  fundSizePreference: "fundSizePreference",
-  source: "source",
-  lastFundHistory: "lastFundHistory",
-  decisionTimeline: "decisionTimeline",
-  fiscalYearEnd: "fiscalYearEnd",
-  consultantDependent: "consultantDependent",
-  esgRequired: "esgRequired",
-};
 
 function mergeWithOverrides(
   base: Relationship[],
@@ -424,7 +401,8 @@ export default function RelationshipsPage() {
           const merged: Partial<Relationship> = { ...current };
           for (const { field, update } of rows) {
             const key = FIELD_TO_REL_KEY[field] ?? field;
-            (merged as Record<string, unknown>)[key] = update;
+            const value = normalizeFieldValue(key, update);
+            (merged as Record<string, unknown>)[key] = value;
           }
           next[id] = merged;
         }
