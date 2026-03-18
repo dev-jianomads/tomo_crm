@@ -74,3 +74,36 @@ export const suggestedPlaybooks: Playbook[] = [
     targetCount: 1,
   },
 ];
+
+/** Tomo Default workflows — simple trigger → action, no pipeline targeting */
+export type TomoDefaultWorkflow = {
+  id: string;
+  name: string;
+  trigger: string;
+  action: string;
+  enabled: boolean;
+};
+
+export const tomoDefaultWorkflows: TomoDefaultWorkflow[] = [
+  {
+    id: "td-website-scan",
+    name: "Website → CRM Sync",
+    trigger: "Scan corporate website",
+    action: "Suggest CRM updates (title, role, contact info)",
+    enabled: true,
+  },
+  {
+    id: "td-email-scheduling",
+    name: "Email Scheduling Assistant",
+    trigger: "Scan email for scheduling requests",
+    action: "Find availability → draft response with available times",
+    enabled: true,
+  },
+  {
+    id: "td-meeting-notes",
+    name: "Meeting Notes → Actions",
+    trigger: "Scan meeting notes or transcript",
+    action: "Extract action items & commitments → suggest CRM updates and create follow-ups",
+    enabled: true,
+  },
+];

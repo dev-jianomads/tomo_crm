@@ -7,7 +7,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
-import { suggestedPlaybooks, Playbook } from "@/lib/mockPlaybooks";
+import { suggestedPlaybooks, Playbook, tomoDefaultWorkflows, type TomoDefaultWorkflow } from "@/lib/mockPlaybooks";
 import { usePipelines } from "@/lib/pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { relationships } from "@/lib/mockData";
@@ -193,8 +193,10 @@ function WorkflowsPageContent() {
             )}
           </button>
           {tomoDefaultOpen && (
-            <div className="border-t border-gray-200 px-3 py-2">
-              <p className="text-xs text-gray-500 py-2">No default workflows yet.</p>
+            <div className="border-t border-gray-200 px-3 py-2 space-y-2">
+              {tomoDefaultWorkflows.map((wf) => (
+                <TomoDefaultWorkflowCard key={wf.id} workflow={wf} />
+              ))}
             </div>
           )}
         </div>
@@ -319,6 +321,32 @@ function WorkflowsPageFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
       <div className="text-sm text-gray-500">Loading workflows…</div>
+    </div>
+  );
+}
+
+function TomoDefaultWorkflowCard({ workflow }: { workflow: TomoDefaultWorkflow }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{workflow.name}</p>
+          <p className="mt-0.5 text-xs text-gray-600">
+            <span className="text-gray-500">{workflow.trigger}</span>
+            <span className="mx-1">→</span>
+            <span>{workflow.action}</span>
+          </p>
+        </div>
+        {workflow.enabled ? (
+          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+            On
+          </span>
+        ) : (
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+            Off
+          </span>
+        )}
+      </div>
     </div>
   );
 }
