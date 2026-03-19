@@ -443,6 +443,8 @@ export default function RelationshipsPage() {
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
+          relationshipLookup={filtered.map((r) => ({ id: r.id, name: r.name, firm: r.firm }))}
+          onCrmUpdate={handleCrmUpdate}
         />
       </div>
 

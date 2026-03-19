@@ -1,19 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
 import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
+import { getToolParts } from "@/lib/tomoToolParts";
+import type { CrmUpdatePayload } from "./drawer-section-2-tomo-chat";
 
-const FILTER_SUGGESTIONS = [
+const SUGGESTIONS = [
   "cooling relationships",
   "Tier 1 LPs",
   "no contact in 14 days",
   "family offices in North America",
   "heating up",
   "show all",
+  "update Lumen to heating",
+  "mark Acme as blocked",
+  "set reminder for Lumen Capital",
 ];
 
 type RelationshipsFilterChatProps = {
@@ -22,6 +28,10 @@ type RelationshipsFilterChatProps = {
   onClearFilters: () => void;
   /** Called when Tomo applies filters via the tool (e.g. for toast confirmation) */
   onFilterApplied?: () => void;
+  /** For CRM updates: id/name/firm so Tomo can resolve name to entityId */
+  relationshipLookup?: { id: string; name: string; firm: string }[];
+  /** Called when update_crm tool runs — use to persist changes */
+  onCrmUpdate?: (payload: CrmUpdatePayload) => void;
 };
 
 /**
@@ -33,9 +43,12 @@ export function RelationshipsFilterChat({
   onFiltersChange,
   onClearFilters,
   onFilterApplied,
+  relationshipLookup,
+  onCrmUpdate,
 }: RelationshipsFilterChatProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const processedToolCalls = useRef<Set<string>>(new Set());
 
   const transport = useMemo(
     () =>
@@ -45,12 +58,38 @@ export function RelationshipsFilterChat({
           context: {
             surface: "filter" as const,
             page: "relationships",
-            intentHint: "filter" as const,
           },
         },
       }),
     []
   );
+
+  const onCrmUpdateRef = useRef(onCrmUpdate);
+  onCrmUpdateRef.current = onCrmUpdate;
+
+  const applyCrmUpdate = useCallback((toolCallId: string, crmInput: unknown, crmOutput: unknown) => {
+    if (processedToolCalls.current.has(toolCallId)) return;
+    processedToolCalls.current.add(toolCallId);
+
+    const result = (crmOutput ?? crmInput) as CrmUpdatePayload & { applied?: boolean };
+    if (!result) return;
+
+    // Filter surface: single-entity only, must have entityId from AI (no selection fallback)
+    if (!result.entityId) return;
+
+    onCrmUpdateRef.current?.(result);
+
+    const fields = result.rows?.map((r) => r.field) ?? [];
+    if (fields.length || result.status || result.reminderDuration) {
+      toast.success(
+        result.status
+          ? `Status set to ${result.status}`
+          : result.reminderDuration
+            ? `Reminder set for ${result.reminderDuration}`
+            : `CRM updated: ${fields.join(", ") || "done"}`
+      );
+    }
+  }, []);
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport,
@@ -78,6 +117,27 @@ export function RelationshipsFilterChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Clear processedToolCalls when chat is cleared to avoid memory leak (drawer clears on entityKey change)
+  useEffect(() => {
+    if (messages.length === 0) {
+      processedToolCalls.current.clear();
+    }
+  }, [messages.length]);
+
+  // Watch messages for update_crm tool results (message-watching pattern, not onToolCall)
+  useEffect(() => {
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      const toolParts = getToolParts(msg);
+      for (const tp of toolParts) {
+        if (tp.toolName === "update_crm" && tp.state === "output-available") {
+          const toolCallId = (tp as { toolCallId?: string }).toolCallId ?? `${msg.id}-update_crm`;
+          applyCrmUpdate(toolCallId, tp.input, tp.output);
+        }
+      }
+    }
+  }, [messages, applyCrmUpdate]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -99,7 +159,7 @@ export function RelationshipsFilterChat({
             surface: "filter" as const,
             page: "relationships",
             currentFilters,
-            intentHint: "filter" as const,
+            relationshipLookup: relationshipLookup ?? [],
           },
         },
       }
@@ -113,7 +173,7 @@ export function RelationshipsFilterChat({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-2">
         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-          Ask Tomo to filter
+          Filter & update
         </p>
         <div className="flex items-center gap-2">
           {hasFilters && (
@@ -140,13 +200,13 @@ export function RelationshipsFilterChat({
       {/* Tomo's initial message */}
       <div className="flex justify-start border-b border-gray-100 px-4 py-3">
         <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-          <p className="text-sm text-gray-900">How can I help you filter the CRM?</p>
+          <p className="text-sm text-gray-900">Filter the list or update a relationship — what would you like to do?</p>
         </div>
       </div>
 
       {showChips && (
         <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-4 py-2">
-          {FILTER_SUGGESTIONS.map((chip) => (
+          {SUGGESTIONS.map((chip) => (
             <button
               key={chip}
               onClick={() => handleSend(chip)}
@@ -188,7 +248,7 @@ export function RelationshipsFilterChat({
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder='e.g. "Tier 1 with no contact in 14 days" or "cooling" — type "clear" to reset'
+            placeholder='e.g. "Tier 1 LPs" or "update Lumen to heating" — type "clear" to reset filters'
             disabled={isStreaming}
             className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
           />
@@ -215,19 +275,42 @@ function ChatBubble({ message }: { message: UIMessage }) {
       .map((p) => p.text)
       .join("") ?? "";
 
-  if (!textContent.trim()) return null;
+  const toolParts = getToolParts(message);
+  const hasToolParts = toolParts.length > 0;
+
+  if (!textContent.trim() && !hasToolParts) return null;
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-lg border px-3 py-2 ${
-          isUser
-            ? "border-blue-200 bg-blue-50 text-gray-900"
-            : "border-gray-200 bg-gray-50 text-gray-900"
-        }`}
-      >
-        <p className="whitespace-pre-line leading-relaxed text-sm">{textContent}</p>
-      </div>
+    <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
+      {hasToolParts &&
+        toolParts.map((tp, i) =>
+          tp.toolName === "update_crm" && tp.state === "output-available" ? (
+            <div
+              key={`${tp.toolName}-${i}`}
+              className="max-w-[85%] rounded-md border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs text-green-800"
+            >
+              <span className="font-medium">CRM updated</span>
+              {(tp.output as { rows?: { field: string; update: string }[] })?.rows?.length ? (
+                <span className="ml-1.5 text-green-600">
+                  — {(tp.output as { rows: { field: string; update: string }[] }).rows.map((r) => `${r.field} → ${r.update}`).join(", ")}
+                </span>
+              ) : (
+                <span className="ml-1.5 text-green-600">done</span>
+              )}
+            </div>
+          ) : null
+        )}
+      {textContent.trim() ? (
+        <div
+          className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+            isUser
+              ? "border-blue-200 bg-blue-50 text-gray-900"
+              : "border-gray-200 bg-gray-50 text-gray-900"
+          }`}
+        >
+          <p className="whitespace-pre-line leading-relaxed text-sm">{textContent}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
