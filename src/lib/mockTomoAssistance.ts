@@ -21,46 +21,105 @@ export type TomoAssistance = {
 };
 
 export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
-  // a3: CRM update (Lumen)
+  // a1: Warm Intro Tracker
+  a1: {
+    initialMessage: {
+      text: "Goldman intro to Apex Family Office detected. Draft reply ready for review within 24h window.",
+      blocks: [
+        { kind: "draft", content: "Hi Sarah — thanks for the introduction to Apex. We'd love to find a time to walk through our strategy...", type: "email" },
+        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Edit draft", "Tone it down", "Make it shorter", "Skip for now"],
+  },
+
+  // a2: Post-Meeting Execution
+  a2: {
+    initialMessage: {
+      text: "Northwind Q4 review meeting ended 2h ago. Transcript extracted — follow-up draft ready.",
+      blocks: [
+        { kind: "draft", content: "Hi Alex — great connecting today. As discussed, here's the updated deck and our Q1 timeline...", type: "email" },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Edit draft", "Add action items", "Explain this playbook"],
+  },
+
+  // a3: Update → Follow-Up
   a3: {
+    initialMessage: {
+      text: "5 Tier 1–2 LPs haven't opened the January update after 5 days. Personalized follow-ups drafted.",
+      blocks: [
+        { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
+      ],
+    },
+    suggestedPrompts: ["Review follow-ups", "Approve highest priority", "Segment by tier", "Explain this playbook"],
+  },
+
+  // a4: No Response → Re-engage
+  a4: {
     initialMessage: {
       text: "No response in 5 days — stall risk rising. Can I update CRM as follows?",
       blocks: [
         {
           kind: "crm_table",
           rows: [
-            { field: "Stall risk", current: "—", update: "Rising", reason: "No response in 5d" },
-            { field: "Status", current: "—", update: "Blocked", reason: "No response in 5d" },
+            { field: "Momentum", current: "—", update: "Cooling", reason: "No response in 5d" },
+            { field: "Stage", current: "—", update: "Blocked", reason: "No response in 5d" },
+            { field: "Reminder", current: "—", update: "7d", reason: "Re-engage window" },
           ],
         },
         { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
     },
-    suggestedPrompts: ["Apply blocked status", "Set reminder", "Apply CRM updates", "Explain why blocked", "Skip reminder"],
+    suggestedPrompts: ["Apply CRM updates", "Set reminder", "Explain why blocked", "Skip reminder"],
   },
 
-  // a1: Outreach (Northwind)
-  a1: {
+  // a5: Email Scheduling Assistant (Tomo Default)
+  a5: {
     initialMessage: {
-      text: "Northwind momentum is up; deck ready. Good time to send. Here's a draft:",
+      text: "Jamie Chen asked for available times. Found 3 slots — draft response ready.",
       blocks: [
-        { kind: "draft", content: "Hi Alex — quick pulse on Q4 performance and next steps for your allocation...", type: "email" },
-        { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
+        { kind: "draft", content: "Hi Jamie — absolutely, here are a few times that work on our end: Tue 10am, Wed 2pm, Thu 11am ET. Which works best?", type: "email" },
+        { kind: "workflow_link", playbookId: "td-email-scheduling", name: "Email Scheduling Assistant", description: "Scan email for scheduling requests, find availability, draft response." },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Reject", "Edit draft", "Tone it down", "Make it shorter", "Add next steps"],
+    suggestedPrompts: ["Approve & send", "Propose different times", "Add more slots", "Skip for now"],
   },
 
-  // a2: Scheduling (Peakline)
-  a2: {
+  // a6: Meeting Notes → Actions (Tomo Default)
+  a6: {
     initialMessage: {
-      text: "Peakline opened deck 3x — high intent. Propose concrete slots.",
+      text: "Harborlight call processed. 2 CRM updates and 1 follow-up commitment extracted.",
       blocks: [
-        { kind: "draft", content: "Hi Jamie — Tomo found a 30m slot next Tuesday. Want me to send the invite with a brief agenda?", type: "invite" },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        {
+          kind: "crm_table",
+          rows: [
+            { field: "Contact seniority", current: "—", update: "C-Suite", reason: "Now reports to CIO" },
+            { field: "Stage", current: "—", update: "Met", reason: "Meeting completed" },
+          ],
+        },
+        { kind: "workflow_link", playbookId: "td-meeting-notes", name: "Meeting Notes → Actions", description: "Extract action items & commitments from meeting notes, suggest CRM updates." },
       ],
     },
-    suggestedPrompts: ["Send invite", "Propose different times", "Explain this playbook", "Skip for now"],
+    suggestedPrompts: ["Apply CRM updates", "Create follow-up", "Edit suggested updates", "Skip for now"],
+  },
+
+  // a7: Website → CRM Sync (Tomo Default)
+  a7: {
+    initialMessage: {
+      text: "Meridian Endowment website scan detected David Kim's title change: VP → CIO.",
+      blocks: [
+        {
+          kind: "crm_table",
+          rows: [
+            { field: "Contact seniority", current: "VP", update: "C-Suite", reason: "Website updated 2d ago" },
+          ],
+        },
+        { kind: "workflow_link", playbookId: "td-website-scan", name: "Website → CRM Sync", description: "Scan corporate website, suggest CRM updates for title, role, contact info." },
+      ],
+    },
+    suggestedPrompts: ["Apply CRM update", "Skip for now", "Check other contacts"],
   },
 
   // c1: Commitment (Northwind Q4 review)

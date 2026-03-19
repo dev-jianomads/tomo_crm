@@ -34,18 +34,24 @@ function WorkflowsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const playbookIdFromUrl = searchParams.get("playbook");
+  const tomoDefaultIdFromUrl = searchParams.get("tomoDefault");
   const pipelineIdFromUrl = searchParams.get("pipelineId");
   const { activeFundId } = useFunds();
   const { pipelines } = usePipelines(activeFundId);
 
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(
-    () => playbookIdFromUrl || null
+    () => (playbookIdFromUrl && playbookIdFromUrl.startsWith("pb-") ? playbookIdFromUrl : null)
   );
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
     {}
   );
   const [tomoDefaultOpen, setTomoDefaultOpen] = useState(true);
+
+  // When landing from Today with ?tomoDefault=td-xxx, expand Tomo Default accordion
+  useEffect(() => {
+    if (tomoDefaultIdFromUrl) setTomoDefaultOpen(true);
+  }, [tomoDefaultIdFromUrl]);
   const [userDefinedOpen, setUserDefinedOpen] = useState(true);
   const [topPanelHeight, setTopPanelHeight] = usePersistentState<number>(
     "tomo-workflows-split-height",

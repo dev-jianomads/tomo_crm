@@ -19,7 +19,7 @@ export function TomoMessageContent({ message }: { message: TomoInitialMessage })
         </div>
         <p className="text-sm leading-relaxed text-gray-900">{message.text}</p>
         {message.blocks?.map((block, i) => (
-          <BlockRenderer key={`${block.kind}-${i}`} block={block} onNavigateWorkflow={(id) => router.push(`/workflows?playbook=${id}`)} />
+          <BlockRenderer key={`${block.kind}-${i}`} block={block} onNavigateWorkflow={(id) => router.push(id.startsWith("td-") ? `/workflows?tomoDefault=${id}` : `/workflows?playbook=${id}`)} />
         ))}
       </div>
     </div>

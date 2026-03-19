@@ -142,6 +142,8 @@ export type ActionItem = {
   dueDate?: string;
   /** Link to workflow playbook — shows "View workflow" in drawer */
   workflowPlaybookId?: string;
+  /** Link to Tomo Default workflow — shows "View workflow" in drawer */
+  workflowTomoDefaultId?: string;
 };
 
 export type Commitment = {
@@ -356,47 +358,137 @@ export const relationships: Relationship[] = generateRelationships();
 
 export const actions: ActionItem[] = [
   {
+    id: "a1",
+    title: "Review intro reply: Goldman intro to Apex Family Office",
+    status: "approval",
+    trigger: "CC'd intro detected 6h ago — reply deadline in 18h",
+    evidence: [
+      "Goldman Sachs cap intro email detected",
+      "Apex Family Office — Tier 1, Heating Up",
+      "Draft reply ready for your review",
+    ],
+    type: "outreach",
+    draft: "Hi Sarah — thanks for the introduction to Apex. We'd love to find a time to walk through our strategy...",
+    dueDate: "2025-03-04",
+    activityLog: [
+      { id: "al1", ts: "Today 08:15", actor: "TOMO", summary: "Detected CC'd intro from Goldman" },
+      { id: "al2", ts: "Today 08:16", actor: "TOMO", summary: "Drafted intro reply" },
+    ],
+    workflowPlaybookId: "pb-intro-tracker",
+  },
+  {
+    id: "a2",
+    title: "Approve follow-up: Northwind Q4 review",
+    status: "approval",
+    trigger: "Meeting ended 2h ago — transcript processed",
+    evidence: [
+      "Transcript extracted, 3 action items identified",
+      "Allocation window discussed — follow-up draft ready",
+      "Alex mentioned timeline pressure for Q1",
+    ],
+    type: "follow_up",
+    draft: "Hi Alex — great connecting today. As discussed, here's the updated deck and our Q1 timeline...",
+    dueDate: "2025-03-04",
+    activityLog: [
+      { id: "al3", ts: "Today 11:05", actor: "TOMO", summary: "Extracted transcript and action items" },
+      { id: "al4", ts: "Today 11:08", actor: "TOMO", summary: "Drafted post-meeting follow-up" },
+    ],
+    workflowPlaybookId: "pb-post-meeting",
+  },
+  {
     id: "a3",
-    title: "Update CRM: Lumen interest and next step",
+    title: "Review follow-ups: 5 LPs silent on January update",
+    status: "in_progress",
+    trigger: "5d since monthly update — low engagement from Tier 1–2",
+    evidence: [
+      "5 Tier 1–2 LPs with zero opens after 5 days",
+      "Personalized follow-ups auto-drafted per LP",
+      "Highest priority: Ridge Family Office (Tier 1, Cooling)",
+    ],
+    type: "outreach",
+    dueDate: "2025-03-03",
+    activityLog: [
+      { id: "al5", ts: "Yesterday", actor: "TOMO", summary: "Segmented 24 LPs by engagement" },
+      { id: "al6", ts: "Today 07:00", actor: "TOMO", summary: "Drafted 5 follow-ups for non-openers" },
+    ],
+    workflowPlaybookId: "pb-update-followup",
+  },
+  {
+    id: "a4",
+    title: "Update CRM: Lumen stalling — re-engage or mark blocked",
     status: "blocked",
-    trigger: "No response in 5d",
-    evidence: ["No reply after 2 follow-ups", "Opened performance note once", "Stall risk rising"],
+    trigger: "No response in 5d after 2 follow-ups",
+    evidence: [
+      "No reply after 2 follow-ups",
+      "Opened performance note once, no action",
+      "Stall risk rising — workflow suggests CRM update + reminder",
+    ],
     type: "crm_update",
-    suggestedUpdates: ["Stall risk: Rising", "Status: Blocked"],
+    suggestedUpdates: ["Momentum: Cooling", "Stage: Blocked", "Reminder: 7d"],
     dueDate: "2025-03-01",
     activityLog: [
-      { id: "al5", ts: "5d ago", actor: "User", summary: "Initial reach out" },
-      { id: "al6", ts: "2d ago", actor: "User", summary: "Follow-up" },
+      { id: "al7", ts: "5d ago", actor: "User", summary: "Initial outreach to Lumen" },
+      { id: "al8", ts: "2d ago", actor: "User", summary: "Follow-up sent" },
+      { id: "al9", ts: "Today 08:00", actor: "TOMO", summary: "Flagged as blocked — suggested CRM updates" },
     ],
     workflowPlaybookId: "pb-no-response-stall",
   },
   {
-    id: "a1",
-    title: "Approve outreach to Northwind on Q4 performance",
+    id: "a5",
+    title: "Respond to scheduling request from Peakline",
     status: "approval",
-    trigger: "Performance deck updated yesterday",
-    evidence: ["Deck v4 ready", "Last touch 3d ago", "Momentum trending up"],
-    type: "outreach",
-    draft: "Hi Alex — quick pulse on Q4 performance and next steps for your allocation...",
+    trigger: "Jamie Chen asked for available times — 3 slots found",
+    evidence: [
+      "Email from Jamie Chen: 'Can we find 30 min next week?'",
+      "3 open slots found: Tue 10am, Wed 2pm, Thu 11am",
+      "Draft response with availability ready",
+    ],
+    type: "scheduling",
+    draft: "Hi Jamie — absolutely, here are a few times that work on our end: Tue 10am, Wed 2pm, Thu 11am ET. Which works best?",
     dueDate: "2025-03-04",
     activityLog: [
-      { id: "al1", ts: "Today 09:10", actor: "TOMO", summary: "Drafted outreach v1" },
-      { id: "al2", ts: "Today 09:12", actor: "TOMO", summary: "Suggested send time tomorrow 9am ET" },
+      { id: "al10", ts: "Today 09:30", actor: "TOMO", summary: "Detected scheduling request in email" },
+      { id: "al11", ts: "Today 09:31", actor: "TOMO", summary: "Matched availability, drafted response" },
     ],
+    workflowTomoDefaultId: "td-email-scheduling",
   },
   {
-    id: "a2",
-    title: "Schedule allocation review with Peakline",
+    id: "a6",
+    title: "Review extracted actions from Harborlight call",
     status: "in_progress",
-    trigger: "Jamie opened deck 3x but no reply",
-    evidence: ["Opened deck 3 times", "Last reply 9d ago", "No meeting booked"],
-    type: "scheduling",
-    suggestedUpdates: ["Propose 30m next Tuesday", "Offer async summary if scheduling fails"],
-    dueDate: "2025-03-02",
-    activityLog: [
-      { id: "al3", ts: "Yesterday 15:04", actor: "TOMO", summary: "Sent scheduling options" },
-      { id: "al4", ts: "Today 08:20", actor: "TOMO", summary: "No response yet" },
+    trigger: "Meeting notes processed — 2 CRM updates + 1 follow-up",
+    evidence: [
+      "Samir mentioned they passed on Fund I — re-engagement window opening",
+      "Contact seniority changed: now reports to CIO directly",
+      "Follow-up commitment: send performance snapshot by Friday",
     ],
+    type: "crm_update",
+    suggestedUpdates: ["Contact seniority: C-Suite", "Stage: Met"],
+    dueDate: "2025-03-05",
+    activityLog: [
+      { id: "al12", ts: "Today 10:00", actor: "TOMO", summary: "Processed meeting notes from Harborlight call" },
+      { id: "al13", ts: "Today 10:01", actor: "TOMO", summary: "Extracted 2 CRM updates and 1 commitment" },
+    ],
+    workflowTomoDefaultId: "td-meeting-notes",
+  },
+  {
+    id: "a7",
+    title: "Review CRM sync: Meridian Endowment role change",
+    status: "approval",
+    trigger: "Website scan detected contact title change",
+    evidence: [
+      "David Kim's title changed: VP Investments → CIO",
+      "Meridian Endowment website updated 2 days ago",
+      "Suggested CRM update: contact seniority → C-Suite",
+    ],
+    type: "crm_update",
+    suggestedUpdates: ["Contact seniority: C-Suite"],
+    dueDate: "2025-03-06",
+    activityLog: [
+      { id: "al14", ts: "Today 06:00", actor: "TOMO", summary: "Scanned Meridian Endowment website" },
+      { id: "al15", ts: "Today 06:01", actor: "TOMO", summary: "Detected role change for David Kim" },
+    ],
+    workflowTomoDefaultId: "td-website-scan",
   },
 ];
 

@@ -16,7 +16,7 @@ import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import { actions, briefs, commitments } from "@/lib/mockData";
-import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
+import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePersistentState } from "@/lib/storage";
@@ -293,14 +293,13 @@ export default function HomePage() {
               <TodayGroup
                 title="What needs your attention"
                 items={sortedActionItems.slice(0, 6).map((a) => {
-                  const today = new Date().toISOString().slice(0, 10);
-                  const isOverdue = a.dueDate ? a.dueDate < today : false;
-                  const pills: string[] = [];
-                  if (a.status === "approval") pills.push("Needs approval");
-                  else if (a.status === "in_progress") pills.push("In progress");
-                  else if (a.status === "blocked") pills.push("Blocked");
-                  if (isOverdue) pills.push("Overdue");
-                  if (a.draft) pills.push("Draft ready");
+                  const isTomo = Boolean(a.workflowTomoDefaultId);
+                  const workflowName = a.workflowPlaybookId
+                    ? suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name
+                    : a.workflowTomoDefaultId
+                    ? tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name
+                    : undefined;
+                  const pills: string[] = isTomo ? ["Tomo"] : a.workflowPlaybookId ? ["User Defined"] : [];
                   return {
                     id: a.id,
                     title: a.title,
@@ -308,6 +307,7 @@ export default function HomePage() {
                     extra: undefined,
                     type: "action" as const,
                     pills,
+                    workflowName,
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
@@ -565,6 +565,7 @@ function TodayGroup({
     type: "action" | "commitment" | "brief";
     extra?: string;
     pills: string[];
+    workflowName?: string;
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -596,6 +597,10 @@ function TodayGroup({
             </div>
             {/* Row 2: meta (left) */}
             <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
+            {/* Row 3: workflow name in smaller font (actions only) */}
+            {item.workflowName ? (
+              <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p>
+            ) : null}
           </button>
         ))}
       </div>
@@ -646,16 +651,10 @@ function SuggestedWorkflows() {
 
 function UrgencyChip({ kind }: { kind: string }) {
   const styles =
-    kind === "Needs approval"
-      ? "bg-amber-50 text-amber-800 border-amber-200"
-      : kind === "Overdue"
-      ? "bg-red-50 text-red-800 border-red-200"
-      : kind === "Blocked"
+    kind === "Tomo"
       ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)] border-[color:var(--peach)]"
-      : kind === "In progress"
+      : kind === "User Defined"
       ? "bg-blue-50 text-blue-700 border-blue-200"
-      : kind === "Draft ready"
-      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
       : kind === "Happening today" || kind === "Within 72h"
       ? "bg-gray-100 text-gray-700 border-gray-200"
       : "bg-gray-100 text-gray-700 border-gray-200";
@@ -727,6 +726,13 @@ function ActionDetail({
           {action.workflowPlaybookId ? (
             <button
               onClick={() => router.push(`/workflows?playbook=${action.workflowPlaybookId}`)}
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition tomo-ai-bg hover:bg-[#ff8b79]"
+            >
+              → workflow
+            </button>
+          ) : action.workflowTomoDefaultId ? (
+            <button
+              onClick={() => router.push(`/workflows?tomoDefault=${action.workflowTomoDefaultId}`)}
               className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition tomo-ai-bg hover:bg-[#ff8b79]"
             >
               → workflow
