@@ -57,6 +57,11 @@ import { useFunds } from "@/components/fund-provider";
 // IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, ACTIVITY, SETTINGS
 type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" | "materials" | "settings" | "search";
 
+type TodayContext = {
+  actions: { id: string; title: string; trigger: string; status: string; type: string }[];
+  commitments: { id: string; title: string; datetime: string; lp: string }[];
+};
+
 type AppShellProps = {
   section: Section;
   listContent: ReactNode;
@@ -64,6 +69,7 @@ type AppShellProps = {
   contextTitle?: string; // Current context for Tomo AI (e.g., selected contact name)
   assistantChips?: string[]; // Quick action suggestions for Tomo
   detailVisible?: boolean;
+  todayContext?: TodayContext; // For Today page: actions + commitments so Tomo can answer questions
 };
 
 /**
@@ -162,7 +168,7 @@ function BottomNav({ active }: { active: Section }) {
 /**
  * Main App Shell component
  */
-export function AppShell({ section, listContent, detailContent, contextTitle, assistantChips, detailVisible = true }: AppShellProps) {
+export function AppShell({ section, listContent, detailContent, contextTitle, assistantChips, detailVisible = true, todayContext }: AppShellProps) {
   const isMobile = useIsMobile();
   const { funds, activeFundId, setActiveFundId } = useFunds();
   const activeFund = activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "All funds";
@@ -259,12 +265,13 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
               surface: "general" as const,
               page: section,
               contextTitle: contextLabel,
+              ...(section === "home" && todayContext ? { todayContext } : {}),
             },
           },
         }
       );
     },
-    [suggestions, section, contextLabel, sendMessage]
+    [suggestions, section, contextLabel, sendMessage, todayContext]
   );
 
   const openAndSend = useCallback(

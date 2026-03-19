@@ -57,6 +57,11 @@ export type OrchestratorContext = {
   /** For filter surface: id/name/firm so Tomo can resolve "Lumen" or "Acme Capital" to entityId */
   relationshipLookup?: { id: string; name: string; firm: string }[];
   intentHint?: "filter" | "workflow" | "crm" | "draft" | "general";
+  /** For Today page: actions and commitments so Tomo can answer questions about what needs attention and coming up */
+  todayContext?: {
+    actions: { id: string; title: string; trigger: string; status: string; type: string }[];
+    commitments: { id: string; title: string; datetime: string; lp: string }[];
+  };
 };
 
 // ── System prompt builder ───────────────────────────────────────────────────
@@ -141,6 +146,21 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       `4. draft_reply — Draft an email or meeting invite`,
       ``,
       `Rules: Be conversational but concise. Only call a tool when the user clearly intends that action.`,
+    );
+  }
+
+  // Today page: focus on answering questions about What needs your attention and Coming up
+  if (context.page === "home" && context.todayContext) {
+    const tc = context.todayContext;
+    lines.push(
+      ``,
+      `The user is on the Today page. Your primary role is to answer questions about "What needs your attention" and "Coming up". Use the data below. For deeper actions (CRM updates, drafts), suggest they open the item's drawer.`,
+      ``,
+      `What needs your attention:`,
+      ...tc.actions.map((a) => `- ${a.title} (id: ${a.id}) — ${a.trigger} [${a.status}, ${a.type}]`),
+      ``,
+      `Coming up:`,
+      ...tc.commitments.map((c) => `- ${c.title} — ${c.datetime} • ${c.lp}`),
     );
   }
 

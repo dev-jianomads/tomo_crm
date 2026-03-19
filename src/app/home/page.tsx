@@ -29,7 +29,8 @@ type TodaySelection =
 
 /**
  * Inline Tomo AI chat - minimal prompt-only view for Today page.
- * No chips; centered, half-width. Uses orchestrator (surface: general).
+ * Focused on answering questions about What needs your attention and Coming up.
+ * Uses orchestrator (surface: general) with todayContext injected.
  */
 function TomoChatInline() {
   const tomo = useTomoChat();
@@ -41,9 +42,9 @@ function TomoChatInline() {
           <TomoAssistant
             messages={tomo.messages}
             onSend={tomo.onSend}
-            suggestions={[]}
+            suggestions={tomo.suggestions ?? []}
             contextLabel={tomo.contextLabel}
-            placeholder="Ask anything..."
+            placeholder="Ask about your tasks or upcoming meetings..."
             isStreaming={tomo.isStreaming}
           />
         </div>
@@ -349,8 +350,23 @@ export default function HomePage() {
         listContent={listContent}
         detailContent={detailContent}
         detailVisible={false}
-        contextTitle={selectedTitle}
-        assistantChips={["Explain why urgent", "Draft follow-up", "Propose times", "Create action"]}
+        contextTitle={selectedTitle ?? undefined}
+        assistantChips={["What's urgent today?", "Why is Lumen blocked?", "Prep my next meeting", "Summarize what needs attention"]}
+        todayContext={{
+          actions: sortedActionItems.slice(0, 6).map((a) => ({
+            id: a.id,
+            title: a.title,
+            trigger: a.trigger,
+            status: a.status,
+            type: a.type,
+          })),
+          commitments: sortedCommitments.map((c) => ({
+            id: c.id,
+            title: c.title,
+            datetime: c.datetime,
+            lp: c.lp,
+          })),
+        }}
       />
       <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
       <ContextDrawer
