@@ -4,6 +4,45 @@
 
 ---
 
+## 0. Current CRM Tool State (Post-Fix)
+
+The CRM update tool was previously broken. Substantial changes have been made. Implementers should align with the **current** patterns below.
+
+### 0.1 Tool handling pattern (DrawerSection2TomoChat)
+
+The drawer **does not use** `onToolCall` from `useChat`. Instead it uses:
+
+- **Message-watching**: A `useEffect` that iterates over `messages` and inspects assistant message parts.
+- **`getToolParts(message)`**: Extracts tool invocation parts. Supports both:
+  - Typed parts: `type === "tool-<name>"` (e.g. `tool-update_crm`)
+  - Dynamic parts: `type === "dynamic-tool"` with `toolName` (AI SDK may use either shape).
+- **State check**: Only processes when `state === "output-available"` (tool has completed).
+- **Deduplication**: `processedToolCalls` ref (Set of toolCallIds) to avoid double-firing.
+- **Payload source**: Prefer `output` over `input`; use `output ?? input` for the result. The orchestrator returns the full payload in the execute output.
+
+### 0.2 Tool output format (orchestrator)
+
+The `update_crm` tool `execute` returns:
+
+```ts
+{
+  applied: true,
+  entityId: string | null,
+  relationshipIds: string[],
+  rows: { field: string; update: string }[],  // NOT "fields"
+  status: string | null,
+  reminderDuration: string | null,
+}
+```
+
+`CrmUpdatePayload` uses `rows`, not `fields`. The client (`handleCrmUpdate`) expects `rows` and maps via `FIELD_TO_REL_KEY` and `normalizeFieldValue` from `@/lib/crmFieldSchema`.
+
+### 0.3 Surface availability
+
+`update_crm` is currently registered only when `surface === "general"` or `surface === "drawer"`. It is **not** on the filter surface. Adding it for `surface === "filter"` is a core task of this plan.
+
+---
+
 ## 1. Problem Statement
 
 Users sometimes use the filter bar to request CRM updates for a **single relationship** (e.g., "update Lumen to heating", "mark Acme as blocked"). Currently:
@@ -66,9 +105,9 @@ Filter Bar (RelationshipsFilterChat) — expanded
 
 | Task | Details |
 |------|---------|
-| **1.1** Add `update_crm` to filter surface | Today `update_crm` is only on `general` and `drawer`. Add it when `surface === "filter"`. |
+| **1.1** Add `update_crm` to filter surface | Today `update_crm` is only on `general` and `drawer`. Extend the condition to include `surface === "filter"`. |
 | **1.2** Extend `OrchestratorContext` | Add `relationshipLookup?: { id: string; name: string; firm: string }[]` so Tomo can resolve "Lumen" or "Acme Capital" to an entityId. Use the **filtered** list (or full list if unfiltered) for search scope. |
-| **1.3** Update filter surface system prompt | Replace the filter-only prompt with a dual-purpose prompt that: (a) explains both filter and update capabilities, (b) **requires** Tomo to ask for name or company when the user requests a CRM update without specifying which relationship, (c) instructs Tomo to confirm the row before calling update_crm, (d) use entityId only (never relationshipIds for bulk) in this surface. |
+| **1.3** Update filter surface system prompt | Replace the filter-only prompt with a dual-purpose prompt that: (a) explains both filter and update capabilities, (b) **requires** Tomo to ask for name or company when the user requests a CRM update without specifying which relationship, (c) instructs Tomo to confirm the row before calling update_crm, (d) use entityId only (never relationshipIds for bulk) in this surface. Include `CRM_UPDATE_FIELD_REFERENCE` (from `@/lib/crmFieldSchema`) so Tomo uses exact field names and valid enum values. |
 
 **System prompt changes (filter surface):**
 
@@ -82,10 +121,13 @@ CRITICAL for CRM updates:
 - If the user requests a CRM update but does NOT specify which relationship (name or company), you MUST ask: "Which relationship? Please provide the name or company."
 - Once the user provides a name or company, search the relationshipLookup in context (match name or firm, case-insensitive). If exactly one match: confirm briefly (e.g. "Updating Lumen Capital to heating") and call update_crm with entityId. If multiple matches: ask the user to disambiguate. If no match: say no relationship found and suggest checking the name.
 - Only call update_crm when you have a confirmed entityId.
+- Use exact field names and valid enum values from the CRM field reference below.
 
 When the user asks to filter, call filter_relationships. For "clear" or "show all", return empty filters.
 
 Rules: Be conversational but concise. Always confirm the target row before making a CRM change.
+
+[Include CRM_UPDATE_FIELD_REFERENCE from @/lib/crmFieldSchema]
 ```
 
 ---
@@ -96,10 +138,11 @@ Rules: Be conversational but concise. Always confirm the target row before makin
 
 | Task | Details |
 |------|---------|
-| **2.1** Add props | `relationshipLookup?: { id: string; name: string; firm: string }[]`, `onCrmUpdate?: (payload: CrmUpdatePayload) => void` |
-| **2.2** Handle `update_crm` tool | Add `onToolCall` (or extend `onFinish`) to detect `update_crm` tool parts, call `onCrmUpdate`, and show toast. Reuse the same pattern as `DrawerSection2TomoChat`. |
-| **2.3** Pass context to transport | Include `relationshipLookup` in the request body `context`. |
-| **2.4** Relax `intentHint` | Change from fixed `"filter"` to `"filter" | "crm" | "general"` or remove it so the model can infer intent. For now, use `"general"` or omit when both tools are available. |
+| **2.1** Add props | `relationshipLookup?: { id: string; name: string; firm: string }[]`, `onCrmUpdate?: (payload: CrmUpdatePayload) => void`. Import `CrmUpdatePayload` from `@/components/drawer-section-2-tomo-chat`. |
+| **2.2** Handle `update_crm` tool | Use the **message-watching pattern** from DrawerSection2TomoChat (see §0.1): add `useEffect` that watches `messages`, use `getToolParts()` (extract or import from drawer), detect `update_crm` with `state === "output-available"`, dedupe via `processedToolCalls` ref, build payload from `output ?? input` (expects `rows`), call `onCrmUpdate`, show toast. Do **not** use `onToolCall` — it was unreliable and the drawer no longer uses it. |
+| **2.3** Pass context to transport | Include `relationshipLookup` in the request body `context`. The transport uses a static `body`; `sendMessage` accepts an override. Pass `relationshipLookup` in the override body on each send (same pattern as `currentFilters` today). |
+| **2.4** Relax `intentHint` | Change from fixed `"filter"` to omit or use `"general"` when both tools are available so the model can infer filter vs CRM intent. |
+| **2.5** Coexist with filter handling | Keep existing `onFinish` logic for `filter_relationships`. The message-watching `useEffect` for `update_crm` runs in parallel; they handle different tool types. |
 
 **UI copy changes:**
 
@@ -127,6 +170,12 @@ const SUGGESTIONS = [
   "set reminder for Lumen Capital",
 ];
 ```
+
+**Implementation notes for update_crm handling:**
+
+- Extract `getToolParts` to a shared util (e.g. `@/lib/tomoToolParts.ts`) or copy the implementation from `DrawerSection2TomoChat` — it must handle both `tool-<name>` and `dynamic-tool` part shapes.
+- Filter bar has **no selection** fallback: when `entityId` is missing, do not auto-fill from selection (unlike the drawer). The filter surface must always receive `entityId` from the AI after resolving via `relationshipLookup`.
+- Payload: the handler expects `entityId` (or `relationshipIds`) plus `rows`, `status`, and/or `reminderDuration`. Pass the full payload; `handleCrmUpdate` returns early if no ids or no rows (for field updates).
 
 ---
 
@@ -186,8 +235,9 @@ const SUGGESTIONS = [
 
 | File | Changes |
 |------|---------|
-| `src/app/api/tomo/orchestrate/route.ts` | Add `update_crm` to filter surface; extend context with `relationshipLookup`; update filter system prompt (ask & confirm row) |
-| `src/components/relationships-filter-chat.tsx` | New props `relationshipLookup`, `onCrmUpdate`; handle `update_crm`; update header, message, placeholder, chips |
+| `src/app/api/tomo/orchestrate/route.ts` | Add `update_crm` to filter surface (`surface === "filter"`); extend `OrchestratorContext` with `relationshipLookup`; update filter system prompt (ask & confirm row) |
+| `src/components/relationships-filter-chat.tsx` | New props `relationshipLookup`, `onCrmUpdate`; message-watching `useEffect` for `update_crm` (see §0.1, §2.2); pass `relationshipLookup` in send body; update header, message, placeholder, chips |
+| `src/lib/tomoToolParts.ts` | (Optional) Extract `getToolParts` from drawer for reuse; otherwise copy into filter chat |
 | `src/app/relationships/page.tsx` | Pass `relationshipLookup`, `onCrmUpdate` |
 | `src/app/pipeline/page.tsx` | (Optional) Same as relationships |
 
@@ -204,6 +254,7 @@ const SUGGESTIONS = [
 - [ ] No match → Tomo explains and suggests filtering or checking spelling
 - [ ] Placeholder and chips reflect filter + single-row update
 - [ ] Toast confirms CRM update for the correct row
+- [ ] Tool output (`rows`) is correctly parsed and passed to `onCrmUpdate` (message-watching pattern, not onToolCall)
 
 ---
 
