@@ -144,6 +144,8 @@ export type ActionItem = {
   workflowPlaybookId?: string;
   /** Link to Tomo Default workflow — shows "View workflow" in drawer */
   workflowTomoDefaultId?: string;
+  /** Override pill to display as "Tomo" (peach) even when workflowPlaybookId is set */
+  workflowPillOverride?: "Tomo";
 };
 
 export type Commitment = {
@@ -358,25 +360,6 @@ export const relationships: Relationship[] = generateRelationships();
 
 export const actions: ActionItem[] = [
   {
-    id: "a1",
-    title: "Review intro reply: Goldman intro to Apex Family Office",
-    status: "approval",
-    trigger: "CC'd intro detected 6h ago — reply deadline in 18h",
-    evidence: [
-      "Goldman Sachs cap intro email detected",
-      "Apex Family Office — Tier 1, Heating Up",
-      "Draft reply ready for your review",
-    ],
-    type: "outreach",
-    draft: "Hi Sarah — thanks for the introduction to Apex. We'd love to find a time to walk through our strategy...",
-    dueDate: "2025-03-04",
-    activityLog: [
-      { id: "al1", ts: "Today 08:15", actor: "TOMO", summary: "Detected CC'd intro from Goldman" },
-      { id: "al2", ts: "Today 08:16", actor: "TOMO", summary: "Drafted intro reply" },
-    ],
-    workflowPlaybookId: "pb-intro-tracker",
-  },
-  {
     id: "a2",
     title: "Approve follow-up: Northwind Q4 review",
     status: "approval",
@@ -394,6 +377,7 @@ export const actions: ActionItem[] = [
       { id: "al4", ts: "Today 11:08", actor: "TOMO", summary: "Drafted post-meeting follow-up" },
     ],
     workflowPlaybookId: "pb-post-meeting",
+    workflowPillOverride: "Tomo",
   },
   {
     id: "a3",

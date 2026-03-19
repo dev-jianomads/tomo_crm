@@ -294,7 +294,7 @@ export default function HomePage() {
               <TodayGroup
                 title="What needs your attention"
                 items={sortedActionItems.slice(0, 6).map((a) => {
-                  const isTomo = Boolean(a.workflowTomoDefaultId);
+                  const isTomo = Boolean(a.workflowTomoDefaultId) || a.workflowPillOverride === "Tomo";
                   const workflowName = a.workflowPlaybookId
                     ? suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name
                     : a.workflowTomoDefaultId
@@ -756,18 +756,6 @@ function ActionDetail({
           ) : null}
           <StatusPill status={action.status} />
         </div>
-      </div>
-
-      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-        <p className="font-medium text-gray-900">Evidence</p>
-        <ul className="mt-1 space-y-1">
-          {action.evidence.map((e) => (
-            <li key={e} className="flex items-start gap-2">
-              <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-              <span>{e}</span>
-            </li>
-          ))}
-        </ul>
       </div>
 
       {detailsOnly ? null : action.draft ? (

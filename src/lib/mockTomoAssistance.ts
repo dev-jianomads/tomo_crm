@@ -21,18 +21,6 @@ export type TomoAssistance = {
 };
 
 export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
-  // a1: Warm Intro Tracker
-  a1: {
-    initialMessage: {
-      text: "Goldman intro to Apex Family Office detected. Draft reply ready for review within 24h window.",
-      blocks: [
-        { kind: "draft", content: "Hi Sarah — thanks for the introduction to Apex. We'd love to find a time to walk through our strategy...", type: "email" },
-        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
-      ],
-    },
-    suggestedPrompts: ["Approve & send", "Edit draft", "Tone it down", "Make it shorter", "Skip for now"],
-  },
-
   // a2: Post-Meeting Execution
   a2: {
     initialMessage: {
