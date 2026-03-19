@@ -78,6 +78,71 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
   ddq_response: DDQ_RESPONSE,
 };
 
+// ── Tomo Default workflow templates (keyed by workflow id) ───────────────────
+
+const WEBSITE_CRM_SYNC: WorkflowDefinition = {
+  title: "Website → CRM Sync",
+  trigger: "Corporate website change detected",
+  steps: [
+    { name: "Scan Website", type: "action", description: "Crawl corporate website for personnel, role, and contact changes" },
+    { name: "Compare with CRM", type: "action", description: "Diff website data against existing CRM records" },
+    { name: "Suggest Updates", type: "action", description: "Surface proposed CRM changes (title, role, contact info) for review" },
+    { name: "Apply Approved", type: "action", description: "Apply user-approved updates to CRM records" },
+  ],
+};
+
+const EMAIL_SCHEDULING: WorkflowDefinition = {
+  title: "Email Scheduling Assistant",
+  trigger: "Scheduling request detected in email",
+  steps: [
+    { name: "Detect Request", type: "action", description: "Identify scheduling intent from incoming emails" },
+    { name: "Check Calendar", type: "action", description: "Cross-reference calendar for available time slots" },
+    { name: "Draft Response", type: "action", description: "Draft reply with proposed meeting times" },
+    { name: "Wait for Approval", type: "wait", duration: "Human review", description: "User reviews and approves outbound scheduling reply" },
+    { name: "Send & Confirm", type: "action", description: "Send approved response, add tentative calendar hold" },
+  ],
+};
+
+const MEETING_NOTES_ACTIONS: WorkflowDefinition = {
+  title: "Meeting Notes → Actions",
+  trigger: "Meeting notes or transcript uploaded",
+  steps: [
+    { name: "Parse Notes", type: "action", description: "Extract key discussion points, decisions, and quotes" },
+    { name: "Identify Actions", type: "action", description: "Pull out action items, commitments, and deadlines" },
+    { name: "Suggest CRM Updates", type: "action", description: "Propose relationship status changes based on meeting content" },
+    { name: "Create Follow-Ups", type: "action", description: "Generate follow-up tasks and reminders from action items" },
+  ],
+};
+
+export const TOMO_DEFAULT_TEMPLATES: Record<string, WorkflowDefinition> = {
+  "td-website-scan": WEBSITE_CRM_SYNC,
+  "td-email-scheduling": EMAIL_SCHEDULING,
+  "td-meeting-notes": MEETING_NOTES_ACTIONS,
+};
+
+// ── Tomo Default suggestion chips (keyed by workflow id) ────────────────────
+
+export const TOMO_DEFAULT_SUGGESTIONS: Record<string, string[]> = {
+  "td-website-scan": [
+    "Only scan LinkedIn profiles",
+    "Add a weekly scan schedule",
+    "Skip contacts with recent activity",
+    "Add Slack notification for major changes",
+  ],
+  "td-email-scheduling": [
+    "Block mornings for deep work",
+    "Add buffer time between meetings",
+    "Prefer Zoom links over in-person",
+    "Auto-decline if calendar is >80% full",
+  ],
+  "td-meeting-notes": [
+    "Extract sentiment from tone",
+    "Tag action items by urgency",
+    "Auto-assign follow-ups to team members",
+    "Add a 48h follow-up reminder",
+  ],
+};
+
 // ── Context-aware suggestion chips per playbook type ────────────────────────
 
 export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {

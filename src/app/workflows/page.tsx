@@ -16,7 +16,9 @@ import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 import {
   DEFAULT_TEMPLATES,
+  TOMO_DEFAULT_TEMPLATES,
   PLAYBOOK_SUGGESTIONS,
+  TOMO_DEFAULT_SUGGESTIONS,
   workflowToMarkdown,
   type WorkflowDefinition,
 } from "@/lib/workflow-templates";
@@ -42,6 +44,9 @@ function WorkflowsPageContent() {
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(
     () => (playbookIdFromUrl && playbookIdFromUrl.startsWith("pb-") ? playbookIdFromUrl : null)
   );
+  const [selectedTomoDefaultId, setSelectedTomoDefaultId] = useState<string | null>(
+    () => (tomoDefaultIdFromUrl && tomoDefaultIdFromUrl.startsWith("td-") ? tomoDefaultIdFromUrl : null)
+  );
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
     {}
@@ -53,6 +58,16 @@ function WorkflowsPageContent() {
     if (tomoDefaultIdFromUrl) setTomoDefaultOpen(true);
   }, [tomoDefaultIdFromUrl]);
   const [userDefinedOpen, setUserDefinedOpen] = useState(true);
+
+  const handleSelectPlaybook = useCallback((id: string) => {
+    setSelectedPlaybookId(id);
+    setSelectedTomoDefaultId(null);
+  }, []);
+
+  const handleSelectTomoDefault = useCallback((id: string) => {
+    setSelectedTomoDefaultId(id);
+    setSelectedPlaybookId(null);
+  }, []);
   const [topPanelHeight, setTopPanelHeight] = usePersistentState<number>(
     "tomo-workflows-split-height",
     50
@@ -69,15 +84,24 @@ function WorkflowsPageContent() {
     [selectedPlaybookId]
   );
 
-  // Load default template when playbook changes
+  const selectedTomoDefault = useMemo(
+    () => tomoDefaultWorkflows.find((w) => w.id === selectedTomoDefaultId) ?? null,
+    [selectedTomoDefaultId]
+  );
+
+  const hasSelection = Boolean(selectedPlaybook) || Boolean(selectedTomoDefault);
+  const selectedName = selectedPlaybook?.name ?? selectedTomoDefault?.name ?? null;
+
+  // Load default template when selection changes
   useEffect(() => {
     if (selectedPlaybook) {
-      const template = DEFAULT_TEMPLATES[selectedPlaybook.type];
-      setWorkflow(template);
+      setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+    } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
+      setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     } else {
       setWorkflow(null);
     }
-  }, [selectedPlaybook]);
+  }, [selectedPlaybook, selectedTomoDefaultId]);
 
   // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and navigate
   useEffect(() => {
@@ -144,9 +168,12 @@ function WorkflowsPageContent() {
   }, [playbookOverrides, pipelines]);
 
   const handleResetWorkflow = useCallback(() => {
-    if (!selectedPlaybook) return;
-    setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
-  }, [selectedPlaybook]);
+    if (selectedPlaybook) {
+      setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+    } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
+      setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
+    }
+  }, [selectedPlaybook, selectedTomoDefaultId]);
 
   const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
     setWorkflow(def);
@@ -201,7 +228,12 @@ function WorkflowsPageContent() {
           {tomoDefaultOpen && (
             <div className="border-t border-gray-200 px-3 py-2 space-y-2">
               {tomoDefaultWorkflows.map((wf) => (
-                <TomoDefaultWorkflowCard key={wf.id} workflow={wf} />
+                <TomoDefaultWorkflowCard
+                  key={wf.id}
+                  workflow={wf}
+                  isSelected={selectedTomoDefaultId === wf.id}
+                  onSelect={() => handleSelectTomoDefault(wf.id)}
+                />
               ))}
             </div>
           )}
@@ -228,7 +260,7 @@ function WorkflowsPageContent() {
                   playbook={playbook}
                   targetsSummary={getPlaybookTargetsSummary(playbook)}
                   isSelected={selectedPlaybookId === playbook.id}
-                  onSelect={() => setSelectedPlaybookId(playbook.id)}
+                  onSelect={() => handleSelectPlaybook(playbook.id)}
                 />
               ))}
             </div>
@@ -238,12 +270,16 @@ function WorkflowsPageContent() {
     </div>
   );
 
-  const detailContent = selectedPlaybook && workflow ? (
+  const tomoDefaultSuggestions = selectedTomoDefaultId
+    ? TOMO_DEFAULT_SUGGESTIONS[selectedTomoDefaultId]
+    : undefined;
+
+  const detailContent = hasSelection && workflow ? (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">
-            {selectedPlaybook.name}
+            {selectedName}
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Chat with Tomo to modify this workflow. Changes reset on refresh.
@@ -273,10 +309,11 @@ function WorkflowsPageContent() {
         <div className="flex-1 min-h-0 overflow-hidden">
           <WorkflowTomoChat
             workflow={workflow}
-            playbookName={selectedPlaybook.name}
-            playbookType={selectedPlaybook.type}
-            pipelineContext={pipelineContext}
+            playbookName={selectedName!}
+            playbookType={selectedPlaybook?.type}
+            pipelineContext={selectedPlaybook ? pipelineContext : null}
             onWorkflowUpdate={handleWorkflowUpdate}
+            suggestions={tomoDefaultSuggestions}
           />
         </div>
       </div>
@@ -299,10 +336,10 @@ function WorkflowsPageContent() {
       section="workflows"
       listContent={listContent}
       detailContent={detailContent}
-      detailVisible={Boolean(selectedPlaybook)}
-      contextTitle={selectedPlaybook?.name}
+      detailVisible={hasSelection}
+      contextTitle={selectedName ?? undefined}
       assistantChips={
-        selectedPlaybook
+        hasSelection
           ? [
               "Add a wait step",
               "Remove the last step",
@@ -331,9 +368,24 @@ function WorkflowsPageFallback() {
   );
 }
 
-function TomoDefaultWorkflowCard({ workflow }: { workflow: TomoDefaultWorkflow }) {
+function TomoDefaultWorkflowCard({
+  workflow,
+  isSelected,
+  onSelect,
+}: {
+  workflow: TomoDefaultWorkflow;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-3">
+    <button
+      onClick={onSelect}
+      className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+        isSelected
+          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
+          : "border-gray-200 bg-white hover:border-gray-300"
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">{workflow.name}</p>
@@ -353,7 +405,7 @@ function TomoDefaultWorkflowCard({ workflow }: { workflow: TomoDefaultWorkflow }
           </span>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -419,10 +471,11 @@ function WorkflowTomoChat({
   playbookType,
   pipelineContext,
   onWorkflowUpdate,
+  suggestions: externalSuggestions,
 }: {
   workflow: WorkflowDefinition;
   playbookName: string;
-  playbookType: PlaybookType;
+  playbookType?: PlaybookType;
   pipelineContext: {
     pipelineId: string;
     pipelineName: string;
@@ -430,12 +483,11 @@ function WorkflowTomoChat({
     relationshipCount: number;
   } | null;
   onWorkflowUpdate: (def: WorkflowDefinition) => void;
+  suggestions?: string[];
 }) {
   const currentMarkdown = workflowToMarkdown(workflow);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Transport uses static config only. workflowContext is passed per-request in sendMessage
-  // to avoid stale context (useChat doesn't react to transport/body changes after init).
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -445,7 +497,7 @@ function WorkflowTomoChat({
             surface: "workflow" as const,
             page: "workflows",
             playbookName,
-            playbookType,
+            ...(playbookType ? { playbookType } : {}),
           },
         },
       }),
@@ -471,7 +523,7 @@ function WorkflowTomoChat({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const allSuggestions = PLAYBOOK_SUGGESTIONS[playbookType];
+  const allSuggestions = externalSuggestions ?? (playbookType ? PLAYBOOK_SUGGESTIONS[playbookType] : []);
   const [usedChips, setUsedChips] = useState<Set<string>>(new Set());
   const visibleSuggestions = useMemo(
     () => allSuggestions.filter((s) => !usedChips.has(s)),
@@ -497,7 +549,7 @@ function WorkflowTomoChat({
             page: "workflows",
             workflowContext: currentMarkdown,
             playbookName,
-            playbookType,
+            ...(playbookType ? { playbookType } : {}),
             pipelineContext,
           },
         },
