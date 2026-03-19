@@ -54,6 +54,8 @@ export type OrchestratorContext = {
   } | null;
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
+  /** For filter surface: id/name/firm so Tomo can resolve "Lumen" or "Acme Capital" to entityId */
+  relationshipLookup?: { id: string; name: string; firm: string }[];
   intentHint?: "filter" | "workflow" | "crm" | "draft" | "general";
 };
 
@@ -99,12 +101,35 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
   } else if (surface === "filter") {
     lines.push(
       ``,
-      `You are helping filter the relationship list. You can ONLY use filter_relationships to parse natural language into filter criteria.`,
+      `You are helping with the relationship list. You can:`,
+      `1. filter_relationships — Parse natural language into filter criteria (e.g. "show Tier 1", "cooling relationships")`,
+      `2. update_crm — Apply CRM field updates to ONE specific relationship (e.g. "update Lumen to heating", "mark Acme Capital as blocked")`,
       ``,
-      `Examples: "show Tier 1", "cooling relationships", "no contact in 14 days", "family offices in North America". For "clear" or "show all", return empty filters.`,
+      `CRITICAL for CRM updates:`,
+      `- Updates apply to ONE row only. Never update multiple relationships from this surface.`,
+      `- If the user requests a CRM update but does NOT specify which relationship (name or company), you MUST ask: "Which relationship? Please provide the name or company."`,
+      `- Once the user provides a name or company, search the relationshipLookup in context (match name or firm, case-insensitive). If exactly one match: confirm briefly (e.g. "Updating Lumen Capital to heating") and call update_crm with entityId. If multiple matches: ask the user to disambiguate. If no match: say no relationship found and suggest checking the name.`,
+      `- Only call update_crm when you have a confirmed entityId.`,
+      `- Use exact field names and valid enum values from the CRM field reference below.`,
       ``,
-      `Rules: Be conversational but concise. Always call filter_relationships when the user describes a filter.`,
+      `When the user asks to filter, call filter_relationships. For "clear" or "show all", return empty filters.`,
+      ``,
+      `Rules: Be conversational but concise. Always confirm the target row before making a CRM change.`,
+      ``,
+      CRM_UPDATE_FIELD_REFERENCE,
     );
+    if (context.relationshipLookup?.length) {
+      const lookup = context.relationshipLookup;
+      const preview = lookup.slice(0, 50).map((r) => `${r.id}: ${r.name} @ ${r.firm}`).join("\n");
+      lines.push(
+        ``,
+        `relationshipLookup (search by name or firm to resolve to entityId):`,
+        preview,
+        lookup.length > 50 ? `\n... and ${lookup.length - 50} more` : "",
+      );
+    } else {
+      lines.push(``, `relationshipLookup: empty — no relationships in current view. Suggest the user filter or show all before updating.`);
+    }
   } else {
     lines.push(
       ``,
@@ -249,7 +274,7 @@ export async function POST(req: Request) {
     });
   }
 
-  if (surface === "general" || surface === "drawer") {
+  if (surface === "general" || surface === "drawer" || surface === "filter") {
     tools.update_crm = tool({
         description:
           "Apply CRM field updates to an entity. Supports all Relationship fields: tier, stage, band, momentum, owner, investorType, strategyFit, strategyType, lpLocation, investmentRemit, typicalCheckSize, fundSizePreference, source, lastFundHistory, decisionTimeline, fiscalYearEnd, consultantDependent, esgRequired, nextMove, openLoops, sourceDetail, consultantName, lastMeetingDate, contactSeniority. Use exact field names and valid enum values. Pass entityId for single updates, or relationshipIds for bulk. Only include reminderDuration when the user explicitly asks.",
@@ -289,7 +314,9 @@ export async function POST(req: Request) {
           };
         },
       });
+  }
 
+  if (surface === "general" || surface === "drawer") {
     tools.draft_reply = tool({
         description:
           "Generate a draft email or meeting invite. Use when the user asks to draft, write, or compose an email or invite.",
