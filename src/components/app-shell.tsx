@@ -174,7 +174,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
   const activeFund = activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "All funds";
   
   // Persisted panel sizes (survive page refresh)
-  const [middleWidth, setMiddleWidth] = usePersistentState<number>("tomo-pane-width", 42);
+  const [middleWidth, setMiddleWidth] = usePersistentState<number>("tomo-pane-width", 30);
   
   // Drag state for resizable panels
   const [draggingColumn, setDraggingColumn] = useState(false);
