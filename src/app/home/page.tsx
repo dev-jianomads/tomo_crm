@@ -37,9 +37,9 @@ function TomoChatInline() {
   const tomo = useTomoChat();
   if (!tomo) return null;
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden">
-      <div className="flex h-full w-full max-w-[50%] min-w-[240px] flex-col px-4">
-        <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="flex h-full w-full min-w-0 flex-col px-4">
+        <div className="flex h-full min-w-0 flex-col overflow-hidden">
           <TomoAssistant
             messages={tomo.messages}
             onSend={tomo.onSend}
@@ -47,6 +47,7 @@ function TomoChatInline() {
             contextLabel={tomo.contextLabel}
             placeholder="Ask about your tasks or upcoming meetings..."
             isStreaming={tomo.isStreaming}
+            suggestionChipsSingleRow
           />
         </div>
       </div>

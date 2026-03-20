@@ -21,6 +21,8 @@ type TomoAssistantProps = {
   hideSuggestionsWhenActive?: boolean;
   /** When true, show loading state and disable input */
   isStreaming?: boolean;
+  /** Keep suggestion chips on one row (overflow-x scroll on narrow widths) */
+  suggestionChipsSingleRow?: boolean;
 };
 
 /**
@@ -48,6 +50,7 @@ export function TomoAssistant({
   placeholder = "Ask TOMO anything…",
   hideSuggestionsWhenActive = false,
   isStreaming = false,
+  suggestionChipsSingleRow = false,
 }: TomoAssistantProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -80,13 +83,19 @@ export function TomoAssistant({
 
       {/* Quick suggestion chips — collapse when active to give chat more space */}
       {suggestions.length && !(hideSuggestionsWhenActive && messages.length > 0) ? (
-        <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
+        <div
+          className={`flex gap-2 border-b border-gray-100 px-4 py-2 ${
+            suggestionChipsSingleRow
+              ? "min-w-0 flex-nowrap overflow-x-auto"
+              : "flex-wrap"
+          }`}
+        >
           {suggestions.map((chip) => (
             <button
               key={chip}
               onClick={() => handleSend(chip)}
               disabled={isStreaming}
-              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+              className={`shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50`}
             >
               {chip}
             </button>
