@@ -33,7 +33,7 @@ type TodaySelection =
  * Focused on answering questions about What needs your attention and Coming up.
  * Uses orchestrator (surface: general) with todayContext injected.
  */
-function TomoChatInline() {
+function TomoChatInline({ subtitle }: { subtitle?: string }) {
   const tomo = useTomoChat();
   if (!tomo) return null;
   return (
@@ -44,7 +44,7 @@ function TomoChatInline() {
             messages={tomo.messages}
             onSend={tomo.onSend}
             suggestions={tomo.suggestions ?? []}
-            contextLabel={tomo.contextLabel}
+            contextLabel={subtitle}
             placeholder="Ask about your tasks or upcoming meetings..."
             isStreaming={tomo.isStreaming}
             suggestionChipsSingleRow
@@ -275,7 +275,7 @@ export default function HomePage() {
             </button>
           </div>
           <div className="min-h-[200px] flex-1 overflow-hidden">
-            <TomoChatInline />
+            <TomoChatInline subtitle={selectedTitle ?? undefined} />
           </div>
         </div>
 
