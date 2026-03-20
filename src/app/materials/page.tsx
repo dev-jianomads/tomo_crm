@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { materials, Material } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
@@ -37,9 +38,10 @@ export default function MaterialsPage() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Materials</p>
-      </div>
+      <PageListHeader
+        label="Materials"
+        description="Review investor-facing materials with engagement level, momentum impact, and follow-up signals so prep stays tied to pipeline motion."
+      />
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         <OverviewTiles overview={overview} onSelectFilter={setFilter} />

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { contacts, meetingBriefs, tasks } from "@/lib/mock-data";
 import { useRequireSession } from "@/lib/auth";
 
@@ -38,9 +39,11 @@ export default function SearchPage() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Search</p>
-        <div className="mt-3 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+      <PageListHeader
+        label="Search"
+        description="Query across contacts, meeting briefs, and tasks from one field—pick a result to preview details in the adjacent pane."
+      >
+        <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
           <input
             autoFocus
             value={query}
@@ -49,7 +52,7 @@ export default function SearchPage() {
             className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
           />
         </div>
-      </div>
+      </PageListHeader>
       <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
         {results.map((result, idx) => {
           const key = `${result.type}-${result.id}`;

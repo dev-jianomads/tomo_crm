@@ -1,11 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
 import { suggestedPlaybooks, Playbook, tomoDefaultWorkflows, type TomoDefaultWorkflow } from "@/lib/mockPlaybooks";
 import { usePipelines } from "@/lib/pipelines";
@@ -198,18 +198,11 @@ function WorkflowsPageContent() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Workflows</p>
-        <p className="mt-1 text-sm text-gray-600">
-          Workflows run on schedule, check evidence, and create drafts.
-        </p>
-        <Link
-          href="/pipeline"
-          className="mt-2 inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
-        >
-          View pipelines →
-        </Link>
-      </div>
+      <PageListHeader
+        label="Workflows"
+        description="Workflows run on schedule, check evidence, and create drafts."
+        action={{ href: "/pipeline", label: "View pipelines →" }}
+      />
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         {/* Tomo Default accordion */}

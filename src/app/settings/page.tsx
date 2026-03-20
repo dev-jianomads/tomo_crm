@@ -39,6 +39,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { clearSession, useRequireSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
 import { usePersistentState } from "@/lib/storage";
@@ -113,9 +114,10 @@ export default function SettingsPage() {
    */
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">Settings</p>
-        
+      <PageListHeader
+        label="Settings"
+        description="Configure your profile, funds, data integrations, messaging channels, notification routing, and subscription billing."
+      >
         {/* 
           Sign Out Button
           PRODUCTION: Replace clearSession() with Firebase signOut()
@@ -135,12 +137,12 @@ export default function SettingsPage() {
             clearSession();
             router.replace("/auth");
           }}
-          className="mt-3 inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:border-gray-300"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:border-gray-300"
         >
           <span className="h-2 w-2 rounded-full bg-rose-500" />
           Sign out
         </button>
-      </div>
+      </PageListHeader>
       <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
         {sections.map((section) => (
           <button

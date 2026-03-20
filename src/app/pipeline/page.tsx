@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
@@ -92,7 +93,13 @@ export default function PipelinePage() {
   }, [draggingSplit, setSplitRatio]);
 
   const listContent = (
-    <div ref={splitContainerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageListHeader
+        label="Pipeline"
+        description="Refine the CRM with natural-language filters, save the result as a named pipeline, and open it for funnel stages or workflow audiences."
+        action={{ href: "/workflows", label: "View workflows →" }}
+      />
+      <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Top: Filter chat */}
       <div
         className="min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200"
@@ -233,6 +240,7 @@ export default function PipelinePage() {
           )}
         </div>
         </div>
+      </div>
       </div>
     </div>
   );

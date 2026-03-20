@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, FunnelIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
@@ -433,7 +434,12 @@ export default function RelationshipsPage() {
   };
 
   const listContent = (
-    <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <PageListHeader
+        label="Relationships"
+        description="Explore LP and prospect records with filters and table views—open a row for the full profile, timeline, and Tomo chat."
+      />
+      <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top: Tomo filter chat (Phase 5 — orchestrator with filter_relationships tool) */}
       <div
         className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white"
@@ -645,6 +651,7 @@ export default function RelationshipsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

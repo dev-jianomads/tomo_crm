@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 
@@ -56,9 +57,11 @@ export default function ActivityPage() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-4">
-        <p className="text-sm font-semibold accent-title">Activity</p>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+      <PageListHeader
+        label="Activity"
+        description="Scan Tomo automations and your own actions across funds—filter by type or time window, then open an entry for context."
+      >
+        <div className="grid grid-cols-3 gap-2 text-xs">
           <select
             className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none"
             value={activeFundId}
@@ -87,7 +90,7 @@ export default function ActivityPage() {
             <option value="week">This week</option>
           </select>
         </div>
-      </div>
+      </PageListHeader>
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
         {filteredEvents.map((event) => (

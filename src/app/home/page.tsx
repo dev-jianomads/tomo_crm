@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
@@ -246,6 +247,10 @@ export default function HomePage() {
 
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <PageListHeader
+        label="Today"
+        description="Prioritize actions and meetings for the active fund, skim briefs, and ask Tomo to reason over what needs attention next."
+      />
       {/* Resizable top/bottom split */}
       <div
         ref={splitContainerRef}
