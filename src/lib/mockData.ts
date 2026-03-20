@@ -28,6 +28,39 @@ export const BAND_OPTIONS = ["Heating Up", "Active-Stable", "Cooling", "Stalled"
 export const CONTACT_SENIORITY_OPTIONS = ["CIO", "Director", "Analyst", "Other"] as const;
 
 export type Stage = (typeof STAGE_OPTIONS)[number];
+
+/** Funnel / Kanban — pale green → red spectrum; Pass = black (matches pipeline UI) */
+export const STAGE_COLORS: Record<Stage, string> = {
+  "First contact": "#c8e6c9",
+  "Deck sent": "#a5d6a7",
+  Met: "#81c784",
+  "Active diligence": "#ffeb3b",
+  DD: "#ffb74d",
+  "Soft circle": "#ff8a65",
+  Closed: "#f44336",
+  Pass: "#000000",
+};
+
+/** Readable text + border on solid STAGE_COLORS backgrounds */
+export function stageLabelOnColorClasses(stage: Stage): {
+  title: string;
+  count: string;
+  border: string;
+} {
+  if (stage === "Pass" || stage === "Closed") {
+    return {
+      title: "text-white",
+      count: "text-white/80",
+      border: "border-b border-white/25",
+    };
+  }
+  return {
+    title: "text-gray-900",
+    count: "text-gray-700",
+    border: "border-b border-black/10",
+  };
+}
+
 export type MomentumDirection = (typeof MOMENTUM_DIRECTION_OPTIONS)[number];
 export type RelationshipTier = (typeof TIER_OPTIONS)[number];
 export type RelationshipOwner = (typeof RELATIONSHIP_OWNER_OPTIONS)[number];

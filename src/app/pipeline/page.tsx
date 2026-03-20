@@ -9,7 +9,7 @@ import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePipelines } from "@/lib/pipelines";
-import { relationships, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
+import { relationships, STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
 import {
   applyFilters,
   formatFilterSummary,
@@ -312,18 +312,6 @@ function groupByStage(rels: Relationship[]): Record<Stage, Relationship[]> {
   }
   return groups;
 }
-
-/** Pale green → red spectrum, Pass = black */
-const STAGE_COLORS: Record<Stage, string> = {
-  "First contact": "#c8e6c9",
-  "Deck sent": "#a5d6a7",
-  "Met": "#81c784",
-  "Active diligence": "#ffeb3b",
-  "DD": "#ffb74d",
-  "Soft circle": "#ff8a65",
-  "Closed": "#f44336",
-  "Pass": "#000000",
-};
 
 function PipelineStageDrawerContent({
   pipeline,

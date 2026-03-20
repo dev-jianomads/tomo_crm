@@ -16,7 +16,14 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { relationships, Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
+import {
+  relationships,
+  Relationship,
+  formatDaysSinceContact,
+  STAGE_COLORS,
+  STAGE_OPTIONS,
+  stageLabelOnColorClasses,
+} from "@/lib/mockData";
 import type { MomentumDirection } from "@/lib/mockData";
 import {
   applyFilters,
@@ -1064,20 +1071,25 @@ function RelationshipsKanbanBoard({
       role="region"
       aria-label="Relationships by stage"
     >
-      {columns.map(({ stage, items }) => (
+      {columns.map(({ stage, items }) => {
+        const headerChrome = stageLabelOnColorClasses(stage);
+        return (
         <section
           key={stage}
           className="flex min-h-0 min-w-0 flex-1 flex-col rounded-md border border-gray-200 bg-white shadow-sm"
           aria-label={`${stage}, ${items.length} relationships`}
         >
-          <header className="shrink-0 border-b border-gray-100 bg-gray-50 px-1 py-1.5">
+          <header
+            className={`shrink-0 px-1 py-1.5 ${headerChrome.border}`}
+            style={{ backgroundColor: STAGE_COLORS[stage] }}
+          >
             <h3
-              className="truncate text-center text-[10px] font-semibold leading-tight text-gray-800"
+              className={`truncate text-center text-[10px] font-semibold leading-tight ${headerChrome.title}`}
               title={stage}
             >
               {stage}
             </h3>
-            <p className="text-center text-[10px] tabular-nums text-gray-500">{items.length}</p>
+            <p className={`text-center text-[10px] tabular-nums ${headerChrome.count}`}>{items.length}</p>
           </header>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
             {items.length === 0 ? (
@@ -1105,7 +1117,8 @@ function RelationshipsKanbanBoard({
             )}
           </div>
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
