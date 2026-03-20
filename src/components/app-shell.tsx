@@ -59,7 +59,7 @@ type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" 
 
 type TodayContext = {
   actions: { id: string; title: string; trigger: string; status: string; type: string }[];
-  commitments: { id: string; title: string; datetime: string; lp: string }[];
+  commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
 };
 
 type AppShellProps = {

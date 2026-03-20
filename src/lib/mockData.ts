@@ -166,6 +166,8 @@ export type Commitment = {
   title: string;
   datetime: string;
   lp: string;
+  /** Primary contact — shown on Today “Coming up” cards as `LP : name` */
+  contactName: string;
   briefId?: string;
   window: "next72h" | "today";
 };
@@ -532,9 +534,32 @@ export const actions: ActionItem[] = [
 ];
 
 export const commitments: Commitment[] = [
-  { id: "c1", title: "Northwind Q4 review", datetime: "Tomorrow 10:30 AM ET", lp: "Northwind Capital", briefId: "b1", window: "next72h" },
-  { id: "c2", title: "Peakline allocation check-in", datetime: "Fri 2:00 PM ET", lp: "Peakline Partners", briefId: "b2", window: "next72h" },
-  { id: "c3", title: "Lumen async update send", datetime: "Today 5:00 PM ET", lp: "Lumen LP", window: "today" },
+  {
+    id: "c1",
+    title: "Northwind Q4 review",
+    datetime: "Tomorrow 10:30 AM ET",
+    lp: "Northwind Capital",
+    contactName: "Alex Morgan",
+    briefId: "b1",
+    window: "next72h",
+  },
+  {
+    id: "c2",
+    title: "Peakline allocation check-in",
+    datetime: "Fri 2:00 PM ET",
+    lp: "Peakline Partners",
+    contactName: "Jamie Chen",
+    briefId: "b2",
+    window: "next72h",
+  },
+  {
+    id: "c3",
+    title: "Lumen async update send",
+    datetime: "Today 5:00 PM ET",
+    lp: "Lumen LP",
+    contactName: "Priya Desai",
+    window: "today",
+  },
 ];
 
 export const momentumShifts: MomentumShift[] = [

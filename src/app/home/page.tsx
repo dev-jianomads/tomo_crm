@@ -108,7 +108,10 @@ export default function HomePage() {
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
     if (selection.type === "action") return actions.find((a) => a.id === selection.id)?.title;
-    if (selection.type === "commitment") return commitments.find((c) => c.id === selection.id)?.title;
+    if (selection.type === "commitment") {
+      const c = commitments.find((x) => x.id === selection.id);
+      return c ? `${c.lp} : ${c.contactName}` : undefined;
+    }
     if (selection.type === "brief") return briefs.find((b) => b.id === selection.id)?.meetingTitle;
   }, [selection]);
 
@@ -324,10 +327,15 @@ export default function HomePage() {
                 items={sortedCommitments.map((c) => ({
                   id: c.id,
                   title: c.title,
-                  meta: `${c.datetime} • ${c.lp}`,
+                  meta: c.datetime,
                   extra: undefined,
                   type: "commitment" as const,
                   pills: c.window === "today" ? ["Happening today"] : ["Within 72h"],
+                  comingUpCard: {
+                    company: c.lp,
+                    contactName: c.contactName,
+                    timeLabel: commitmentTimeOnly(c.datetime),
+                  },
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "commitment", id })}
@@ -367,6 +375,7 @@ export default function HomePage() {
             title: c.title,
             datetime: c.datetime,
             lp: c.lp,
+            contactName: c.contactName,
           })),
         }}
       />
@@ -568,6 +577,14 @@ function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum
   );
 }
 
+/** Strip day prefix from commitment datetime for Today “Coming up” second row (time + TZ only). */
+function commitmentTimeOnly(datetime: string): string {
+  return datetime
+    .replace(/^(?:Today|Tomorrow)\s+/i, "")
+    .replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+/i, "")
+    .trim();
+}
+
 function TodayGroup({
   title,
   items,
@@ -587,6 +604,8 @@ function TodayGroup({
     attentionCard?: ActionAttentionCard;
     /** Prefix for row 3 (User Defined / Tomo draft); trigger follows from `meta`. */
     attentionRow3Prefix?: string;
+    /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, peach pill). */
+    comingUpCard?: { company: string; contactName: string; timeLabel: string };
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -622,6 +641,20 @@ function TodayGroup({
                   {item.attentionRow3Prefix}
                   {item.meta}
                 </p>
+              </>
+            ) : item.comingUpCard ? (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
+                    {item.comingUpCard.company} : {item.comingUpCard.contactName}
+                  </p>
+                  {item.pills[0] ? (
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
+                      {item.pills[0]}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
               </>
             ) : (
               <>
@@ -1038,7 +1071,7 @@ function CommitmentDetail({
   onCreateAction,
   detailsOnly = false,
 }: {
-  commitment: { id: string; title: string; datetime: string; lp: string } | undefined | null;
+  commitment: { id: string; title: string; datetime: string; lp: string; contactName: string } | undefined | null;
   brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
   onCreateAction: () => void;
@@ -1052,7 +1085,9 @@ function CommitmentDetail({
           <p className="text-xs uppercase tracking-wide text-gray-500">Commitment</p>
           <h3 className="text-lg font-semibold accent-title">{commitment.title}</h3>
           <p className="text-sm text-gray-600">{commitment.datetime}</p>
-          <p className="text-sm text-gray-600">{commitment.lp}</p>
+          <p className="text-sm text-gray-600">
+            {commitment.lp} · {commitment.contactName}
+          </p>
         </div>
       </div>
       {detailsOnly ? null : (

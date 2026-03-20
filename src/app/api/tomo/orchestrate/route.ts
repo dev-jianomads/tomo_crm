@@ -60,7 +60,7 @@ export type OrchestratorContext = {
   /** For Today page: actions and commitments so Tomo can answer questions about what needs attention and coming up */
   todayContext?: {
     actions: { id: string; title: string; trigger: string; status: string; type: string }[];
-    commitments: { id: string; title: string; datetime: string; lp: string }[];
+    commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
   };
 };
 
@@ -160,7 +160,9 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ...tc.actions.map((a) => `- ${a.title} (id: ${a.id}) — ${a.trigger} [${a.status}, ${a.type}]`),
       ``,
       `Coming up:`,
-      ...tc.commitments.map((c) => `- ${c.title} — ${c.datetime} • ${c.lp}`),
+      ...tc.commitments.map(
+        (c) => `- ${c.lp} : ${c.contactName} — ${c.datetime} (${c.title})`,
+      ),
     );
   }
 
