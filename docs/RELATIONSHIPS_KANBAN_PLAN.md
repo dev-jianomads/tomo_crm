@@ -52,11 +52,13 @@ Decisions aligned with product answers (March 2025). Complements the exploratory
   - Else → apply `{ stage: targetStage }` via `setRelationshipOverrides` (reuse `normalizeFieldValue` / `FIELD_TO_REL_KEY` for `"stage"` if applicable).
 - Toast on success; no `band` recompute.
 
-### Phase 3 — Polish
+### Phase 3 — Optional / later (not required for a working feature)
 
-- Keyboard / non-pointer path for moving stage (menu or modal) for accessibility.
-- Real API: PATCH + rollback; keep local overrides as dev/offline if needed.
-- Virtualize column lists if card counts grow large.
+Phase 2 is sufficient for a **complete MVP**: DnD, CRM updates, terminal-stage confirm. Treat Phase 3 as **follow-ups** when priorities justify them:
+
+- Keyboard / non-pointer path (accessibility).
+- Real API: PATCH + rollback instead of local overrides only.
+- Virtualize columns if lists become very large.
 
 ---
 
