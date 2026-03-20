@@ -212,6 +212,17 @@ const RELATIONSHIP_NAMES = [
   "Evelyn Scott", "Jack Green", "Abigail Adams", "Owen Baker", "Emily Nelson", "Liam Carter", "Elizabeth Hill",
   "Noah Mitchell", "Chloe Roberts", "Mason Turner", "Grace Phillips", "Ethan Campbell", "Victoria Parker",
   "Aiden Evans", "Zoey Edwards", "Logan Collins", "Lily Stewart", "Jackson Morris",
+  // Extended pool (r51–r150) — enough unique rows without recycling pairs
+  "Ada Worthington", "Finn Gallagher", "Iris Nakamura", "Jonah Meyer", "Kai Andersen", "Lara Fontaine", "Miles Okonkwo", "Nora Fitzpatrick", "Omar Rahman", "Pia Lindstrom",
+  "Quinn Abernathy", "Ronan O'Dwyer", "Sasha Volkov", "Tessa Whitmore", "Uriel Santos", "Vera Sato", "Wade Holloway", "Xenia Popov", "Yusuf Abbasi", "Zara Brennan",
+  "Aria Kulkarni", "Bruno Ricci", "Celine Dufresne", "Dante Morales", "Elise Thorsen", "Felix Brandt", "Gia Ramirez", "Hugo van Dijk", "Ines Khatib", "Javier Molina",
+  "Katya Petrov", "Leo Santoro", "Mira Haddad", "Nico Barros", "Orla McKenna", "Paolo Rossi", "Qi Liu", "Ravi Menon", "Sofia Andersson", "Theo Papadopoulos",
+  "Una Okoye", "Viktor Stoyanov", "Wren Caldwell", "Xin Zhao", "Yara El-Sayed", "Zeke Thornton", "Alba Cortes", "Bjorn Lindgren", "Chiara Romano", "Darius Kemp",
+  "Esme Blackwood", "Flynn Murray", "Greta Svendsen", "Hana Fujiwara", "Idris Adeyemi", "Jana Novak", "Kofi Mensah", "Lena Björklund", "Matteo Conti", "Nadia Karim",
+  "Oskar Helgesson", "Priya Raman", "Riku Yamamoto", "Sienna Torres", "Tariq Bashir", "Uma Srinivasan", "Vigo Carvalho", "Willa Thatcher", "Yoshi Taniguchi", "Zahra Farouk",
+  "Arjun Mehta", "Bianca Rossetti", "Cyrus Danforth", "Dahlia Nguyen", "Emilio Vasquez", "Freya Olsen", "Gideon Pryce", "Helena Costa", "Ivan Petrovic", "Jun Park",
+  "Katarina Steiner", "Luka Horvat", "Mei Lin", "Nikhil Kapoor", "Ophelia Grant", "Pedro Alvarez", "Rowena Shaw", "Sanjay Gupta", "Astrid Lindholm", "Beau Harrington",
+  "Carmen Ibarra", "Dina Hakim", "Ellis Moura", "Fabian Weber", "Giselle Mercado", "Hakim Farid", "Ingrid Larsson", "Jiro Watanabe", "Kaida Chen", "Lucien Moreau",
 ];
 const RELATIONSHIP_FIRMS = [
   "Northwind Capital", "Peakline Partners", "Lumen LP", "Harborlight Advisors", "Apex Family Office",
@@ -224,6 +235,17 @@ const RELATIONSHIP_FIRMS = [
   "Alder Foundation", "Beech Family Office", "Chestnut Endowment", "Dogwood Pension", "Elder Sovereign",
   "Fig FoF", "Ginkgo UHNW", "Hemlock Insurance", "Hickory Foundation", "Ironwood Family Office",
   "Jacaranda Endowment", "Koa Pension", "Larch Sovereign", "Magnolia FoF", "Nettle UHNW",
+  // Extended pool (r51–r150)
+  "Osprey Alternatives", "Redwood Institutional", "Granite Ridge Capital", "Silverpine Partners", "Bluefin Asset Management", "Copperfield Family Office", "Marble Arch LP", "Obsidian Trust", "Quartz Endowment", "Titanium Advisors",
+  "Velvet Oak Capital", "Wintermute Partners", "Amberlight Ventures", "Cobalt River LP", "Emerald Coast FoF", "Flint Hill Pension", "Garnet Gate Sovereign", "Indigo Line Capital", "Jade Harbor LP", "Onyx Peak Advisors",
+  "Pearl Street Endowment", "Ruby Lane Family Office", "Sapphire Bay LP", "Topaz Field Partners", "Turquoise Trail Capital", "Violet Crown LP", "Arctic Fox Advisors", "Borealis Pension", "Cirrus Sky Capital", "Driftwood LP",
+  "Echo Ridge Endowment", "Falcon Wing FoF", "Glacier Point LP", "Harbor Stone Capital", "Ivory Coast LP", "Juniper Bay Trust", "Keystone Arc Partners", "Lighthouse Reef LP", "Monarch Crest Capital", "Nimbus Peak LP",
+  "Oracle Rock Advisors", "Pinnacle Stream LP", "Questline Endowment", "Ravenwood Family Office", "Sterling Crest LP", "Summit Crest Capital", "Timberline Trust", "Upland Grove LP", "Vanguardia LP", "Whispering Pine Capital",
+  "Yellowstone Ridge LP", "Zenith Harbor Partners", "Acacia Point LP", "Balsam Root Capital", "Cypress Dome LP", "Dogwood Hollow LP", "Eucalyptus Lane LP", "Foxglove Partners", "Goldenrod Trust", "Heliotrope LP",
+  "Iris Field Endowment", "Jasmine Row LP", "Kingfisher Cove Capital", "Larkspur Hill LP", "Marigold Trust", "Nightshade Ridge LP", "Oleander Bay LP", "Primrose Path LP", "Quince Orchard LP", "Ranunculus LP",
+  "Sunflower Peak LP", "Trillium Brook Capital", "Umbrella Pine LP", "Verbena Point LP", "Wisteria Lane LP", "Xerophyte LP", "Yarrow Creek Capital", "Zinnia Fields LP", "Alpine Crest Endowment", "Basin Rock LP",
+  "Canyon View Partners", "Delta Flow Capital", "Estuary LP", "Fjord Point Advisors", "Glacier Bay Trust", "Highland Moor LP", "Inlet Partners", "Jetty Capital LP", "Kelp Forest LP", "Lagoon Endowment",
+  "Marshland LP", "Narrows Family Office", "Oasis Ridge LP", "Peninsula Trust", "Quarry Hill LP", "Reefstone Capital", "Sandbar LP", "Tidewater Partners", "Undertow LP", "Voyageur Capital",
 ];
 
 /** Seeded random for deterministic mock data */
@@ -295,7 +317,7 @@ function generateRelationships(): Relationship[] {
     usedFirms.add(p.firm!);
   }
 
-  // r5–r50: Generated with realistic distribution
+  // r5–r150: Generated with realistic distribution (50 original + 100 extended)
   const stages: Stage[] = ["First contact", "Deck sent", "Met", "Active diligence", "DD", "Soft circle", "Closed", "Pass"];
   const momentumDirs: MomentumDirection[] = ["Heating up", "Stable", "Cooling"];
   const tiers: RelationshipTier[] = ["Tier 1", "Tier 2", "Tier 3"];
@@ -324,7 +346,7 @@ function generateRelationships(): Relationship[] {
   const firmPool = RELATIONSHIP_FIRMS.filter((f) => !usedFirms.has(f));
   const rng = seededRandom(12345);
 
-  for (let i = 4; i < 50; i++) {
+  for (let i = 4; i < 150; i++) {
     const name = namePool[(i - 4) % namePool.length]!;
     const firm = firmPool[(i - 4) % firmPool.length]!;
     const momentumDir = pick(momentumDirs, [30, 40, 30], rng);

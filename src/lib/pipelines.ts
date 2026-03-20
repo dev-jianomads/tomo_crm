@@ -20,8 +20,8 @@ export const PIPELINES_STORAGE_KEY = "tomo-pipelines-v1";
 
 /**
  * Generate 3 mock pipelines for fund-1 only (avoids duplication when viewing "all" funds).
- * Uses realistic StructuredFilterCriteria based on mock CRM (50 relationships).
- * Filters chosen to yield ~12–18 relationships each from the seeded distribution.
+ * Uses realistic StructuredFilterCriteria based on mock CRM (150 relationships).
+ * Filters chosen to yield a useful slice from the seeded distribution.
  */
 function generateMockPipelines(): Pipeline[] {
   const now = new Date().toISOString();

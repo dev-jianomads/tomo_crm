@@ -7,7 +7,7 @@ Investigation into adding a CSV upload feature to the Relationships page for bul
 ## 1. Current Architecture
 
 ### Relationships Data
-- **Source:** `src/lib/mockData.ts` — `relationships` is a static array from `generateRelationships()` (50 items)
+- **Source:** `src/lib/mockData.ts` — `relationships` is a static array from `generateRelationships()` (150 items)
 - **Schema:** `Relationship` type has 26+ fields (name, firm, stage, tier, momentumDirection, investorType, etc.)
 - **Persistence:** None — data is read-only mock. Production plan mentions Supabase.
 

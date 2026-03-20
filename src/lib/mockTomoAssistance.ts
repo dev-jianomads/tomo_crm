@@ -232,7 +232,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   },
 };
 
-/** Generic fallback for relationships r5–r50 (no custom Tomo entry) */
+/** Generic fallback for generated relationships r5+ (no custom Tomo entry) */
 const RELATIONSHIP_FALLBACK: TomoAssistance = {
   initialMessage: {
     text: "Here's a snapshot of this relationship. I can help draft outreach, propose next steps, or create actions.",
@@ -247,7 +247,7 @@ const RELATIONSHIP_FALLBACK: TomoAssistance = {
 export function getTomoAssistance(entityId: string): TomoAssistance | null {
   const specific = tomoAssistanceByEntity[entityId];
   if (specific) return specific;
-  // Generic fallback for relationships r5–r50
+  // Generic fallback for generated relationships (r5+)
   if (/^r\d+$/.test(entityId)) return RELATIONSHIP_FALLBACK;
   return null;
 }
