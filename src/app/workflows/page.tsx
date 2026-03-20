@@ -274,9 +274,6 @@ function WorkflowsPageContent() {
           <p className="text-xs uppercase tracking-wide text-gray-500">
             {selectedName}
           </p>
-          <p className="mt-1 text-sm text-gray-600">
-            Chat with Tomo to modify this workflow. Changes reset on refresh.
-          </p>
         </div>
         <button
           onClick={handleResetWorkflow}
@@ -379,14 +376,9 @@ function TomoDefaultWorkflowCard({
           : "border-gray-200 bg-white hover:border-gray-300"
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">{workflow.name}</p>
-          <p className="mt-0.5 text-xs text-gray-600">
-            <span className="text-gray-500">{workflow.trigger}</span>
-            <span className="mx-1">→</span>
-            <span>{workflow.action}</span>
-          </p>
         </div>
         {workflow.enabled ? (
           <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
@@ -425,10 +417,7 @@ function PlaybookCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
-          <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">
-            {playbook.description}
-          </p>
-          <p className="mt-1.5 text-[11px] text-gray-500 truncate" title={targetsSummary}>
+          <p className="mt-1 text-[11px] text-gray-500 truncate" title={targetsSummary}>
             {targetsSummary}
           </p>
         </div>
@@ -551,8 +540,8 @@ function WorkflowTomoChat({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white">
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+    <div className="flex h-full min-h-0 flex-col rounded-md border border-gray-200 bg-white">
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
         <div>
           <p className="text-sm font-medium text-gray-900">TOMO AI</p>
           <p className="text-xs text-gray-500">{playbookName}</p>
@@ -569,7 +558,7 @@ function WorkflowTomoChat({
 
       {/* Context-aware suggestion chips */}
       {visibleSuggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
+        <div className="flex shrink-0 flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
           {visibleSuggestions.map((chip) => (
             <button
               key={chip}
@@ -584,7 +573,7 @@ function WorkflowTomoChat({
       )}
 
       {/* Messages */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
         {/* Tomo's initial message */}
         <div className="flex justify-start">
           <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
@@ -658,14 +647,14 @@ function ChatInput({
   };
 
   return (
-    <div className="border-t border-gray-200 px-3 py-3">
-      <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="shrink-0 border-t border-gray-200 px-3 py-3">
+      <div className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask Tomo about ${playbookName}…`}
           disabled={disabled}
-          className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+          className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
