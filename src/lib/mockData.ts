@@ -127,6 +127,17 @@ export type HealthMetric = {
   showIfStageData?: boolean;
 };
 
+/** Structured lines for Today “What needs your attention” cards (avoids long template titles in the list). */
+export type ActionAttentionCard = {
+  company: string;
+  contactName: string;
+  /** Right pill only (e.g. Approve, Update, Review, Respond). */
+  verb: string;
+  /** Row 2 work line before “ : subject” (e.g. Follow-up, CRM update). */
+  workKind: string;
+  workSubject: string;
+};
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -134,6 +145,8 @@ export type ActionItem = {
   trigger: string;
   evidence: string[];
   type: "outreach" | "scheduling" | "crm_update" | "follow_up";
+  /** When set, Today list uses company/contact/work lines instead of a single headline title. */
+  attentionCard?: ActionAttentionCard;
   suggestedUpdates?: string[];
   draft?: string;
   autoApproveType?: boolean; // UI preference only (mock)
@@ -362,6 +375,13 @@ export const actions: ActionItem[] = [
   {
     id: "a2",
     title: "Approve follow-up: Northwind Q4 review",
+    attentionCard: {
+      company: "Northwind Capital",
+      contactName: "Alex Morgan",
+      verb: "Approve",
+      workKind: "Follow-up",
+      workSubject: "Northwind Q4 review",
+    },
     status: "approval",
     trigger: "Meeting ended 2h ago — transcript processed",
     evidence: [
@@ -382,6 +402,13 @@ export const actions: ActionItem[] = [
   {
     id: "a3",
     title: "Review follow-ups: 5 LPs silent on January update",
+    attentionCard: {
+      company: "Tier 1–2 LPs",
+      contactName: "January update cohort",
+      verb: "Review",
+      workKind: "Outreach",
+      workSubject: "5 silent after monthly update",
+    },
     status: "in_progress",
     trigger: "5d since monthly update — low engagement from Tier 1–2",
     evidence: [
@@ -400,6 +427,13 @@ export const actions: ActionItem[] = [
   {
     id: "a4",
     title: "Update CRM: Lumen stalling — re-engage or mark blocked",
+    attentionCard: {
+      company: "Lumen LP",
+      contactName: "Priya Desai",
+      verb: "Update",
+      workKind: "CRM update",
+      workSubject: "Lumen stalling — re-engage or mark blocked",
+    },
     status: "blocked",
     trigger: "No response in 5d after 2 follow-ups",
     evidence: [
@@ -420,6 +454,13 @@ export const actions: ActionItem[] = [
   {
     id: "a5",
     title: "Respond to scheduling request from Peakline",
+    attentionCard: {
+      company: "Peakline Partners",
+      contactName: "Jamie Chen",
+      verb: "Respond",
+      workKind: "Scheduling",
+      workSubject: "Jamie — 3 proposed times",
+    },
     status: "approval",
     trigger: "Jamie Chen asked for available times — 3 slots found",
     evidence: [
@@ -439,6 +480,13 @@ export const actions: ActionItem[] = [
   {
     id: "a6",
     title: "Review extracted actions from Harborlight call",
+    attentionCard: {
+      company: "Harborlight Advisors",
+      contactName: "Samir Patel",
+      verb: "Review",
+      workKind: "CRM update",
+      workSubject: "Harborlight call — notes → actions",
+    },
     status: "in_progress",
     trigger: "Meeting notes processed — 2 CRM updates + 1 follow-up",
     evidence: [
@@ -458,6 +506,13 @@ export const actions: ActionItem[] = [
   {
     id: "a7",
     title: "Review CRM sync: Meridian Endowment role change",
+    attentionCard: {
+      company: "Meridian Endowment",
+      contactName: "David Kim",
+      verb: "Review",
+      workKind: "CRM update",
+      workSubject: "Contact role change (VP → CIO)",
+    },
     status: "approval",
     trigger: "Website scan detected contact title change",
     evidence: [

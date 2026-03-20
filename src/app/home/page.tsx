@@ -13,11 +13,11 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
+import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
-import { actions, briefs, commitments } from "@/lib/mockData";
-import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
+import { actions, briefs, commitments, type ActionAttentionCard } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePersistentState } from "@/lib/storage";
@@ -301,20 +301,16 @@ export default function HomePage() {
                 title="What needs your attention"
                 items={sortedActionItems.slice(0, 6).map((a) => {
                   const isTomo = Boolean(a.workflowTomoDefaultId) || a.workflowPillOverride === "Tomo";
-                  const workflowName = a.workflowPlaybookId
-                    ? suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name
-                    : a.workflowTomoDefaultId
-                    ? tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name
-                    : undefined;
-                  const pills: string[] = isTomo ? ["Tomo"] : a.workflowPlaybookId ? ["User Defined"] : [];
+                  const attentionRow3Prefix = isTomo ? "Tomo draft: " : a.workflowPlaybookId ? "User Defined: " : "";
                   return {
                     id: a.id,
                     title: a.title,
                     meta: a.trigger,
                     extra: undefined,
                     type: "action" as const,
-                    pills,
-                    workflowName,
+                    pills: [] as string[],
+                    attentionCard: a.attentionCard,
+                    attentionRow3Prefix,
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
@@ -588,6 +584,9 @@ function TodayGroup({
     extra?: string;
     pills: string[];
     workflowName?: string;
+    attentionCard?: ActionAttentionCard;
+    /** Prefix for row 3 (User Defined / Tomo draft); trigger follows from `meta`. */
+    attentionRow3Prefix?: string;
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -606,23 +605,42 @@ function TodayGroup({
               activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
-            {/* Row 1: title (left) | pills (right) */}
-            <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
-              {item.pills.length > 0 ? (
-                <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                  {item.pills.map((pill) => (
-                    <UrgencyChip key={pill} kind={pill} />
-                  ))}
+            {item.attentionCard ? (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
+                    {item.attentionCard.company} : {item.attentionCard.contactName}
+                  </p>
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
+                    {item.attentionCard.verb}
+                  </span>
                 </div>
-              ) : null}
-            </div>
-            {/* Row 2: meta (left) */}
-            <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
-            {/* Row 3: workflow name in smaller font (actions only) */}
-            {item.workflowName ? (
-              <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p>
-            ) : null}
+                <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">
+                  {item.attentionCard.workKind} : {item.attentionCard.workSubject}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
+                  {item.attentionRow3Prefix}
+                  {item.meta}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
+                  {item.pills.length > 0 ? (
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                      {item.pills.map((pill) => (
+                        <UrgencyChip key={pill} kind={pill} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
+                {item.workflowName ? (
+                  <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p>
+                ) : null}
+              </>
+            )}
           </button>
         ))}
       </div>
