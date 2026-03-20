@@ -16,15 +16,8 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import {
-  relationships,
-  Relationship,
-  formatDaysSinceContact,
-  STAGE_COLORS,
-  STAGE_OPTIONS,
-  stageLabelOnColorClasses,
-} from "@/lib/mockData";
-import type { MomentumDirection } from "@/lib/mockData";
+import { relationships, Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
+import type { MomentumDirection, Stage } from "@/lib/mockData";
 import {
   applyFilters,
   formatFilterSummary,
@@ -33,6 +26,7 @@ import {
 } from "@/lib/relationshipFilters";
 import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
+import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 import { useFunds } from "@/components/fund-provider";
@@ -167,6 +161,12 @@ export default function RelationshipsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
   const [createPipelineName, setCreatePipelineName] = useState("");
+  const [kanbanStageConfirm, setKanbanStageConfirm] = useState<{
+    relationshipId: string;
+    targetStage: Stage;
+    firm: string;
+    name: string;
+  } | null>(null);
 
   // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
@@ -445,6 +445,37 @@ export default function RelationshipsPage() {
     [setRelationshipOverrides]
   );
 
+  const commitStageOverride = useCallback(
+    (relationshipId: string, stage: Stage) => {
+      const key = FIELD_TO_REL_KEY.stage;
+      const value = normalizeFieldValue(key, stage) as Relationship["stage"];
+      setRelationshipOverrides((prev) => ({
+        ...prev,
+        [relationshipId]: { ...(prev[relationshipId] ?? {}), [key]: value },
+      }));
+    },
+    [setRelationshipOverrides]
+  );
+
+  const handleKanbanMoveToStage = useCallback(
+    (relationshipId: string, targetStage: Stage) => {
+      const rel = relationshipsWithOverrides.find((r) => r.id === relationshipId);
+      if (!rel || rel.stage === targetStage) return;
+      if (targetStage === "Closed" || targetStage === "Pass") {
+        setKanbanStageConfirm({
+          relationshipId,
+          targetStage,
+          firm: rel.firm,
+          name: rel.name,
+        });
+        return;
+      }
+      commitStageOverride(relationshipId, targetStage);
+      toast.success(`Stage updated to ${targetStage}`);
+    },
+    [relationshipsWithOverrides, commitStageOverride]
+  );
+
   const handleCreatePipeline = () => {
     const trimmed = createPipelineName.trim();
     if (!trimmed) {
@@ -703,6 +734,7 @@ export default function RelationshipsPage() {
               columns={kanbanColumns}
               activeId={activeId}
               onSelect={(id) => setActiveId(id)}
+              onMoveToStage={handleKanbanMoveToStage}
             />
           )}
         </div>
@@ -763,6 +795,19 @@ export default function RelationshipsPage() {
           filteredCount={filtered.length}
         />
       )}
+      {kanbanStageConfirm ? (
+        <KanbanTerminalStageModal
+          targetStage={kanbanStageConfirm.targetStage}
+          firm={kanbanStageConfirm.firm}
+          name={kanbanStageConfirm.name}
+          onClose={() => setKanbanStageConfirm(null)}
+          onConfirm={() => {
+            commitStageOverride(kanbanStageConfirm.relationshipId, kanbanStageConfirm.targetStage);
+            toast.success(`Stage updated to ${kanbanStageConfirm.targetStage}`);
+            setKanbanStageConfirm(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -1056,69 +1101,62 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
   }
 }
 
-function RelationshipsKanbanBoard({
-  columns,
-  activeId,
-  onSelect,
+function KanbanTerminalStageModal({
+  targetStage,
+  firm,
+  name,
+  onConfirm,
+  onClose,
 }: {
-  columns: { stage: (typeof STAGE_OPTIONS)[number]; items: Relationship[] }[];
-  activeId: string | null;
-  onSelect: (id: string) => void;
+  targetStage: Stage;
+  firm: string;
+  name: string;
+  onConfirm: () => void;
+  onClose: () => void;
 }) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 gap-1 overflow-x-hidden"
-      role="region"
-      aria-label="Relationships by stage"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4"
+      onClick={onClose}
+      aria-modal="true"
+      role="alertdialog"
+      aria-labelledby="kanban-stage-confirm-title"
+      aria-describedby="kanban-stage-confirm-desc"
     >
-      {columns.map(({ stage, items }) => {
-        const headerChrome = stageLabelOnColorClasses(stage);
-        return (
-        <section
-          key={stage}
-          className="flex min-h-0 min-w-0 flex-1 flex-col rounded-md border border-gray-200 bg-white shadow-sm"
-          aria-label={`${stage}, ${items.length} relationships`}
-        >
-          <header
-            className={`shrink-0 px-1 py-1.5 ${headerChrome.border}`}
-            style={{ backgroundColor: STAGE_COLORS[stage] }}
+      <div
+        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 id="kanban-stage-confirm-title" className="text-sm font-semibold text-gray-900">
+          Move to {targetStage}?
+        </h3>
+        <p id="kanban-stage-confirm-desc" className="mt-2 text-sm text-gray-700">
+          <span className="font-medium text-gray-900">{firm}</span>
+          <span className="text-gray-500"> · </span>
+          {name}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">This updates their CRM stage. Band is not changed.</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
           >
-            <h3
-              className={`truncate text-center text-[10px] font-semibold leading-tight ${headerChrome.title}`}
-              title={stage}
-            >
-              {stage}
-            </h3>
-            <p className={`text-center text-[10px] tabular-nums ${headerChrome.count}`}>{items.length}</p>
-          </header>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
-            {items.length === 0 ? (
-              <p className="px-0.5 py-2 text-center text-[10px] leading-snug text-gray-400">No contacts</p>
-            ) : (
-              items.map((rel) => (
-                <button
-                  key={rel.id}
-                  type="button"
-                  onClick={() => onSelect(rel.id)}
-                  className={`block w-full min-w-0 max-w-full rounded border px-1.5 py-1.5 text-left transition ${
-                    activeId === rel.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
-                >
-                  <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-gray-900" title={rel.firm}>
-                    {rel.firm}
-                  </span>
-                  <span className="block min-w-0 max-w-full truncate text-[10px] text-gray-600" title={rel.name}>
-                    {rel.name}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
-        );
-      })}
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm} className="button-primary rounded-md px-3 py-1.5 text-sm">
+            Move to {targetStage}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 Decisions aligned with product answers (March 2025). Complements the exploratory notes from the initial Kanban discussion.
 
-**Status:** Phase 1 implemented in `src/app/relationships/page.tsx` — Kanban uses **`TableCellsIcon`** in the toolbar (list view already uses **`ViewColumnsIcon`** for the column picker, so icons stay distinct).
+**Status:** Phase 1 + **Phase 2** implemented — Kanban board lives in `src/components/relationships-kanban-board.tsx` with **`@dnd-kit/core`**; toolbar icon remains **`TableCellsIcon`** (column picker stays **`ViewColumnsIcon`**).
 
 ---
 
@@ -44,9 +44,9 @@ Decisions aligned with product answers (March 2025). Complements the exploratory
 - Card UI: stacked firm + name, truncation, full width of column.
 - Card click → same `activeId` / drawer as today.
 
-### Phase 2 — Drag-and-drop + CRM update
+### Phase 2 — Drag-and-drop + CRM update ✅
 
-- Add `@dnd-kit/core` (and utilities/sortable as needed); use `DragOverlay` if nested scroll causes drop issues.
+- `@dnd-kit/core` + `@dnd-kit/utilities`; `DragOverlay`, `PointerSensor` with **8px** activation (reduces accidental drags vs row click).
 - On drop: if target stage ≠ current stage:
   - If target is **Closed** or **Pass** → open **confirm modal**; on confirm, apply override; on cancel, revert visual.
   - Else → apply `{ stage: targetStage }` via `setRelationshipOverrides` (reuse `normalizeFieldValue` / `FIELD_TO_REL_KEY` for `"stage"` if applicable).
