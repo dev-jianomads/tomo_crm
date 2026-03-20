@@ -2,6 +2,8 @@
 
 Decisions aligned with product answers (March 2025). Complements the exploratory notes from the initial Kanban discussion.
 
+**Status:** Phase 1 implemented in `src/app/relationships/page.tsx` — Kanban uses **`TableCellsIcon`** in the toolbar (list view already uses **`ViewColumnsIcon`** for the column picker, so icons stay distinct).
+
 ---
 
 ## Locked product decisions
@@ -33,9 +35,9 @@ Decisions aligned with product answers (March 2025). Complements the exploratory
 
 ## Phased implementation (updated)
 
-### Phase 1 — View + read-only board
+### Phase 1 — View + read-only board ✅
 
-- Add `viewMode: "list" | "card" | "kanban"` with persistence; Kanban toolbar icon (e.g. `ViewColumnsIcon`).
+- Add `viewMode: "list" | "card" | "kanban"` with persistence; Kanban toolbar icon (`TableCellsIcon`; column picker stays `ViewColumnsIcon`).
 - Render **8 columns** in `STAGE_OPTIONS` order.
 - **Data pipeline:** `filtered` → apply **same sort** as list (`sortedFiltered` or shared sort helper) → **group by `stage`** into columns.
 - Empty columns: show header + empty state (e.g. “No contacts”).

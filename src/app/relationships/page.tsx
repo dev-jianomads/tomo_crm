@@ -1,13 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpTrayIcon, Bars3Icon, ChevronDownIcon, ChevronUpIcon, FunnelIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpTrayIcon,
+  Bars3Icon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  ViewColumnsIcon,
+} from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { relationships, Relationship, formatDaysSinceContact } from "@/lib/mockData";
+import { relationships, Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
 import type { MomentumDirection } from "@/lib/mockData";
 import {
   applyFilters,
@@ -48,6 +57,8 @@ type SortColumn =
   | "consultantDependent"
   | "esgRequired";
 type SortDirection = "asc" | "desc";
+
+type RelationshipsViewMode = "list" | "card" | "kanban";
 
 /** Primary columns (left) → secondary (scroll right) */
 const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
@@ -152,7 +163,7 @@ export default function RelationshipsPage() {
 
   // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
-  const [viewMode, setViewMode] = usePersistentState<"card" | "list">("tomo-relationships-view-mode", "list");
+  const [viewMode, setViewMode] = usePersistentState<RelationshipsViewMode>("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
   const [columnWidths, setColumnWidths] = usePersistentState<Record<string, number>>(
@@ -367,6 +378,16 @@ export default function RelationshipsPage() {
     return arr;
   }, [filtered, effectiveSortColumn, sortDirection]);
 
+  /** Kanban: same order as list (header sort), grouped into fixed stage columns */
+  const kanbanColumns = useMemo(() => {
+    const buckets = new Map<string, Relationship[]>();
+    for (const stage of STAGE_OPTIONS) buckets.set(stage, []);
+    for (const rel of sortedFiltered) {
+      buckets.get(rel.stage)?.push(rel);
+    }
+    return STAGE_OPTIONS.map((stage) => ({ stage, items: buckets.get(stage)! }));
+  }, [sortedFiltered]);
+
   const active = useMemo(
     () => relationshipsWithOverrides.find((r) => r.id === activeId) ?? null,
     [relationshipsWithOverrides, activeId]
@@ -506,65 +527,69 @@ export default function RelationshipsPage() {
             >
               <ArrowUpTrayIcon className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => setColumnsPopoverOpen((o) => !o)}
-              className={`rounded p-1.5 transition ${
-                columnsPopoverOpen ? "bg-blue-100 text-blue-700" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              }`}
-              aria-label="Choose columns"
-              aria-expanded={columnsPopoverOpen}
-              aria-haspopup="true"
-            >
-              <ViewColumnsIcon className="h-4 w-4" />
-            </button>
-            {columnsPopoverOpen && (
-              <div
-                className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-2 shadow-lg"
-                role="menu"
-              >
-                <div className="border-b border-gray-100 px-3 py-2">
-                  <p className="text-xs font-medium text-gray-700">Show columns</p>
-                </div>
-                <div className="max-h-64 overflow-y-auto px-2 py-1">
-                  {TABLE_COLUMNS.map((col) => (
-                    <label
-                      key={col.key}
-                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
-                      role="menuitemcheckbox"
-                      aria-checked={columnVisibility[col.key] !== false}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={columnVisibility[col.key] !== false}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          if (!checked) {
-                            const visibleCount = TABLE_COLUMNS.filter((c) => columnVisibility[c.key] !== false).length;
-                            if (visibleCount <= 1) return;
-                          }
-                          setColumnVisibility((prev) => ({
-                            ...prev,
-                            [col.key]: checked,
-                          }));
-                        }}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="truncate">{col.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="border-t border-gray-100 px-2 py-1">
-                  <button
-                    type="button"
-                    onClick={() => setColumnVisibility({ ...DEFAULT_COLUMN_VISIBILITY })}
-                    className="w-full rounded px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            {viewMode === "list" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setColumnsPopoverOpen((o) => !o)}
+                  className={`rounded p-1.5 transition ${
+                    columnsPopoverOpen ? "bg-blue-100 text-blue-700" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  }`}
+                  aria-label="Choose columns"
+                  aria-expanded={columnsPopoverOpen}
+                  aria-haspopup="true"
+                >
+                  <ViewColumnsIcon className="h-4 w-4" />
+                </button>
+                {columnsPopoverOpen && (
+                  <div
+                    className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-2 shadow-lg"
+                    role="menu"
                   >
-                    Show all
-                  </button>
-                </div>
-              </div>
-            )}
+                    <div className="border-b border-gray-100 px-3 py-2">
+                      <p className="text-xs font-medium text-gray-700">Show columns</p>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto px-2 py-1">
+                      {TABLE_COLUMNS.map((col) => (
+                        <label
+                          key={col.key}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
+                          role="menuitemcheckbox"
+                          aria-checked={columnVisibility[col.key] !== false}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={columnVisibility[col.key] !== false}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              if (!checked) {
+                                const visibleCount = TABLE_COLUMNS.filter((c) => columnVisibility[c.key] !== false).length;
+                                if (visibleCount <= 1) return;
+                              }
+                              setColumnVisibility((prev) => ({
+                                ...prev,
+                                [col.key]: checked,
+                              }));
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="truncate">{col.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-100 px-2 py-1">
+                      <button
+                        type="button"
+                        onClick={() => setColumnVisibility({ ...DEFAULT_COLUMN_VISIBILITY })}
+                        className="w-full rounded px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      >
+                        Show all
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
             <button
               type="button"
               onClick={() => setViewMode("list")}
@@ -591,9 +616,24 @@ export default function RelationshipsPage() {
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("kanban")}
+              className={`rounded p-1.5 transition ${
+                viewMode === "kanban"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              }`}
+              aria-label="Kanban view"
+              aria-pressed={viewMode === "kanban"}
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
           </div>
         </div>
-        <div className="min-w-0 flex-1 overflow-auto">
+        <div
+          className={`min-w-0 flex-1 ${viewMode === "kanban" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-auto"}`}
+        >
           {viewMode === "list" ? (
             <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
               <table
@@ -637,7 +677,7 @@ export default function RelationshipsPage() {
                 <div className="px-4 py-8 text-center text-sm text-gray-500">No relationships match.</div>
               ) : null}
             </div>
-          ) : (
+          ) : viewMode === "card" ? (
             <div className="grid grid-cols-1 gap-3 pb-2 md:grid-cols-3">
               {sortedFiltered.map((rel) => (
                 <RelationshipCard
@@ -649,6 +689,14 @@ export default function RelationshipsPage() {
               ))}
               {!sortedFiltered.length ? <Placeholder title="No relationships match." /> : null}
             </div>
+          ) : !sortedFiltered.length ? (
+            <Placeholder title="No relationships match." />
+          ) : (
+            <RelationshipsKanbanBoard
+              columns={kanbanColumns}
+              activeId={activeId}
+              onSelect={(id) => setActiveId(id)}
+            />
           )}
         </div>
       </div>
@@ -999,6 +1047,67 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
     default:
       return <td className={baseClass}>—</td>;
   }
+}
+
+function RelationshipsKanbanBoard({
+  columns,
+  activeId,
+  onSelect,
+}: {
+  columns: { stage: (typeof STAGE_OPTIONS)[number]; items: Relationship[] }[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div
+      className="flex min-h-0 min-w-0 flex-1 gap-1 overflow-x-hidden"
+      role="region"
+      aria-label="Relationships by stage"
+    >
+      {columns.map(({ stage, items }) => (
+        <section
+          key={stage}
+          className="flex min-h-0 min-w-0 flex-1 flex-col rounded-md border border-gray-200 bg-white shadow-sm"
+          aria-label={`${stage}, ${items.length} relationships`}
+        >
+          <header className="shrink-0 border-b border-gray-100 bg-gray-50 px-1 py-1.5">
+            <h3
+              className="truncate text-center text-[10px] font-semibold leading-tight text-gray-800"
+              title={stage}
+            >
+              {stage}
+            </h3>
+            <p className="text-center text-[10px] tabular-nums text-gray-500">{items.length}</p>
+          </header>
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
+            {items.length === 0 ? (
+              <p className="px-0.5 py-2 text-center text-[10px] leading-snug text-gray-400">No contacts</p>
+            ) : (
+              items.map((rel) => (
+                <button
+                  key={rel.id}
+                  type="button"
+                  onClick={() => onSelect(rel.id)}
+                  className={`block w-full min-w-0 max-w-full rounded border px-1.5 py-1.5 text-left transition ${
+                    activeId === rel.id
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-gray-900" title={rel.firm}>
+                    {rel.firm}
+                  </span>
+                  <span className="block min-w-0 max-w-full truncate text-[10px] text-gray-600" title={rel.name}>
+                    {rel.name}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
 }
 
 function RelationshipCard({
