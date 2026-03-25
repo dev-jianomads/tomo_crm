@@ -21,93 +21,171 @@ export type TomoAssistance = {
 };
 
 export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
-  // a2: Post-Meeting Execution
+  // a1: Email Scheduling Assistant (Tomo Default)
+  a1: {
+    initialMessage: {
+      text: "Peter Zakowich (PAAMCO Prisma) asked for a meeting March 18. You're free 9am and 11am ET — draft reply proposes both.",
+      blocks: [
+        {
+          kind: "draft",
+          content:
+            "Hi Peter — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
+          type: "email",
+        },
+        {
+          kind: "workflow_link",
+          playbookId: "td-email-scheduling",
+          name: "Email Scheduling Assistant",
+          description: "Scan email for scheduling requests, find availability, draft response.",
+        },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Offer different slots", "Add video link", "Skip for now"],
+  },
+
+  // a2: Warm Intro Tracker
   a2: {
     initialMessage: {
-      text: "Northwind Q4 review meeting ended 2h ago. Transcript extracted — follow-up draft ready.",
+      text: "Liyen Chow introduced Michel del Buono (A16z Family Office) 2 days ago — no reply yet. Draft references Liyen and Q4 performance.",
       blocks: [
-        { kind: "draft", content: "Hi Alex — great connecting today. As discussed, here's the updated deck and our Q1 timeline...", type: "email" },
+        {
+          kind: "draft",
+          content:
+            "Hi Michel — great to meet you, and thank you Liyen for the introduction.\n\nBrief context: we had a strong Q4 and are speaking with a small set of aligned family offices. I'd welcome a short intro call at your convenience.\n\nBest regards,",
+          type: "email",
+        },
+        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Shorten intro", "Add allocator names", "Explain this playbook"],
+  },
+
+  // a3: Post-Meeting Execution
+  a3: {
+    initialMessage: {
+      text: "Albourne (James Staltari) — post-meeting note is past the 2h SLA. Draft covers recap, materials, and COO call path.",
+      blocks: [
+        {
+          kind: "draft",
+          content:
+            "Hi James — thank you for yesterday's time. Quick recap: we covered portfolio positioning, liquidity terms, and next steps toward Q2 allocator reads. I'll follow up with the materials we discussed and propose times for a call with our COO.\n\nBest regards,",
+          type: "email",
+        },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Edit draft", "Add action items", "Explain this playbook"],
+    suggestedPrompts: ["Approve & send", "Add CRM tasks from meeting", "Schedule COO call", "Explain SLA"],
   },
 
-  // a3: Update → Follow-Up
-  a3: {
+  // a4: No Response → Re-engage (GIC)
+  a4: {
     initialMessage: {
-      text: "5 Tier 1–2 LPs haven't opened the January update after 5 days. Personalized follow-ups drafted.",
+      text: "No reply from Kwong Hong Huat @ GIC in 2 days after your propose-times email. Draft follow-up copies his EA.",
       blocks: [
+        {
+          kind: "draft",
+          content:
+            "Dear Mr. Kwong — following up on my note from two days ago regarding the new fund launch discussion. Still very keen to find time that works for you. Copying your EA for scheduling convenience.\n\nKind regards,",
+          type: "email",
+        },
+        {
+          kind: "workflow_link",
+          playbookId: "pb-no-response-stall",
+          name: "No Response → Re-engage",
+          description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+        },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Soften tone", "Propose new times", "Explain this playbook"],
+  },
+
+  // a5: Update → Follow-Up (momentum report)
+  a5: {
+    initialMessage: {
+      text: "Monthly momentum report is ready — compare this newsletter send to the last three months and spot who dropped in or out of top engagement.",
+      blocks: [
+        {
+          kind: "snapshot",
+          text: "Top movers and cooling LPs are summarized in the action evidence. Use Daily Brief → Momentum Signals for the same story in brief form.",
+        },
         { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
       ],
     },
-    suggestedPrompts: ["Review follow-ups", "Approve highest priority", "Segment by tier", "Explain this playbook"],
+    suggestedPrompts: ["Summarize top 5 risers", "Who should we call first?", "Draft follow-up for cooling LP", "Explain this playbook"],
   },
 
-  // a4: No Response → Re-engage
-  a4: {
+  // a6: No Response → Re-engage (Amundi cooling)
+  a6: {
     initialMessage: {
-      text: "No response in 5 days — stall risk rising. Can I update CRM as follows?",
+      text: "Amundi FoF — 18 days since last meaningful touch; Q2 decision ahead. Draft check-in is short and non-pushy.",
       blocks: [
         {
-          kind: "crm_table",
-          rows: [
-            { field: "Momentum", current: "—", update: "Cooling", reason: "No response in 5d" },
-            { field: "Stage", current: "—", update: "Blocked", reason: "No response in 5d" },
-            { field: "Reminder", current: "—", update: "7d", reason: "Re-engage window" },
-          ],
+          kind: "draft",
+          content:
+            "Hi Camille — hope you're well. Wanted to check in ahead of your Q2 process and see if a short call would be helpful on our side. Happy to work around your schedule.\n\nBest regards,",
+          type: "email",
         },
-        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+        {
+          kind: "workflow_link",
+          playbookId: "pb-no-response-stall",
+          name: "No Response → Re-engage",
+          description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+        },
       ],
     },
-    suggestedPrompts: ["Apply CRM updates", "Set reminder", "Explain why blocked", "Skip reminder"],
+    suggestedPrompts: ["Approve & send", "Add allocator context", "Propose two call slots", "Explain this playbook"],
   },
 
-  // a5: Email Scheduling Assistant (Tomo Default)
-  a5: {
+  // r5–r9: Scenario relationships (Today card LPs)
+  r5: {
     initialMessage: {
-      text: "Jamie Chen asked for available times. Found 3 slots — draft response ready.",
+      text: "PAAMCO Prisma — Peter is asking to meet March 18. Calendar-aware reply is on your Today list.",
       blocks: [
-        { kind: "draft", content: "Hi Jamie — absolutely, here are a few times that work on our end: Tue 10am, Wed 2pm, Thu 11am ET. Which works best?", type: "email" },
+        { kind: "snapshot", text: "Tier 1 momentum heating; diligence-stage. Next: lock time on March 18." },
         { kind: "workflow_link", playbookId: "td-email-scheduling", name: "Email Scheduling Assistant", description: "Scan email for scheduling requests, find availability, draft response." },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Propose different times", "Add more slots", "Skip for now"],
+    suggestedPrompts: ["Summarize last email", "Draft one-line hold", "Open Today action", "Explain scheduling workflow"],
   },
-
-  // a6: Meeting Notes → Actions (Tomo Default)
-  a6: {
+  r6: {
     initialMessage: {
-      text: "Harborlight call processed. 2 CRM updates and 1 follow-up commitment extracted.",
+      text: "Goldman cap intro — Michel del Buono at A16z Family Office. Reply while the intro is fresh.",
       blocks: [
-        {
-          kind: "crm_table",
-          rows: [
-            { field: "Contact seniority", current: "—", update: "C-Suite", reason: "Now reports to CIO" },
-            { field: "Stage", current: "—", update: "Met", reason: "Meeting completed" },
-          ],
-        },
-        { kind: "workflow_link", playbookId: "td-meeting-notes", name: "Meeting Notes → Actions", description: "Extract action items & commitments from meeting notes, suggest CRM updates." },
+        { kind: "snapshot", text: "Source credit: Liyen Chow. Strong Q4 narrative fits this first reply." },
+        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
       ],
     },
-    suggestedPrompts: ["Apply CRM updates", "Create follow-up", "Edit suggested updates", "Skip for now"],
+    suggestedPrompts: ["Draft intro reply", "Pull Liyen thread", "Explain intro playbook", "Create follow-up task"],
   },
-
-  // a7: Website → CRM Sync (Tomo Default)
-  a7: {
+  r7: {
     initialMessage: {
-      text: "Meridian Endowment website scan detected David Kim's title change: VP → CIO.",
+      text: "Albourne — James Staltari. Post-meeting execution loop is open; SLA note is on Today.",
       blocks: [
-        {
-          kind: "crm_table",
-          rows: [
-            { field: "Contact seniority", current: "VP", update: "C-Suite", reason: "Website updated 2d ago" },
-          ],
-        },
-        { kind: "workflow_link", playbookId: "td-website-scan", name: "Website → CRM Sync", description: "Scan corporate website, suggest CRM updates for title, role, contact info." },
+        { kind: "snapshot", text: "Consultant path; Met / active-stable. COO call is the next structural step." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Apply CRM update", "Skip for now", "Check other contacts"],
+    suggestedPrompts: ["Open post-meeting draft", "List CRM tasks", "Schedule COO prep", "Explain playbook"],
+  },
+  r8: {
+    initialMessage: {
+      text: "GIC — Kwong Hong Huat. Waiting on meeting confirm for new fund launch; gentle nudge drafted.",
+      blocks: [
+        { kind: "snapshot", text: "Sovereign / Tier 1; APAC. Two days silence after propose-times email." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+      ],
+    },
+    suggestedPrompts: ["Review follow-up draft", "Suggest alternate times", "Summarize last email", "Explain playbook"],
+  },
+  r9: {
+    initialMessage: {
+      text: "Amundi FoF — relationship cooling into Q2. Light check-in keeps you in the allocator's active set.",
+      blocks: [
+        { kind: "snapshot", text: "18d since last touch; last meeting tone was positive. Allocation read expected Q2." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+      ],
+    },
+    suggestedPrompts: ["Draft check-in", "Review Q2 timeline", "Open Today action", "Explain playbook"],
   },
 
   // c1: Commitment (Northwind Q4 review)

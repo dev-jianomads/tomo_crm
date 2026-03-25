@@ -19,7 +19,6 @@ import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import { actions, briefs, commitments, type ActionAttentionCard } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
-import { useFunds } from "@/components/fund-provider";
 import { usePersistentState } from "@/lib/storage";
 
 type TodaySelection =
@@ -58,7 +57,6 @@ function TomoChatInline({ subtitle }: { subtitle?: string }) {
 export default function HomePage() {
   const { ready, session } = useRequireSession();
   const router = useRouter();
-  const { activeFundId } = useFunds();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [showDailyBrief, setShowDailyBrief] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
@@ -138,9 +136,9 @@ export default function HomePage() {
   }, [selection]);
 
   const filteredActions = useMemo(() => {
-    if (activeFundId === "all") return actions;
-    return actions.filter((_, idx) => idx % 2 === 0); // stub: pretend alternate items match the selected fund
-  }, [activeFundId]);
+    // Mock: show full attention list for any fund selection (no fund-scoped filtering yet).
+    return actions;
+  }, []);
 
   /** Sort by urgency: blocked first, then approval, then in_progress (CRM update card before Northwind) */
   const sortedActionItems = useMemo(() => {
@@ -158,9 +156,8 @@ export default function HomePage() {
   }, [filteredActions]);
 
   const filteredCommitments = useMemo(() => {
-    if (activeFundId === "all") return commitments;
-    return commitments.filter((_, idx) => idx % 2 === 1);
-  }, [activeFundId]);
+    return commitments;
+  }, []);
 
   const sortedCommitments = useMemo(() => {
     const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -189,9 +186,8 @@ export default function HomePage() {
     });
   }, [filteredCommitments]);
   const filteredBriefs = useMemo(() => {
-    if (activeFundId === "all") return briefs;
-    return briefs.filter((_, idx) => idx % 2 === 0);
-  }, [activeFundId]);
+    return briefs;
+  }, []);
 
   const dailyBriefBlocks: {
     icon: "followups" | "meetings" | "momentum" | "loops";
@@ -219,17 +215,17 @@ export default function HomePage() {
     {
       icon: "momentum",
       title: "Momentum Signals",
-      subtitle: "Conversations heating up",
-      items: ["Sovereign D - reply time accelerating", "Insurance Co E - increased engagement"],
-      secondarySubtitle: "Conversations cooling",
-      secondaryItems: ["Endowment F - 10 days no response"],
-      insight: "Derived from momentum and engagement trend signals.",
+      subtitle: "Monthly newsletter — most active LPs (Tomo)",
+      items: ["Top openers this send: PAAMCO Prisma, GIC, A16z FO", "Re-engagement candidates: review Today → Monthly Momentum card"],
+      secondarySubtitle: "Cooling vs last 3 months",
+      secondaryItems: ["Amundi FoF — lower opens; suggest check-in", "Two institutional LPs dropped from top-engaged tier"],
+      insight: "From latest monthly newsletter opens vs trailing 3-month engagement.",
     },
     {
       icon: "loops",
       title: "Open Execution Loops",
       subtitle: "Threads needing closure",
-      items: ["Legal docs pending", "DDQ follow-up not sent"],
+      items: ["Albourne post-meeting note — awaiting approval", "GIC meeting confirm — follow-up drafted"],
       insight: "Compiled from outstanding tasks and open threads.",
     },
   ];
