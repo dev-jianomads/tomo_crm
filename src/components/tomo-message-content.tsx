@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { TomoAiBadge } from "./tomo-ai-badge";
 import type { TomoInitialMessage, TomoMessageBlock } from "@/lib/mockTomoAssistance";
+
+type DraftMessageBlock = Extract<TomoMessageBlock, { kind: "draft" }>;
 
 /**
  * Renders Tomo's initial message: lead-in text + optional rich blocks.
@@ -23,6 +27,106 @@ export function TomoMessageContent({ message }: { message: TomoInitialMessage })
         ))}
       </div>
     </div>
+  );
+}
+
+function DraftBlock({ block }: { block: DraftMessageBlock }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [editedContent, setEditedContent] = useState(() => block.content);
+
+  useEffect(() => {
+    if (!editOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setEditOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [editOpen]);
+
+  const notifySent = () => {
+    toast.success(block.type === "invite" ? "Invite sent!" : "Email sent!");
+  };
+
+  return (
+    <>
+      <div className="rounded-md border border-gray-200 bg-white px-3 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--accent)]">Drafted by Tomo</span>
+          <span className="text-[11px] text-gray-500">{block.type === "invite" ? "Invite" : "Email"}</span>
+        </div>
+        <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{block.content}</p>
+        <p className="mt-3 text-sm text-gray-600">Want me to send? Edit?</p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            onClick={notifySent}
+          >
+            Send
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            onClick={() => setEditOpen(true)}
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+
+      {editOpen ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-4 sm:items-center"
+          role="presentation"
+          onClick={() => setEditOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="draft-edit-title"
+            className="flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-gray-100 px-4 py-3">
+              <h3 id="draft-edit-title" className="text-sm font-semibold text-gray-900">
+                Edit draft
+              </h3>
+              <p className="mt-0.5 text-xs text-gray-500">Mock editor — changes are not saved.</p>
+            </div>
+            <div className="px-4 py-3">
+              <textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                rows={10}
+                className="w-full resize-y rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800 outline-none focus:border-[color:var(--accent)] focus:ring-1 focus:ring-[color:var(--accent)]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-4 py-3">
+              <button
+                type="button"
+                className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setEditOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                onClick={() => {
+                  notifySent();
+                  setEditOpen(false);
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -61,30 +165,7 @@ function BlockRenderer({
       );
 
     case "draft":
-      return (
-        <div className="rounded-md border border-gray-200 bg-white px-3 py-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--accent)]">Drafted by Tomo</span>
-            <span className="text-[11px] text-gray-500">{block.type === "invite" ? "Invite" : "Email"}</span>
-          </div>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{block.content}</p>
-          <p className="mt-3 text-sm text-gray-600">Want me to send? Edit?</p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
-            >
-              Send
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Edit
-            </button>
-          </div>
-        </div>
-      );
+      return <DraftBlock key={block.content} block={block} />;
 
     case "brief":
       return (
