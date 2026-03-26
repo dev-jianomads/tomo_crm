@@ -53,6 +53,7 @@ import { TomoAssistant } from "@/components/tomo-assistant";
 import { TomoChatProvider } from "@/components/tomo-chat-context";
 import { usePersistentState } from "@/lib/storage";
 import { useFunds } from "@/components/fund-provider";
+import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, ACTIVITY, SETTINGS
 type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" | "materials" | "settings" | "search";
@@ -60,6 +61,8 @@ type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" 
 type TodayContext = {
   actions: { id: string; title: string; trigger: string; status: string; type: string }[];
   commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
+  /** Same structure as the Daily Brief modal — keep in sync for Tomo answers. */
+  dailyBriefBlocks?: DailyBriefBlock[];
 };
 
 type AppShellProps = {
@@ -69,7 +72,7 @@ type AppShellProps = {
   contextTitle?: string; // Current context for Tomo AI (e.g., selected contact name)
   assistantChips?: string[]; // Quick action suggestions for Tomo
   detailVisible?: boolean;
-  todayContext?: TodayContext; // For Today page: actions + commitments so Tomo can answer questions
+  todayContext?: TodayContext; // For Today page: actions, commitments, Daily Brief blocks for Tomo
 };
 
 /**

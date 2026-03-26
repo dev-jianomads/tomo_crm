@@ -21,6 +21,7 @@ import { parseFilterPrompt } from "@/lib/parseFilterPrompt";
 import { CRM_UPDATE_FIELD_REFERENCE } from "@/lib/crmFieldSchema";
 import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
+import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
@@ -61,6 +62,8 @@ export type OrchestratorContext = {
   todayContext?: {
     actions: { id: string; title: string; trigger: string; status: string; type: string }[];
     commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
+    /** Same payload as the Daily Brief modal (built from the same source on the client). */
+    dailyBriefBlocks?: DailyBriefBlock[];
   };
 };
 
@@ -164,6 +167,34 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
         (c) => `- ${c.lp} : ${c.contactName} — ${c.datetime} (${c.title})`,
       ),
     );
+
+    if (tc.dailyBriefBlocks?.length) {
+      lines.push(
+        ``,
+        `Daily Brief — this is the SAME structured summary as the user's "Daily Brief" modal (same blocks, lines, and entity ids). Prefer this when they ask for a brief, summary of the day, or "what's in my daily brief". Each bullet may include a link type and id so you can tell them which drawer to open.`,
+      );
+      for (const block of tc.dailyBriefBlocks) {
+        lines.push(``, `${block.title} — ${block.subtitle}`, `Insight: ${block.insight}`);
+        for (const item of block.items) {
+          if (item.link) {
+            lines.push(`- ${item.label} [${item.link.kind} id: ${item.link.id}]`);
+          } else {
+            lines.push(`- ${item.label}`);
+          }
+        }
+        if (block.secondarySubtitle) {
+          lines.push(block.secondarySubtitle);
+          for (const item of block.secondaryItems ?? []) {
+            if (item.link) {
+              lines.push(`- ${item.label} [${item.link.kind} id: ${item.link.id}]`);
+            } else {
+              lines.push(`- ${item.label}`);
+            }
+          }
+        }
+      }
+      lines.push(``);
+    }
   }
 
   if (context.page) {

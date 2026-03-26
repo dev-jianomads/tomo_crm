@@ -17,7 +17,14 @@ import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
+import {
+  buildDailyBriefBlocks,
+  type DailyBriefBlock,
+  type DailyBriefLine,
+  type DailyBriefLink,
+} from "@/lib/dailyBriefFromToday";
 import { actions, briefs, commitments, type ActionAttentionCard, type Commitment } from "@/lib/mockData";
+import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
@@ -189,46 +196,10 @@ export default function HomePage() {
     return briefs;
   }, []);
 
-  const dailyBriefBlocks: {
-    icon: "followups" | "meetings" | "momentum" | "loops";
-    title: string;
-    subtitle: string;
-    items: string[];
-    secondarySubtitle?: string;
-    secondaryItems?: string[];
-    insight: string;
-  }[] = [
-    {
-      icon: "followups",
-      title: "Priority Follow-ups",
-      subtitle: "LP follow-ups due today",
-      items: ["Blackstone - post-meeting note", "Endowment A - deck resend", "Family Office X - Q&A response"],
-      insight: "Based on follow-up queue and unresolved asks.",
-    },
-    {
-      icon: "meetings",
-      title: "Meetings Requiring Prep",
-      subtitle: "Today's LP meetings",
-      items: ["14:00 — UBS · Charly Malek · HF Update", "16:00 — CPPIB · Frank Ieraci · Investment Update"],
-      insight: "Generated from commitments and linked brief context.",
-    },
-    {
-      icon: "momentum",
-      title: "Momentum Signals",
-      subtitle: "Monthly newsletter — most active LPs (Tomo)",
-      items: ["Top openers this send: PAAMCO Prisma, GIC, A16z FO", "Re-engagement candidates: review Today → Monthly Momentum card"],
-      secondarySubtitle: "Cooling vs last 3 months",
-      secondaryItems: ["Amundi FoF — lower opens; suggest check-in", "Two institutional LPs dropped from top-engaged tier"],
-      insight: "From latest monthly newsletter opens vs trailing 3-month engagement.",
-    },
-    {
-      icon: "loops",
-      title: "Open Execution Loops",
-      subtitle: "Threads needing closure",
-      items: ["Albourne post-meeting note — awaiting approval", "GIC meeting confirm — follow-up drafted"],
-      insight: "Compiled from outstanding tasks and open threads.",
-    },
-  ];
+  const dailyBriefBlocks = useMemo(
+    () => buildDailyBriefBlocks(sortedActionItems, sortedCommitments, filteredBriefs),
+    [sortedActionItems, sortedCommitments, filteredBriefs],
+  );
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -378,9 +349,20 @@ export default function HomePage() {
             lp: c.lp,
             contactName: c.contactName,
           })),
+          dailyBriefBlocks,
         }}
       />
-      <DailyBriefDialog open={showDailyBrief} onClose={closeDailyBrief} blocks={dailyBriefBlocks} />
+      <DailyBriefDialog
+        open={showDailyBrief}
+        onClose={closeDailyBrief}
+        blocks={dailyBriefBlocks}
+        onLineNavigate={(link) => {
+          if (link.kind === "action") setSelection({ type: "action", id: link.id });
+          else if (link.kind === "commitment") setSelection({ type: "commitment", id: link.id });
+          else setSelection({ type: "brief", id: link.id });
+          closeDailyBrief();
+        }}
+      />
       <ContextDrawer
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
@@ -428,22 +410,47 @@ export default function HomePage() {
   );
 }
 
+function dailyBriefLineKey(line: DailyBriefLine, index: number): string {
+  if (line.link) return `${line.link.kind}-${line.link.id}-i${index}`;
+  return `plain-${index}-${line.label.slice(0, 40)}`;
+}
+
+function DailyBriefLineRow({
+  line,
+  onNavigate,
+}: {
+  line: DailyBriefLine;
+  onNavigate: (link: DailyBriefLink) => void;
+}) {
+  return (
+    <li className="flex items-start gap-2">
+      <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" aria-hidden />
+      {line.link ? (
+        <button
+          type="button"
+          onClick={() => onNavigate(line.link!)}
+          className="min-w-0 cursor-pointer text-left text-sm text-gray-800 underline-offset-2 transition hover:text-gray-950 hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1"
+          aria-label={`Open details: ${line.label.length > 120 ? `${line.label.slice(0, 120)}…` : line.label}`}
+        >
+          {line.label}
+        </button>
+      ) : (
+        <span className="text-sm text-gray-800">{line.label}</span>
+      )}
+    </li>
+  );
+}
+
 function DailyBriefDialog({
   open,
   onClose,
   blocks,
+  onLineNavigate,
 }: {
   open: boolean;
   onClose: () => void;
-  blocks: {
-    icon: "followups" | "meetings" | "momentum" | "loops";
-    title: string;
-    subtitle: string;
-    items: string[];
-    secondarySubtitle?: string;
-    secondaryItems?: string[];
-    insight: string;
-  }[];
+  blocks: DailyBriefBlock[];
+  onLineNavigate: (link: DailyBriefLink) => void;
 }) {
   const [showInsights, setShowInsights] = useState(true);
 
@@ -506,21 +513,19 @@ function DailyBriefDialog({
                     </div>
                   </div>
                   <ul className="ml-4 mt-2 space-y-1.5 text-sm text-gray-800">
-                    {block.items.map((item) => (
-                      <li key={item} className="flex items-start gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
-                        <span>{item}</span>
-                      </li>
+                    {block.items.map((item, idx) => (
+                      <DailyBriefLineRow key={dailyBriefLineKey(item, idx)} line={item} onNavigate={onLineNavigate} />
                     ))}
                   </ul>
                   {block.secondarySubtitle ? <p className="ml-6 mt-2 text-xs text-gray-600">{block.secondarySubtitle}</p> : null}
                   {block.secondaryItems?.length ? (
                     <ul className="ml-4 mt-1 space-y-1.5 text-sm text-gray-800">
-                      {block.secondaryItems.map((item) => (
-                        <li key={item} className="flex items-start gap-2">
-                          <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-gray-400" />
-                          <span>{item}</span>
-                        </li>
+                      {block.secondaryItems.map((item, idx) => (
+                        <DailyBriefLineRow
+                          key={dailyBriefLineKey(item, idx)}
+                          line={item}
+                          onNavigate={onLineNavigate}
+                        />
                       ))}
                     </ul>
                   ) : null}
@@ -576,29 +581,6 @@ function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum
       <path fill="currentColor" d="M12 8.3a1 1 0 0 1 1 1V12h2.2a1 1 0 1 1 0 2H12a1 1 0 0 1-1-1V9.3a1 1 0 0 1 1-1Z" />
     </svg>
   );
-}
-
-const WEEKDAY_SHORT_TO_LONG: Record<string, string> = {
-  Mon: "Monday",
-  Tue: "Tuesday",
-  Wed: "Wednesday",
-  Thu: "Thursday",
-  Fri: "Friday",
-  Sat: "Saturday",
-  Sun: "Sunday",
-};
-
-/** Today “Coming up” — day + time + TZ (e.g. “Today · 2:00 PM ET”). */
-function commitmentDayTime(datetime: string): string {
-  const t = datetime.trim();
-  if (/^Today\s+/i.test(t)) return `Today · ${t.replace(/^Today\s+/i, "")}`;
-  if (/^Tomorrow\s+/i.test(t)) return `Tomorrow · ${t.replace(/^Tomorrow\s+/i, "")}`;
-  const m = t.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)/);
-  if (m) {
-    const long = WEEKDAY_SHORT_TO_LONG[m[1]!] ?? m[1];
-    return `${long} · ${m[2]!.trim()}`;
-  }
-  return t;
 }
 
 function TodayGroup({
