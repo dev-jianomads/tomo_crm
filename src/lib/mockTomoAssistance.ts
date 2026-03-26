@@ -188,39 +188,67 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Draft check-in", "Review Q2 timeline", "Open Today action", "Explain playbook"],
   },
 
-  // c1: Commitment (Northwind Q4 review)
+  // c1: UBS HF Update
   c1: {
     initialMessage: {
-      text: "Keep the next move tight and confirm owner. Here's a Tomo-drafted brief:",
+      text: "UBS HF Update at 2pm — prep pack is ready. Focus on attribution vs peers and any allocator questions from Charly's desk.",
       blocks: [
-        { kind: "brief", summary: "Northwind is leaning in after strong Q4; wants clarity on pipeline and risk.", agenda: ["Performance highlights", "Risk / hedging stance", "Next allocation step"], commitments: ["Send follow-up deck", "Confirm allocation window"] },
+        {
+          kind: "brief",
+          summary: "Quarterly hedge fund update; focus on attribution, capacity, and any strategy shifts Charly flagged in email.",
+          agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
+          commitments: ["Send one-pager after call", "Confirm data room access renewal"],
+        },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Open full brief", "Draft follow-up email", "Create action", "Explain this playbook"],
+    suggestedPrompts: ["Open full brief", "3-bullet talking points", "What should I emphasize?", "Draft follow-up email"],
   },
 
-  // c2: Commitment (Peakline)
+  // c2: CPPIB Investment Update
   c2: {
     initialMessage: {
-      text: "Peakline opened deck multiple times — need to secure a concrete slot.",
+      text: "CPPIB Investment Update at 4pm — Frank asked about liquidity terms and co-invest last time. Brief is locked.",
       blocks: [
-        { kind: "brief", summary: "Peakline opened deck multiple times; need to secure a concrete slot.", agenda: ["Scheduling decision", "Performance Q&A", "Next steps to commit"], commitments: ["Lock meeting time", "Share concise 3-bullet update"] },
+        {
+          kind: "brief",
+          summary: "Investment Update on current fund; Frank asked for liquidity terms and co-invest posture last touch.",
+          agenda: ["Portfolio update", "Liquidity & terms", "Path to next IC"],
+          commitments: ["Follow up on co-invest deck", "Share updated DDQ index"],
+        },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Open full brief", "Draft follow-up email", "Create action"],
+    suggestedPrompts: ["Open full brief", "Prep liquidity Q&A", "Draft IC timeline email", "Create action"],
   },
 
-  // c3: Commitment (Lumen) — no brief
+  // c3: Blackstone FoF catch-up
   c3: {
     initialMessage: {
-      text: "Lumen async update — keep it concise and actionable.",
+      text: "Blackstone FoF catch-up tomorrow 10am — Tom is re-scoping sleeve sizing. Brief covers H2 priorities and pacing.",
       blocks: [
-        { kind: "workflow_link", playbookId: "pb-update-followup", name: "Update → Follow-Up", description: "After monthly update, segment LPs by engagement and auto-draft follow-ups." },
+        {
+          kind: "brief",
+          summary: "Relationship catch-up ahead of allocator season; Tom is re-scoping FoF sleeve sizing.",
+          agenda: ["Priorities for H2", "Allocation pacing", "What they need before IC"],
+          commitments: ["Circulate performance pack", "Propose two follow-up slots"],
+        },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Draft update email", "Create action", "Explain this playbook"],
+    suggestedPrompts: ["Open full brief", "Draft opener email", "Summarize last thread", "Create action"],
+  },
+
+  // c4: BNF intro — no brief
+  c4: {
+    initialMessage: {
+      text: "BNF Capital intro with Nic Fallows — prep pack isn’t available yet (light CRM context). I can still help you outline a tight intro arc.",
+      blocks: [
+        { kind: "snapshot", text: "First touch: keep it credential-led, one proof point, and a clear ask for next step. Offer two times only." },
+        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
+      ],
+    },
+    suggestedPrompts: ["Draft 5-line intro", "Suggest two meeting slots", "What to ask Nic", "Explain intro playbook"],
   },
 
   // b1: Brief (Northwind)

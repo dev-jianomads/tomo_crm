@@ -17,7 +17,7 @@ import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
-import { actions, briefs, commitments, type ActionAttentionCard } from "@/lib/mockData";
+import { actions, briefs, commitments, type ActionAttentionCard, type Commitment } from "@/lib/mockData";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
 
@@ -209,7 +209,7 @@ export default function HomePage() {
       icon: "meetings",
       title: "Meetings Requiring Prep",
       subtitle: "Today's LP meetings",
-      items: ["10:30 - Pension Fund B", "14:00 - FoF C"],
+      items: ["14:00 — UBS · Charly Malek · HF Update", "16:00 — CPPIB · Frank Ieraci · Investment Update"],
       insight: "Generated from commitments and linked brief context.",
     },
     {
@@ -326,11 +326,16 @@ export default function HomePage() {
                   meta: c.datetime,
                   extra: undefined,
                   type: "commitment" as const,
-                  pills: c.window === "today" ? ["Happening today"] : ["Within 72h"],
+                  pills: [] as string[],
+                  commitmentPrepBadge:
+                    c.prepStatus === "ready"
+                      ? { label: "Prep ready", tone: "peach" as const }
+                      : { label: "Prep not available", tone: "amber" as const },
                   comingUpCard: {
                     company: c.lp,
                     contactName: c.contactName,
-                    timeLabel: commitmentTimeOnly(c.datetime),
+                    timeLabel: commitmentDayTime(c.datetime),
+                    meetingTitle: c.title,
                   },
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
@@ -357,7 +362,7 @@ export default function HomePage() {
         detailContent={detailContent}
         detailVisible={false}
         contextTitle={selectedTitle ?? undefined}
-        assistantChips={["What's urgent today?", "Why is Lumen blocked?", "Prep my next meeting", "Summarize what needs attention"]}
+        assistantChips={["What's urgent today?", "Prep my 4pm CPPIB call", "Summarize what needs attention", "Who needs a follow-up?"]}
         todayContext={{
           actions: sortedActionItems.slice(0, 6).map((a) => ({
             id: a.id,
@@ -573,12 +578,27 @@ function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum
   );
 }
 
-/** Strip day prefix from commitment datetime for Today “Coming up” second row (time + TZ only). */
-function commitmentTimeOnly(datetime: string): string {
-  return datetime
-    .replace(/^(?:Today|Tomorrow)\s+/i, "")
-    .replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+/i, "")
-    .trim();
+const WEEKDAY_SHORT_TO_LONG: Record<string, string> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+  Sun: "Sunday",
+};
+
+/** Today “Coming up” — day + time + TZ (e.g. “Today · 2:00 PM ET”). */
+function commitmentDayTime(datetime: string): string {
+  const t = datetime.trim();
+  if (/^Today\s+/i.test(t)) return `Today · ${t.replace(/^Today\s+/i, "")}`;
+  if (/^Tomorrow\s+/i.test(t)) return `Tomorrow · ${t.replace(/^Tomorrow\s+/i, "")}`;
+  const m = t.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)/);
+  if (m) {
+    const long = WEEKDAY_SHORT_TO_LONG[m[1]!] ?? m[1];
+    return `${long} · ${m[2]!.trim()}`;
+  }
+  return t;
 }
 
 function TodayGroup({
@@ -600,8 +620,9 @@ function TodayGroup({
     attentionCard?: ActionAttentionCard;
     /** Prefix for row 3 (User Defined / Tomo draft); trigger follows from `meta`. */
     attentionRow3Prefix?: string;
-    /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, peach pill). */
-    comingUpCard?: { company: string; contactName: string; timeLabel: string };
+    /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, prep badge). */
+    comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
+    commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -644,13 +665,22 @@ function TodayGroup({
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
                     {item.comingUpCard.company} : {item.comingUpCard.contactName}
                   </p>
-                  {item.pills[0] ? (
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
-                      {item.pills[0]}
+                  {item.commitmentPrepBadge ? (
+                    <span
+                      className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
+                        item.commitmentPrepBadge.tone === "amber"
+                          ? "border-amber-200 bg-amber-50 text-amber-950"
+                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+                      }`}
+                    >
+                      {item.commitmentPrepBadge.label}
                     </span>
                   ) : null}
                 </div>
                 <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
+                {item.comingUpCard.meetingTitle ? (
+                  <p className="mt-0.5 min-w-0 truncate text-[11px] leading-snug text-gray-500">{item.comingUpCard.meetingTitle}</p>
+                ) : null}
               </>
             ) : (
               <>
@@ -1067,13 +1097,14 @@ function CommitmentDetail({
   onCreateAction,
   detailsOnly = false,
 }: {
-  commitment: { id: string; title: string; datetime: string; lp: string; contactName: string } | undefined | null;
+  commitment: Commitment | undefined | null;
   brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
   onCreateAction: () => void;
   detailsOnly?: boolean;
 }) {
   if (!commitment) return <Placeholder title="No commitment selected" />;
+  const prepReady = commitment.prepStatus === "ready";
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -1085,16 +1116,34 @@ function CommitmentDetail({
             {commitment.lp} · {commitment.contactName}
           </p>
         </div>
+        <span
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            prepReady
+              ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+              : "border-amber-200 bg-amber-50 text-amber-950"
+          }`}
+        >
+          {prepReady ? "Prep ready" : "Prep not available"}
+        </span>
       </div>
       {detailsOnly ? null : (
         <>
-          <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Meeting prep</p>
-              <TomoAiBadge label="Tomo insight" />
+          {prepReady ? (
+            <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-gray-900">Meeting prep</p>
+                <TomoAiBadge label="Tomo insight" />
+              </div>
+              <p className="text-sm tomo-ai-text">Brief is ready — skim summary and agenda before you join.</p>
             </div>
-            <p className="text-sm tomo-ai-text">Keep the next move tight and confirm owner.</p>
-          </div>
+          ) : (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <p className="font-medium text-amber-950">Prep not available</p>
+              <p className="mt-1 text-sm text-amber-900/90">
+                Intro call with limited CRM context — Tomo couldn’t auto-build a brief. Add notes or request prep manually.
+              </p>
+            </div>
+          )}
           {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
           <SuggestedWorkflows />
         </>

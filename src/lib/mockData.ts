@@ -194,6 +194,8 @@ export type ActionItem = {
   workflowPillOverride?: "Tomo";
 };
 
+export type CommitmentPrepStatus = "ready" | "not_available";
+
 export type Commitment = {
   id: string;
   title: string;
@@ -203,6 +205,8 @@ export type Commitment = {
   contactName: string;
   briefId?: string;
   window: "next72h" | "today";
+  /** Brief / prep pack status for Coming up badge */
+  prepStatus: CommitmentPrepStatus;
 };
 
 export type Brief = {
@@ -779,29 +783,42 @@ export const actions: ActionItem[] = [
 export const commitments: Commitment[] = [
   {
     id: "c1",
-    title: "Northwind Q4 review",
-    datetime: "Tomorrow 10:30 AM ET",
-    lp: "Northwind Capital",
-    contactName: "Alex Morgan",
-    briefId: "b1",
-    window: "next72h",
+    title: "HF Update",
+    datetime: "Today 2:00 PM ET",
+    lp: "UBS",
+    contactName: "Charly Malek",
+    briefId: "b3",
+    window: "today",
+    prepStatus: "ready",
   },
   {
     id: "c2",
-    title: "Peakline allocation check-in",
-    datetime: "Fri 2:00 PM ET",
-    lp: "Peakline Partners",
-    contactName: "Jamie Chen",
-    briefId: "b2",
-    window: "next72h",
+    title: "Investment Update",
+    datetime: "Today 4:00 PM ET",
+    lp: "CPPIB",
+    contactName: "Frank Ieraci",
+    briefId: "b4",
+    window: "today",
+    prepStatus: "ready",
   },
   {
     id: "c3",
-    title: "Lumen async update send",
-    datetime: "Today 5:00 PM ET",
-    lp: "Lumen LP",
-    contactName: "Priya Desai",
-    window: "today",
+    title: "Catch-up",
+    datetime: "Tomorrow 10:00 AM ET",
+    lp: "Blackstone Fund-of-Fund",
+    contactName: "Tom Cruise",
+    briefId: "b5",
+    window: "next72h",
+    prepStatus: "ready",
+  },
+  {
+    id: "c4",
+    title: "Intro Call",
+    datetime: "Thu 3:00 PM ET",
+    lp: "BNF Capital",
+    contactName: "Nic Fallows",
+    window: "next72h",
+    prepStatus: "not_available",
   },
 ];
 
@@ -834,6 +851,39 @@ export const briefs: Brief[] = [
     summary: "Peakline opened deck multiple times; need to secure a concrete slot.",
     agenda: ["Scheduling decision", "Performance Q&A", "Next steps to commit"],
     commitments: ["Lock meeting time", "Share concise 3-bullet update"],
+  },
+  {
+    id: "b3",
+    meetingTitle: "HF Update — UBS",
+    lp: "UBS",
+    datetime: "Today 2:00 PM ET",
+    status: "Ready",
+    openLoops: 1,
+    summary: "Quarterly hedge fund update; focus on attribution, capacity, and any strategy shifts Charly flagged in email.",
+    agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
+    commitments: ["Send one-pager after call", "Confirm data room access renewal"],
+  },
+  {
+    id: "b4",
+    meetingTitle: "Investment Update — CPPIB",
+    lp: "CPPIB",
+    datetime: "Today 4:00 PM ET",
+    status: "Ready",
+    openLoops: 2,
+    summary: "Investment Update on current fund; Frank asked for liquidity terms and co-invest posture last touch.",
+    agenda: ["Portfolio update", "Liquidity & terms", "Path to next IC"],
+    commitments: ["Follow up on co-invest deck", "Share updated DDQ index"],
+  },
+  {
+    id: "b5",
+    meetingTitle: "Catch-up — Blackstone FoF",
+    lp: "Blackstone Fund-of-Fund",
+    datetime: "Tomorrow 10:00 AM ET",
+    status: "Ready",
+    openLoops: 1,
+    summary: "Relationship catch-up ahead of allocator season; Tom is re-scoping FoF sleeve sizing.",
+    agenda: ["Priorities for H2", "Allocation pacing", "What they need before IC"],
+    commitments: ["Circulate performance pack", "Propose two follow-up slots"],
   },
 ];
 
