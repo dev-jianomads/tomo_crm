@@ -429,13 +429,14 @@ function DailyBriefLineRow({
         <button
           type="button"
           onClick={() => onNavigate(line.link!)}
-          className="min-w-0 cursor-pointer text-left text-sm text-gray-800 underline-offset-2 transition hover:text-gray-950 hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1"
+          title={line.label}
+          className="min-w-0 cursor-pointer text-left text-sm leading-snug text-gray-800 underline-offset-2 transition hover:text-gray-950 hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1"
           aria-label={`Open details: ${line.label.length > 120 ? `${line.label.slice(0, 120)}…` : line.label}`}
         >
-          {line.label}
+          <span className="line-clamp-2 sm:line-clamp-none">{line.label}</span>
         </button>
       ) : (
-        <span className="text-sm text-gray-800">{line.label}</span>
+        <span className="text-sm leading-snug text-gray-800">{line.label}</span>
       )}
     </li>
   );
@@ -452,7 +453,8 @@ function DailyBriefDialog({
   blocks: DailyBriefBlock[];
   onLineNavigate: (link: DailyBriefLink) => void;
 }) {
-  const [showInsights, setShowInsights] = useState(true);
+  /** Off by default — keeps the modal scannable; turn on for per-section context. */
+  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -466,82 +468,93 @@ function DailyBriefDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/30 p-4 sm:items-center sm:p-5"
+      onClick={onClose}
+    >
       <div
-        className={`w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-xl sm:p-5 ${
+        className={`my-auto flex w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl ${
           showInsights ? "max-w-2xl" : "max-w-xl"
-        }`}
+        } max-h-[min(92dvh,calc(100vh-2rem))] sm:max-h-[min(88dvh,calc(100dvh-2.5rem))]`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
-            <h2 className="text-lg font-semibold accent-title">Daily Brief</h2>
-            <p className="text-sm text-gray-600">A focused read on where attention should go right now.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowInsights((prev) => !prev)}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-md border hover:bg-gray-50 ${
-                showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200"
-              }`}
-              aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-              title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-            >
-              <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
-            </button>
-            <button
-              onClick={onClose}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50"
-              aria-label="Close Daily Brief"
-            >
-              X
-            </button>
+        <div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
+              <h2 className="text-lg font-semibold accent-title">Daily Brief</h2>
+              <p className="text-sm text-gray-600">Tap a line to open details. Toggle sparkles for Tomo notes.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowInsights((prev) => !prev)}
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-md border hover:bg-gray-50 ${
+                  showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200"
+                }`}
+                aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+                title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+              >
+                <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                aria-label="Close Daily Brief"
+              >
+                X
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
-          {blocks.map((block) => (
-            <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3">
-              <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-2">
-                    <BriefSectionIcon kind={block.icon} />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{block.title}</p>
-                      <p className="text-xs text-gray-600">{block.subtitle}</p>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+          <div className="space-y-2.5 sm:space-y-3">
+            {blocks.map((block) => (
+              <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-2.5 py-2.5 sm:px-3 sm:py-2.5">
+                <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
+                      <BriefSectionIcon kind={block.icon} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{block.title}</p>
+                        <p className="text-xs text-gray-600">{block.subtitle}</p>
+                      </div>
                     </div>
-                  </div>
-                  <ul className="ml-4 mt-2 space-y-1.5 text-sm text-gray-800">
-                    {block.items.map((item, idx) => (
-                      <DailyBriefLineRow key={dailyBriefLineKey(item, idx)} line={item} onNavigate={onLineNavigate} />
-                    ))}
-                  </ul>
-                  {block.secondarySubtitle ? <p className="ml-6 mt-2 text-xs text-gray-600">{block.secondarySubtitle}</p> : null}
-                  {block.secondaryItems?.length ? (
-                    <ul className="ml-4 mt-1 space-y-1.5 text-sm text-gray-800">
-                      {block.secondaryItems.map((item, idx) => (
-                        <DailyBriefLineRow
-                          key={dailyBriefLineKey(item, idx)}
-                          line={item}
-                          onNavigate={onLineNavigate}
-                        />
+                    <ul className="ml-4 mt-1.5 space-y-1 text-sm text-gray-800 sm:mt-2 sm:space-y-1.5">
+                      {block.items.map((item, idx) => (
+                        <DailyBriefLineRow key={dailyBriefLineKey(item, idx)} line={item} onNavigate={onLineNavigate} />
                       ))}
                     </ul>
+                    {block.secondarySubtitle ? (
+                      <p className="ml-6 mt-1.5 text-xs font-medium text-gray-600">{block.secondarySubtitle}</p>
+                    ) : null}
+                    {block.secondaryItems?.length ? (
+                      <ul className="ml-4 mt-1 space-y-1 text-sm text-gray-800 sm:space-y-1.5">
+                        {block.secondaryItems.map((item, idx) => (
+                          <DailyBriefLineRow
+                            key={dailyBriefLineKey(item, idx)}
+                            line={item}
+                            onNavigate={onLineNavigate}
+                          />
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  {showInsights ? (
+                    <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-56 sm:shrink-0">
+                      <div className="flex items-center justify-start">
+                        <TomoAiBadge label="Tomo insight" />
+                      </div>
+                      <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
+                    </div>
                   ) : null}
                 </div>
-
-                {showInsights ? (
-                  <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-60 sm:shrink-0">
-                    <div className="flex items-center justify-start">
-                      <TomoAiBadge label="Tomo insight" />
-                    </div>
-                    <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ))}
+              </section>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,4 @@
 import type { ActionItem, Brief, Commitment } from "@/lib/mockData";
-import { commitmentDayTime } from "@/lib/today-commitment-time";
 
 export type DailyBriefLink =
   | { kind: "action"; id: string }
@@ -23,19 +22,20 @@ export type DailyBriefBlock = {
 };
 
 const ATTENTION_CAP = 6;
-const MEETING_CAP = 8;
-const LOOP_CAP = 6;
+const MEETING_CAP = 6;
+const LOOP_CAP = 5;
 
-function formatActionLine(a: ActionItem): string {
+/** One-line summary for the Daily Brief modal (full detail stays in the drawer). */
+function formatActionLineBrief(a: ActionItem): string {
   if (a.attentionCard) {
-    const { company, contactName, workKind, workSubject } = a.attentionCard;
-    return `${company} : ${contactName} — ${workKind}: ${workSubject}`;
+    const { company, workSubject } = a.attentionCard;
+    return `${company} · ${workSubject}`;
   }
-  return a.title;
+  return a.title.length > 80 ? `${a.title.slice(0, 77)}…` : a.title;
 }
 
 function commitmentBriefLine(c: Commitment): string {
-  return `${commitmentDayTime(c.datetime)} — ${c.lp} · ${c.contactName} · ${c.title}`;
+  return `${c.datetime} · ${c.lp} · ${c.title}`;
 }
 
 /**
@@ -51,15 +51,15 @@ export function buildDailyBriefBlocks(
   const followItems: DailyBriefLine[] =
     attention.length > 0
       ? attention.map((a) => ({
-          label: formatActionLine(a),
+          label: formatActionLineBrief(a),
           link: { kind: "action", id: a.id },
         }))
       : [{ label: "Nothing flagged in What needs your attention right now." }];
 
   const followInsight =
     sortedActions.length > attention.length
-      ? `Matches the top ${attention.length} cards on Today (${sortedActions.length} total in queue).`
-      : "Matches What needs your attention on Today.";
+      ? `Showing ${attention.length} of ${sortedActions.length} on Today.`
+      : "Same items as What needs your attention.";
 
   const todayMeetings = sortedCommitments.filter((c) => c.window === "today");
   const meetingPool = sortedCommitments.length ? sortedCommitments : [];
@@ -72,13 +72,9 @@ export function buildDailyBriefBlocks(
       : [{ label: "No upcoming commitments on Coming up." }];
   const meetingExtra = meetingPool.length > MEETING_CAP ? meetingPool.length - MEETING_CAP : 0;
   const meetingSubtitle =
-    todayMeetings.length > 0
-      ? `${todayMeetings.length} today · same list as Coming up`
-      : "Same order as Coming up on Today";
+    todayMeetings.length > 0 ? `${todayMeetings.length} today · Coming up` : "Coming up";
   const meetingInsight =
-    meetingExtra > 0
-      ? `${meetingExtra} more meeting(s) on Today — scroll Coming up for the full list.`
-      : "Pulled from Coming up — same commitments and sort as the Today page.";
+    meetingExtra > 0 ? `+${meetingExtra} more on Coming up.` : "Same order as Coming up.";
 
   const momentumAction = sortedActions.find((a) => a.type === "outreach");
   const coolingActions = sortedActions.filter(
@@ -92,28 +88,21 @@ export function buildDailyBriefBlocks(
   let momentumSecondarySubtitle: string | undefined;
   if (momentumAction) {
     const actionLink: DailyBriefLink = { kind: "action", id: momentumAction.id };
-    momentumItems = [momentumAction.trigger, ...momentumAction.evidence.slice(0, 2)]
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((label) => ({ label, link: actionLink }));
-    if (momentumItems.length === 0) {
-      momentumItems = [{ label: formatActionLine(momentumAction), link: actionLink }];
-    }
-    momentumSecondarySubtitle =
-      coolingActions.length > 0 ? "Cooling / re-engagement signals from the same queue" : undefined;
+    momentumItems = [{ label: momentumAction.title, link: actionLink }];
+    momentumSecondarySubtitle = coolingActions.length > 0 ? "Cooling" : undefined;
     momentumSecondary =
       coolingActions.length > 0
-        ? coolingActions.slice(0, 3).map((a) => ({
-            label: formatActionLine(a),
+        ? coolingActions.slice(0, 2).map((a) => ({
+            label: formatActionLineBrief(a),
             link: { kind: "action", id: a.id },
           }))
         : undefined;
   } else {
-    momentumItems = [{ label: "No momentum or newsletter review card in What needs your attention right now." }];
+    momentumItems = [{ label: "No momentum task on Today." }];
   }
   const momentumInsight = momentumAction
-    ? "Sourced from the outreach / momentum-style action on Today (same card as in the attention list)."
-    : "When a momentum or newsletter task appears in What needs your attention, it will summarize here.";
+    ? "From the momentum / newsletter card on Today."
+    : "Appears when that card is in your attention queue.";
 
   const loopLines: DailyBriefLine[] = [];
   const seenLoopLabels = new Set<string>();
@@ -126,36 +115,35 @@ export function buildDailyBriefBlocks(
 
   for (const a of sortedActions) {
     if (a.status === "blocked") {
-      pushLoop({ label: formatActionLine(a), link: { kind: "action", id: a.id } });
+      pushLoop({ label: formatActionLineBrief(a), link: { kind: "action", id: a.id } });
     }
   }
   for (const b of allBriefs) {
     if (b.openLoops > 0) {
       pushLoop({
-        label: `${b.meetingTitle} — ${b.openLoops} open loop${b.openLoops === 1 ? "" : "s"}`,
+        label: `${b.meetingTitle} · ${b.openLoops} loop${b.openLoops === 1 ? "" : "s"}`,
         link: { kind: "brief", id: b.id },
       });
     }
   }
   for (const a of sortedActions) {
     if (a.status === "approval" && (a.type === "follow_up" || a.type === "scheduling")) {
-      pushLoop({ label: formatActionLine(a), link: { kind: "action", id: a.id } });
+      pushLoop({ label: formatActionLineBrief(a), link: { kind: "action", id: a.id } });
     }
   }
 
   const loopsDisplay: DailyBriefLine[] =
     loopLines.length > 0
       ? loopLines
-      : [{ label: "No blocked items or open brief loops in the current snapshot." }];
+      : [{ label: "No open loops in this snapshot." }];
 
-  const loopsInsight =
-    "Combines blocked attention items, meeting briefs with open loops, and approval queues for follow-ups / scheduling — all from Today’s data.";
+  const loopsInsight = "Blocked items, briefs with open loops, and approvals waiting on you.";
 
   return [
     {
       icon: "followups",
       title: "Priority Follow-ups",
-      subtitle: "Top of What needs your attention",
+      subtitle: "Attention queue",
       items: followItems,
       insight: followInsight,
     },
@@ -169,7 +157,7 @@ export function buildDailyBriefBlocks(
     {
       icon: "momentum",
       title: "Momentum Signals",
-      subtitle: momentumAction ? "From your momentum / newsletter attention card" : "Momentum queue",
+      subtitle: momentumAction ? "Newsletter / momentum" : "Momentum",
       items: momentumItems,
       secondarySubtitle: momentumSecondarySubtitle,
       secondaryItems: momentumSecondary,
