@@ -972,14 +972,6 @@ export const healthMetrics: HealthMetric[] = [
   },
 ];
 
-export const activityLog: ActivityLogEntry[] = [
-  { id: "log1", ts: "Today 09:10", actor: "TOMO", summary: "Drafted outreach to Northwind" },
-  { id: "log2", ts: "Today 08:20", actor: "TOMO", summary: "Checked engagement for Peakline" },
-  { id: "log3", ts: "Yesterday 18:05", actor: "User", summary: "Approved follow-up to Peakline" },
-  { id: "log4", ts: "Yesterday 14:33", actor: "TOMO", summary: "Updated brief for Northwind" },
-  { id: "log5", ts: "Yesterday 10:12", actor: "User", summary: "Snoozed Lumen outreach" },
-];
-
 
 
 

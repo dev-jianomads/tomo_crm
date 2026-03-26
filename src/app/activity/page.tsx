@@ -5,29 +5,9 @@ import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
+import { getTomoActivityPageEvents, type TomoActivityEventType, type TomoActivityPageEvent } from "@/lib/tomo-activity-feed";
 
-type EventType = "outreach" | "update" | "meeting" | "system";
-
-type ActivityEvent = {
-  id: string;
-  when: string;
-  actor: "TOMO" | "User";
-  summary: string;
-  type: EventType;
-  entity?: string;
-  fundId?: string;
-};
-
-const mockEvents: ActivityEvent[] = [
-  { id: "e1", when: "Today 09:10", actor: "TOMO", summary: "Drafted outreach to Northwind", type: "outreach", entity: "Northwind Capital", fundId: "fund-1" },
-  { id: "e2", when: "Today 08:20", actor: "TOMO", summary: "Checked engagement for Peakline", type: "update", entity: "Peakline Partners", fundId: "fund-2" },
-  { id: "e3", when: "Yesterday 18:05", actor: "User", summary: "Approved follow-up to Peakline", type: "outreach", entity: "Peakline Partners", fundId: "fund-2" },
-  { id: "e4", when: "Yesterday 14:33", actor: "TOMO", summary: "Updated brief for Northwind", type: "meeting", entity: "Northwind Capital", fundId: "fund-1" },
-  { id: "e5", when: "Yesterday 10:12", actor: "User", summary: "Snoozed Lumen outreach", type: "system", entity: "Lumen LP", fundId: "fund-3" },
-  { id: "e6", when: "Mon 16:04", actor: "TOMO", summary: "Logged momentum change: Stalled → Heating", type: "update", entity: "Momentum", fundId: "fund-1" },
-];
-
-const eventTypes: { value: EventType | "all"; label: string }[] = [
+const eventTypes: { value: TomoActivityEventType | "all"; label: string }[] = [
   { value: "all", label: "All" },
   { value: "outreach", label: "Outreach" },
   { value: "meeting", label: "Meetings" },
@@ -38,20 +18,21 @@ const eventTypes: { value: EventType | "all"; label: string }[] = [
 export default function ActivityPage() {
   const { ready } = useRequireSession();
   const { funds, activeFundId, setActiveFundId } = useFunds();
-  const [typeFilter, setTypeFilter] = useState<EventType | "all">("all");
+  const allEvents = useMemo(() => getTomoActivityPageEvents(), []);
+  const [typeFilter, setTypeFilter] = useState<TomoActivityEventType | "all">("all");
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("all");
-  const [activeId, setActiveId] = useState<string | null>(mockEvents[0]?.id ?? null);
+  const [activeId, setActiveId] = useState<string | null>(allEvents[0]?.id ?? null);
 
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    return allEvents.filter((event) => {
       const matchesFund = activeFundId === "all" || event.fundId === activeFundId;
       const matchesType = typeFilter === "all" || event.type === typeFilter;
       const matchesDate =
         dateFilter === "all" ||
-        (dateFilter === "today" ? event.when.startsWith("Today") : !event.when.startsWith("Mon")); // lightweight mock window
+        (dateFilter === "today" ? event.when.startsWith("Today") : !event.when.startsWith("Mon"));
       return matchesFund && matchesType && matchesDate;
     });
-  }, [activeFundId, dateFilter, typeFilter]);
+  }, [activeFundId, allEvents, dateFilter, typeFilter]);
 
   const active = filteredEvents.find((e) => e.id === activeId) ?? filteredEvents[0] ?? null;
 
@@ -59,7 +40,7 @@ export default function ActivityPage() {
     <div className="flex h-full flex-col">
       <PageListHeader
         label="Activity"
-        description="Scan Tomo automations and your own actions across funds—filter by type or time window, then open an entry for context."
+        description="Tomo automations and system steps across your CRM and playbooks—filter by fund, type, or time window, then open an entry for context."
       >
         <div className="grid grid-cols-3 gap-2 text-xs">
           <select
@@ -77,14 +58,22 @@ export default function ActivityPage() {
               </option>
             ))}
           </select>
-          <select className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as EventType | "all")}>
+          <select
+            className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as TomoActivityEventType | "all")}
+          >
             {eventTypes.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
           </select>
-          <select className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none" value={dateFilter} onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}>
+          <select
+            className="rounded-md border border-gray-200 px-2 py-1 text-gray-800 focus:border-blue-500 focus:outline-none"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}
+          >
             <option value="all">Any date</option>
             <option value="today">Today</option>
             <option value="week">This week</option>
@@ -94,28 +83,11 @@ export default function ActivityPage() {
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
         {filteredEvents.map((event) => (
-          <button
-            key={event.id}
-            onClick={() => setActiveId(event.id)}
-            className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              activeId === event.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-            }`}
-          >
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>{event.when}</span>
-              <span
-                className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
-                  event.actor === "TOMO" ? "bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]" : "bg-blue-50 text-blue-700"
-                }`}
-              >
-                {event.actor}
-              </span>
-            </div>
-            <p className="mt-1 text-sm font-medium text-gray-900">{event.summary}</p>
-            {event.entity ? <p className="text-xs text-gray-600">{event.entity}</p> : null}
-          </button>
+          <ActivityRow key={event.id} event={event} selected={activeId === event.id} onSelect={() => setActiveId(event.id)} />
         ))}
-        {!filteredEvents.length ? <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No activity for this view.</div> : null}
+        {!filteredEvents.length ? (
+          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">No activity for this view.</div>
+        ) : null}
       </div>
     </div>
   );
@@ -132,16 +104,28 @@ export default function ActivityPage() {
               <h2 className="text-lg font-semibold accent-title">{active.summary}</h2>
               <p className="text-sm text-gray-600">{active.when}</p>
             </div>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">{active.actor}</span>
+            <span className="rounded-full bg-[color:var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--accent-ink)]">{active.actor}</span>
           </div>
           <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
             <p className="font-medium text-gray-900">Type</p>
             <p className="text-sm text-gray-700 capitalize">{active.type}</p>
           </div>
+          {active.workflowLabel ? (
+            <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+              <p className="font-medium text-gray-900">Workflow / playbook</p>
+              <p className="text-sm text-gray-700">{active.workflowLabel}</p>
+            </div>
+          ) : null}
           {active.entity ? (
             <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
               <p className="font-medium text-gray-900">Linked entity</p>
               <p className="text-sm text-gray-700">{active.entity}</p>
+            </div>
+          ) : null}
+          {active.actionTitle ? (
+            <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+              <p className="font-medium text-gray-900">Today action</p>
+              <p className="text-sm text-gray-700">{active.actionTitle}</p>
             </div>
           ) : null}
           <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
@@ -161,8 +145,37 @@ export default function ActivityPage() {
       listContent={listContent}
       detailContent={detailContent}
       contextTitle={active?.summary}
-      assistantChips={["Summarize today", "Filter to my entries", "Export this log"]}
+      assistantChips={["Summarize today", "Filter by workflow", "Export this log"]}
     />
   );
 }
 
+function ActivityRow({
+  event,
+  selected,
+  onSelect,
+}: {
+  event: TomoActivityPageEvent;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-md border px-3 py-2 text-left transition ${
+        selected ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center justify-between text-xs text-gray-600">
+        <span>{event.when}</span>
+        <span className="rounded-full bg-[color:var(--accent-soft)] px-2 py-1 text-[11px] font-semibold text-[color:var(--accent-ink)]">{event.actor}</span>
+      </div>
+      <p className="mt-1 text-sm font-medium text-gray-900">{event.summary}</p>
+      {event.entity ? <p className="text-xs text-gray-600">{event.entity}</p> : null}
+      {event.workflowLabel && event.workflowLabel !== event.entity ? (
+        <p className="text-xs text-gray-500">{event.workflowLabel}</p>
+      ) : null}
+    </button>
+  );
+}
