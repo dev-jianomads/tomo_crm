@@ -175,7 +175,7 @@ function WorkflowsPageContent() {
         const summary = formatFilterSummary(criteria);
         return summary ? `${count} targets — ${summary}` : `${count} targets`;
       }
-      return "No targets set";
+      return "Global — no CRM audience";
     };
   }, [playbookOverrides, pipelines]);
 

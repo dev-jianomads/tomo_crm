@@ -70,12 +70,25 @@ const DDQ_RESPONSE: WorkflowDefinition = {
   ],
 };
 
+const NY_ROADSHOW: WorkflowDefinition = {
+  title: "New York Roadshow",
+  trigger: "7 days before trip on 6 June 2026",
+  steps: [
+    {
+      name: "Request availability",
+      type: "action",
+      description: "Send draft email to pipeline requesting availability",
+    },
+  ],
+};
+
 export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
   intro_tracker: INTRO_TRACKER,
   post_meeting: POST_MEETING,
   update_followup: UPDATE_FOLLOWUP,
   no_response_stall: NO_RESPONSE_STALL,
   ddq_response: DDQ_RESPONSE,
+  ny_roadshow: NY_ROADSHOW,
 };
 
 // ── Tomo Default workflow templates (keyed by workflow id) ───────────────────
@@ -176,6 +189,12 @@ export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {
     "Change review wait to 24h deadline",
     "Auto-attach audited financials from Oakmont request",
   ],
+  ny_roadshow: [
+    "Mention specific NYC dates in the draft",
+    "Add CC to ops for calendar holds",
+    "Shorten lead time to 5 days instead of 7",
+    "Attach one-pager PDF to the draft",
+  ],
 };
 
 // ── Mock context blurbs per playbook type ───────────────────────────────────
@@ -201,6 +220,10 @@ const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
     `1 active DDQ in progress.\n` +
     `Rachel Novak (Oakmont Fund of Funds) sent a 47-question DDQ 2 days ago. ` +
     `31 answers matched from historical responses. 8 flagged for legal review.`,
+  ny_roadshow:
+    `NYC roadshow: trip date 6 June 2026.\n` +
+    `Schedule trigger: 7 days prior (30 May 2026). ` +
+    `Next run will draft a single outbound email asking your pipeline for availability — no CRM segment; you choose recipients when sending.`,
 };
 
 // ── Welcome summary for initial chat context ────────────────────────────────

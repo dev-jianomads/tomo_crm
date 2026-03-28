@@ -6,7 +6,13 @@
 import type { StructuredFilterCriteria } from "./relationshipFilters";
 import { MOCK_PIPELINE_IDS_FUND_1 } from "./pipelines";
 
-export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response" | "no_response_stall";
+export type PlaybookType =
+  | "intro_tracker"
+  | "post_meeting"
+  | "update_followup"
+  | "ddq_response"
+  | "no_response_stall"
+  | "ny_roadshow";
 
 export type Playbook = {
   id: string;
@@ -78,6 +84,16 @@ export const suggestedPlaybooks: Playbook[] = [
     enabled: false,
     targetCount: 1,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
+  },
+  {
+    id: "pb-ny-roadshow-2026",
+    name: "New York Roadshow",
+    type: "ny_roadshow",
+    description:
+      "One week before the NYC trip, draft an email to your pipeline asking for meeting availability.",
+    summary:
+      "7 days before 6 June 2026 → draft email to pipeline requesting availability. Global workflow (no CRM audience).",
+    enabled: true,
   },
 ];
 
