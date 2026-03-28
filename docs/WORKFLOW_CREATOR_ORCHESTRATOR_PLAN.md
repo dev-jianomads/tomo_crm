@@ -30,13 +30,15 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 0 — Contract & types (no runtime change)
 
+**Status:** Done — `OrchestratorSurface` / `OrchestratorContext` extended; `buildSystemPrompt` branch for `workflow_creator` so it does not fall through to `general`; tool map stays `{}` for this surface (existing `if` conditions never match `workflow_creator`).
+
 **Files:** `src/app/api/tomo/orchestrate/route.ts` (types only at top), optionally `src/lib/orchestratorTypes.ts` if you prefer extracting shared context types for the client.
 
 - Extend `OrchestratorSurface` with `"workflow_creator"`.
 - Extend `OrchestratorContext` with optional `workflowCreator?: { pipelineId: string; pipelineName: string; filterSummary?: string }`.
 - Document in comments that **no tools** are registered for this surface until Phase 1.
 
-**Risk:** None (types only, unused).
+**Risk:** None (no UI sends this surface yet; safe to test manually via API).
 
 ---
 

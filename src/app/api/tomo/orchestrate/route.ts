@@ -8,6 +8,10 @@
  * - draft_reply: Generate email or meeting invite drafts
  *
  * Context (page, selection, workflowContext, etc.) is injected to guide tool selection.
+ *
+ * Surfaces:
+ * - workflow_creator — collect name/trigger/action for a new user workflow (from pipeline dialog).
+ *   Phase 0: types + prompt only; no tools registered until Phase 1 (create_user_workflow).
  */
 
 import { streamText, tool, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
@@ -25,10 +29,16 @@ import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
-export type OrchestratorSurface = "drawer" | "workflow" | "general" | "filter";
+export type OrchestratorSurface =
+  | "drawer"
+  | "workflow"
+  | "general"
+  | "filter"
+  /** Pipeline “Use in workflow” custom creator chat — tools added in Phase 1 */
+  | "workflow_creator";
 
 export type OrchestratorContext = {
-  /** Surface determines which tools are available. drawer=entity actions only, workflow=workflow only, general=all tools */
+  /** Surface determines which tools are available. drawer=entity actions only, workflow=workflow only, general=all tools. workflow_creator has no tools until Phase 1. */
   surface?: OrchestratorSurface;
   page?:
     | "home"
@@ -53,6 +63,12 @@ export type OrchestratorContext = {
     relationshipIds: string[];
     relationshipCount: number;
   } | null;
+  /** When surface is workflow_creator: pipeline already chosen in the dialog; will be linked on the client after Phase 1 tool runs */
+  workflowCreator?: {
+    pipelineId: string;
+    pipelineName: string;
+    filterSummary?: string;
+  };
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
   /** For filter surface: id/name/firm so Tomo can resolve "Lumen" or "Acme Capital" to entityId */
@@ -138,6 +154,29 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     } else {
       lines.push(``, `relationshipLookup: empty — no relationships in current view. Suggest the user filter or show all before updating.`);
     }
+  } else if (surface === "workflow_creator") {
+    lines.push(
+      ``,
+      `You are in **workflow creator** mode. The user is defining a new user-defined workflow (name, trigger, action) from the pipeline flow.`,
+      ``,
+      `IMPORTANT: No tools are registered for this surface yet (Phase 1 will add create_user_workflow). Reply in plain conversation only.`,
+      `You may ask for or reflect back name, trigger, and action — but do NOT claim the app saved or created a workflow.`,
+      ``,
+      `Keep replies short. When context includes a pre-selected pipeline, treat it as fixed for this session.`,
+    );
+    const wc = context.workflowCreator;
+    if (wc) {
+      lines.push(
+        ``,
+        `Pre-selected pipeline: "${wc.pipelineName}" (id: ${wc.pipelineId}).`,
+        wc.filterSummary ? `Filter summary: ${wc.filterSummary}` : `No filter summary provided.`,
+      );
+    } else {
+      lines.push(``, `workflowCreator context was not sent — ask the user to reopen the dialog from a pipeline if needed.`);
+    }
+    // Do not append shared context below (page, todayContext, workflowContext, etc.) — it would
+    // contradict the narrow creator task if the client sends a bloated context payload.
+    return lines.join("\n");
   } else {
     lines.push(
       ``,
@@ -284,7 +323,8 @@ export async function POST(req: Request) {
   const surface: OrchestratorSurface = context.surface ?? "general";
   const systemPrompt = buildSystemPrompt(context, surface);
 
-  // Build tools conditionally by surface
+  // Build tools conditionally by surface.
+  // workflow_creator: intentionally {} until Phase 1 (create_user_workflow).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tools: Record<string, any> = {};
 
