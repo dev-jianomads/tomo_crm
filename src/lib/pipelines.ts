@@ -18,6 +18,13 @@ export type Pipeline = {
 
 export const PIPELINES_STORAGE_KEY = "tomo-pipelines-v1";
 
+/** Stable ids for seeded mock pipelines (`generateMockPipelines`). Use as playbook defaults. */
+export const MOCK_PIPELINE_IDS_FUND_1 = {
+  q1TargetList: `mock-pipeline-fund-1-1`,
+  activeDiligence: `mock-pipeline-fund-1-2`,
+  familyOfficeOutreach: `mock-pipeline-fund-1-3`,
+} as const;
+
 /**
  * Generate 3 mock pipelines for fund-1 only (avoids duplication when viewing "all" funds).
  * Uses realistic StructuredFilterCriteria based on mock CRM (150 relationships).
@@ -29,7 +36,7 @@ function generateMockPipelines(): Pipeline[] {
 
   return [
     {
-      id: `mock-pipeline-${fundId}-1`,
+      id: MOCK_PIPELINE_IDS_FUND_1.q1TargetList,
       name: "Q1 Target List",
       fundId,
       filterCriteria: {
@@ -40,7 +47,7 @@ function generateMockPipelines(): Pipeline[] {
       createdAt: now,
     },
     {
-      id: `mock-pipeline-${fundId}-2`,
+      id: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
       name: "Active Diligence Focus",
       fundId,
       filterCriteria: {
@@ -50,7 +57,7 @@ function generateMockPipelines(): Pipeline[] {
       createdAt: now,
     },
     {
-      id: `mock-pipeline-${fundId}-3`,
+      id: MOCK_PIPELINE_IDS_FUND_1.familyOfficeOutreach,
       name: "Family Office Outreach",
       fundId,
       filterCriteria: {

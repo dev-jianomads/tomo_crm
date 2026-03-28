@@ -103,22 +103,34 @@ function WorkflowsPageContent() {
     }
   }, [selectedPlaybook, selectedTomoDefaultId]);
 
-  // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and navigate
+  // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and clean URL
   useEffect(() => {
     if (!pipelineIdFromUrl || !pipelines.length) return;
     const pipeline = pipelines.find((p) => p.id === pipelineIdFromUrl);
     if (!pipeline) return;
-    const targetPlaybookId = playbookIdFromUrl || suggestedPlaybooks[0]?.id;
+    const targetPlaybookId =
+      playbookIdFromUrl &&
+      suggestedPlaybooks.some((p) => p.id === playbookIdFromUrl)
+        ? playbookIdFromUrl
+        : suggestedPlaybooks[0]?.id;
     if (!targetPlaybookId) return;
     setPlaybookOverrides((prev) => ({
       ...prev,
       [targetPlaybookId]: { pipelineId: pipeline.id },
     }));
+    setSelectedTomoDefaultId(null);
     setSelectedPlaybookId(targetPlaybookId);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("pipelineId");
     router.replace(params.toString() ? `?${params}` : "/workflows", { scroll: false });
-  }, [pipelineIdFromUrl, pipelines, playbookIdFromUrl, router, searchParams, setPlaybookOverrides]);
+  }, [
+    pipelineIdFromUrl,
+    pipelines,
+    playbookIdFromUrl,
+    router,
+    searchParams,
+    setPlaybookOverrides,
+  ]);
 
   // Row resize handler
   useEffect(() => {
@@ -193,6 +205,29 @@ function WorkflowsPageContent() {
       pipelineName: pipeline.name,
       relationshipIds: rels.map((r) => r.id),
       relationshipCount: rels.length,
+    };
+  }, [selectedPlaybook, playbookOverrides, pipelines]);
+
+  /** Resolved pipeline for user-defined playbook — banner above process flow */
+  const playbookPipelineBanner = useMemo(() => {
+    if (!selectedPlaybook) return null;
+    const override = playbookOverrides[selectedPlaybook.id];
+    const pipelineId = override?.pipelineId ?? selectedPlaybook.pipelineId;
+    if (!pipelineId) return null;
+    const pipeline = pipelines.find((p) => p.id === pipelineId);
+    if (!pipeline) {
+      return {
+        kind: "missing" as const,
+        pipelineId,
+      };
+    }
+    const count = applyFilters(relationships, pipeline.filterCriteria).length;
+    const filterSummary = formatFilterSummary(pipeline.filterCriteria);
+    return {
+      kind: "ok" as const,
+      pipeline,
+      count,
+      filterSummary,
     };
   }, [selectedPlaybook, playbookOverrides, pipelines]);
 
@@ -286,10 +321,34 @@ function WorkflowsPageContent() {
       </div>
       <div ref={splitContainerRef} className="relative flex flex-1 min-h-0 flex-col">
         <div
-          className="min-h-0 shrink-0 overflow-hidden border-b border-gray-200 bg-gray-50/50"
+          className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-gray-50/50"
           style={{ height: `${topPanelHeight}%` }}
         >
-          <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
+          {playbookPipelineBanner?.kind === "ok" && (
+            <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                Audience pipeline
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                {playbookPipelineBanner.pipeline.name}
+              </p>
+              <p className="mt-0.5 text-xs text-gray-600">
+                {playbookPipelineBanner.count} relationships
+                {playbookPipelineBanner.filterSummary
+                  ? ` · ${playbookPipelineBanner.filterSummary}`
+                  : ""}
+              </p>
+            </div>
+          )}
+          {playbookPipelineBanner?.kind === "missing" && (
+            <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+              Linked pipeline not found for this fund ({playbookPipelineBanner.pipelineId}). Reset
+              filters or pick another pipeline from Pipelines.
+            </div>
+          )}
+          <div className="min-h-0 flex-1 overflow-auto">
+            <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
+          </div>
         </div>
         <div
           className="h-2 shrink-0 cursor-row-resize bg-gray-100 transition-colors hover:bg-blue-100 active:bg-blue-200"

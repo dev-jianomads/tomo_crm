@@ -4,6 +4,7 @@
  */
 
 import type { StructuredFilterCriteria } from "./relationshipFilters";
+import { MOCK_PIPELINE_IDS_FUND_1 } from "./pipelines";
 
 export type PlaybookType = "intro_tracker" | "post_meeting" | "update_followup" | "ddq_response" | "no_response_stall";
 
@@ -32,6 +33,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Intro tracker: Detect intro → log source credit → draft reply 24h → escalate if silent. Draft only.",
     enabled: true,
     targetCount: 1,
+    pipelineId: MOCK_PIPELINE_IDS_FUND_1.q1TargetList,
     filterCriteria: { tier: "Tier 1", band: "Heating Up" },
   },
   {
@@ -42,6 +44,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Post-meeting: Extract transcript → draft follow-up → human approval → send & monitor. Draft only.",
     enabled: true,
     targetCount: 1,
+    pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
     filterCriteria: { tier: ["Tier 1", "Tier 2"], band: "Active-Stable" },
   },
   {
@@ -52,6 +55,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "Update follow-up: Segment by tier → track opens → auto-draft after 5d. Draft only.",
     enabled: true,
     targetCount: 24,
+    pipelineId: MOCK_PIPELINE_IDS_FUND_1.q1TargetList,
     filterCriteria: { tier: ["Tier 1", "Tier 2"] },
   },
   {
@@ -62,6 +66,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "No response 5d: Flag blocked → suggest CRM updates → set reminder. Links to Today card.",
     enabled: true,
     targetCount: 1,
+    pipelineId: MOCK_PIPELINE_IDS_FUND_1.familyOfficeOutreach,
     filterCriteria: { tier: ["Tier 1", "Tier 2"] },
   },
   {
@@ -72,6 +77,7 @@ export const suggestedPlaybooks: Playbook[] = [
     summary: "DDQ engine: Parse questionnaire → match answers → draft with citations → human review. Sandboxed.",
     enabled: false,
     targetCount: 1,
+    pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
   },
 ];
 
