@@ -13,6 +13,11 @@ import { useFunds } from "@/components/fund-provider";
 import { relationships } from "@/lib/mockData";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
+import {
+  CUSTOM_PLAYBOOKS_STORAGE_KEY,
+  type CustomPlaybookStored,
+  workflowDefinitionFromCustomStored,
+} from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/storage";
 import {
   DEFAULT_TEMPLATES,
@@ -30,6 +35,25 @@ import {
 } from "@heroicons/react/24/outline";
 
 type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
+
+/** Suggestion chips when a user-created (custom) workflow is selected */
+const CUSTOM_WORKFLOW_CHAT_CHIPS = [
+  "Make the trigger more specific",
+  "Clarify the action in one sentence",
+  "Add a wait step after the action",
+  "Rename the workflow title",
+];
+
+function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
+  return {
+    id: c.id,
+    name: c.name,
+    type: "ny_roadshow",
+    description: c.trigger,
+    summary: c.action,
+    enabled: true,
+  };
+}
 
 function WorkflowsPageContent() {
   const { ready } = useRequireSession();
@@ -51,6 +75,7 @@ function WorkflowsPageContent() {
     "tomo-playbook-pipeline-overrides",
     {}
   );
+  const [customPlaybooks] = usePersistentState<CustomPlaybookStored[]>(CUSTOM_PLAYBOOKS_STORAGE_KEY, []);
   const [tomoDefaultOpen, setTomoDefaultOpen] = useState(true);
 
   // When landing from Today with ?tomoDefault=td-xxx, expand Tomo Default accordion
@@ -84,35 +109,45 @@ function WorkflowsPageContent() {
     [selectedPlaybookId]
   );
 
+  const selectedCustomPlaybook = useMemo(
+    () => customPlaybooks.find((c) => c.id === selectedPlaybookId) ?? null,
+    [customPlaybooks, selectedPlaybookId]
+  );
+
   const selectedTomoDefault = useMemo(
     () => tomoDefaultWorkflows.find((w) => w.id === selectedTomoDefaultId) ?? null,
     [selectedTomoDefaultId]
   );
 
-  const hasSelection = Boolean(selectedPlaybook) || Boolean(selectedTomoDefault);
-  const selectedName = selectedPlaybook?.name ?? selectedTomoDefault?.name ?? null;
+  const hasSelection =
+    Boolean(selectedPlaybook) || Boolean(selectedCustomPlaybook) || Boolean(selectedTomoDefault);
+  const selectedName =
+    selectedPlaybook?.name ?? selectedCustomPlaybook?.name ?? selectedTomoDefault?.name ?? null;
 
   // Load default template when selection changes
   useEffect(() => {
     if (selectedPlaybook) {
       setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+    } else if (selectedCustomPlaybook) {
+      setWorkflow(workflowDefinitionFromCustomStored(selectedCustomPlaybook));
     } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
       setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     } else {
       setWorkflow(null);
     }
-  }, [selectedPlaybook, selectedTomoDefaultId]);
+  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
 
   // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and clean URL
   useEffect(() => {
     if (!pipelineIdFromUrl || !pipelines.length) return;
     const pipeline = pipelines.find((p) => p.id === pipelineIdFromUrl);
     if (!pipeline) return;
+    const urlPlaybookValid =
+      Boolean(playbookIdFromUrl) &&
+      (suggestedPlaybooks.some((p) => p.id === playbookIdFromUrl) ||
+        customPlaybooks.some((c) => c.id === playbookIdFromUrl));
     const targetPlaybookId =
-      playbookIdFromUrl &&
-      suggestedPlaybooks.some((p) => p.id === playbookIdFromUrl)
-        ? playbookIdFromUrl
-        : suggestedPlaybooks[0]?.id;
+      urlPlaybookValid && playbookIdFromUrl ? playbookIdFromUrl : suggestedPlaybooks[0]?.id;
     if (!targetPlaybookId) return;
     setPlaybookOverrides((prev) => ({
       ...prev,
@@ -130,6 +165,7 @@ function WorkflowsPageContent() {
     router,
     searchParams,
     setPlaybookOverrides,
+    customPlaybooks,
   ]);
 
   // Row resize handler
@@ -182,10 +218,12 @@ function WorkflowsPageContent() {
   const handleResetWorkflow = useCallback(() => {
     if (selectedPlaybook) {
       setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+    } else if (selectedCustomPlaybook) {
+      setWorkflow(workflowDefinitionFromCustomStored(selectedCustomPlaybook));
     } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
       setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     }
-  }, [selectedPlaybook, selectedTomoDefaultId]);
+  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
 
   const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
     setWorkflow(def);
@@ -193,9 +231,10 @@ function WorkflowsPageContent() {
   }, []);
 
   const pipelineContext = useMemo(() => {
-    if (!selectedPlaybook) return null;
-    const override = playbookOverrides[selectedPlaybook.id];
-    const pipelineId = override?.pipelineId ?? selectedPlaybook.pipelineId;
+    const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
+    if (!rowId) return null;
+    const override = playbookOverrides[rowId];
+    const pipelineId = override?.pipelineId ?? selectedPlaybook?.pipelineId;
     if (!pipelineId) return null;
     const pipeline = pipelines.find((p) => p.id === pipelineId);
     if (!pipeline) return null;
@@ -206,13 +245,14 @@ function WorkflowsPageContent() {
       relationshipIds: rels.map((r) => r.id),
       relationshipCount: rels.length,
     };
-  }, [selectedPlaybook, playbookOverrides, pipelines]);
+  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines]);
 
   /** Resolved pipeline for user-defined playbook — banner above process flow */
   const playbookPipelineBanner = useMemo(() => {
-    if (!selectedPlaybook) return null;
-    const override = playbookOverrides[selectedPlaybook.id];
-    const pipelineId = override?.pipelineId ?? selectedPlaybook.pipelineId;
+    const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
+    if (!rowId) return null;
+    const override = playbookOverrides[rowId];
+    const pipelineId = override?.pipelineId ?? selectedPlaybook?.pipelineId;
     if (!pipelineId) return null;
     const pipeline = pipelines.find((p) => p.id === pipelineId);
     if (!pipeline) {
@@ -229,7 +269,7 @@ function WorkflowsPageContent() {
       count,
       filterSummary,
     };
-  }, [selectedPlaybook, playbookOverrides, pipelines]);
+  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines]);
 
   const listContent = (
     <div className="flex h-full flex-col">
@@ -291,6 +331,18 @@ function WorkflowsPageContent() {
                   onSelect={() => handleSelectPlaybook(playbook.id)}
                 />
               ))}
+              {customPlaybooks.map((c) => {
+                const row = stubPlaybookCardRow(c);
+                return (
+                  <PlaybookCard
+                    key={c.id}
+                    playbook={row}
+                    targetsSummary={getPlaybookTargetsSummary(row)}
+                    isSelected={selectedPlaybookId === c.id}
+                    onSelect={() => handleSelectPlaybook(c.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -301,6 +353,9 @@ function WorkflowsPageContent() {
   const tomoDefaultSuggestions = selectedTomoDefaultId
     ? TOMO_DEFAULT_SUGGESTIONS[selectedTomoDefaultId]
     : undefined;
+  const workflowChatSuggestions = selectedCustomPlaybook
+    ? CUSTOM_WORKFLOW_CHAT_CHIPS
+    : tomoDefaultSuggestions;
 
   const detailContent = hasSelection && workflow ? (
     <div className="flex h-full flex-col">
@@ -360,9 +415,11 @@ function WorkflowsPageContent() {
             workflow={workflow}
             playbookName={selectedName!}
             playbookType={selectedPlaybook?.type}
-            pipelineContext={selectedPlaybook ? pipelineContext : null}
+            pipelineContext={
+              selectedPlaybook || selectedCustomPlaybook ? pipelineContext : null
+            }
             onWorkflowUpdate={handleWorkflowUpdate}
-            suggestions={tomoDefaultSuggestions}
+            suggestions={workflowChatSuggestions}
           />
         </div>
       </div>

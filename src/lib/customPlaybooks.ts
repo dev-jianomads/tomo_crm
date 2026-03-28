@@ -3,6 +3,7 @@
  * Stored in localStorage only — no server persistence in mock mode.
  */
 
+import type { WorkflowDefinition } from "./workflow-templates";
 import { readFromStorage, writeToStorage } from "./storage";
 
 export const CUSTOM_PLAYBOOKS_STORAGE_KEY = "tomo-custom-playbooks-v1";
@@ -55,4 +56,13 @@ export function appendCustomPlaybook(input: {
   list.push(entry);
   saveCustomPlaybooks(list);
   return entry;
+}
+
+/** Minimal process definition for the workflows UI (trigger + single action step). */
+export function workflowDefinitionFromCustomStored(c: CustomPlaybookStored): WorkflowDefinition {
+  return {
+    title: c.name,
+    trigger: c.trigger,
+    steps: [{ name: "Action", type: "action", description: c.action }],
+  };
 }

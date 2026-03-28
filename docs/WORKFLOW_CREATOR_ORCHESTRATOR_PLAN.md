@@ -90,6 +90,8 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 3 — Workflows page: merge custom playbooks (read path)
 
+**Status:** Done — `usePersistentState(CUSTOM_PLAYBOOKS_STORAGE_KEY)`; list renders built-ins then customs; selection + workflow load via `workflowDefinitionFromCustomStored`; URL `playbook` + `pipelineId` accepts custom ids; pipeline banner + `WorkflowTomoChat` context/chips support custom rows (`CUSTOM_WORKFLOW_CHAT_CHIPS`).
+
 **Files:** `src/app/workflows/page.tsx`, possibly `src/lib/mockPlaybooks.ts` (types only)
 
 - Derive `allUserPlaybooks = useMemo(() => [...suggestedPlaybooks, ...customFromStorage], [customVersion])`.
