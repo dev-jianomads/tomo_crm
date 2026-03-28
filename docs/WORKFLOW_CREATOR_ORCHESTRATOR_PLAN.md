@@ -109,6 +109,8 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 4 — Dialog: Custom tab + chat + kill switch
 
+**Status:** Done — `ENABLE_WORKFLOW_CREATOR` on `pipeline/page.tsx`; `UseInWorkflowDialog` tabs **Existing** | **Custom**; `src/components/workflow-creator-chat.tsx` (`useChat` + `workflow_creator` surface, `onToolCall` → `appendCustomPlaybook` + parent `setPlaybookOverrides` + toast); **Open in Workflows** after create; shared `tomo-playbook-pipeline-overrides` via `usePersistentState` on pipeline page.
+
 **File:** `src/app/pipeline/page.tsx` (or extract `UseInWorkflowDialog` + `WorkflowCreatorChat` to `src/components/`)
 
 1. **Constant:** `const ENABLE_WORKFLOW_CREATOR = true` at top of file (or feature flag module).

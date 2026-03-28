@@ -21,6 +21,13 @@ import { PipelineStageTomoChat } from "@/components/pipeline-stage-tomo-chat";
 import { usePersistentState } from "@/lib/storage";
 import { toast } from "sonner";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
+import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
+import type { CustomPlaybookStored } from "@/lib/customPlaybooks";
+
+/** Set false to hide Custom workflow creator in “Use in workflow” (Phase 4 rollback). */
+const ENABLE_WORKFLOW_CREATOR = true;
+
+type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 
 export default function PipelinePage() {
   const router = useRouter();
@@ -28,6 +35,10 @@ export default function PipelinePage() {
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
   const { pipelines, addPipeline, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
+  const [, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
+    "tomo-playbook-pipeline-overrides",
+    {}
+  );
 
   const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
   const [listName, setListName] = useState("");
@@ -270,6 +281,8 @@ export default function PipelinePage() {
           selectedPlaybookId={useWorkflowPlaybookId}
           onSelectPlaybook={setUseWorkflowPlaybookId}
           onClose={() => setUseWorkflowPipelineId(null)}
+          setPlaybookOverrides={setPlaybookOverrides}
+          router={router}
           onConfirm={() => {
             if (!useWorkflowPlaybookId) {
               toast.error("Select a workflow");
@@ -340,19 +353,35 @@ export default function PipelinePage() {
   );
 }
 
+type UseInWorkflowDialogMode = "existing" | "custom";
+
 function UseInWorkflowDialog({
   pipeline,
   selectedPlaybookId,
   onSelectPlaybook,
   onClose,
   onConfirm,
+  setPlaybookOverrides,
+  router,
 }: {
   pipeline: Pipeline;
   selectedPlaybookId: string;
   onSelectPlaybook: (id: string) => void;
   onClose: () => void;
   onConfirm: () => void;
+  setPlaybookOverrides: (
+    val: PlaybookPipelineOverrides | ((prev: PlaybookPipelineOverrides) => PlaybookPipelineOverrides)
+  ) => void;
+  router: ReturnType<typeof useRouter>;
 }) {
+  const [mode, setMode] = useState<UseInWorkflowDialogMode>("existing");
+  const [createdEntry, setCreatedEntry] = useState<CustomPlaybookStored | null>(null);
+
+  useEffect(() => {
+    setMode("existing");
+    setCreatedEntry(null);
+  }, [pipeline.id]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -364,6 +393,27 @@ function UseInWorkflowDialog({
   const pipelineSummary = formatFilterSummary(pipeline.filterCriteria);
   const pipelineCount = applyFilters(relationships, pipeline.filterCriteria).length;
 
+  const handleWorkflowCreated = (entry: CustomPlaybookStored) => {
+    setPlaybookOverrides((prev) => ({
+      ...prev,
+      [entry.id]: { pipelineId: pipeline.id },
+    }));
+    setCreatedEntry(entry);
+    toast.success("Workflow created!");
+  };
+
+  const openCreatedInWorkflows = () => {
+    if (!createdEntry) return;
+    const q = new URLSearchParams({
+      playbook: createdEntry.id,
+      pipelineId: pipeline.id,
+    });
+    onClose();
+    router.push(`/workflows?${q.toString()}`);
+  };
+
+  const dialogMaxWidth = ENABLE_WORKFLOW_CREATOR ? "max-w-lg" : "max-w-md";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/30 p-4 sm:items-center sm:p-5"
@@ -374,7 +424,7 @@ function UseInWorkflowDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="use-in-workflow-title"
-        className="my-auto flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl max-h-[min(92dvh,calc(100vh-2rem))]"
+        className={`my-auto flex w-full ${dialogMaxWidth} flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl max-h-[min(92dvh,calc(100vh-2rem))]`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
@@ -402,32 +452,81 @@ function UseInWorkflowDialog({
               ×
             </button>
           </div>
+          {ENABLE_WORKFLOW_CREATOR && (
+            <div className="mt-3 flex gap-2" role="tablist" aria-label="Workflow source">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "existing"}
+                onClick={() => setMode("existing")}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  mode === "existing"
+                    ? "bg-[color:var(--accent-soft)] text-gray-900 ring-1 ring-[color:var(--accent)]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                Existing
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "custom"}
+                onClick={() => setMode("custom")}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  mode === "custom"
+                    ? "bg-[color:var(--accent-soft)] text-gray-900 ring-1 ring-[color:var(--accent)]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-          <p className="mb-2 text-xs font-medium text-gray-500">User-defined workflows</p>
-          <ul className="space-y-2">
-            {suggestedPlaybooks.map((pb) => {
-              const selected = selectedPlaybookId === pb.id;
-              return (
-                <li key={pb.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectPlaybook(pb.id)}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition ${
-                      selected
-                        ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:var(--accent)]"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <span className="font-semibold text-gray-900">{pb.name}</span>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{pb.summary}</p>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {(!ENABLE_WORKFLOW_CREATOR || mode === "existing") && (
+            <>
+              <p className="mb-2 text-xs font-medium text-gray-500">User-defined workflows</p>
+              <ul className="space-y-2">
+                {suggestedPlaybooks.map((pb) => {
+                  const selected = selectedPlaybookId === pb.id;
+                  return (
+                    <li key={pb.id}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectPlaybook(pb.id)}
+                        className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+                          selected
+                            ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:var(--accent)]"
+                            : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="font-semibold text-gray-900">{pb.name}</span>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{pb.summary}</p>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+          {ENABLE_WORKFLOW_CREATOR && mode === "custom" && (
+            <div className="space-y-3">
+              {createdEntry ? (
+                <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+                  Created <span className="font-semibold">{createdEntry.name}</span>. Open it in Workflows to edit the
+                  flow with Tomo.
+                </p>
+              ) : null}
+              <WorkflowCreatorChat
+                key={pipeline.id}
+                pipeline={pipeline}
+                onWorkflowCreated={handleWorkflowCreated}
+              />
+            </div>
+          )}
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:px-5">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:px-5">
           <button
             type="button"
             onClick={onClose}
@@ -435,9 +534,20 @@ function UseInWorkflowDialog({
           >
             Cancel
           </button>
-          <button type="button" onClick={onConfirm} className="button-primary rounded-md px-3 py-2 text-sm font-medium">
-            Open in Workflows
-          </button>
+          {ENABLE_WORKFLOW_CREATOR && mode === "custom" && createdEntry ? (
+            <button
+              type="button"
+              onClick={openCreatedInWorkflows}
+              className="button-primary rounded-md px-3 py-2 text-sm font-medium"
+            >
+              Open in Workflows
+            </button>
+          ) : null}
+          {(!ENABLE_WORKFLOW_CREATOR || mode === "existing") && (
+            <button type="button" onClick={onConfirm} className="button-primary rounded-md px-3 py-2 text-sm font-medium">
+              Open in Workflows
+            </button>
+          )}
         </div>
       </div>
     </div>
