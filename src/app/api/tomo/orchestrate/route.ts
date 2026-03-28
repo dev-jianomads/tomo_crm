@@ -10,8 +10,7 @@
  * Context (page, selection, workflowContext, etc.) is injected to guide tool selection.
  *
  * Surfaces:
- * - workflow_creator — collect name/trigger/action for a new user workflow (from pipeline dialog).
- *   Phase 0: types + prompt only; no tools registered until Phase 1 (create_user_workflow).
+ * - workflow_creator — collect name/trigger/action; tool create_user_workflow returns payload for client persistence.
  */
 
 import { streamText, tool, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
@@ -34,11 +33,11 @@ export type OrchestratorSurface =
   | "workflow"
   | "general"
   | "filter"
-  /** Pipeline “Use in workflow” custom creator chat — tools added in Phase 1 */
+  /** Pipeline “Use in workflow” custom creator chat — create_user_workflow only */
   | "workflow_creator";
 
 export type OrchestratorContext = {
-  /** Surface determines which tools are available. drawer=entity actions only, workflow=workflow only, general=all tools. workflow_creator has no tools until Phase 1. */
+  /** Surface determines which tools are available. workflow_creator = create_user_workflow only. */
   surface?: OrchestratorSurface;
   page?:
     | "home"
@@ -157,12 +156,19 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
   } else if (surface === "workflow_creator") {
     lines.push(
       ``,
-      `You are in **workflow creator** mode. The user is defining a new user-defined workflow (name, trigger, action) from the pipeline flow.`,
+      `You are in **workflow creator** mode. The user is defining a new user-defined workflow from the pipeline dialog.`,
       ``,
-      `IMPORTANT: No tools are registered for this surface yet (Phase 1 will add create_user_workflow). Reply in plain conversation only.`,
-      `You may ask for or reflect back name, trigger, and action — but do NOT claim the app saved or created a workflow.`,
+      `You have exactly one tool: **create_user_workflow**. Use it only when you have all three fields, each with real content:`,
+      `- **name** — short title for the workflow`,
+      `- **trigger** — when or why it runs (schedule, event, or condition)`,
+      `- **action** — what it does (e.g. draft email, notify, update CRM)`,
       ``,
-      `Keep replies short. When context includes a pre-selected pipeline, treat it as fixed for this session.`,
+      `When all three are clear from the conversation, call create_user_workflow once with trimmed strings. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
+      ``,
+      `The pre-selected pipeline (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different pipeline unless they explicitly want to cancel.`,
+      `After a successful tool call, confirm briefly in plain language; do not claim server-side database persistence (the client applies the result).`,
+      ``,
+      `Keep replies concise.`,
     );
     const wc = context.workflowCreator;
     if (wc) {
@@ -305,6 +311,12 @@ const workflowSchema = z.object({
     .describe("Ordered list of workflow steps (1-8)"),
 });
 
+const createUserWorkflowSchema = z.object({
+  name: z.string().min(1).describe("Short display name for the new workflow"),
+  trigger: z.string().min(1).describe("When or why the workflow runs"),
+  action: z.string().min(1).describe("What the workflow does (e.g. draft email to pipeline)"),
+});
+
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -324,9 +336,37 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPrompt(context, surface);
 
   // Build tools conditionally by surface.
-  // workflow_creator: intentionally {} until Phase 1 (create_user_workflow).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tools: Record<string, any> = {};
+
+  if (surface === "workflow_creator") {
+    const pipelineIdForCreator = context.workflowCreator?.pipelineId;
+    tools.create_user_workflow = tool({
+      description:
+        "Finalize a new user-defined workflow. Call when name, trigger, and action are all known from the conversation. The client will persist the workflow and link the pre-selected pipeline using the returned pipelineId.",
+      inputSchema: createUserWorkflowSchema,
+      execute: async ({ name, trigger, action }) => {
+        const trimmed = {
+          name: name.trim(),
+          trigger: trigger.trim(),
+          action: action.trim(),
+        };
+        if (!trimmed.name || !trimmed.trigger || !trimmed.action) {
+          return {
+            success: false as const,
+            error: "name, trigger, and action must be non-empty after trimming",
+          };
+        }
+        return {
+          success: true as const,
+          name: trimmed.name,
+          trigger: trimmed.trigger,
+          action: trimmed.action,
+          pipelineId: pipelineIdForCreator ?? null,
+        };
+      },
+    });
+  }
 
   if (surface === "general" || surface === "filter") {
     tools.filter_relationships = tool({

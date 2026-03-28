@@ -44,6 +44,8 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 1 — Orchestrator: prompt + single tool (no UI)
 
+**Status:** Done — `workflow_creator` prompt instructs use of `create_user_workflow`; tool registered only for that surface; returns `{ success, name, trigger, action, pipelineId }` (or `{ success: false, error }` if trimmed fields empty).
+
 **File:** `src/app/api/tomo/orchestrate/route.ts`
 
 1. In `buildSystemPrompt`, add:
@@ -72,13 +74,15 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 2 — Persistence schema (client-only, no dialog yet)
 
+**Status:** Done — `src/lib/customPlaybooks.ts`: `CUSTOM_PLAYBOOKS_STORAGE_KEY`, `CustomPlaybookStored`, `loadCustomPlaybooks`, `saveCustomPlaybooks`, `newCustomPlaybookId`, `appendCustomPlaybook` (returns `null` if trimmed fields empty).
+
 **New or existing module:** e.g. `src/lib/customPlaybooks.ts`
 
 - Storage key: e.g. `tomo-custom-playbooks-v1`.
 - Shape per entry: `{ id: string; name: string; trigger: string; action: string; createdAt: string }` (ISO).
 - Helpers: `loadCustomPlaybooks()`, `appendCustomPlaybook(entry)`, stable id `pb-custom-${nanoid|crypto.randomUUID}`.
 
-**Pipeline override:** Reuse existing `tomo-playbook-pipeline-overrides` — on create, set `[newId] = { pipelineId }`.
+**Pipeline override:** Reuse existing `tomo-playbook-pipeline-overrides` — on create, set `[newId] = { pipelineId }` (Phase 4 dialog applies this when calling `appendCustomPlaybook`).
 
 **Risk:** None until something reads this list.
 
