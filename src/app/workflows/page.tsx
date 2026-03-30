@@ -531,13 +531,16 @@ function PlaybookCard({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
-          <p className="mt-1 text-[11px] text-gray-500 truncate" title={targetsSummary}>
+          <p
+            className="mt-1 text-[11px] leading-snug text-gray-500 break-words"
+            title={targetsSummary}
+          >
             {targetsSummary}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           {playbook.enabled ? (
             <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
               On
