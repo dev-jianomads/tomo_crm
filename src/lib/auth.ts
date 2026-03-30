@@ -57,7 +57,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SessionState } from "./types";
 import { readFromStorage, writeToStorage } from "./storage";
@@ -153,9 +153,14 @@ export function clearSession() {
  * ```
  */
 export function useSession() {
-  const initialSession = typeof window !== "undefined" ? getSession() : null;
-  const [session, setSessionState] = useState<SessionState | null>(initialSession);
-  const ready = typeof window !== "undefined";
+  /** Seed null on server and first client paint so SSR HTML matches — read storage after mount. */
+  const [session, setSessionState] = useState<SessionState | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    setSessionState(getSession());
+    setReady(true);
+  }, []);
 
   const updateSession = (payload: SessionState | null) => {
     if (payload) {

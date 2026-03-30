@@ -20,7 +20,7 @@
  * =============================================================================
  */
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Read a value from localStorage with JSON parsing
@@ -77,7 +77,7 @@ export function writeToStorage<T>(key: string, value: T) {
  * 
  * @param key - Storage key
  * @param initial - Initial value if nothing stored
- * @returns [value, setValue, ready] tuple
+ * @returns [value, setValue, ready] tuple — `ready` is true after localStorage has been applied (always false on server).
  * 
  * USAGE:
  * ```
@@ -86,7 +86,7 @@ export function writeToStorage<T>(key: string, value: T) {
  * // Update value (auto-persists to localStorage)
  * setPanelWidth(50);
  * 
- * // Check if we're in browser (ready) before rendering
+ * // Optional: wait for stored value before rendering (avoids one-frame default)
  * if (!ready) return null;
  * ```
  * 
@@ -99,14 +99,22 @@ export function writeToStorage<T>(key: string, value: T) {
  * 
  * NOTE: For data that should sync across devices, store in Supabase
  * user_preferences table instead.
+ *
+ * HYDRATION: Always seeds React state with `initial` on the first render (server and client)
+ * so markup matches. After mount, `useLayoutEffect` reads localStorage and updates state.
+ * Third value `ready` is false until that read completes (false on server).
  */
 export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void, boolean] {
-  // Initialize from storage if available
-  const initialValue = typeof window !== "undefined" ? readFromStorage<T>(key, initial) : initial;
-  const [state, setState] = useState<T>(initialValue);
-  const ready = typeof window !== "undefined";
+  const [state, setState] = useState<T>(() => initial);
+  const [ready, setReady] = useState(false);
+  const fallbackRef = useRef(initial);
+  fallbackRef.current = initial;
 
-  // Wrapper that persists to localStorage on change
+  useLayoutEffect(() => {
+    setState(readFromStorage(key, fallbackRef.current));
+    setReady(true);
+  }, [key]);
+
   const update = (val: T | ((prev: T) => T)) => {
     setState((prev) => {
       const next = typeof val === "function" ? (val as (prev: T) => T)(prev) : val;
