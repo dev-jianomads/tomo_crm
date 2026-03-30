@@ -13,7 +13,7 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
+import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -270,8 +270,12 @@ export default function HomePage() {
               <TodayGroup
                 title="What needs your attention"
                 items={sortedActionItems.slice(0, 6).map((a) => {
-                  const isTomo = Boolean(a.workflowTomoDefaultId) || a.workflowPillOverride === "Tomo";
-                  const attentionRow3Prefix = isTomo ? "Tomo draft: " : a.workflowPlaybookId ? "User Defined: " : "";
+                  const attentionWorkflowName =
+                    (a.workflowPlaybookId &&
+                      suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
+                    (a.workflowTomoDefaultId &&
+                      tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
+                    undefined;
                   return {
                     id: a.id,
                     title: a.title,
@@ -280,7 +284,7 @@ export default function HomePage() {
                     type: "action" as const,
                     pills: [] as string[],
                     attentionCard: a.attentionCard,
-                    attentionRow3Prefix,
+                    attentionWorkflowName,
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
@@ -613,8 +617,8 @@ function TodayGroup({
     pills: string[];
     workflowName?: string;
     attentionCard?: ActionAttentionCard;
-    /** Prefix for row 3 (User Defined / Tomo draft); trigger follows from `meta`. */
-    attentionRow3Prefix?: string;
+    /** Resolved playbook / Tomo Default name for row 3; falls back to `meta` (trigger). */
+    attentionWorkflowName?: string;
     /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, prep badge). */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
     commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
@@ -650,8 +654,7 @@ function TodayGroup({
                   {item.attentionCard.workKind} : {item.attentionCard.workSubject}
                 </p>
                 <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
-                  {item.attentionRow3Prefix}
-                  {item.meta}
+                  {item.attentionWorkflowName ?? item.meta}
                 </p>
               </>
             ) : item.comingUpCard ? (
