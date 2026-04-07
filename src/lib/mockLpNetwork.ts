@@ -228,3 +228,10 @@ export function getMandatesForFund(fundId: string): NetworkLpMandate[] {
 export function countQualifiedForFund(fundId: string): number {
   return getQualifiedMandatesForFund(fundId).length;
 }
+
+/** Stable row for LP-side mandate demo (`/lp-network/mandate`). */
+export const DEMO_LP_MANDATE_ID = "lp-net-001";
+
+export function getMandateById(id: string): NetworkLpMandate | undefined {
+  return lpNetworkMandates.find((m) => m.id === id);
+}

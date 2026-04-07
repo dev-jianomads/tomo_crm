@@ -43,6 +43,7 @@ import {
   Cog6ToothIcon,
   HomeIcon,
   UserGroupIcon,
+  UserPlusIcon,
   ClipboardDocumentListIcon,
   ArrowPathRoundedSquareIcon,
   FunnelIcon,
@@ -55,8 +56,17 @@ import { usePersistentState } from "@/lib/storage";
 import { useFunds } from "@/components/fund-provider";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
-// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, ACTIVITY, SETTINGS
-type Section = "home" | "relationships" | "pipeline" | "workflows" | "activity" | "materials" | "settings" | "search";
+// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, LP NETWORK, ACTIVITY, SETTINGS
+type Section =
+  | "home"
+  | "relationships"
+  | "pipeline"
+  | "workflows"
+  | "lp_network"
+  | "activity"
+  | "materials"
+  | "settings"
+  | "search";
 
 type TodayContext = {
   actions: { id: string; title: string; trigger: string; status: string; type: string }[];
@@ -88,6 +98,7 @@ const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Sect
 
 const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
+  { href: "/lp-network", label: "LP Network", icon: UserPlusIcon, id: "lp_network" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
 
@@ -150,6 +161,7 @@ function BottomNav({ active }: { active: Section }) {
   const items = [
     ...primaryNav,
     { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section },
+    { href: "/lp-network", label: "LP Net", icon: UserPlusIcon, id: "lp_network" as Section },
     { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section },
   ];
   return (
@@ -214,7 +226,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "workflows") return [...base, "Edit workflow rules", "Add target filters", "Test run"];
-  if (section === "pipeline") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+    if (section === "pipeline") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+    if (section === "lp_network") return [...base, "Who fits our fundraise?", "Summarize intro status", "Explain double opt-in"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
