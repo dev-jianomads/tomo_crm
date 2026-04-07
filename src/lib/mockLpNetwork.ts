@@ -35,6 +35,24 @@ export const STRATEGY_TAGS_POOL = [
   "Multi-Strategy",
 ] as const;
 
+export const CHECK_SIZE_OPTIONS: CheckSizeBand[] = ["$1–5M", "$5–25M", "$25–100M", "$100M+"];
+
+export const DEPLOYMENT_OPTIONS: DeploymentStatus[] = [
+  "Actively deploying",
+  "Selectively deploying",
+  "Paused",
+  "Re-up only",
+];
+
+export const MANAGER_STAGE_OPTIONS: ManagerStagePreference[] = [
+  "Emerging <$500M AUM",
+  "Established $500M–$5B",
+  "Large $5B+",
+  "All",
+];
+
+export const LP_GEOGRAPHY_OPTIONS = ["North America", "EMEA", "APAC", "Global", "LATAM"] as const;
+
 export type IntroductionStatus =
   | "eligible"
   | "gp_requested"
