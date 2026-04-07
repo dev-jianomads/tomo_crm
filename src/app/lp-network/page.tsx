@@ -29,7 +29,7 @@ import { usePersistentState } from "@/lib/storage";
 
 export default function LpNetworkPage() {
   const { ready } = useRequireSession();
-  const { funds, activeFundId, setActiveFundId } = useFunds();
+  const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
 
   const [qualifiedOnly, setQualifiedOnly] = useState(true);
@@ -187,19 +187,11 @@ export default function LpNetworkPage() {
           >
             Preview LP mandate view (demo) →
           </Link>
+          <p className="text-[11px] text-gray-500">
+            Workspace fund: use the <strong>Fund</strong> control in the app header — lists filter by the same{" "}
+            <code className="rounded bg-gray-100 px-1 text-[10px]">fundId</code> as the rest of the mock.
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <select
-            className="rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
-            value={activeFundId}
-            onChange={(e) => setActiveFundId(e.target.value)}
-          >
-            <option value="all">Fund: All (using first fund for matches)</option>
-            {funds.map((f) => (
-              <option key={f.id} value={f.id}>
-                Fund: {f.name}
-              </option>
-            ))}
-          </select>
           <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
             <input
               type="checkbox"
@@ -239,10 +231,12 @@ export default function LpNetworkPage() {
           />
         ))}
         {!list.length ? (
-          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
-            No mandates in this view. Try turning off &quot;Qualified only&quot;, switching fund, or clearing hidden
-            mandates from browser storage.
-          </div>
+          <LpNetworkListEmpty
+            allForFundCount={allForFund.length}
+            fundDisplayName={fundDisplayName}
+            qualifiedOnly={qualifiedOnly}
+            rawListLength={rawList.length}
+          />
         ) : null}
       </div>
     </div>
@@ -252,7 +246,9 @@ export default function LpNetworkPage() {
     <div className="h-full overflow-auto p-4">
       {!selected ? (
         <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">
-          Select a mandate to see fit details, request an introduction, or hide it for now.
+          {list.length === 0
+            ? "No mandates in the current list — adjust filters, fund, or hidden items in the list pane."
+            : "Select a mandate to see fit details, request an introduction, or hide it for now."}
         </div>
       ) : (
         <LpIntroductionDetail
@@ -280,5 +276,65 @@ export default function LpNetworkPage() {
       contextTitle={selected?.displayLabel}
       assistantChips={["Who fits our fundraise?", "Summarize intro status", "Explain double opt-in"]}
     />
+  );
+}
+
+function LpNetworkListEmpty({
+  fundDisplayName,
+  qualifiedOnly,
+  allForFundCount,
+  rawListLength,
+}: {
+  fundDisplayName: string;
+  qualifiedOnly: boolean;
+  allForFundCount: number;
+  rawListLength: number;
+}) {
+  const base = "rounded-md border px-4 py-6 text-sm";
+
+  if (rawListLength > 0) {
+    return (
+      <div className={`${base} border-amber-200 bg-amber-50/60 text-gray-800`}>
+        <p className="font-medium text-gray-900">Everything in this view is hidden</p>
+        <p className="mt-2 text-gray-700">
+          &quot;Not now&quot; removed all visible mandates for <strong>{fundDisplayName}</strong>. Clear the{" "}
+          <code className="rounded bg-white px-1 text-xs">tomo-lp-dismissed</code> entry in local storage (or reset site
+          data) to see them again.
+        </p>
+      </div>
+    );
+  }
+
+  if (qualifiedOnly && allForFundCount > 0) {
+    return (
+      <div className={`${base} border-dashed border-gray-200 bg-gray-50 text-gray-700`}>
+        <p className="font-medium text-gray-900">No high-fit, actively deploying mandates for this fund</p>
+        <p className="mt-2">
+          For <strong>{fundDisplayName}</strong>, no row matches <strong>high fit + actively deploying</strong> right
+          now. Turn off <strong>Qualified only</strong> to see {allForFundCount} allocator mandate
+          {allForFundCount === 1 ? "" : "s"} in this mock for this fund.
+        </p>
+      </div>
+    );
+  }
+
+  if (allForFundCount === 0) {
+    return (
+      <div className={`${base} border-dashed border-gray-200 bg-gray-50 text-gray-700`}>
+        <p className="font-medium text-gray-900">No mandates for this fund in the mock</p>
+        <p className="mt-2">
+          Per-mandate <code className="rounded bg-white px-1 text-xs">eligibleFundIds</code> exclude{" "}
+          <strong>{fundDisplayName}</strong> for every row, or the effective fund id has no matches. Try another fund or{" "}
+          <strong>All</strong> in the header.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${base} border-dashed border-gray-200 bg-gray-50 text-gray-600`}>
+      No mandates in this view. Try turning off &quot;Qualified only&quot;, switching fund in the header, or clearing
+      hidden mandates from storage.
+    </div>
   );
 }

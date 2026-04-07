@@ -1,7 +1,10 @@
 /**
- * TOMO LP Network — mock mandate data (Phase 1).
- * Separate from GP CRM `Relationship` in mockData.ts.
- * GPs see anonymized cards only; no names, emails, or institutions on these records.
+ * TOMO LP Network — mock mandate data (prototype only).
+ *
+ * Not part of the MVP `Relationship` schema in `mockData.ts`. Production would use
+ * separate tables and RLS; this module exists for UI demos and `/lp-network` mocks.
+ *
+ * GPs see anonymized cards only — no names, emails, or institutions on these records.
  */
 
 export const LP_NETWORK_MANDATE_COUNT = 50;

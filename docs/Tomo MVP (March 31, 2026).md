@@ -274,6 +274,8 @@ The **current prototype** violates several of these (e.g. `localStorage` session
 | `/today` | Redirect → `/home` |
 | `/tasks` | Redirect → `/activity` |
 | `/contacts` | Redirect → `/relationships` |
+| `/lp-network` | LP Network mock — qualified intro list (prototype; not MVP `Relationship` schema) |
+| `/lp-network/mandate` | LP mandate preview / intros panel (prototype) |
 
 **Also in prototype (not MVP requirements):** `/materials`, `/search`; legacy **`/briefs`** redirect may exist in code but **Briefs** is not part of the MVP spec (§8).
 

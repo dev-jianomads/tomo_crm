@@ -94,9 +94,19 @@ No backend required for a credible walkthrough.
 
 ## Phase 6 — Polish and demo script
 
-- Empty state when no high-fit / active mandates for selected fund.  
-- **Fund selector:** when unhidden, filter mandates by `fundId`.  
-- Short note in this file or a header comment in `mockLpNetwork.ts`: **prototype-only**, **not** part of MVP `Relationship` schema.
+**Implemented in repo:**
+
+- **Contextual empty states** on `/lp-network` — (1) all rows hidden via “Not now”, (2) qualified filter matches nothing but other mandates exist for the fund, (3) no mandates for the effective fund id (`eligibleFundIds` mock), plus a generic fallback.
+- **Header fund selector** — Shown when `AppShell` `section === "lp_network"`; drives the same `useFunds().activeFundId` as mandate filtering (`effectiveFundId`). The in-page duplicate fund dropdown was removed; copy points users to the header control.
+- **`mockLpNetwork.ts` file header** — States prototype-only scope and separation from MVP `Relationship` data.
+
+### Demo script (5–7 minutes)
+
+1. **GP list** — From Today or Pipeline, open **LP Network**. Set **Fund** in the app header (e.g. Fund I / All). Confirm count line and cards; toggle **Qualified only**.
+2. **Intro request** — Select a mandate → **Request introduction** → optional **Demo: auto-advance** (uncheck mid-flight cancels the timer).
+3. **LP side** — Open **Preview LP mandate view** → confirm **Introductions to you** shows the row; **Approve intro** or **Pass**.
+4. **GP detail** — Back on GP view, confirm status strip; use **Simulate LP approved** or **Advance workflow (demo)** as needed.
+5. **Reset** — **Reset intro thread** or set step to **Eligible**; optional: clear `tomo-lp-dismissed` / `tomo-lp-intro-state` in devtools for a clean slate.
 
 ---
 

@@ -319,14 +319,15 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Fund selector hidden for now */}
-          {false && (
+          {/* LP Network (Phase 6): global fund selector drives mandate filtering via `useFunds` */}
+          {section === "lp_network" ? (
             <div className="flex flex-col text-left">
               <span className="text-[11px] uppercase tracking-wide text-gray-500">Fund</span>
               <select
                 className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none"
                 value={activeFundId}
                 onChange={(e) => setActiveFundId(e.target.value)}
+                aria-label="Workspace fund"
               >
                 <option value="all">All</option>
                 {funds.map((fund) => (
@@ -336,7 +337,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
                 ))}
               </select>
             </div>
-          )}
+          ) : null}
 
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-[color:var(--accent)] text-xs font-semibold text-white">
             JD
