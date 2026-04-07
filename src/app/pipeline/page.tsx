@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
@@ -115,8 +116,22 @@ export default function PipelinePage() {
       <PageListHeader
         label="Pipeline"
         description="Refine the CRM with natural-language filters, save the result as a named pipeline, and open it for funnel stages or workflow audiences."
-        action={{ href: "/workflows", label: "View workflows →" }}
-      />
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link
+            href="/workflows"
+            className="text-xs font-medium text-[color:var(--accent)] hover:underline"
+          >
+            View workflows →
+          </Link>
+          <Link
+            href="/lp-network"
+            className="text-xs font-medium text-[color:var(--accent)] hover:underline"
+          >
+            LP Network intros (demo) →
+          </Link>
+        </div>
+      </PageListHeader>
       <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Top: Filter chat */}
       <div

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -178,9 +179,15 @@ export default function LpNetworkPage() {
       <PageListHeader
         label="Qualified LP introductions"
         description="Curated allocator mandates from the TOMO LP Network. Cards stay anonymised until double opt-in — only strategy fit, cheque size, and deployment signals are shown here."
-        action={{ href: "/lp-network/mandate?demo=1", label: "Preview LP mandate view (demo) →" }}
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-col gap-2">
+          <Link
+            href="/lp-network/mandate?demo=1"
+            className="text-xs font-medium text-[color:var(--accent)] hover:underline"
+          >
+            Preview LP mandate view (demo) →
+          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <select
             className="rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
             value={activeFundId}
@@ -211,13 +218,14 @@ export default function LpNetworkPage() {
             />
             Demo: auto-advance to Awaiting LP (2s after request)
           </label>
+          </div>
+          <p className="text-xs text-gray-500">
+            TOMO has identified <span className="font-semibold text-gray-800">{qualifiedCount}</span> qualified LP
+            {qualifiedCount === 1 ? "" : "s"} for <span className="font-medium text-gray-700">{fundDisplayName}</span>.
+            Showing {list.length} in this list
+            {hiddenIds.length ? ` (${hiddenIds.length} hidden with “Not now”)` : ""}.
+          </p>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          TOMO has identified <span className="font-semibold text-gray-800">{qualifiedCount}</span> qualified LP
-          {qualifiedCount === 1 ? "" : "s"} for <span className="font-medium text-gray-700">{fundDisplayName}</span>.
-          Showing {list.length} in this list
-          {hiddenIds.length ? ` (${hiddenIds.length} hidden with “Not now”)` : ""}.
-        </p>
       </PageListHeader>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-auto px-4 py-3">

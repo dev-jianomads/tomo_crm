@@ -155,9 +155,10 @@ function NavRail({ active }: { active: Section }) {
 
 /**
  * Mobile bottom navigation bar
- * Shows 5 items: Home, Relationships, Briefs, Tasks, Settings
+ * Uses pathname prefix matching (like the desktop rail) so e.g. /lp-network/mandate highlights LP Net.
  */
 function BottomNav({ active }: { active: Section }) {
+  const pathname = usePathname();
   const items = [
     ...primaryNav,
     { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section },
@@ -168,7 +169,7 @@ function BottomNav({ active }: { active: Section }) {
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
       {items.map((item) => {
         const Icon = item.icon;
-        const isActive = active === item.id;
+        const isActive = Boolean(pathname?.startsWith(item.href)) || active === item.id;
         return (
           <Link key={item.id} href={item.href} className="flex flex-1 flex-col items-center gap-1">
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
@@ -394,7 +395,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button to open Tomo - hidden on home, workflows, relationships, pipeline (chat UI is inline or in drawer) */}
+      {/* Floating action button — hidden where Tomo is inline (Today, Workflows) or in drawer (Relationships, Pipeline). LP Network keeps the FAB (Phase 5). */}
       {section !== "home" &&
         section !== "workflows" &&
         section !== "relationships" &&

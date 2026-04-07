@@ -37,6 +37,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -155,6 +156,21 @@ export default function SettingsPage() {
             {section}
           </button>
         ))}
+        <div className="mt-4 border-t border-gray-200 pt-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Prototype</p>
+          <Link
+            href="/lp-network"
+            className="flex w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-sm font-medium text-[color:var(--accent)] transition hover:border-gray-300 hover:bg-gray-50"
+          >
+            LP Network (demo) — GP intros →
+          </Link>
+          <Link
+            href="/lp-network/mandate?demo=1"
+            className="mt-2 flex w-full rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-2 text-left text-xs text-gray-700 transition hover:border-gray-300"
+          >
+            Allocator mandate preview →
+          </Link>
+        </div>
       </div>
     </div>
   );
