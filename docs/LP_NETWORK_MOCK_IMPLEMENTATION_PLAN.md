@@ -4,11 +4,17 @@ Prototype the **Month 3 end state** inside the existing TOMO CRM mock (Next.js `
 
 **Principle:** LP network data is **logically separate** from GP CRM `Relationship[]` — separate types, separate mock module, no merging into the fundraising pipeline model.
 
+### Does this plan mock LPs?
+
+**Yes — on the supply (allocator) side.** You are not importing real people into the GP CRM. The mock generates **~50 `NetworkLpMandate` records**: each row stands in for **one LP who completed the mandate form**, represented to GPs as an **anonymized card** (no name, email, or firm on the GP surface unless you add a deliberate demo mode). That matches the execution-plan idea of “mandates in the database” while staying safe for screenshots and demos.
+
+The **optional** `/lp-network/mandate` page does **not** need 50 views — it mocks **one logged-in LP** editing their own mandate for narrative purposes.
+
 ---
 
 ## Goal
 
-- **GP side:** “Qualified LP Introductions” — anonymized mandate cards, **Request introduction**, statuses that evolve through a **double opt-in** story (mocked).
+- **GP side:** “Qualified LP Introductions” — anonymized mandate cards (backed by the ~50 mock mandates), **Request introduction**, statuses that evolve through a **double opt-in** story (mocked).
 - **Optional LP side:** a thin **“My mandate”** stub (read + local “edit”) to show the other half of the product in one demo — only if you want both narratives in-app.
 
 ---
@@ -24,7 +30,12 @@ Add e.g. `src/lib/mockLpNetwork.ts` containing:
    - `status`: e.g. `eligible` → `gp_requested` → `lp_pending` → `lp_approved` → `connected` (map to product copy: Pending / Meeting booked / etc.).  
    - `fundId` so filtering works when the fund selector is enabled.
 
-3. **Seed arrays** — 6–12 mandates; 3–5 with high fit + actively deploying so “X LPs match” is credible.
+3. **Seed arrays — target ~50 mandates** (adjust if build prefers fewer for file size; the product story assumes a credible network size). Suggested distribution for realistic UI:
+   - **~12–18** High fit + Actively deploying (primary “qualified” pool for the headline *N* and default filters).
+   - **~15–20** mixed Medium/Low or non-active deployment (still in network, filterable).
+   - Remainder fill variety (geography, strategy tags, check bands) so lists and filters feel populated.
+
+   Generate programmatically (loop + seeded randomness) or use a compact template + variations to avoid maintaining 50 hand-written objects.
 
 Export pure data + helpers, e.g. `getQualifiedMandatesForFund(fundId)`.
 
