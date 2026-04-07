@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { LpIntroductionDetail } from "@/components/lp-network/lp-introduction-detail";
@@ -10,7 +10,9 @@ import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import {
   getIntroStatus,
+  getThreadMeta,
   LP_DISMISSED_STORAGE_KEY,
+  LP_INTRO_AUTO_ADVANCE_KEY,
   LP_INTRO_STORAGE_KEY,
   threadStorageKey,
   type LpDismissedPersisted,
@@ -34,6 +36,24 @@ export default function LpNetworkPage() {
 
   const [introMap, setIntroMap] = usePersistentState<LpIntroPersisted>(LP_INTRO_STORAGE_KEY, {});
   const [dismissedByFund, setDismissedByFund] = usePersistentState<LpDismissedPersisted>(LP_DISMISSED_STORAGE_KEY, {});
+  const [introAutoAdvance, setIntroAutoAdvance] = usePersistentState<boolean>(LP_INTRO_AUTO_ADVANCE_KEY, false);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!introAutoAdvance && autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, [introAutoAdvance]);
 
   const qualified = useMemo(() => getQualifiedMandatesForFund(effectiveFundId), [effectiveFundId]);
   const allForFund = useMemo(() => getMandatesForFund(effectiveFundId), [effectiveFundId]);
@@ -57,12 +77,20 @@ export default function LpNetworkPage() {
     ? getIntroStatus(introMap, effectiveFundId, selected.id)
     : "eligible";
 
+  const threadMeta = selected ? getThreadMeta(introMap, effectiveFundId, selected.id) : undefined;
+
   const fundDisplayName =
     activeFundId === "all" ? funds[0]?.name ?? "Fund I" : funds.find((f) => f.id === activeFundId)?.name ?? "this fund";
 
   const handleRequestIntroduction = useCallback(() => {
     if (!selected) return;
-    const key = threadStorageKey(effectiveFundId, selected.id);
+    const fundId = effectiveFundId;
+    const mandateId = selected.id;
+    const key = threadStorageKey(fundId, mandateId);
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     setIntroMap((prev) => ({
       ...prev,
       [key]: { status: "gp_requested", updatedAt: new Date().toISOString() },
@@ -70,7 +98,23 @@ export default function LpNetworkPage() {
     toast.success("Introduction requested", {
       description: "TOMO will notify the allocator. You’ll see status updates here as they respond.",
     });
-  }, [effectiveFundId, selected, setIntroMap]);
+    if (introAutoAdvance) {
+      autoAdvanceTimerRef.current = setTimeout(() => {
+        autoAdvanceTimerRef.current = null;
+        setIntroMap((prev) => {
+          const cur = prev[key];
+          if (cur?.status !== "gp_requested") return prev;
+          return {
+            ...prev,
+            [key]: { status: "lp_pending", updatedAt: new Date().toISOString() },
+          };
+        });
+        toast.message("Demo: allocator reviewing", {
+          description: "Auto-advance moved this thread to Awaiting LP.",
+        });
+      }, 2000);
+    }
+  }, [effectiveFundId, introAutoAdvance, selected, setIntroMap]);
 
   const handleNotNow = useCallback(() => {
     if (!selected) return;
@@ -90,13 +134,44 @@ export default function LpNetworkPage() {
     (status: IntroductionStatus) => {
       if (!selected) return;
       const key = threadStorageKey(effectiveFundId, selected.id);
-      setIntroMap((prev) => ({
-        ...prev,
-        [key]: { status, updatedAt: new Date().toISOString() },
-      }));
+      setIntroMap((prev) => {
+        if (status === "eligible") {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        }
+        return { ...prev, [key]: { status, updatedAt: new Date().toISOString() } };
+      });
     },
     [effectiveFundId, selected, setIntroMap]
   );
+
+  const handleSimulateLpApprove = useCallback(() => {
+    if (!selected) return;
+    const key = threadStorageKey(effectiveFundId, selected.id);
+    setIntroMap((prev) => ({
+      ...prev,
+      [key]: { status: "lp_approved", updatedAt: new Date().toISOString() },
+    }));
+    toast.success("LP approved (demo)", {
+      description: "TOMO can now connect you with this allocator.",
+    });
+  }, [effectiveFundId, selected, setIntroMap]);
+
+  const handleResetIntroThread = useCallback(() => {
+    if (!selected) return;
+    const key = threadStorageKey(effectiveFundId, selected.id);
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    setIntroMap((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    toast.message("Intro thread cleared", { description: "You can request again from Eligible." });
+  }, [effectiveFundId, selected, setIntroMap]);
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col">
@@ -126,6 +201,15 @@ export default function LpNetworkPage() {
               onChange={(e) => setQualifiedOnly(e.target.checked)}
             />
             Qualified only (high fit + actively deploying)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300"
+              checked={introAutoAdvance}
+              onChange={(e) => setIntroAutoAdvance(e.target.checked)}
+            />
+            Demo: auto-advance to Awaiting LP (2s after request)
           </label>
         </div>
         <p className="mt-2 text-xs text-gray-500">
@@ -167,8 +251,11 @@ export default function LpNetworkPage() {
           mandate={selected}
           funds={funds}
           introStatus={introStatus}
+          introUpdatedAt={threadMeta?.updatedAt}
           onRequestIntroduction={handleRequestIntroduction}
           onNotNow={handleNotNow}
+          onSimulateLpApprove={handleSimulateLpApprove}
+          onResetIntroThread={handleResetIntroThread}
           onDemoSetStatus={handleDemoSetStatus}
         />
       )}
