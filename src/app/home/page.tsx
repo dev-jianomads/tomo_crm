@@ -7,7 +7,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -232,14 +231,7 @@ export default function HomePage() {
       <PageListHeader
         label="Today"
         description="Prioritize actions and meetings for the active fund, skim briefs, and ask Tomo to reason over what needs attention next."
-      >
-        <Link
-          href="/lp-network"
-          className="inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
-        >
-          LP Network — qualified allocator intros (demo) →
-        </Link>
-      </PageListHeader>
+      />
       {/* Resizable top/bottom split */}
       <div
         ref={splitContainerRef}
