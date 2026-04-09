@@ -28,6 +28,7 @@ import { actions, briefs, commitments, type ActionAttentionCard, type Commitment
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/storage";
+import { useFunds } from "@/components/fund-provider";
 
 type TodaySelection =
   | { type: "action"; id: string }
@@ -36,12 +37,20 @@ type TodaySelection =
   | null;
 
 /**
- * Inline Tomo AI chat - minimal prompt-only view for Today page.
- * Focused on answering questions about What needs your attention and Coming up.
- * Uses orchestrator (surface: general) with todayContext injected.
+ * Inline Tomo on Today — same orchestrator as the shell, with todayContext.
+ * Copy makes clear answers are scoped to this page’s snapshot, not full-corpus search.
  */
 function TomoChatInline({ subtitle }: { subtitle?: string }) {
   const tomo = useTomoChat();
+  const { funds, activeFundId } = useFunds();
+  const activeFund =
+    activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "All funds";
+
+  const todayScopeLine = `Not your full inbox or CRM · ${activeFund}`;
+  const contextLabel = subtitle
+    ? `${subtitle}\n${todayScopeLine}`
+    : `Today's snapshot only — attention, meetings & Daily Brief\n${todayScopeLine}`;
+
   if (!tomo) return null;
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -51,8 +60,9 @@ function TomoChatInline({ subtitle }: { subtitle?: string }) {
             messages={tomo.messages}
             onSend={tomo.onSend}
             suggestions={tomo.suggestions ?? []}
-            contextLabel={subtitle}
-            placeholder="Ask about your tasks or upcoming meetings..."
+            contextLabel={contextLabel}
+            suggestionsHeader="Quick prompts"
+            placeholder="Ask about what's on Today…"
             isStreaming={tomo.isStreaming}
             suggestionChipsSingleRow
           />

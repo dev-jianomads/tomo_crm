@@ -240,6 +240,11 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       }
       lines.push(``);
     }
+
+    lines.push(
+      ``,
+      `SCOPE: You only have the Today snapshot above (attention items, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Pipeline for broader lookup, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
+    );
   }
 
   if (context.page) {

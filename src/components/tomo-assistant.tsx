@@ -16,6 +16,8 @@ type TomoAssistantProps = {
   onSend: (text: string) => void;
   suggestions?: string[];
   contextLabel?: string;
+  /** Shown above suggestion chips (e.g. "Quick prompts") */
+  suggestionsHeader?: string;
   placeholder?: string;
   /** When true, hide suggestion chips once conversation has started (frees space for chat) */
   hideSuggestionsWhenActive?: boolean;
@@ -47,6 +49,7 @@ export function TomoAssistant({
   onSend,
   suggestions = [],
   contextLabel,
+  suggestionsHeader,
   placeholder = "Ask TOMO anything…",
   hideSuggestionsWhenActive = false,
   isStreaming = false,
@@ -77,19 +80,27 @@ export function TomoAssistant({
             Context label shows what entity Tomo is aware of
             PRODUCTION: This context is sent with each message to the API
           */}
-          {contextLabel ? <p className="text-xs text-gray-500">{contextLabel}</p> : null}
+          {contextLabel ? (
+            <p className="whitespace-pre-line text-xs text-gray-500">{contextLabel}</p>
+          ) : null}
         </div>
       </div>
 
       {/* Quick suggestion chips — collapse when active to give chat more space */}
       {suggestions.length && !(hideSuggestionsWhenActive && messages.length > 0) ? (
-        <div
-          className={`flex gap-2 border-b border-gray-100 px-4 py-2 ${
-            suggestionChipsSingleRow
-              ? "min-w-0 flex-nowrap overflow-x-auto"
-              : "flex-wrap"
-          }`}
-        >
+        <div className="border-b border-gray-100 px-4 py-2">
+          {suggestionsHeader ? (
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              {suggestionsHeader}
+            </p>
+          ) : null}
+          <div
+            className={`flex gap-2 ${
+              suggestionChipsSingleRow
+                ? "min-w-0 flex-nowrap overflow-x-auto"
+                : "flex-wrap"
+            }`}
+          >
           {suggestions.map((chip) => (
             <button
               key={chip}
@@ -100,6 +111,7 @@ export function TomoAssistant({
               {chip}
             </button>
           ))}
+          </div>
         </div>
       ) : null}
 
