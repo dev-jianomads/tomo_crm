@@ -116,7 +116,13 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ``,
       `You are editing a workflow. You can ONLY use update_workflow to add, remove, reorder, or modify steps and the trigger.`,
       ``,
-      `Rules: Be conversational but concise. Always include ALL steps when updating — the tool replaces the entire workflow. Keep step names under 30 chars, descriptions under 80 chars.`,
+      `Rules: Be conversational but concise. Always include ALL steps in the tool call — the tool replaces the entire workflow. Keep step names under 30 chars, descriptions under 80 chars.`,
+      ``,
+      `CRITICAL — how you reply after update_workflow:`,
+      `- The process flow UI already shows the full workflow. Do NOT paste the full workflow, markdown headings (# or ##), or a numbered list of every step.`,
+      `- Do NOT say "Here is the new version" or quote the tool's markdown output.`,
+      `- Reply in at most 2 short sentences: only what changed (e.g. "Added a Thank Sarah step after Detect & Log." or "Renamed the trigger to …").`,
+      `- If nothing structural changed, a single brief line is enough.`,
     );
     if (context.pipelineContext) {
       const pc = context.pipelineContext;
@@ -285,6 +291,11 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
   }
   if (context.workflowContext) {
     lines.push(``, `Workflow being edited:`, context.workflowContext);
+    if (surface === "workflow") {
+      lines.push(
+        `(Use this as the source of truth for edits. After update_workflow, do not paste this block or a full restatement of every step into your reply — the diagram already shows it.)`
+      );
+    }
   }
   if (context.assistanceContext?.initialMessage) {
     lines.push(``, `Assistance context: "${context.assistanceContext.initialMessage.text}"`);
@@ -400,7 +411,9 @@ export async function POST(req: Request) {
   if (surface === "general" || surface === "workflow") {
     tools.update_workflow = tool({
       description:
-        "Update the workflow definition. Use when the user wants to add, remove, reorder, or modify workflow steps or the trigger. Requires workflowContext to be present.",
+        surface === "workflow"
+          ? "Update the workflow definition. Pass the full replacement (title, trigger, all steps). The UI redraws the flow automatically — after calling, acknowledge only the delta in chat (do not list every step)."
+          : "Update the workflow definition. Use when the user wants to add, remove, reorder, or modify workflow steps or the trigger. Requires workflowContext to be present.",
       inputSchema: workflowSchema,
       execute: async (input) => {
         const definition = {
@@ -408,6 +421,14 @@ export async function POST(req: Request) {
           trigger: input.trigger,
           steps: input.steps as WorkflowStep[],
         };
+        if (surface === "workflow") {
+          return {
+            applied: true,
+            title: definition.title,
+            stepCount: definition.steps.length,
+            hint: "UI updated. Reply in ≤2 sentences describing only what changed; never paste full workflow or markdown.",
+          };
+        }
         const markdown = workflowToMarkdown(definition);
         return { markdown, definition };
       },
