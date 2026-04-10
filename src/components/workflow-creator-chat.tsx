@@ -7,7 +7,11 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import type { UIMessage } from "ai";
 import type { Pipeline } from "@/lib/pipelines";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
-import { appendCustomPlaybook, type CustomPlaybookStored } from "@/lib/customPlaybooks";
+import {
+  appendCustomPlaybook,
+  createUserWorkflowInputSchema,
+  type CustomPlaybookStored,
+} from "@/lib/customPlaybooks";
 import { toast } from "sonner";
 
 type WorkflowCreatorChatProps = {
@@ -39,7 +43,7 @@ function ChatBubble({ message }: { message: UIMessage }) {
 }
 
 /**
- * Tomo chat for pipeline “Use in workflow” → Custom. Surface workflow_creator + create_user_workflow.
+ * Tomo chat for pipeline “Use in workflow” → Custom. Surface workflow_creator + create_user_workflow (typed action).
  */
 export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -79,12 +83,13 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
         if (processedToolCallIds.current.has(tcId)) return;
         processedToolCallIds.current.add(tcId);
       }
-      const raw = toolCall.input as { name?: string; trigger?: string; action?: string };
-      const entry = appendCustomPlaybook({
-        name: raw.name ?? "",
-        trigger: raw.trigger ?? "",
-        action: raw.action ?? "",
-      });
+      const raw = toolCall.input as unknown;
+      const parsed = createUserWorkflowInputSchema.safeParse(raw);
+      if (!parsed.success) {
+        toast.error("Could not create workflow — check name, trigger, and action fields for your action type.");
+        return;
+      }
+      const entry = appendCustomPlaybook(parsed.data);
       if (!entry) {
         toast.error("Could not create workflow — name, trigger, and action must all be filled.");
         return;

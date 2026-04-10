@@ -13,12 +13,9 @@ import { useFunds } from "@/components/fund-provider";
 import { relationships } from "@/lib/mockData";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
-import {
-  CUSTOM_PLAYBOOKS_STORAGE_KEY,
-  type CustomPlaybookStored,
-  workflowDefinitionFromCustomStored,
-} from "@/lib/customPlaybooks";
+import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/storage";
+import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
 import {
   DEFAULT_TEMPLATES,
   TOMO_DEFAULT_TEMPLATES,
@@ -75,7 +72,7 @@ function WorkflowsPageContent() {
     "tomo-playbook-pipeline-overrides",
     {}
   );
-  const [customPlaybooks] = usePersistentState<CustomPlaybookStored[]>(CUSTOM_PLAYBOOKS_STORAGE_KEY, []);
+  const [customPlaybooks] = useCustomPlaybooksPersistentState();
   const [tomoDefaultOpen, setTomoDefaultOpen] = useState(true);
 
   // When landing from Today with ?tomoDefault=td-xxx, expand Tomo Default accordion

@@ -10,7 +10,7 @@
  * Context (page, selection, workflowContext, etc.) is injected to guide tool selection.
  *
  * Surfaces:
- * - workflow_creator — collect name/trigger/action; tool create_user_workflow returns payload for client persistence.
+ * - workflow_creator — collect name/trigger/typed action; tool create_user_workflow returns payload for client persistence.
  */
 
 import { streamText, tool, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
@@ -25,6 +25,11 @@ import { CRM_UPDATE_FIELD_REFERENCE } from "@/lib/crmFieldSchema";
 import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
+import {
+  createUserWorkflowInputSchema,
+  isUserWorkflowActionComplete,
+  trimUserWorkflowAction,
+} from "@/lib/customPlaybooks";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
@@ -158,12 +163,17 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ``,
       `You are in **workflow creator** mode. The user is defining a new user-defined workflow from the pipeline dialog.`,
       ``,
-      `You have exactly one tool: **create_user_workflow**. Use it only when you have all three fields, each with real content:`,
+      `You have exactly one tool: **create_user_workflow**. Call it only when you have **name**, **trigger**, and a complete **action** object.`,
+      ``,
       `- **name** — short title for the workflow`,
       `- **trigger** — when or why it runs (schedule, event, or condition)`,
-      `- **action** — what it does (e.g. draft email, notify, update CRM)`,
+      `- **action** — a typed object with **kind** and all required fields for that kind:`,
+      `  - **send_email** — subject (string) and body (string; full draft or content the user wants sent)`,
+      `  - **schedule_meeting** — title, datetime (ISO or explicit date+time+timezone); optional notes`,
+      `  - **schedule_call** — title, datetime; optional agenda`,
+      `  - **other** — label + details for anything else (CRM update, Slack, etc.)`,
       ``,
-      `When all three are clear from the conversation, call create_user_workflow once with trimmed strings. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
+      `Do not call the tool until every required field for the chosen kind is known. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
       ``,
       `The pre-selected pipeline (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different pipeline unless they explicitly want to cancel.`,
       `After a successful tool call, confirm briefly in plain language; do not claim server-side database persistence (the client applies the result).`,
@@ -316,12 +326,6 @@ const workflowSchema = z.object({
     .describe("Ordered list of workflow steps (1-8)"),
 });
 
-const createUserWorkflowSchema = z.object({
-  name: z.string().min(1).describe("Short display name for the new workflow"),
-  trigger: z.string().min(1).describe("When or why the workflow runs"),
-  action: z.string().min(1).describe("What the workflow does (e.g. draft email to pipeline)"),
-});
-
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -348,25 +352,23 @@ export async function POST(req: Request) {
     const pipelineIdForCreator = context.workflowCreator?.pipelineId;
     tools.create_user_workflow = tool({
       description:
-        "Finalize a new user-defined workflow. Call when name, trigger, and action are all known from the conversation. The client will persist the workflow and link the pre-selected pipeline using the returned pipelineId.",
-      inputSchema: createUserWorkflowSchema,
+        "Finalize a new user-defined workflow. Call when name, trigger, and action (typed object: send_email | schedule_meeting | schedule_call | other) are complete. The client persists and links the pre-selected pipeline.",
+      inputSchema: createUserWorkflowInputSchema,
       execute: async ({ name, trigger, action }) => {
-        const trimmed = {
-          name: name.trim(),
-          trigger: trigger.trim(),
-          action: action.trim(),
-        };
-        if (!trimmed.name || !trimmed.trigger || !trimmed.action) {
+        const nameT = name.trim();
+        const triggerT = trigger.trim();
+        const actionT = trimUserWorkflowAction(action);
+        if (!nameT || !triggerT || !isUserWorkflowActionComplete(actionT)) {
           return {
             success: false as const,
-            error: "name, trigger, and action must be non-empty after trimming",
+            error: "name, trigger, and action (all required fields for the action kind) must be non-empty after trimming",
           };
         }
         return {
           success: true as const,
-          name: trimmed.name,
-          trigger: trimmed.trigger,
-          action: trimmed.action,
+          name: nameT,
+          trigger: triggerT,
+          action: actionT,
           pipelineId: pipelineIdForCreator ?? null,
         };
       },
