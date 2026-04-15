@@ -38,7 +38,7 @@ export function WorkflowOutboundSafety({
   const rows = mockSuppressionRows(relationshipCount);
 
   return (
-    <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+    <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-3" data-testid="workflow-outbound-safety">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Outbound safety</p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2 text-xs text-gray-800">

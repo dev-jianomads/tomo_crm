@@ -130,12 +130,18 @@ function NavRail({ active }: { active: Section }) {
     const Icon = item.icon;
     const isActive = pathname?.startsWith(item.href) || active === item.id;
     return (
-      <Link key={item.href} href={item.href} className="w-full">
+      <Link
+        key={item.href}
+        href={item.href}
+        className="w-full"
+        data-testid={`nav-rail-link-${item.id}`}
+        aria-label={item.label}
+        title={item.label}
+      >
         <div
           className={`mx-auto flex h-10 w-10 items-center justify-center rounded-md transition ${
             isActive ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-blue-50"
           }`}
-          title={item.label}
         >
           <Icon className="h-5 w-5" />
         </div>
@@ -171,7 +177,13 @@ function BottomNav({ active }: { active: Section }) {
         const Icon = item.icon;
         const isActive = Boolean(pathname?.startsWith(item.href)) || active === item.id;
         return (
-          <Link key={item.id} href={item.href} className="flex flex-1 flex-col items-center gap-1">
+          <Link
+            key={item.id}
+            href={item.href}
+            className="flex flex-1 flex-col items-center gap-1"
+            data-testid={`nav-bottom-link-${item.id}`}
+            aria-label={item.label}
+          >
             <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
             <span className={`text-[11px] ${isActive ? "text-blue-600" : "text-gray-600"}`}>{item.label}</span>
           </Link>

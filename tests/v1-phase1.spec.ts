@@ -1,39 +1,43 @@
 import { expect, test } from "@playwright/test";
-
-const SESSION_SEED = {
-  email: "qa@example.com",
-  onboardingComplete: true,
-};
+import { applyQaSession } from "./fixtures/qa-session";
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((session) => {
-    window.localStorage.setItem("tomo-session", JSON.stringify(session));
-  }, SESSION_SEED);
+  await applyQaSession(page);
 });
 
 test.describe("Phase 1 — safety + demo-critical", () => {
   test("Primary nav uses Lists label (not Pipeline)", async ({ page }) => {
     await page.goto("/home");
-    await expect(page.getByRole("link", { name: "Lists" })).toBeVisible();
+    const listsNav = page.getByTestId("nav-rail-link-pipeline");
+    await expect(listsNav).toBeVisible();
+    await expect(listsNav).toHaveAttribute("href", "/pipeline");
+    await expect(listsNav).toHaveAttribute("aria-label", "Lists");
     await expect(page.getByRole("link", { name: "Pipeline" })).toHaveCount(0);
   });
 
   test("Workflow diagram shows trigger kind badge", async ({ page }) => {
     await page.goto("/workflows?playbook=pb-intro-tracker");
-    await expect(page.getByText("Process flow")).toBeVisible();
-    await expect(page.getByText("EVENT", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Outbound safety")).toBeVisible();
+    await expect(page.getByTestId("workflow-process-flow")).toBeVisible();
+    const kindBadge = page.getByTestId("workflow-trigger-kind-badge");
+    await expect(kindBadge).toBeVisible();
+    await expect(kindBadge).toHaveAttribute("data-trigger-kind", "EVENT");
+    await expect(kindBadge).toHaveText("EVENT");
+    await expect(page.getByTestId("workflow-outbound-safety")).toBeVisible();
   });
 
   test("Today commitment row shows signal line", async ({ page }) => {
     await page.goto("/home");
-    await expect(page.getByText(/Signal: Heating up/)).toBeVisible();
+    const prepSignals = page.getByTestId("today-commitment-prep-signal");
+    await expect(prepSignals.first()).toContainText(/Signal: Heating up/);
   });
 
   test("Today drawer shows execution vs draft chip groups when opening an action", async ({ page }) => {
     await page.goto("/home");
-    await page.getByRole("button", { name: /PAAMCO Prisma : Peter Zakowich/ }).first().click();
-    await expect(page.getByText("Execution", { exact: true })).toBeVisible();
-    await expect(page.getByText("Draft with Tomo", { exact: true })).toBeVisible();
+    await page.getByTestId("today-action-row-a1").click();
+    await expect(page.getByTestId("drawer-tomo-chat")).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-execution-heading")).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-draft-heading")).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-execution-chips")).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-draft-chips")).toBeVisible();
   });
 });

@@ -106,10 +106,8 @@ export function WorkflowProcessFlow({
   const glowFor = (key: string) => (isGlowing(key) ? GLOW_CLASS : "");
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <p className="px-4 pt-3 text-[11px] font-medium uppercase tracking-wide text-gray-500">
-        Process flow
-      </p>
+    <div className="flex h-full flex-col overflow-hidden" data-testid="workflow-process-flow">
+      <p className="px-4 pt-3 text-[11px] font-medium uppercase tracking-wide text-gray-500">Process flow</p>
       <div className="flex flex-1 items-center overflow-x-auto px-4 py-3">
         <div className="flex items-stretch gap-0">
           {/* Trigger card */}
@@ -122,6 +120,8 @@ export function WorkflowProcessFlow({
                 <span
                   className="rounded-full bg-blue-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                   title={`Trigger type: ${TRIGGER_KIND_LABEL[triggerKind]}`}
+                  data-testid="workflow-trigger-kind-badge"
+                  data-trigger-kind={triggerKind}
                 >
                   {TRIGGER_KIND_LABEL[triggerKind]}
                 </span>

@@ -670,6 +670,8 @@ function TodayGroup({
         {items.map((item) => (
           <button
             key={item.id}
+            type="button"
+            data-testid={`today-${item.type}-row-${item.id}`}
             onClick={() => onSelect(item.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
               activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
@@ -720,7 +722,12 @@ function TodayGroup({
                   </p>
                 ) : null}
                 {item.prepSignal ? (
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-700">{item.prepSignal}</p>
+                  <p
+                    className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-700"
+                    data-testid="today-commitment-prep-signal"
+                  >
+                    {item.prepSignal}
+                  </p>
                 ) : null}
                 {item.relationshipId ? (
                   <Link

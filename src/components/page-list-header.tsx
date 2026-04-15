@@ -17,15 +17,23 @@ type PageListHeaderProps = {
  * List-pane header: uppercase label, optional body copy, optional accent link—matches /workflows.
  */
 export function PageListHeader({ label, description, action, children }: PageListHeaderProps) {
+  const labelSlug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page";
   return (
-    <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white p-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      {description ? <p className="mt-1 text-sm text-gray-600">{description}</p> : null}
+    <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white p-4" data-testid="page-list-header">
+      <p className="text-xs uppercase tracking-wide text-gray-500" data-testid={`page-header-title-${labelSlug}`}>
+        {label}
+      </p>
+      {description ? (
+        <p className="mt-1 text-sm text-gray-600" data-testid="page-header-description">
+          {description}
+        </p>
+      ) : null}
       {children ? <div className="mt-3">{children}</div> : null}
       {action ? (
         <Link
           href={action.href}
           className="mt-2 inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
+          data-testid="page-header-action-link"
         >
           {action.label}
         </Link>

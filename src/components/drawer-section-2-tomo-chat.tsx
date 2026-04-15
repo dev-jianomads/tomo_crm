@@ -171,7 +171,7 @@ export function DrawerSection2TomoChat({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="drawer-tomo-chat">
       <div className="flex shrink-0 items-center border-b border-gray-200 px-3 py-1.5">
         <p className="text-xs font-medium text-gray-900">TOMO AI</p>
         {contextLabel ? <p className="ml-2 text-[11px] text-gray-500">— {contextLabel}</p> : null}
@@ -180,8 +180,13 @@ export function DrawerSection2TomoChat({
       {hasSplitChips ? (
         <>
           {executionChips.length > 0 ? (
-            <div className="border-b border-gray-100 px-3 py-2">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Execution</p>
+            <div className="border-b border-gray-100 px-3 py-2" data-testid="drawer-tomo-execution-chips">
+              <p
+                className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+                data-testid="drawer-tomo-execution-heading"
+              >
+                Execution
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {executionChips.map((chip) => (
                   <button
@@ -198,8 +203,13 @@ export function DrawerSection2TomoChat({
             </div>
           ) : null}
           {draftChips.length > 0 ? (
-            <div className="border-b border-gray-100 px-3 py-2">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Draft with Tomo</p>
+            <div className="border-b border-gray-100 px-3 py-2" data-testid="drawer-tomo-draft-chips">
+              <p
+                className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+                data-testid="drawer-tomo-draft-heading"
+              >
+                Draft with Tomo
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {draftChips.map((chip) => (
                   <button

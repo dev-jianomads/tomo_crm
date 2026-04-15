@@ -1,40 +1,32 @@
 import { expect, test } from "@playwright/test";
-
-const SESSION_SEED = {
-  email: "qa@example.com",
-  onboardingComplete: true,
-};
+import { applyQaSession } from "./fixtures/qa-session";
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((session) => {
-    window.localStorage.setItem("tomo-session", JSON.stringify(session));
-  }, SESSION_SEED);
+  await applyQaSession(page);
 });
 
 test.describe("Phase 0 stabilization checks", () => {
   test("Today page has title-only header without instructional subtitle", async ({ page }) => {
     await page.goto("/home");
 
-    await expect(page.getByText("Today", { exact: true }).first()).toBeVisible();
-    await expect(
-      page.getByText(
-        "Prioritize actions and meetings for the active fund, skim briefs, and ask Tomo to reason over what needs attention next."
-      )
-    ).toHaveCount(0);
+    const header = page.getByTestId("page-list-header");
+    await expect(header).toBeVisible();
+    await expect(page.getByTestId("page-header-title-today")).toHaveText("Today");
+    await expect(header).not.toContainText(
+      "Prioritize actions and meetings for the active fund, skim briefs, and ask Tomo to reason over what needs attention next."
+    );
   });
 
   test("Relationships page removes subtitle and uses Signal naming", async ({ page }) => {
     await page.goto("/relationships");
 
-    await expect(page.getByText("Relationships", { exact: true }).first()).toBeVisible();
-    await expect(
-      page.getByText(
-        "Explore LP and prospect records with filters and table views—open a row for the full profile, timeline, and Tomo chat."
-      )
-    ).toHaveCount(0);
+    await expect(page.getByTestId("page-header-title-relationships")).toHaveText("Relationships");
+    await expect(page.getByTestId("page-list-header")).not.toContainText(
+      "Explore LP and prospect records with filters and table views—open a row for the full profile, timeline, and Tomo chat."
+    );
 
-    await expect(page.getByRole("button", { name: "Signal" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Momentum" })).toHaveCount(0);
+    await expect(page.getByTestId("relationships-sort-momentum")).toBeVisible();
+    await expect(page.getByTestId("relationships-sort-momentum")).toContainText("Signal");
   });
 
   test("Relationships drawer activity attribution is GP/TOMO only", async ({ page }) => {
@@ -53,21 +45,24 @@ test.describe("Phase 0 stabilization checks", () => {
     await page.goto("/relationships");
 
     const chipName = "Tier 1 LPs";
-    const chip = page.getByRole("button", { name: chipName });
+    const chipBar = page.getByTestId("relationships-filter-suggestion-chips");
+    const chip = chipBar.getByRole("button", { name: chipName });
     await expect(chip).toBeVisible();
     await chip.click();
 
-    await expect(page.getByRole("button", { name: chipName })).toBeVisible();
+    await expect(chipBar.getByRole("button", { name: chipName })).toBeVisible();
   });
 
   test("Workflows page header updates to lists naming and no subtitle", async ({ page }) => {
     await page.goto("/workflows");
 
-    await expect(page.getByText("Workflows", { exact: true }).first()).toBeVisible();
-    await expect(
-      page.getByText("Workflows run on schedule, check evidence, and create drafts.")
-    ).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "View lists →" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "View pipelines →" })).toHaveCount(0);
+    await expect(page.getByTestId("page-header-title-workflows")).toHaveText("Workflows");
+    await expect(page.getByTestId("page-list-header")).not.toContainText(
+      "Workflows run on schedule, check evidence, and create drafts."
+    );
+    const actionLink = page.getByTestId("page-header-action-link");
+    await expect(actionLink).toBeVisible();
+    await expect(actionLink).toHaveText("View lists →");
+    await expect(actionLink).toHaveAttribute("href", "/pipeline");
   });
 });

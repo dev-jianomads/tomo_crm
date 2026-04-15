@@ -900,6 +900,7 @@ function SortableTh({
       <button
         type="button"
         onClick={onClick}
+        data-testid={`relationships-sort-${columnKey}`}
         className={`flex w-full items-center gap-1 font-medium transition hover:text-gray-900 ${
           active ? "text-gray-900" : "text-gray-600"
         } ${highlight ? "text-[color:var(--accent)]" : ""}`}
