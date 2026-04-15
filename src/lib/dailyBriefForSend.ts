@@ -3,7 +3,7 @@
  * Used for Loops transactional sends until real user data exists.
  */
 
-import { buildDailyBriefBlocks } from "@/lib/dailyBriefFromToday";
+import { buildDailyBriefForOutbound } from "@/lib/dailyBriefFromToday";
 import { actions, briefs, commitments, type ActionItem, type Commitment } from "@/lib/mockData";
 
 function sortActionsForToday(list: ActionItem[]): ActionItem[] {
@@ -51,5 +51,5 @@ function sortCommitmentsForToday(list: Commitment[]): Commitment[] {
 export function getDailyBriefBlocksForSend() {
   const sortedActions = sortActionsForToday(actions);
   const sortedCommitments = sortCommitmentsForToday(commitments);
-  return buildDailyBriefBlocks(sortedActions, sortedCommitments, briefs);
+  return buildDailyBriefForOutbound(sortedActions, sortedCommitments, briefs);
 }

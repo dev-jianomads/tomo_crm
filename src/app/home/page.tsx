@@ -22,6 +22,7 @@ import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import {
   buildDailyBriefBlocks,
+  buildOnMyRadarBlocks,
   type DailyBriefBlock,
   type DailyBriefLine,
   type DailyBriefLink,
@@ -245,13 +246,18 @@ export default function HomePage() {
     [sortedActionItems, sortedCommitments, filteredBriefs],
   );
 
+  const onMyRadarBlocks = useMemo(
+    () => buildOnMyRadarBlocks(sortedActionItems, sortedCommitments, filteredBriefs),
+    [sortedActionItems, sortedCommitments, filteredBriefs],
+  );
+
   const onMyRadarLineCount = useMemo(() => {
     let n = 0;
-    for (const b of dailyBriefBlocks) {
+    for (const b of onMyRadarBlocks) {
       n += b.items.length + (b.secondaryItems?.length ?? 0);
     }
     return n;
-  }, [dailyBriefBlocks]);
+  }, [onMyRadarBlocks]);
 
   const navigateBriefLine = useCallback((link: DailyBriefLink) => {
     if (link.kind === "action") setSelection({ type: "action", id: link.id });
@@ -403,7 +409,7 @@ export default function HomePage() {
           style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
           <OnMyRadarPanel
-            blocks={dailyBriefBlocks}
+            blocks={onMyRadarBlocks}
             lineCount={onMyRadarLineCount}
             expanded={onMyRadarExpanded}
             onExpandedChange={setOnMyRadarExpanded}
@@ -680,10 +686,16 @@ function OnMyRadarPanel({
       </div>
       {expanded ? (
         <div className="max-h-[min(42dvh,360px)] overflow-y-auto px-3 py-3 sm:px-4">
+          <p className="mb-2 text-xs text-gray-600">
+            Priority follow-ups and meetings are in the columns below. On My Radar focuses on momentum, execution loops, and items you haven&apos;t engaged yet.
+          </p>
           <p className="mb-2 text-xs text-gray-600">Tap a line to open details in the drawer.</p>
           <div className="space-y-2.5 sm:space-y-3">
             {blocks.map((block) => (
-              <section key={block.title} className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2.5 sm:px-3 sm:py-2.5">
+              <section
+                key={`${block.icon}-${block.title}`}
+                className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2.5 sm:px-3 sm:py-2.5"
+              >
                 <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
@@ -732,7 +744,7 @@ function OnMyRadarPanel({
   );
 }
 
-function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum" | "loops" }) {
+function BriefSectionIcon({ kind }: { kind: DailyBriefBlock["icon"] }) {
   const common = "h-4 w-4 text-[color:var(--accent)]";
 
   if (kind === "followups") {
@@ -756,6 +768,16 @@ function BriefSectionIcon({ kind }: { kind: "followups" | "meetings" | "momentum
     return (
       <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
         <path fill="currentColor" d="m4 16 5-5 3 3 6-7 2 1.7-8 9.3-3-3-3.7 3.7L4 16Zm0 4h16v1.5H4V20Z" />
+      </svg>
+    );
+  }
+  if (kind === "todo") {
+    return (
+      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M9 3h9a2 2 0 0 1 2 2v14l-7-3-7 3V5a2 2 0 0 1 2-2Zm1 4.5v1.5h7V7.5H10Zm0 3v1.5h5v-1.5h-5Z"
+        />
       </svg>
     );
   }

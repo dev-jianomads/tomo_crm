@@ -12,7 +12,7 @@ export type DailyBriefLine = {
 };
 
 export type DailyBriefBlock = {
-  icon: "followups" | "meetings" | "momentum" | "loops";
+  icon: "followups" | "meetings" | "momentum" | "loops" | "todo";
   title: string;
   subtitle: string;
   items: DailyBriefLine[];
@@ -25,7 +25,6 @@ const ATTENTION_CAP = 6;
 const MEETING_CAP = 6;
 const LOOP_CAP = 5;
 
-/** One-line summary for the Daily Brief modal (full detail stays in the drawer). */
 function formatActionLineBrief(a: ActionItem): string {
   if (a.attentionCard) {
     const { company, workSubject } = a.attentionCard;
@@ -38,15 +37,7 @@ function commitmentBriefLine(c: Commitment): string {
   return `${c.datetime} · ${c.lp} · ${c.title}`;
 }
 
-/**
- * Daily Brief blocks derived from the same pools as Today (/home): attention actions,
- * coming-up commitments, and brief / status signals already visible on the page.
- */
-export function buildDailyBriefBlocks(
-  sortedActions: ActionItem[],
-  sortedCommitments: Commitment[],
-  allBriefs: Brief[],
-): DailyBriefBlock[] {
+function buildFollowUpsBlock(sortedActions: ActionItem[]): DailyBriefBlock {
   const attention = sortedActions.slice(0, ATTENTION_CAP);
   const followItems: DailyBriefLine[] =
     attention.length > 0
@@ -61,6 +52,16 @@ export function buildDailyBriefBlocks(
       ? `Showing ${attention.length} of ${sortedActions.length} on Today.`
       : "Same items as What needs your attention.";
 
+  return {
+    icon: "followups",
+    title: "Priority Follow-ups",
+    subtitle: "Attention queue",
+    items: followItems,
+    insight: followInsight,
+  };
+}
+
+function buildMeetingsBlock(sortedCommitments: Commitment[]): DailyBriefBlock {
   const todayMeetings = sortedCommitments.filter((c) => c.window === "today");
   const meetingPool = sortedCommitments.length ? sortedCommitments : [];
   const meetingItems: DailyBriefLine[] =
@@ -76,6 +77,16 @@ export function buildDailyBriefBlocks(
   const meetingInsight =
     meetingExtra > 0 ? `+${meetingExtra} more on Coming up.` : "Same order as Coming up.";
 
+  return {
+    icon: "meetings",
+    title: "Meetings Requiring Prep",
+    subtitle: meetingSubtitle,
+    items: meetingItems,
+    insight: meetingInsight,
+  };
+}
+
+function buildMomentumBlock(sortedActions: ActionItem[]): DailyBriefBlock {
   const momentumAction = sortedActions.find((a) => a.type === "outreach");
   const coolingActions = sortedActions.filter(
     (a) =>
@@ -104,6 +115,18 @@ export function buildDailyBriefBlocks(
     ? "From the momentum / newsletter card on Today."
     : "Appears when that card is in your attention queue.";
 
+  return {
+    icon: "momentum",
+    title: "Momentum Signals",
+    subtitle: momentumAction ? "Newsletter / momentum" : "Momentum",
+    items: momentumItems,
+    secondarySubtitle: momentumSecondarySubtitle,
+    secondaryItems: momentumSecondary,
+    insight: momentumInsight,
+  };
+}
+
+function buildLoopsBlock(sortedActions: ActionItem[], allBriefs: Brief[]): DailyBriefBlock {
   const loopLines: DailyBriefLine[] = [];
   const seenLoopLabels = new Set<string>();
   const pushLoop = (line: DailyBriefLine) => {
@@ -133,42 +156,69 @@ export function buildDailyBriefBlocks(
   }
 
   const loopsDisplay: DailyBriefLine[] =
-    loopLines.length > 0
-      ? loopLines
-      : [{ label: "No open loops in this snapshot." }];
+    loopLines.length > 0 ? loopLines : [{ label: "No open loops in this snapshot." }];
 
   const loopsInsight = "Blocked items, briefs with open loops, and approvals waiting on you.";
 
+  return {
+    icon: "loops",
+    title: "Open Execution Loops",
+    subtitle: "Blocked, approvals, and brief open loops",
+    items: loopsDisplay,
+    insight: loopsInsight,
+  };
+}
+
+/**
+ * Placeholder until engagement / surfaced-at is persisted (Phase C).
+ */
+function buildStillInTodoBlockStub(): DailyBriefBlock {
+  return {
+    icon: "todo",
+    title: "Still in To-Do",
+    subtitle: "Needs your attention — not yet engaged",
+    items: [
+      {
+        label:
+          "When we store opens and completions, items you skip from What needs your attention will land here.",
+      },
+    ],
+    insight: "Backed by engagement tracking in a later release.",
+  };
+}
+
+/**
+ * Full four-section Daily Brief: email, orchestrator context, and any “full brief” surface.
+ */
+export function buildDailyBriefBlocks(
+  sortedActions: ActionItem[],
+  sortedCommitments: Commitment[],
+  allBriefs: Brief[],
+): DailyBriefBlock[] {
   return [
-    {
-      icon: "followups",
-      title: "Priority Follow-ups",
-      subtitle: "Attention queue",
-      items: followItems,
-      insight: followInsight,
-    },
-    {
-      icon: "meetings",
-      title: "Meetings Requiring Prep",
-      subtitle: meetingSubtitle,
-      items: meetingItems,
-      insight: meetingInsight,
-    },
-    {
-      icon: "momentum",
-      title: "Momentum Signals",
-      subtitle: momentumAction ? "Newsletter / momentum" : "Momentum",
-      items: momentumItems,
-      secondarySubtitle: momentumSecondarySubtitle,
-      secondaryItems: momentumSecondary,
-      insight: momentumInsight,
-    },
-    {
-      icon: "loops",
-      title: "Open Execution Loops",
-      subtitle: "Blocked, approvals, and brief open loops",
-      items: loopsDisplay,
-      insight: loopsInsight,
-    },
+    buildFollowUpsBlock(sortedActions),
+    buildMeetingsBlock(sortedCommitments),
+    buildMomentumBlock(sortedActions),
+    buildLoopsBlock(sortedActions, allBriefs),
+  ];
+}
+
+/** Alias for outbound / scheduled sends — same four sections as {@link buildDailyBriefBlocks}. */
+export const buildDailyBriefForOutbound = buildDailyBriefBlocks;
+
+/**
+ * On My Radar (Today page): sections 3–4 of the brief plus a Still in To-Do stub.
+ * Does not repeat Priority Follow-ups or Meetings (shown in the two columns below).
+ */
+export function buildOnMyRadarBlocks(
+  sortedActions: ActionItem[],
+  _sortedCommitments: Commitment[],
+  allBriefs: Brief[],
+): DailyBriefBlock[] {
+  void _sortedCommitments;
+  return [
+    buildMomentumBlock(sortedActions),
+    buildLoopsBlock(sortedActions, allBriefs),
+    buildStillInTodoBlockStub(),
   ];
 }
