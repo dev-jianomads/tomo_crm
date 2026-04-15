@@ -270,11 +270,7 @@ function WorkflowsPageContent() {
 
   const listContent = (
     <div className="flex h-full flex-col">
-      <PageListHeader
-        label="Workflows"
-        description="Workflows run on schedule, check evidence, and create drafts."
-        action={{ href: "/pipeline", label: "View pipelines →" }}
-      />
+      <PageListHeader label="Workflows" action={{ href: "/pipeline", label: "View lists →" }} />
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         {/* Tomo Default accordion */}

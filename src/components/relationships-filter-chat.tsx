@@ -167,7 +167,6 @@ export function RelationshipsFilterChat({
   };
 
   const hasFilters = Object.keys(currentFilters).length > 0;
-  const showChips = messages.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -204,20 +203,18 @@ export function RelationshipsFilterChat({
         </div>
       </div>
 
-      {showChips && (
-        <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-4 py-2">
-          {SUGGESTIONS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => handleSend(chip)}
-              disabled={isStreaming}
-              className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)]/10 hover:text-[color:var(--accent)] disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-4 py-2">
+        {SUGGESTIONS.map((chip) => (
+          <button
+            key={chip}
+            onClick={() => handleSend(chip)}
+            disabled={isStreaming}
+            className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)]/10 hover:text-[color:var(--accent)] disabled:opacity-50"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">
         {messages.map((msg) => (

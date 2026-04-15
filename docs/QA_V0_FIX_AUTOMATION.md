@@ -11,10 +11,10 @@ This project now includes an automated check suite for Phase 0 stabilization fix
 ## Commands
 - Install browser runtime once:
   - `npm run qa:v0:install`
-- Run checks (headless):
+- Run checks (browser window visible by default):
   - `npm run qa:v0`
-- Run checks in headed mode:
-  - `npm run qa:v0:headed`
+- Run checks headless (no window, faster for quick passes):
+  - `npm run qa:v0:headless`
 - Debug mode:
   - `npm run qa:v0:debug`
 

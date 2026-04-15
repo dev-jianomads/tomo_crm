@@ -10,6 +10,11 @@ export type ActivityLogEntry = {
   summary: string;
 };
 
+function displayActor(actor: ActivityLogEntry["actor"]) {
+  if (actor === "User") return "GP";
+  return actor;
+}
+
 /**
  * Section 3: Activity log at bottom of drawer.
  * Accordion — collapsed by default to free vertical space for other sections.
@@ -53,7 +58,7 @@ export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEnt
             >
               <div className="min-w-0 flex-1">
                 <p className="text-gray-900">{entry.summary}</p>
-                <span className="text-[11px] text-gray-500">{entry.actor}</span>
+                <span className="text-[11px] text-gray-500">{displayActor(entry.actor)}</span>
               </div>
               <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">{entry.ts}</span>
             </div>

@@ -66,7 +66,7 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] =
   { key: "name", label: "Name" },
   { key: "firm", label: "Firm" },
   { key: "days", label: "Days", highlight: true },
-  { key: "momentum", label: "Momentum", highlight: true },
+  { key: "momentum", label: "Signal", highlight: true },
   { key: "band", label: "Band" },
   { key: "stage", label: "Stage" },
   { key: "tier", label: "Tier" },
@@ -494,10 +494,7 @@ export default function RelationshipsPage() {
 
   const listContent = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <PageListHeader
-        label="Relationships"
-        description="Explore LP and prospect records with filters and table views—open a row for the full profile, timeline, and Tomo chat."
-      />
+      <PageListHeader label="Relationships" />
       <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top: Tomo filter chat (Phase 5 — orchestrator with filter_relationships tool) */}
       <div
@@ -1240,7 +1237,7 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
               <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
                 <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
                 <StatusField label="Stage" value={relationship.stage} />
-                <StatusField label="Momentum" value={relationship.momentumDirection} />
+                <StatusField label="Signal" value={relationship.momentumDirection} />
                 <StatusField label="Tier" value={relationship.tier} />
                 <StatusField label="Owner" value={relationship.relationshipOwner} />
                 <StatusField label="Stall risk" value={stallRisk} />
@@ -1302,7 +1299,7 @@ function MomentumChip({
   return (
     <span className={`inline-flex items-center gap-0.5 rounded-full ${trendStyles} ${sizeClass}`}>
       <span>{days}d</span>
-      <span className="font-bold" aria-label={`Momentum: ${direction}`}>
+      <span className="font-bold" aria-label={`Trend: ${direction}`}>
         {icon}
       </span>
     </span>

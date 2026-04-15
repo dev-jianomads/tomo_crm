@@ -9,7 +9,7 @@
     "lint": "eslint",
     "qa:v0:install": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
     "qa:v0": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v0-fixes.spec.ts",
-    "qa:v0:headed": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v0-fixes.spec.ts --headed",
+    "qa:v0:headless": "PLAYWRIGHT_BROWSERS_PATH=0 PLAYWRIGHT_HEADLESS=1 playwright test tests/v0-fixes.spec.ts",
     "qa:v0:debug": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v0-fixes.spec.ts --debug"
   },
   "dependencies": {

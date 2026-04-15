@@ -228,10 +228,7 @@ export default function HomePage() {
 
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <PageListHeader
-        label="Today"
-        description="Prioritize actions and meetings for the active fund, skim briefs, and ask Tomo to reason over what needs attention next."
-      />
+      <PageListHeader label="Today" />
       {/* Resizable top/bottom split */}
       <div
         ref={splitContainerRef}
