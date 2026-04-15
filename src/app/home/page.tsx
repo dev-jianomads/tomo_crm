@@ -13,6 +13,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
+import { ActionAmendChat } from "@/components/action-amend-chat";
+import { ActionDrawerPanel } from "@/components/action-drawer-panel";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
@@ -29,7 +31,7 @@ import {
 } from "@/lib/dailyBriefFromToday";
 import { getStillInTodoActions } from "@/lib/todayEngagement";
 import { useTodayEngagement } from "@/hooks/useTodayEngagement";
-import { actions, briefs, commitments, type ActionAttentionCard, type Commitment } from "@/lib/mockData";
+import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem, type Commitment } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
@@ -39,6 +41,16 @@ type TodaySelection =
   | { type: "commitment"; id: string }
   | { type: "brief"; id: string }
   | null;
+
+function workflowLabelForAction(action: ActionItem): string {
+  const fromPlaybook = action.workflowPlaybookId
+    ? suggestedPlaybooks.find((p) => p.id === action.workflowPlaybookId)?.name
+    : undefined;
+  const fromTomo = action.workflowTomoDefaultId
+    ? tomoDefaultWorkflows.find((w) => w.id === action.workflowTomoDefaultId)?.name
+    : undefined;
+  return fromPlaybook ?? fromTomo ?? "—";
+}
 
 function relationshipIdForCommitment(
   c: Commitment,
@@ -83,6 +95,8 @@ export default function HomePage() {
   const { relationships } = useRelationships();
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
+  const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
+  const [actionOutcomeById, setActionOutcomeById] = useState<Record<string, "approved" | "later">>({});
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   /** Phase 2: single-line Tomo vs full inline chat */
   const [todayChatExpanded, setTodayChatExpanded] = usePersistentState<boolean>(
@@ -154,8 +168,23 @@ export default function HomePage() {
 
   const closeDrawerAndReset = () => {
     setSelection(null);
+    setActionDrawerPhase("cta");
     router.replace("/home");
   };
+
+  useEffect(() => {
+    if (!selection || selection.type !== "action") setActionDrawerPhase("cta");
+  }, [selection]);
+
+  const verbPillForAction = useCallback(
+    (id: string) => {
+      const done = actionOutcomeById[id];
+      if (done === "approved") return "Approved";
+      if (done === "later") return "Later";
+      return actions.find((a) => a.id === id)?.attentionCard?.verb ?? "—";
+    },
+    [actionOutcomeById]
+  );
 
   const selectedTitle = useMemo(() => {
     if (!selection) return undefined;
@@ -455,6 +484,7 @@ export default function HomePage() {
                     pills: [] as string[],
                     attentionCard: a.attentionCard,
                     attentionWorkflowName,
+                    verbLabel: verbPillForAction(a.id),
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
@@ -538,13 +568,30 @@ export default function HomePage() {
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
         title={selectedTitle ?? "Details"}
+        hideHeaderTitle={selection?.type === "action"}
+        drawerAriaLabel={
+          selection?.type === "action" && selectedAction?.attentionCard
+            ? `${selectedAction.attentionCard.company} — ${selectedAction.attentionCard.workKind}`
+            : (selectedTitle ?? "Details")
+        }
         section1Content={
-          selection?.type === "action" ? (
-            <ActionDetail
-              actionId={selection.id}
-              onToast={addToast}
-              onComplete={closeDrawerAndReset}
-              detailsOnly
+          selection?.type === "action" && actionDrawerPhase === "amend" ? null : selection?.type === "action" && selectedAction ? (
+            <ActionDrawerPanel
+              action={selectedAction}
+              assistance={getTomoAssistance(selection.id)}
+              workflowDisplayName={workflowLabelForAction(selectedAction)}
+              verbLabel={verbPillForAction(selection.id)}
+              resolution={actionOutcomeById[selection.id] ?? null}
+              onApprove={() => {
+                setActionOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
+                addToast("Approved — queued to send.");
+              }}
+              onLater={() => {
+                setActionOutcomeById((p) => ({ ...p, [selection.id]: "later" }));
+                addToast("Deferred — we’ll remind you.");
+              }}
+              onAmend={() => setActionDrawerPhase("amend")}
+              finalApproveLabel="Approve & send"
             />
           ) : selection?.type === "commitment" ? (
             <CommitmentDetail
@@ -563,8 +610,28 @@ export default function HomePage() {
             />
           ) : null
         }
+        hideSection2={Boolean(selection?.type === "action" && actionDrawerPhase === "cta")}
         section2Content={
-          selection ? (
+          selection?.type === "action" && actionDrawerPhase === "amend" && selectedAction ? (
+            <ActionAmendChat
+              entityKey={`${selection.id}-amend`}
+              selection={selection}
+              action={selectedAction}
+              assistance={
+                getTomoAssistance(selection.id) ?? {
+                  initialMessage: { text: selectedAction.trigger },
+                  suggestedPrompts: [],
+                }
+              }
+              onBack={() => setActionDrawerPhase("cta")}
+              onFinalApprove={() => {
+                setActionOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
+                setActionDrawerPhase("cta");
+                addToast("Approved — queued to send.");
+              }}
+              finalApproveLabel="Approve & send"
+            />
+          ) : selection && selection.type !== "action" ? (
             <DrawerSection2TomoChat
               initialMessage={getTomoAssistance(selection.id)?.initialMessage}
               suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
@@ -827,6 +894,8 @@ function TodayGroup({
     attentionCard?: ActionAttentionCard;
     /** Resolved playbook / Tomo Default name for row 3; falls back to `meta` (trigger). */
     attentionWorkflowName?: string;
+    /** Right pill; mirrors drawer after Approve / Do later */
+    verbLabel?: string;
     /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, prep badge). */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
     commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
@@ -860,7 +929,7 @@ function TodayGroup({
                     {item.attentionCard.company} : {item.attentionCard.contactName}
                   </p>
                   <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
-                    {item.attentionCard.verb}
+                    {item.verbLabel ?? item.attentionCard.verb}
                   </span>
                 </div>
                 <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">
@@ -940,21 +1009,6 @@ function TodayGroup({
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    approval: "Needs approval",
-    in_progress: "In progress",
-    blocked: "Blocked",
-  };
-  const tone =
-    status === "approval"
-      ? "bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]"
-      : status === "blocked"
-      ? "bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
-      : "bg-blue-50 text-blue-700";
-  return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{map[status] ?? status}</span>;
-}
-
 function SuggestedWorkflows() {
   const router = useRouter();
   const playbooks = suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2);
@@ -997,331 +1051,6 @@ function UrgencyChip({ kind }: { kind: string }) {
   );
 }
 
-function ActionDetail({
-  actionId,
-  onToast,
-  onComplete,
-  detailsOnly = false,
-}: {
-  actionId: string;
-  onToast: (message: string) => void;
-  onComplete: () => void;
-  detailsOnly?: boolean;
-}) {
-  const router = useRouter();
-  const action = actions.find((a) => a.id === actionId);
-  const [showAvailability, setShowAvailability] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [showInviteDraft, setShowInviteDraft] = useState(false);
-  const [updateStatuses, setUpdateStatuses] = useState<Record<number, "accepted" | "rejected" | "pending">>({});
-  if (!action) return <Placeholder title="No action selected" />;
-  const isScheduling = action.type === "scheduling";
-  const isCrmUpdate = action.type === "crm_update";
-  const crmTitle = isCrmUpdate ? action.title.replace(/^Update CRM:\s*/i, "") : action.title;
-  const suggestedRows = (action.suggestedUpdates ?? []).map((text) => {
-    const [fieldRaw, updateRaw] = text.split(":").map((s) => s.trim());
-    return {
-      field: fieldRaw || "Update",
-      current: "—",
-      update: updateRaw || text,
-      reason: action.trigger,
-    };
-  });
-  const availability = [
-    { day: "Mon", slots: ["10:00 AM", "2:00 PM"] },
-    { day: "Tue", slots: ["9:30 AM", "3:00 PM"] },
-    { day: "Wed", slots: ["11:00 AM", "4:30 PM"] },
-    { day: "Thu", slots: ["10:30 AM", "1:30 PM"] },
-    { day: "Fri", slots: ["9:00 AM", "2:30 PM"] },
-  ];
-
-  const resetLocalState = () => {
-    setShowAvailability(false);
-    setSelectedSlot(null);
-    setShowInviteDraft(false);
-    setUpdateStatuses({});
-  };
-
-  useEffect(() => {
-    resetLocalState();
-  }, [actionId]);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Action</p>
-          <h3 className="text-lg font-semibold accent-title">{crmTitle}</h3>
-          <p className="text-sm text-gray-600">Why: {action.trigger}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {action.workflowPlaybookId ? (
-            <button
-              onClick={() => router.push(`/workflows?playbook=${action.workflowPlaybookId}`)}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition tomo-ai-bg hover:bg-[#ff8b79]"
-            >
-              → workflow
-            </button>
-          ) : action.workflowTomoDefaultId ? (
-            <button
-              onClick={() => router.push(`/workflows?tomoDefault=${action.workflowTomoDefaultId}`)}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition tomo-ai-bg hover:bg-[#ff8b79]"
-            >
-              → workflow
-            </button>
-          ) : null}
-          <StatusPill status={action.status} />
-        </div>
-      </div>
-
-      {detailsOnly ? null : action.draft ? (
-        <div className="space-y-2 rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-gray-900">Draft (review before send)</p>
-              <TomoAiBadge label="Tomo draft" />
-            </div>
-            <label className="flex items-center gap-2 text-xs text-gray-600">
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                defaultChecked={action.autoApproveType}
-                onChange={() => {
-                  // mock-only preference toggle
-                }}
-              />
-              Always auto-approve this type
-            </label>
-          </div>
-          <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm tomo-ai-text whitespace-pre-line">{action.draft}</div>
-        </div>
-      ) : null}
-
-      {detailsOnly ? null : action.suggestedUpdates?.length ? (
-        isCrmUpdate ? (
-          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Proposed updates</p>
-              <div className="flex items-center gap-2">
-                <button
-                  className="button-secondary"
-                  onClick={() => {
-                    const allAccepted = suggestedRows.reduce<Record<number, "accepted" | "rejected" | "pending">>(
-                      (acc, _, idx) => {
-                        acc[idx] = "accepted";
-                        return acc;
-                      },
-                      {}
-                    );
-                    setUpdateStatuses(allAccepted);
-                  }}
-                >
-                  Accept all
-                </button>
-                <TomoAiBadge label="Tomo suggestion" />
-              </div>
-            </div>
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500">
-                    <th className="py-2 pr-2">Field</th>
-                    <th className="py-2 pr-2">Current</th>
-                    <th className="py-2 pr-2">Update</th>
-                    <th className="py-2 pr-2">Reason</th>
-                    <th className="py-2">Approve</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {suggestedRows.map((row, idx) => {
-                    const status = updateStatuses[idx] ?? "pending";
-                    return (
-                      <tr key={`${row.field}-${idx}`} className="align-top">
-                        <td className="py-2 pr-2 font-medium text-gray-900">{row.field}</td>
-                        <td className="py-2 pr-2 text-gray-600">{row.current}</td>
-                        <td className="py-2 pr-2 text-gray-800">{row.update}</td>
-                        <td className="py-2 pr-2 text-gray-600">{row.reason}</td>
-                        <td className="py-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              className={`rounded-full border px-2 py-1 text-[11px] ${
-                                status === "accepted" ? "border-green-200 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"
-                              }`}
-                              onClick={() => setUpdateStatuses((prev) => ({ ...prev, [idx]: "accepted" }))}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              className={`rounded-full border px-2 py-1 text-[11px] ${
-                                status === "rejected" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-600"
-                              }`}
-                              onClick={() => setUpdateStatuses((prev) => ({ ...prev, [idx]: "rejected" }))}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                className="button-primary tomo-ai-bg"
-                onClick={() => {
-                  onToast("CRM updates applied.");
-                  resetLocalState();
-                  onComplete();
-                }}
-              >
-                Apply updates
-              </button>
-              <button className="button-secondary" onClick={() => setUpdateStatuses({})}>
-                Reset selections
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Proposed updates</p>
-              <TomoAiBadge label="Tomo suggestion" />
-            </div>
-            <ul className="mt-1 space-y-1 tomo-ai-text">
-              {action.suggestedUpdates.map((u) => (
-                <li key={u} className="flex items-start gap-2">
-                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                  <span>{u}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
-      ) : null}
-
-      {detailsOnly ? null : (
-      <div className="flex flex-wrap gap-2">
-        {isScheduling ? (
-          <button
-            className="button-primary tomo-ai-bg"
-            onClick={() => {
-              setShowAvailability(true);
-              onToast("Tomo is fetching availability…");
-            }}
-          >
-            Schedule
-          </button>
-        ) : (
-          <>
-            <button
-              className="button-primary tomo-ai-bg"
-              onClick={() => {
-                onToast("Outreach approved and queued to send.");
-                resetLocalState();
-                onComplete();
-              }}
-            >
-              Approve &amp; Send
-            </button>
-            <button className="button-secondary">Edit</button>
-            <button className="button-secondary">Snooze</button>
-            <button className="text-sm text-gray-600 underline">Reject</button>
-          </>
-        )}
-      </div>
-      )}
-
-      {detailsOnly ? null : isScheduling && showAvailability ? (
-        <div className="space-y-3 rounded-md border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-gray-900">Weekly availability</p>
-            <span className="text-xs text-gray-500">Mock calendar</span>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {availability.map((day) => (
-              <div key={day.day} className="rounded-md border border-gray-100 bg-gray-50 p-2">
-                <p className="text-xs font-semibold text-gray-700">{day.day}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {day.slots.map((slot) => {
-                    const slotKey = `${day.day} ${slot}`;
-                    const isSelected = selectedSlot === slotKey;
-                    return (
-                      <button
-                        key={slot}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] ${
-                          isSelected ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-[color:var(--accent-ink)]" : "border-gray-200 text-gray-600"
-                        }`}
-                        onClick={() => {
-                          setSelectedSlot(slotKey);
-                          setShowInviteDraft(true);
-                        }}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          {showInviteDraft && selectedSlot ? (
-            <div className="space-y-2 rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900">Draft invitation</p>
-                  <TomoAiBadge label="Tomo draft" />
-                </div>
-                <span className="text-xs text-gray-500">{selectedSlot}</span>
-              </div>
-              <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm tomo-ai-text">
-                Hi Jamie — Tomo found a 30m slot on {selectedSlot}. Want me to send the invite with a brief agenda and next steps?
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="button-primary tomo-ai-bg"
-                  onClick={() => {
-                    onToast("Invitation sent.");
-                    resetLocalState();
-                    onComplete();
-                  }}
-                >
-                  Send invite
-                </button>
-                <button className="button-secondary">Edit</button>
-                <button
-                  className="button-secondary"
-                  onClick={() => {
-                    setShowInviteDraft(false);
-                    setSelectedSlot(null);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {detailsOnly ? null : <SuggestedWorkflows />}
-
-      {detailsOnly ? null : (
-      <div className="space-y-1 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Activity log</p>
-        {action.activityLog.slice(-5).map((log) => (
-          <div key={log.id} className="flex items-center justify-between">
-            <span>{log.ts}</span>
-            <span className="text-gray-700">{log.summary}</span>
-            <span className="text-gray-500">{log.actor}</span>
-          </div>
-        ))}
-      </div>
-      )}
-    </div>
-  );
-}
 
 function CommitmentDetail({
   commitment,

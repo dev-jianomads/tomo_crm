@@ -31,13 +31,15 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(prepSignals.first()).toContainText(/Signal: Heating up/);
   });
 
-  test("Today drawer shows execution vs draft chip groups when opening an action", async ({ page }) => {
+  test("Today action drawer shows primary CTAs and amend flow (no execution strip)", async ({ page }) => {
     await page.goto("/home");
     await page.getByTestId("today-action-row-a1").click();
-    await expect(page.getByTestId("drawer-tomo-chat")).toBeVisible();
-    await expect(page.getByTestId("drawer-tomo-execution-heading")).toBeVisible();
-    await expect(page.getByTestId("drawer-tomo-draft-heading")).toBeVisible();
-    await expect(page.getByTestId("drawer-tomo-execution-chips")).toBeVisible();
-    await expect(page.getByTestId("drawer-tomo-draft-chips")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Approve & send/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Amend$/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Do later/i })).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-chat")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Amend$/ }).click();
+    await expect(page.getByTestId("action-amend-chat")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Back$/ })).toBeVisible();
   });
 });

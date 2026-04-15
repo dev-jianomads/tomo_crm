@@ -14,6 +14,10 @@ export type ContextDrawerProps = {
   open: boolean;
   onClose: () => void;
   title?: string;
+  /** When true, header shows only the close control (no title text). Use with `drawerAriaLabel`. */
+  hideHeaderTitle?: boolean;
+  /** Accessible name for the drawer panel (defaults to `title`). */
+  drawerAriaLabel?: string;
   /** Section 1: Content details (entity header, evidence, metadata) */
   section1Content: ReactNode;
   /** Section 2: Tomo Chat (initial message + AI conversation) */
@@ -33,6 +37,8 @@ export function ContextDrawer({
   open,
   onClose,
   title = "Details",
+  hideHeaderTitle = false,
+  drawerAriaLabel,
   section1Content,
   section2Content,
   hideSection2 = false,
@@ -64,11 +70,13 @@ export function ContextDrawer({
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
-        aria-label={title}
+        aria-label={drawerAriaLabel ?? title}
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        <div
+          className={`flex shrink-0 items-center border-b border-gray-200 px-4 py-3 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}
+        >
+          {hideHeaderTitle ? <span className="sr-only">{drawerAriaLabel ?? title}</span> : <h2 className="text-sm font-semibold text-gray-900">{title}</h2>}
           <button
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
@@ -79,9 +87,11 @@ export function ContextDrawer({
         </div>
 
         {/* Section 1: Content Details — compact to maximize Tomo chat space, or flex-1 when Section 2 hidden */}
-        <div className={`min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`}>
-          <div className="border-b border-gray-100 px-4 py-3">{section1Content}</div>
-        </div>
+        {section1Content != null ? (
+          <div className={`min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`}>
+            <div className="border-b border-gray-100 px-4 py-3">{section1Content}</div>
+          </div>
+        ) : null}
 
         {/* Section 2: Tomo Chat */}
         {!hideSection2 && (
