@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -89,9 +90,16 @@ export default function HomePage() {
   const { relationships } = useRelationships();
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
-  const [showDailyBrief, setShowDailyBrief] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
-  const closeDailyBrief = useCallback(() => setShowDailyBrief(false), []);
+  /** Phase 2: single-line Tomo vs full inline chat */
+  const [todayChatExpanded, setTodayChatExpanded] = usePersistentState<boolean>(
+    "tomo-today-inline-chat-expanded",
+    false
+  );
+  const [onMyRadarExpanded, setOnMyRadarExpanded] = usePersistentState<boolean>(
+    "tomo-today-on-my-radar-expanded",
+    true
+  );
 
   // Top/bottom split ratio (25–75%), persisted. Default 70% for chatbox (slider up).
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
@@ -99,7 +107,7 @@ export default function HomePage() {
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!draggingSplit) return;
+    if (!draggingSplit || !todayChatExpanded) return;
     const handleMove = (e: MouseEvent) => {
       const el = splitContainerRef.current;
       if (!el) return;
@@ -119,7 +127,7 @@ export default function HomePage() {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [draggingSplit, setSplitRatio]);
+  }, [draggingSplit, todayChatExpanded, setSplitRatio]);
 
   const addToast = (message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -225,6 +233,20 @@ export default function HomePage() {
     [sortedActionItems, sortedCommitments, filteredBriefs],
   );
 
+  const onMyRadarLineCount = useMemo(() => {
+    let n = 0;
+    for (const b of dailyBriefBlocks) {
+      n += b.items.length + (b.secondaryItems?.length ?? 0);
+    }
+    return n;
+  }, [dailyBriefBlocks]);
+
+  const navigateBriefLine = useCallback((link: DailyBriefLink) => {
+    if (link.kind === "action") setSelection({ type: "action", id: link.id });
+    else if (link.kind === "commitment") setSelection({ type: "commitment", id: link.id });
+    else setSelection({ type: "brief", id: link.id });
+  }, []);
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -243,50 +265,80 @@ export default function HomePage() {
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageListHeader label="Today" />
-      {/* Resizable top/bottom split */}
+      {/* Resizable top/bottom split — Phase 2: collapsible inline Tomo */}
       <div
         ref={splitContainerRef}
         className="flex min-h-0 flex-1 flex-col"
       >
         {/* Top: Tomo chat UI */}
         <div
-          className="flex min-h-[160px] min-w-0 flex-col overflow-hidden bg-white px-4 py-3"
-          style={{ flex: `${splitRatio} 1 0` }}
+          className="flex min-w-0 flex-col overflow-hidden bg-white px-4 py-3"
+          style={
+            todayChatExpanded
+              ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
+              : { flex: "0 0 auto" }
+          }
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold text-gray-900">
               {greeting}, {userName}.
             </h1>
+          </div>
+          {todayChatExpanded ? (
+            <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 justify-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => setTodayChatExpanded(false)}
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500 hover:text-gray-800"
+                  aria-label="Collapse Tomo to single-line"
+                >
+                  Collapse
+                  <ChevronUpIcon className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <TomoChatInline subtitle={selectedTitle ?? undefined} />
+              </div>
+            </div>
+          ) : (
             <button
-              className="button-secondary shrink-0 text-sm"
-              onClick={() => setShowDailyBrief(true)}
-              aria-label="Open Daily Brief"
+              type="button"
+              onClick={() => setTodayChatExpanded(true)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2.5 text-left transition hover:bg-gray-100"
+              aria-label="Expand Tomo chat"
             >
-              Daily Brief
+              <span className="text-sm text-gray-600">Ask Tomo about what&apos;s on Today…</span>
+              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
             </button>
-          </div>
-          <div className="min-h-[200px] flex-1 overflow-hidden">
-            <TomoChatInline subtitle={selectedTitle ?? undefined} />
-          </div>
+          )}
         </div>
 
-        {/* Resize handle - no border, minimal */}
-        <div
-          role="separator"
-          aria-label="Resize top and bottom sections"
-          className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
-          onMouseDown={() => setDraggingSplit(true)}
-        >
-          <div className="h-1 w-12 rounded-full bg-gray-200" />
-        </div>
+        {todayChatExpanded ? (
+          <div
+            role="separator"
+            aria-label="Resize top and bottom sections"
+            className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+            onMouseDown={() => setDraggingSplit(true)}
+          >
+            <div className="h-1 w-12 rounded-full bg-gray-200" />
+          </div>
+        ) : null}
 
-        {/* Bottom: attention | coming up */}
+        {/* Bottom: On My Radar + attention | coming up */}
         <div
           className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
-          style={{ flex: `${100 - splitRatio} 1 0` }}
+          style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
+          <OnMyRadarPanel
+            blocks={dailyBriefBlocks}
+            lineCount={onMyRadarLineCount}
+            expanded={onMyRadarExpanded}
+            onExpandedChange={setOnMyRadarExpanded}
+            onLineNavigate={navigateBriefLine}
+          />
           {/* Side-by-side: What needs your attention | Coming up */}
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-h-0 flex-col overflow-hidden">
               <TodayGroup
                 title="What needs your attention"
@@ -385,17 +437,6 @@ export default function HomePage() {
           dailyBriefBlocks,
         }}
       />
-      <DailyBriefDialog
-        open={showDailyBrief}
-        onClose={closeDailyBrief}
-        blocks={dailyBriefBlocks}
-        onLineNavigate={(link) => {
-          if (link.kind === "action") setSelection({ type: "action", id: link.id });
-          else if (link.kind === "commitment") setSelection({ type: "commitment", id: link.id });
-          else setSelection({ type: "brief", id: link.id });
-          closeDailyBrief();
-        }}
-      />
       <ContextDrawer
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
@@ -478,77 +519,64 @@ function DailyBriefLineRow({
   );
 }
 
-function DailyBriefDialog({
-  open,
-  onClose,
+/** Phase 2 — replaces Daily Brief modal; same blocks, inline on Today */
+function OnMyRadarPanel({
   blocks,
+  lineCount,
+  expanded,
+  onExpandedChange,
   onLineNavigate,
 }: {
-  open: boolean;
-  onClose: () => void;
   blocks: DailyBriefBlock[];
+  lineCount: number;
+  expanded: boolean;
+  onExpandedChange: (next: boolean) => void;
   onLineNavigate: (link: DailyBriefLink) => void;
 }) {
-  /** Off by default — keeps the modal scannable; turn on for per-section context. */
   const [showInsights, setShowInsights] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/30 p-4 sm:items-center sm:p-5"
-      onClick={onClose}
-    >
-      <div
-        className={`my-auto flex w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl ${
-          showInsights ? "max-w-2xl" : "max-w-xl"
-        } max-h-[min(92dvh,calc(100vh-2rem))] sm:max-h-[min(88dvh,calc(100dvh-2.5rem))]`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Today</p>
-              <h2 className="text-lg font-semibold accent-title">Daily Brief</h2>
-              <p className="text-sm text-gray-600">Tap a line to open details. Toggle sparkles for Tomo notes.</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowInsights((prev) => !prev)}
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-md border hover:bg-gray-50 ${
-                  showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200"
-                }`}
-                aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-                title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-              >
-                <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                aria-label="Close Daily Brief"
-              >
-                X
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+    <div className="shrink-0 rounded-xl border border-blue-100 bg-blue-50/60">
+      <div className="flex items-center justify-between gap-2 border-b border-blue-100/80 px-3 py-2.5 sm:px-4">
+        <button
+          type="button"
+          onClick={() => onExpandedChange(!expanded)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={expanded}
+        >
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Today</span>
+          <span className="text-base font-semibold accent-title">On My Radar</span>
+          {lineCount > 0 ? (
+            <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-white px-1.5 text-xs font-semibold text-gray-800 ring-1 ring-blue-200/80">
+              {lineCount}
+            </span>
+          ) : null}
+          {expanded ? (
+            <ChevronUpIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+          )}
+        </button>
+        {expanded ? (
+          <button
+            type="button"
+            onClick={() => setShowInsights((prev) => !prev)}
+            className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border hover:bg-white/80 ${
+              showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-blue-200/80 bg-white/60"
+            }`}
+            aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+            title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+          >
+            <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+      {expanded ? (
+        <div className="max-h-[min(42dvh,360px)] overflow-y-auto px-3 py-3 sm:px-4">
+          <p className="mb-2 text-xs text-gray-600">Tap a line to open details in the drawer.</p>
           <div className="space-y-2.5 sm:space-y-3">
             {blocks.map((block) => (
-              <section key={block.title} className="rounded-xl border border-blue-100 bg-blue-50/60 px-2.5 py-2.5 sm:px-3 sm:py-2.5">
+              <section key={block.title} className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2.5 sm:px-3 sm:py-2.5">
                 <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
@@ -592,7 +620,7 @@ function DailyBriefDialog({
             ))}
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

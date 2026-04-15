@@ -22,7 +22,8 @@ function displayActor(actor: ActivityLogEntry["actor"]) {
 export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEntry[] }) {
   const [expanded, setExpanded] = useState(false);
 
-  if (!entries.length) return null;
+  const display = entries.slice(0, 5);
+  if (!display.length) return null;
 
   return (
     <div className="shrink-0 border-t border-gray-200 bg-gray-50/80">
@@ -33,7 +34,9 @@ export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEnt
         aria-expanded={expanded}
         aria-controls="activity-log-content"
       >
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Activity log</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+          Activity log {entries.length > 5 ? "(5 most recent)" : ""}
+        </p>
         <span className="text-gray-400">
           {expanded ? (
             <ChevronUpIcon className="h-4 w-4" aria-hidden />
@@ -51,7 +54,7 @@ export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEnt
         }`}
       >
         <div className="space-y-2 overflow-y-auto px-4 pb-3 pt-0 max-h-32">
-          {entries.map((entry, i) => (
+          {display.map((entry, i) => (
             <div
               key={entry.id ?? `log-${i}`}
               className="flex items-start justify-between gap-3 text-xs"

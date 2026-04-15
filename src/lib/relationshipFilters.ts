@@ -295,3 +295,89 @@ export function formatFilterSummary(criteria: StructuredFilterCriteria): string 
   if (parts.length === 0) return "";
   return `Tomo: ${parts.join(" • ")}`;
 }
+
+/** Removable tags for active filters (Phase 2 — persistent filter chips vs action prompts). */
+export type FilterCriteriaTag = { id: string; label: string };
+
+export function criteriaToFilterTags(criteria: StructuredFilterCriteria): FilterCriteriaTag[] {
+  const tags: FilterCriteriaTag[] = [];
+
+  if (criteria.query?.trim()) {
+    tags.push({ id: "query", label: `"${criteria.query.trim()}"` });
+  }
+  if (criteria.tier && criteria.tier !== "All") {
+    const t = Array.isArray(criteria.tier) ? criteria.tier.join(", ") : criteria.tier;
+    tags.push({ id: "tier", label: t });
+  }
+  if (criteria.band && criteria.band !== "All") {
+    const b = Array.isArray(criteria.band) ? criteria.band.join(", ") : criteria.band;
+    tags.push({ id: "band", label: b });
+  }
+  if (criteria.momentumDirection && criteria.momentumDirection !== "All") {
+    const m = Array.isArray(criteria.momentumDirection)
+      ? criteria.momentumDirection.join(", ")
+      : criteria.momentumDirection;
+    tags.push({ id: "momentumDirection", label: m });
+  }
+  if (criteria.investorType && criteria.investorType !== "All") {
+    const i = Array.isArray(criteria.investorType) ? criteria.investorType.join(", ") : criteria.investorType;
+    tags.push({ id: "investorType", label: i });
+  }
+  if (criteria.lpLocation && criteria.lpLocation !== "All") {
+    const l = Array.isArray(criteria.lpLocation) ? criteria.lpLocation.join(", ") : criteria.lpLocation;
+    tags.push({ id: "lpLocation", label: `in ${l}` });
+  }
+  const days = criteria.daysSinceLastMeaningfulContact;
+  if (days) {
+    if (days.min != null) tags.push({ id: "daysSinceLastMeaningfulContact", label: `No contact ${days.min}+ days` });
+    else if (days.max != null) tags.push({ id: "daysSinceLastMeaningfulContact", label: `Contact ≤ ${days.max}d` });
+  }
+  const loops = criteria.openLoops;
+  if (loops && loops !== "all" && loops.min != null) {
+    tags.push({ id: "openLoops", label: "Open loops" });
+  }
+  if (criteria.stage && criteria.stage !== "All") {
+    const s = Array.isArray(criteria.stage) ? criteria.stage.join(", ") : criteria.stage;
+    tags.push({ id: "stage", label: s });
+  }
+
+  return tags;
+}
+
+/** Drop one filter dimension; returns validated criteria. */
+export function removeCriteriaTag(criteria: StructuredFilterCriteria, tagId: string): StructuredFilterCriteria {
+  const next: StructuredFilterCriteria = { ...criteria };
+  switch (tagId) {
+    case "query":
+      delete next.query;
+      break;
+    case "tier":
+      delete next.tier;
+      break;
+    case "band":
+      delete next.band;
+      break;
+    case "momentumDirection":
+      delete next.momentumDirection;
+      break;
+    case "investorType":
+      delete next.investorType;
+      break;
+    case "lpLocation":
+      delete next.lpLocation;
+      break;
+    case "daysSinceLastMeaningfulContact":
+      delete next.daysSinceLastMeaningfulContact;
+      break;
+    case "openLoops":
+      delete next.openLoops;
+      break;
+    case "stage":
+      delete next.stage;
+      break;
+    default:
+      break;
+  }
+  const parsed = relationshipFilterSchema.safeParse(next);
+  return parsed.success ? parsed.data : {};
+}

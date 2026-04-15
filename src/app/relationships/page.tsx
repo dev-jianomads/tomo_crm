@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowUpTrayIcon,
   Bars3Icon,
@@ -172,6 +173,11 @@ export default function RelationshipsPage() {
 
   // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
+  /** Phase 2: collapsed single-line filter bar vs full chat */
+  const [filterChatExpanded, setFilterChatExpanded] = usePersistentState<boolean>(
+    "tomo-relationships-filter-chat-expanded",
+    false
+  );
   const [viewMode, setViewMode] = usePersistentState<RelationshipsViewMode>("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
@@ -225,7 +231,7 @@ export default function RelationshipsPage() {
   }, [columnsPopoverOpen]);
 
   useEffect(() => {
-    if (!draggingSplit) return;
+    if (!draggingSplit || !filterChatExpanded) return;
     const handleMove = (e: MouseEvent) => {
       const el = splitContainerRef.current;
       if (!el) return;
@@ -245,7 +251,7 @@ export default function RelationshipsPage() {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [draggingSplit]);
+  }, [draggingSplit, filterChatExpanded, setSplitRatio]);
 
   useEffect(() => {
     if (!resizingColumn) return;
@@ -405,9 +411,36 @@ export default function RelationshipsPage() {
   const activityLogEntries = useMemo(() => {
     if (!activeId) return [];
     return [
-      { id: "1", ts: "Yesterday 3:20 PM", actor: "User" as const, summary: "Call — Reviewed allocation timeline and updated next steps." },
-      { id: "2", ts: "Tue 11:00 AM", actor: "User" as const, summary: "Meeting — Walked through Q4 performance; asked for follow-up." },
-      { id: "3", ts: "Mon 9:05 AM", actor: "User" as const, summary: "Email — Sent performance snapshot + availability options." },
+      {
+        id: "1",
+        ts: "Yesterday 3:45 PM",
+        actor: "TOMO" as const,
+        summary: "Drafted intro note for allocator; awaiting your send.",
+      },
+      {
+        id: "2",
+        ts: "Yesterday 3:20 PM",
+        actor: "User" as const,
+        summary: "Call — Reviewed allocation timeline and updated next steps.",
+      },
+      {
+        id: "3",
+        ts: "Tue 11:00 AM",
+        actor: "User" as const,
+        summary: "Meeting — Walked through Q4 performance; asked for follow-up.",
+      },
+      {
+        id: "4",
+        ts: "Tue 8:15 AM",
+        actor: "TOMO" as const,
+        summary: "Flagged cooling signal after 21d with no meaningful touch.",
+      },
+      {
+        id: "5",
+        ts: "Mon 9:05 AM",
+        actor: "User" as const,
+        summary: "Email — Sent performance snapshot + availability options.",
+      },
     ];
   }, [activeId]);
 
@@ -498,12 +531,18 @@ export default function RelationshipsPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <PageListHeader label="Relationships" />
       <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Top: Tomo filter chat (Phase 5 — orchestrator with filter_relationships tool) */}
+      {/* Top: Tomo filter chat — Phase 2: collapsible to single-line input */}
       <div
         className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white"
-        style={{ flex: `${splitRatio} 1 0` }}
+        style={
+          filterChatExpanded
+            ? { flex: `${splitRatio} 1 0`, minHeight: 180 }
+            : { flex: "0 0 auto" }
+        }
       >
         <RelationshipsFilterChat
+          expanded={filterChatExpanded}
+          onExpandedChange={setFilterChatExpanded}
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
@@ -512,20 +551,21 @@ export default function RelationshipsPage() {
         />
       </div>
 
-      {/* Resize handle */}
-      <div
-        role="separator"
-        aria-label="Resize filter and content sections"
-        className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
-        onMouseDown={() => setDraggingSplit(true)}
-      >
-        <div className="h-1 w-12 rounded-full bg-gray-200" />
-      </div>
+      {filterChatExpanded ? (
+        <div
+          role="separator"
+          aria-label="Resize filter and content sections"
+          className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+          onMouseDown={() => setDraggingSplit(true)}
+        >
+          <div className="h-1 w-12 rounded-full bg-gray-200" />
+        </div>
+      ) : null}
 
       {/* Bottom: Content area */}
       <div
         className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
-        style={{ flex: `${100 - splitRatio} 1 0` }}
+        style={{ flex: filterChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
       >
         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
@@ -763,7 +803,7 @@ export default function RelationshipsPage() {
         title={active?.name ?? "Relationship"}
         section1Content={
           active ? (
-            <RelationshipDetail relationship={active} />
+            <RelationshipDetail relationship={active} onCloseDrawer={() => setActiveId(null)} />
           ) : (
             <div className="text-sm text-gray-500">Select a relationship</div>
           )
@@ -1197,8 +1237,14 @@ function RelationshipCard({
   );
 }
 
-function RelationshipDetail({ relationship }: { relationship: Relationship }) {
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
+function RelationshipDetail({
+  relationship,
+  onCloseDrawer,
+}: {
+  relationship: Relationship;
+  /** Used to navigate without leaving drawer context */
+  onCloseDrawer: () => void;
+}) {
   const stallRisk =
     relationship.band === "Stalled" || relationship.momentumDirection === "Cooling"
       ? relationship.daysSinceLastMeaningfulContact >= 30
@@ -1207,76 +1253,82 @@ function RelationshipDetail({ relationship }: { relationship: Relationship }) {
       : "Low";
 
   return (
-    <div className="space-y-3">
-      {/* Firm + status — name is in drawer header */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-gray-600">{relationship.firm}</p>
-        <div className="flex items-center gap-2">
-          <MomentumChip direction={relationship.momentumDirection} days={relationship.daysSinceLastMeaningfulContact} />
-          <span className="text-xs text-gray-500">{relationship.band}</span>
-        </div>
-      </div>
-
-      {/* Collapsible accordion: Prioritisation, Targeting, Sequencing */}
-      <div className="rounded-md border border-gray-200 bg-white">
-        <button
-          type="button"
-          onClick={() => setDetailsExpanded((e) => !e)}
-          className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-50"
-          aria-expanded={detailsExpanded}
-        >
-          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Details</span>
-          {detailsExpanded ? (
-            <ChevronUpIcon className="h-4 w-4 text-gray-400" aria-hidden />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-gray-400" aria-hidden />
-          )}
-        </button>
-        {detailsExpanded && (
-          <div className="space-y-2 border-t border-gray-100 px-3 py-2">
-            {/* Tier 1 — Prioritisation */}
-            <section>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Prioritisation</p>
-              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-                <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
-                <StatusField label="Stage" value={relationship.stage} />
-                <StatusField label="Signal" value={relationship.momentumDirection} />
-                <StatusField label="Tier" value={relationship.tier} />
-                <StatusField label="Owner" value={relationship.relationshipOwner} />
-                <StatusField label="Stall risk" value={stallRisk} />
-                <StatusField label="Next move" value={relationship.nextMove} className="sm:col-span-2" />
-              </div>
-            </section>
-
-            {/* Tier 2 — Targeting */}
-            <section>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Targeting</p>
-              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-                <StatusField label="Investor type" value={relationship.investorType} />
-                <StatusField label="Strategy fit" value={relationship.strategyFit} />
-                <StatusField label="Strategy type" value={relationship.strategyType} />
-                <StatusField label="Location" value={relationship.lpLocation} />
-                <StatusField label="Investment remit" value={relationship.investmentRemit} />
-                <StatusField label="Typical check" value={relationship.typicalCheckSize} />
-                <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
-              </div>
-            </section>
-
-            {/* Tier 3 — Sequencing */}
-            <section>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sequencing</p>
-              <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-                <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
-                <StatusField label="Last fund" value={relationship.lastFundHistory} />
-                <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
-                <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
-                <StatusField label="Consultant" value={relationship.consultantDependent} />
-                {relationship.consultantName && <StatusField label="Consultant name" value={relationship.consultantName} />}
-                <StatusField label="ESG required" value={relationship.esgRequired} />
-              </div>
-            </section>
+    <div className="space-y-4">
+      {/* Section 1 — Snapshot */}
+      <section aria-labelledby="rel-snapshot-heading">
+        <h3 id="rel-snapshot-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+          Snapshot
+        </h3>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-gray-600">{relationship.firm}</p>
+          <div className="flex items-center gap-2">
+            <MomentumChip direction={relationship.momentumDirection} days={relationship.daysSinceLastMeaningfulContact} />
+            <span className="text-xs text-gray-500">{relationship.band}</span>
           </div>
-        )}
+        </div>
+        <p className="mt-2 text-sm text-gray-900">
+          <span className="text-gray-500">Next move · </span>
+          {relationship.nextMove}
+        </p>
+      </section>
+
+      {/* Section 2 — Context (prioritisation + targeting) */}
+      <section aria-labelledby="rel-context-heading" className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
+        <h3 id="rel-context-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+          Context
+        </h3>
+        <div className="mt-2 space-y-3">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Prioritisation</p>
+            <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+              <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
+              <StatusField label="Stage" value={relationship.stage} />
+              <StatusField label="Signal" value={relationship.momentumDirection} />
+              <StatusField label="Tier" value={relationship.tier} />
+              <StatusField label="Owner" value={relationship.relationshipOwner} />
+              <StatusField label="Stall risk" value={stallRisk} />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Targeting</p>
+            <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+              <StatusField label="Investor type" value={relationship.investorType} />
+              <StatusField label="Strategy fit" value={relationship.strategyFit} />
+              <StatusField label="Strategy type" value={relationship.strategyType} />
+              <StatusField label="Location" value={relationship.lpLocation} />
+              <StatusField label="Investment remit" value={relationship.investmentRemit} />
+              <StatusField label="Typical check" value={relationship.typicalCheckSize} />
+              <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3 — Sequencing */}
+      <section aria-labelledby="rel-seq-heading" className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
+        <h3 id="rel-seq-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+          Sequencing
+        </h3>
+        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
+          <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
+          <StatusField label="Last fund" value={relationship.lastFundHistory} />
+          <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
+          <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
+          <StatusField label="Consultant" value={relationship.consultantDependent} />
+          {relationship.consultantName ? <StatusField label="Consultant name" value={relationship.consultantName} /> : null}
+          <StatusField label="ESG required" value={relationship.esgRequired} />
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+        <p className="text-[11px] text-gray-500">Recent touches and Tomo steps also appear in Activity (full history).</p>
+        <Link
+          href="/activity"
+          onClick={() => onCloseDrawer()}
+          className="text-xs font-medium text-[color:var(--accent)] hover:underline"
+        >
+          Open Activity →
+        </Link>
       </div>
     </div>
   );

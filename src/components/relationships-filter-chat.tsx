@@ -4,9 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
-import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
+import {
+  criteriaToFilterTags,
+  removeCriteriaTag,
+  type StructuredFilterCriteria,
+} from "@/lib/relationshipFilters";
 import { getToolParts } from "@/lib/tomoToolParts";
 import type { CrmUpdatePayload } from "./drawer-section-2-tomo-chat";
 
@@ -26,6 +30,9 @@ type RelationshipsFilterChatProps = {
   currentFilters: StructuredFilterCriteria;
   onFiltersChange: (filters: StructuredFilterCriteria) => void;
   onClearFilters: () => void;
+  /** Phase 2: full filter + chat vs single-line input */
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   /** Called when Tomo applies filters via the tool (e.g. for toast confirmation) */
   onFilterApplied?: () => void;
   /** For CRM updates: id/name/firm so Tomo can resolve name to entityId */
@@ -42,6 +49,8 @@ export function RelationshipsFilterChat({
   currentFilters,
   onFiltersChange,
   onClearFilters,
+  expanded,
+  onExpandedChange,
   onFilterApplied,
   relationshipLookup,
   onCrmUpdate,
@@ -167,13 +176,98 @@ export function RelationshipsFilterChat({
   };
 
   const hasFilters = Object.keys(currentFilters).length > 0;
+  const filterTags = useMemo(() => criteriaToFilterTags(currentFilters), [currentFilters]);
+
+  const removeTag = (tagId: string) => {
+    onFiltersChange(removeCriteriaTag(currentFilters, tagId));
+  };
+
+  const compactInputForm = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSend(input);
+      }}
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5"
+    >
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Ask Tomo to filter or update…"
+        disabled={isStreaming}
+        className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={!input.trim() || isStreaming}
+        className="rounded-md bg-[color:var(--accent)] p-1.5 text-white transition hover:opacity-90 disabled:opacity-50"
+        aria-label="Send"
+      >
+        <PaperAirplaneIcon className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onExpandedChange(true)}
+        className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+        aria-label="Expand filter and chat"
+      >
+        More
+        <ChevronDownIcon className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    </form>
+  );
+
+  if (!expanded) {
+    return (
+      <div className="flex h-full min-h-0 flex-col justify-center gap-1.5 px-3 py-2">
+        <div className="flex min-h-0 items-center gap-2">
+          <p className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-gray-500">Filter</p>
+          {filterTags.length > 0 ? (
+            <div className="flex min-w-0 flex-1 flex-wrap gap-1" data-testid="relationships-active-filter-tags">
+              {filterTags.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => removeTag(t.id)}
+                  className="inline-flex max-w-[200px] items-center gap-0.5 truncate rounded-full border border-[color:var(--accent)]/35 bg-[color:var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-gray-800 hover:bg-[color:var(--accent-soft)]/80"
+                  title={`Remove: ${t.label}`}
+                >
+                  <span className="truncate">{t.label}</span>
+                  <span className="text-gray-500" aria-hidden>
+                    ×
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400">No active filters</span>
+          )}
+          {hasFilters ? (
+            <button type="button" onClick={onClearFilters} className="shrink-0 text-xs text-gray-500 hover:text-gray-700">
+              Clear all
+            </button>
+          ) : null}
+        </div>
+        {compactInputForm}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-          Filter & update
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Filter & update</p>
+          <button
+            type="button"
+            onClick={() => onExpandedChange(false)}
+            className="inline-flex items-center gap-0.5 rounded-md border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 hover:bg-gray-50"
+            aria-label="Collapse to single-line input"
+          >
+            Collapse
+            <ChevronUpIcon className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           {hasFilters && (
             <button
@@ -196,6 +290,29 @@ export function RelationshipsFilterChat({
         </div>
       </div>
 
+      {filterTags.length > 0 ? (
+        <div
+          className="flex flex-wrap gap-1 border-b border-gray-100 px-4 py-2"
+          data-testid="relationships-active-filter-tags"
+        >
+          <span className="mr-1 self-center text-[10px] font-medium uppercase tracking-wide text-gray-400">Active</span>
+          {filterTags.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => removeTag(t.id)}
+              className="inline-flex max-w-[220px] items-center gap-0.5 truncate rounded-full border border-[color:var(--accent)]/35 bg-[color:var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-gray-800 hover:bg-[color:var(--accent-soft)]/80"
+              title={`Remove: ${t.label}`}
+            >
+              <span className="truncate">{t.label}</span>
+              <span className="text-gray-500" aria-hidden>
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {/* Tomo's initial message */}
       <div className="flex justify-start border-b border-gray-100 px-4 py-3">
         <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
@@ -203,20 +320,20 @@ export function RelationshipsFilterChat({
         </div>
       </div>
 
-      <div
-        className="flex flex-wrap gap-1.5 border-b border-gray-100 px-4 py-2"
-        data-testid="relationships-filter-suggestion-chips"
-      >
-        {SUGGESTIONS.map((chip) => (
-          <button
-            key={chip}
-            onClick={() => handleSend(chip)}
-            disabled={isStreaming}
-            className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)]/10 hover:text-[color:var(--accent)] disabled:opacity-50"
-          >
-            {chip}
-          </button>
-        ))}
+      <div className="border-b border-gray-100 px-4 py-2">
+        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">Quick prompts (actions)</p>
+        <div className="flex flex-wrap gap-1.5" data-testid="relationships-filter-suggestion-chips">
+          {SUGGESTIONS.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleSend(chip)}
+              disabled={isStreaming}
+              className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)]/10 hover:text-[color:var(--accent)] disabled:opacity-50"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">

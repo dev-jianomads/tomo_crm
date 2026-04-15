@@ -49,6 +49,10 @@ export default function PipelinePage() {
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<Stage | null>(null);
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-pipeline-split-ratio", 35);
+  const [filterChatExpanded, setFilterChatExpanded] = usePersistentState<boolean>(
+    "tomo-pipeline-filter-chat-expanded",
+    false
+  );
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   /** Pipeline id when "Use in workflow" dialog is open */
@@ -92,7 +96,7 @@ export default function PipelinePage() {
   const drawerOpen = activePipelineId !== null;
 
   useEffect(() => {
-    if (!draggingSplit) return;
+    if (!draggingSplit || !filterChatExpanded) return;
     const handleMove = (e: MouseEvent) => {
       const el = splitContainerRef.current;
       if (!el) return;
@@ -112,7 +116,7 @@ export default function PipelinePage() {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [draggingSplit, setSplitRatio]);
+  }, [draggingSplit, filterChatExpanded, setSplitRatio]);
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -138,10 +142,16 @@ export default function PipelinePage() {
       <div ref={splitContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Top: Filter chat */}
       <div
-        className="min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200"
-        style={{ flex: `${splitRatio} 1 0`, display: "flex" }}
+        className="min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white"
+        style={
+          filterChatExpanded
+            ? { flex: `${splitRatio} 1 0`, minHeight: 180, display: "flex" }
+            : { flex: "0 0 auto", display: "flex" }
+        }
       >
         <RelationshipsFilterChat
+          expanded={filterChatExpanded}
+          onExpandedChange={setFilterChatExpanded}
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
@@ -149,20 +159,21 @@ export default function PipelinePage() {
         />
       </div>
 
-      {/* Resize handle */}
-      <div
-        role="separator"
-        aria-label="Resize filter and pipeline sections"
-        className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
-        onMouseDown={() => setDraggingSplit(true)}
-      >
-        <div className="h-1 w-12 rounded-full bg-gray-200" />
-      </div>
+      {filterChatExpanded ? (
+        <div
+          role="separator"
+          aria-label="Resize filter and pipeline sections"
+          className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+          onMouseDown={() => setDraggingSplit(true)}
+        >
+          <div className="h-1 w-12 rounded-full bg-gray-200" />
+        </div>
+      ) : null}
 
       {/* Bottom: Create pipeline + Pipeline list */}
       <div
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        style={{ flex: `${100 - splitRatio} 1 0` }}
+        style={{ flex: filterChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
       >
         {/* Create pipeline */}
         <div className="shrink-0 space-y-2 border-b border-gray-200 bg-gray-50/50 p-3">
