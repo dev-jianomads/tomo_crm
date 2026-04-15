@@ -32,3 +32,4 @@ This project now includes an automated check suite for Phase 0 stabilization fix
 ## Notes
 - The suite is designed as a release gate for Phase 0; failures indicate remaining work.
 - Screenshots/videos are captured automatically on failure by Playwright.
+- Local runs use **500ms `slowMo`** between actions so headed runs are easier to follow; CI uses **0**. To run at full speed locally: `PLAYWRIGHT_SLOW_MO=0 npm run qa:v0` (or `npm run qa:v0:headless`).

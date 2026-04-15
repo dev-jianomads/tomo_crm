@@ -6,6 +6,15 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 /** Visible browser locally; headless in CI or when PLAYWRIGHT_HEADLESS=1 / `playwright test --headless`. */
 const headless = Boolean(process.env.CI) || process.env.PLAYWRIGHT_HEADLESS === "1";
 
+/**
+ * Delay between Playwright actions (ms). Default 500 for easier headed observation;
+ * 0 in CI. Override: PLAYWRIGHT_SLOW_MO=250 or PLAYWRIGHT_SLOW_MO=0
+ */
+const slowMo =
+  process.env.CI || process.env.PLAYWRIGHT_SLOW_MO === "0"
+    ? 0
+    : Number(process.env.PLAYWRIGHT_SLOW_MO ?? 500);
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -18,6 +27,7 @@ export default defineConfig({
   use: {
     baseURL,
     headless,
+    slowMo,
     trace: "on-first-retry",
     video: "retain-on-failure",
     screenshot: "only-on-failure",
