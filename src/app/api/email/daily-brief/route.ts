@@ -8,9 +8,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { formatDailyBriefBlocksAsEmailHtml } from "@/lib/dailyBriefEmailHtml";
-import { getDailyBriefBlocksForSend } from "@/lib/dailyBriefForSend";
-import { isLoopsConfigured, sendDailyBriefEmail } from "@/lib/loops";
+import { sendDailyBriefToEmail } from "@/lib/dailyBriefSendShared";
+import { isLoopsConfigured } from "@/lib/loops";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +45,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const blocks = getDailyBriefBlocksForSend();
-  const html = formatDailyBriefBlocksAsEmailHtml(blocks);
-  const result = await sendDailyBriefEmail(to, html);
+  const result = await sendDailyBriefToEmail(to);
 
   if (!result.ok) {
     return NextResponse.json(

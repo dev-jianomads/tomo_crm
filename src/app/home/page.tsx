@@ -274,6 +274,29 @@ export default function HomePage() {
     return derived === "Test" || !derived ? "Ken" : derived;
   }, [session?.email]);
 
+  const showDailyBriefResend =
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_SHOW_DAILY_BRIEF_RESEND === "true";
+
+  const [dailyBriefResendBusy, setDailyBriefResendBusy] = useState(false);
+
+  const resendDailyBrief = useCallback(async () => {
+    setDailyBriefResendBusy(true);
+    try {
+      const res = await fetch("/api/email/daily-brief/resend", { method: "POST" });
+      const data = (await res.json()) as { error?: string; detail?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? data.detail ?? "Could not send daily brief");
+      }
+      addToast("Daily brief sent to your inbox.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not send daily brief";
+      addToast(msg);
+    } finally {
+      setDailyBriefResendBusy(false);
+    }
+  }, []);
+
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageListHeader label="Today" />
@@ -291,10 +314,21 @@ export default function HomePage() {
               : { flex: "0 0 auto" }
           }
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h1 className="text-xl font-bold text-gray-900">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900">
               {greeting}, {userName}.
             </h1>
+            {showDailyBriefResend ? (
+              <button
+                type="button"
+                onClick={() => void resendDailyBrief()}
+                disabled={dailyBriefResendBusy}
+                className="shrink-0 pt-0.5 text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
+                title="Sends the Daily Brief email via Loops (demo)"
+              >
+                {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
+              </button>
+            ) : null}
           </div>
           {todayChatExpanded ? (
             <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
