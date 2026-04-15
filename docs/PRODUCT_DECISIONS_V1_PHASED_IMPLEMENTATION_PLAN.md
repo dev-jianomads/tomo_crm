@@ -56,6 +56,7 @@ Goal: complete core usability, compliance, and key architecture changes needed f
 1. **Today + Relationships structural changes**
    - Daily Brief modal retirement + `On My Radar` replacement.
    - Chat panel collapse behavior on Today and Relationships.
+     - **Delivered (Today inline Tomo):** Accordion-style expand/collapse (default collapsed single-line prompt); expanded panel uses persisted top/bottom split with resize handle. See **Appendix — Today inline Tomo UI delta** for copy and interaction diffs aligned with **T2**.
    - Relationships chip split (filter vs action) with persistent active filter tags.
    - Relationships LP drawer restructure (3 sections) + activity extension + history links.
 
@@ -156,4 +157,44 @@ Legend:
 | S1 | Settings | Five-section IA and settings structure | L | Medium | Consolidation regressions | V1 | Initial V1 |
 | S2 (A3) | Settings | Slack webhook + toggles + test + email timing + WA stub | L | Medium | Notification reliability | V1 | Initial V1 |
 | C1 (A4) | Collateral | First 14 Days doc update (`pipeline` -> `list`) | S | Low | Content alignment only | V1 | Later V1 |
+
+---
+
+## Appendix — Today inline Tomo UI delta (delivered)
+
+Tracks **UI copy and interaction** updates shipped for the Today page inline **TOMO AI** block (`/home`). These align with consolidated row **T2** (collapse/expand chat) and Phase 2 “chat panel collapse on Today,” and do not replace T3 (`On My Radar`) or other Today backlog items.
+
+### Diff summary
+
+```diff
+  Inline TOMO AI (expanded)
+- Subtitle block under title:
+-   "Today's snapshot only — attention, meetings & Daily Brief"
+-   "Not your full inbox or CRM · {fund}"
++ (no subtitle lines; title "TOMO AI" only)
+
+- Section label above chips: "Quick prompts"
++ (label removed; chips unchanged)
+
+- Input placeholder: "Ask about what's on Today…"
++ Input placeholder: "Ask Tomo about what's on Today…"
+
+  Collapsed accordion trigger (unchanged intent)
+  "Ask Tomo about what's on Today…"
+
++ After the first user/assistant turn, suggestion chips hide to give the
++ thread more vertical room (hide-suggestions-when-active).
+
++ "Expand view" opens a large overlay (~92dvh) with the same conversation
++ (single chat mount — inline panel shows a docked placeholder until return).
++ Close: overlay button, Escape, backdrop click, or "Return to inline chat".
++ Collapsing the accordion closes the overlay.
+```
+
+### Table row touchpoint
+
+| ID | Relation to this appendix |
+|----|---------------------------|
+| **T2** | Collapse to single-line + expand on click; **plus** expanded-view overlay for long threads without duplicating chat state. |
+| **T1** | Prior “strip subtitle / description” intent extended here by removing the **inline Tomo** subtitle lines under **TOMO AI** (shell/dock copy unchanged unless separately updated). |
 
