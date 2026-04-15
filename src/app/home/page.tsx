@@ -27,6 +27,8 @@ import {
   type DailyBriefLine,
   type DailyBriefLink,
 } from "@/lib/dailyBriefFromToday";
+import { getStillInTodoActions } from "@/lib/todayEngagement";
+import { useTodayEngagement } from "@/hooks/useTodayEngagement";
 import { actions, briefs, commitments, type ActionAttentionCard, type Commitment } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
@@ -246,9 +248,26 @@ export default function HomePage() {
     [sortedActionItems, sortedCommitments, filteredBriefs],
   );
 
+  const attentionQueueIds = useMemo(
+    () => sortedActionItems.slice(0, 6).map((a) => a.id),
+    [sortedActionItems],
+  );
+  const { state: engagementState, recordEngaged } = useTodayEngagement(attentionQueueIds);
+
+  useEffect(() => {
+    if (selection?.type === "action") {
+      recordEngaged(selection.id);
+    }
+  }, [selection, recordEngaged]);
+
+  const stillInTodoActions = useMemo(
+    () => getStillInTodoActions(actions, engagementState),
+    [engagementState],
+  );
+
   const onMyRadarBlocks = useMemo(
-    () => buildOnMyRadarBlocks(sortedActionItems, sortedCommitments, filteredBriefs),
-    [sortedActionItems, sortedCommitments, filteredBriefs],
+    () => buildOnMyRadarBlocks(sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions),
+    [sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions],
   );
 
   const onMyRadarLineCount = useMemo(() => {

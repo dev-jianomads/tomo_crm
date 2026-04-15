@@ -169,21 +169,31 @@ function buildLoopsBlock(sortedActions: ActionItem[], allBriefs: Brief[]): Daily
   };
 }
 
-/**
- * Placeholder until engagement / surfaced-at is persisted (Phase C).
- */
-function buildStillInTodoBlockStub(): DailyBriefBlock {
+/** “Still in To-Do” — surfaced in attention but user hasn’t opened the row yet. */
+export function buildStillInTodoBlock(stillInTodoActions: ActionItem[]): DailyBriefBlock {
+  if (stillInTodoActions.length === 0) {
+    return {
+      icon: "todo",
+      title: "Still in To-Do",
+      subtitle: "Previously flagged, not yet opened",
+      items: [
+        {
+          label: "Nothing here — items appear when they show in What needs your attention before you open them.",
+        },
+      ],
+      insight: "Open a card from the attention list to clear it from this stack.",
+    };
+  }
+
   return {
     icon: "todo",
     title: "Still in To-Do",
-    subtitle: "Needs your attention — not yet engaged",
-    items: [
-      {
-        label:
-          "When we store opens and completions, items you skip from What needs your attention will land here.",
-      },
-    ],
-    insight: "Backed by engagement tracking in a later release.",
+    subtitle: "Surfaced in attention — not opened yet",
+    items: stillInTodoActions.map((a) => ({
+      label: formatActionLineBrief(a),
+      link: { kind: "action", id: a.id },
+    })),
+    insight: "Open these from What needs your attention (or here) to mark them as engaged.",
   };
 }
 
@@ -207,18 +217,19 @@ export function buildDailyBriefBlocks(
 export const buildDailyBriefForOutbound = buildDailyBriefBlocks;
 
 /**
- * On My Radar (Today page): sections 3–4 of the brief plus a Still in To-Do stub.
- * Does not repeat Priority Follow-ups or Meetings (shown in the two columns below).
+ * On My Radar (Today page): Momentum, Open loops, Still in To-Do (no duplicate of follow-ups / meetings).
+ * @param stillInTodoActions — from {@link getStillInTodoActions} / engagement layer
  */
 export function buildOnMyRadarBlocks(
   sortedActions: ActionItem[],
   _sortedCommitments: Commitment[],
   allBriefs: Brief[],
+  stillInTodoActions: ActionItem[],
 ): DailyBriefBlock[] {
   void _sortedCommitments;
   return [
     buildMomentumBlock(sortedActions),
     buildLoopsBlock(sortedActions, allBriefs),
-    buildStillInTodoBlockStub(),
+    buildStillInTodoBlock(stillInTodoActions),
   ];
 }

@@ -198,3 +198,39 @@ Tracks **UI copy and interaction** updates shipped for the Today page inline **T
 | **T2** | Collapse to single-line + expand on click; **plus** expanded-view overlay for long threads without duplicating chat state. |
 | **T1** | Prior “strip subtitle / description” intent extended here by removing the **inline Tomo** subtitle lines under **TOMO AI** (shell/dock copy unchanged unless separately updated). |
 
+---
+
+## Appendix — Daily Brief engagement, OMR, and scheduled send (steps C + D)
+
+This documents **implementation** of the phased plan: **C** (Still in To-Do + engagement signals) and **D** (scheduled Daily Brief delivery + notification prefs UI), on top of **A/B** (builders + OMR without duplicating follow-ups / meetings).
+
+### C — Still in To-Do & engagement
+
+| Piece | Behavior |
+|-------|----------|
+| **Storage** | `localStorage` key `tomo-today-action-engagement-v1` — `surfacedAt` / `engagedAt` per action id (per browser). Replace with server-side user store when CRM auth + DB land. |
+| **Surfaced** | On Today, the top six **What needs your attention** ids are merged into `surfacedAt` the first time they appear. |
+| **Engaged** | Opening an **action** row (drawer) records `engagedAt` for that id; it drops out of Still in To-Do. |
+| **OMR block** | `buildStillInTodoBlock` lists up to five actions that were surfaced but never engaged; empty state explains the rule. |
+| **Settings** | **Notifications → Clear engagement memory** calls `resetTodayEngagement()` for demo resets. |
+
+### D — Scheduled Daily Brief (Loops) + prefs UI
+
+| Piece | Behavior |
+|-------|----------|
+| **Cron** | `vercel.json` runs `GET /api/cron/daily-brief` on a UTC schedule (default `0 12 * * *` — adjust for your audience). |
+| **Auth** | Route requires `Authorization: Bearer <CRON_SECRET>` (set `CRON_SECRET` in Vercel; Vercel Cron injects this header). |
+| **Payload** | Same four-section HTML as manual send: `sendDailyBriefToEmail` → `LOOPS_SEND_TO` (or `DAILY_BRIEF_TEST_TO`). |
+| **Settings** | **Notifications** includes **Daily Brief (email)** — toggles and preferred local hour are **client-persisted** (`tomo-daily-digest-prefs-v1`) for product direction until server-side prefs + multi-user routing exist. Actual send time follows **`vercel.json` UTC** until cron reads user timezone from DB. |
+| **Slack** | Checkbox stub; Slack delivery is a later integration (same snapshot JSON as email). |
+
+### Operational checklist (Vercel)
+
+1. `LOOPS_API_KEY`, `LOOPS_SEND_TO`, `CRON_SECRET` (match Vercel Cron integration).
+2. Redeploy after changing `vercel.json` schedule.
+3. Confirm cron execution under **Vercel → Cron Jobs** / logs.
+
+### Should A–D ship in one release?
+
+No — **C + D** shipped after **A + B** to keep review small. Further work: persist engagement + digest prefs per user server-side; Slack transactional send; timezone-aware cron per tenant.
+
