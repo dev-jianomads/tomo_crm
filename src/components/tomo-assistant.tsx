@@ -18,6 +18,8 @@ type TomoAssistantProps = {
   contextLabel?: string;
   /** Shown above suggestion chips (e.g. "Quick prompts") */
   suggestionsHeader?: string;
+  /** When false, hides the TOMO AI title row (e.g. when an outer shell provides the title). */
+  showHeader?: boolean;
   placeholder?: string;
   /** When true, hide suggestion chips once conversation has started (frees space for chat) */
   hideSuggestionsWhenActive?: boolean;
@@ -50,6 +52,7 @@ export function TomoAssistant({
   suggestions = [],
   contextLabel,
   suggestionsHeader,
+  showHeader = true,
   placeholder = "Ask TOMO anything…",
   hideSuggestionsWhenActive = false,
   isStreaming = false,
@@ -72,19 +75,16 @@ export function TomoAssistant({
 
   return (
     <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white">
-      {/* Header with context indicator */}
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-gray-900">TOMO AI</p>
-          {/* 
-            Context label shows what entity Tomo is aware of
-            PRODUCTION: This context is sent with each message to the API
-          */}
-          {contextLabel ? (
-            <p className="whitespace-pre-line text-xs text-gray-500">{contextLabel}</p>
-          ) : null}
+      {showHeader ? (
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">TOMO AI</p>
+            {contextLabel ? (
+              <p className="whitespace-pre-line text-xs text-gray-500">{contextLabel}</p>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Quick suggestion chips — collapse when active to give chat more space */}
       {suggestions.length && !(hideSuggestionsWhenActive && messages.length > 0) ? (
