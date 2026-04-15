@@ -29,7 +29,7 @@ import {
   createUserWorkflowInputSchema,
   isUserWorkflowActionComplete,
   trimUserWorkflowAction,
-} from "@/lib/customPlaybooks";
+} from "@/lib/custom-playbook-schema";
 
 // ── Context types ────────────────────────────────────────────────────────────
 
@@ -330,6 +330,10 @@ const stepSchema = z.object({
 const workflowSchema = z.object({
   title: z.string().describe("The workflow title"),
   trigger: z.string().describe("What triggers this workflow to start"),
+  triggerKind: z
+    .enum(["EVENT", "THRESHOLD", "SCHEDULED"])
+    .optional()
+    .describe("Trigger class: EVENT (one-off signal), THRESHOLD (metric/time rule), SCHEDULED (calendar/cadence)"),
   steps: z
     .array(stepSchema)
     .min(1)
@@ -420,6 +424,7 @@ export async function POST(req: Request) {
           title: input.title,
           trigger: input.trigger,
           steps: input.steps as WorkflowStep[],
+          triggerKind: input.triggerKind ?? "EVENT",
         };
         if (surface === "workflow") {
           return {

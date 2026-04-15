@@ -10,7 +10,13 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { WorkflowDefinition, WorkflowStep } from "@/lib/workflow-templates";
+import type { WorkflowDefinition, WorkflowStep, WorkflowTriggerKind } from "@/lib/workflow-templates";
+
+const TRIGGER_KIND_LABEL: Record<WorkflowTriggerKind, string> = {
+  EVENT: "EVENT",
+  THRESHOLD: "THRESHOLD",
+  SCHEDULED: "SCHEDULED",
+};
 
 function Connector() {
   return (
@@ -57,6 +63,7 @@ export function WorkflowProcessFlow({
   highlightVersion?: number;
 }) {
   const { trigger, steps } = workflow;
+  const triggerKind: WorkflowTriggerKind = workflow.triggerKind ?? "EVENT";
   const prevWorkflow = useRef<WorkflowDefinition | null>(null);
   const prevVersion = useRef(highlightVersion);
   const [changedSet, setChangedSet] = useState<Set<string>>(new Set());
@@ -73,7 +80,9 @@ export function WorkflowProcessFlow({
     const prev = prevWorkflow.current;
     const changed = new Set<string>();
 
-    if (!prev || prev.trigger !== workflow.trigger) {
+    const prevKind = prev?.triggerKind ?? "EVENT";
+    const nextKind = workflow.triggerKind ?? "EVENT";
+    if (!prev || prev.trigger !== workflow.trigger || prevKind !== nextKind) {
       changed.add("trigger");
     }
 
@@ -108,9 +117,15 @@ export function WorkflowProcessFlow({
             <div
               className={`flex w-[160px] flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
             >
-              <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">
-                Trigger
-              </span>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">Trigger</span>
+                <span
+                  className="rounded-full bg-blue-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                  title={`Trigger type: ${TRIGGER_KIND_LABEL[triggerKind]}`}
+                >
+                  {TRIGGER_KIND_LABEL[triggerKind]}
+                </span>
+              </div>
               <span className="mt-0.5 text-xs font-semibold text-gray-900 leading-tight line-clamp-3">
                 {trigger}
               </span>

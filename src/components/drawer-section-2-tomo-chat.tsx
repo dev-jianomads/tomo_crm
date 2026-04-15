@@ -28,6 +28,9 @@ export type CrmUpdatePayload = {
 type DrawerSection2TomoChatProps = {
   initialMessage?: TomoInitialMessage;
   suggestions: string[];
+  /** Phase 1 — optional split from `suggestions`; execution = silent confirm, draft = chat + stack */
+  executionChips?: string[];
+  draftChips?: string[];
   contextLabel?: string;
   entityKey: string;
   selection?: DrawerSelection;
@@ -42,6 +45,8 @@ type DrawerSection2TomoChatProps = {
 export function DrawerSection2TomoChat({
   initialMessage,
   suggestions,
+  executionChips = [],
+  draftChips = [],
   contextLabel,
   entityKey,
   selection,
@@ -49,6 +54,7 @@ export function DrawerSection2TomoChat({
   onCrmUpdate,
 }: DrawerSection2TomoChatProps) {
   const [input, setInput] = useState("");
+  const [draftStack, setDraftStack] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   // Track which tool calls we've already processed so we don't double-fire
   const processedToolCalls = useRef<Set<string>>(new Set());
@@ -137,6 +143,7 @@ export function DrawerSection2TomoChat({
     processedToolCalls.current.clear();
     setMessages([]);
     setInput("");
+    setDraftStack([]);
   }, [entityKey, setMessages]);
 
   useEffect(() => {
@@ -151,7 +158,17 @@ export function DrawerSection2TomoChat({
   };
 
   const displaySuggestions = suggestions.length ? suggestions : FALLBACK_SUGGESTIONS;
-  const showChips = messages.length === 0;
+  const hasSplitChips = executionChips.length > 0 || draftChips.length > 0;
+  const legacyChips = hasSplitChips ? [] : displaySuggestions;
+
+  const runExecutionChip = (label: string) => {
+    toast.success("Recorded", { description: label });
+  };
+
+  const runDraftChip = (label: string) => {
+    setDraftStack((prev) => [...prev, label]);
+    handleSend(label);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -160,9 +177,48 @@ export function DrawerSection2TomoChat({
         {contextLabel ? <p className="ml-2 text-[11px] text-gray-500">— {contextLabel}</p> : null}
       </div>
 
-      {showChips && displaySuggestions.length > 0 ? (
+      {hasSplitChips ? (
+        <>
+          {executionChips.length > 0 ? (
+            <div className="border-b border-gray-100 px-3 py-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Execution</p>
+              <div className="flex flex-wrap gap-1.5">
+                {executionChips.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => runExecutionChip(chip)}
+                    disabled={isStreaming}
+                    className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-800 transition hover:border-[color:var(--accent)]/50 hover:bg-[color:var(--accent-soft)] disabled:opacity-50"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {draftChips.length > 0 ? (
+            <div className="border-b border-gray-100 px-3 py-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Draft with Tomo</p>
+              <div className="flex flex-wrap gap-1.5">
+                {draftChips.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => runDraftChip(chip)}
+                    disabled={isStreaming}
+                    className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : legacyChips.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-3 py-2">
-          {displaySuggestions.map((chip) => (
+          {legacyChips.map((chip) => (
             <button
               key={chip}
               onClick={() => handleSend(chip)}
@@ -172,6 +228,19 @@ export function DrawerSection2TomoChat({
               {chip}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {draftStack.length > 0 ? (
+        <div className="shrink-0 border-b border-[color:var(--peach)]/40 bg-[color:var(--peach-soft)]/50 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--peach-ink)]">Drafted by TOMO</p>
+          <ul className="mt-1 space-y-1 text-xs text-gray-800">
+            {draftStack.map((line, idx) => (
+              <li key={`${line}-${idx}`} className="rounded border border-white/60 bg-white/80 px-2 py-1">
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

@@ -25,7 +25,7 @@ import {
   getQualifiedMandatesForFund,
   type IntroductionStatus,
 } from "@/lib/mockLpNetwork";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 export default function LpNetworkPage() {
   const { ready } = useRequireSession();

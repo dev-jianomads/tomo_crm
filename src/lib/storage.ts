@@ -20,8 +20,6 @@
  * =============================================================================
  */
 
-import { useLayoutEffect, useRef, useState } from "react";
-
 /**
  * Read a value from localStorage with JSON parsing
  * 
@@ -73,58 +71,8 @@ export function writeToStorage<T>(key: string, value: T) {
 }
 
 /**
- * React hook for persisted state (survives page refresh)
- * 
- * @param key - Storage key
- * @param initial - Initial value if nothing stored
- * @returns [value, setValue, ready] tuple — `ready` is true after localStorage has been applied (always false on server).
- * 
- * USAGE:
- * ```
- * const [panelWidth, setPanelWidth, ready] = usePersistentState('panel-width', 42);
- * 
- * // Update value (auto-persists to localStorage)
- * setPanelWidth(50);
- * 
- * // Optional: wait for stored value before rendering (avoids one-frame default)
- * if (!ready) return null;
- * ```
- * 
- * PRODUCTION USE CASES:
- * - Resizable panel widths/heights
- * - Selected tab or view preferences
- * - Collapsed/expanded sections
- * - Sort orders and filters
- * - Theme preference (if not in user profile)
- * 
- * NOTE: For data that should sync across devices, store in Supabase
- * user_preferences table instead.
- *
- * HYDRATION: Always seeds React state with `initial` on the first render (server and client)
- * so markup matches. After mount, `useLayoutEffect` reads localStorage and updates state.
- * Third value `ready` is false until that read completes (false on server).
+ * Persisted React state lives in `usePersistentState` (`./usePersistentState.ts`, client-only).
  */
-export function usePersistentState<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void, boolean] {
-  const [state, setState] = useState<T>(() => initial);
-  const [ready, setReady] = useState(false);
-  const fallbackRef = useRef(initial);
-  fallbackRef.current = initial;
-
-  useLayoutEffect(() => {
-    setState(readFromStorage(key, fallbackRef.current));
-    setReady(true);
-  }, [key]);
-
-  const update = (val: T | ((prev: T) => T)) => {
-    setState((prev) => {
-      const next = typeof val === "function" ? (val as (prev: T) => T)(prev) : val;
-      writeToStorage(key, next);
-      return next;
-    });
-  };
-
-  return [state, update, ready];
-}
 
 /**
  * =============================================================================

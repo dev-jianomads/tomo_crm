@@ -16,7 +16,8 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
-import { relationships, Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
+import { Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
+import { useRelationships } from "@/components/relationships-provider";
 import type { MomentumDirection, Stage } from "@/lib/mockData";
 import {
   applyFilters,
@@ -28,9 +29,9 @@ import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { useRequireSession } from "@/lib/auth";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
-import { usePipelines } from "@/lib/pipelines";
+import { usePipelines } from "@/lib/use-pipelines";
 import { toast } from "sonner";
 
 type SortColumn =
@@ -151,6 +152,7 @@ function mergeWithOverrides(
 
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
+  const { relationships } = useRelationships();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
   const { addPipeline } = usePipelines(activeFundId);
@@ -283,7 +285,7 @@ export default function RelationshipsPage() {
 
   const relationshipsWithOverrides = useMemo(
     () => mergeWithOverrides(relationships, relationshipOverrides),
-    [relationshipOverrides]
+    [relationships, relationshipOverrides]
   );
 
   const filtered = useMemo(

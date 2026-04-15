@@ -1,4 +1,4 @@
-import { actions, relationships, formatDaysSinceContact, type ActionItem } from "./mockData";
+import { actions, formatDaysSinceContact, type ActionItem, type Relationship } from "./mockData";
 import { suggestedPlaybooks, tomoDefaultWorkflows } from "./mockPlaybooks";
 
 export type TomoActivityEventType = "outreach" | "update" | "meeting" | "system";
@@ -86,7 +86,7 @@ function sortTomoActivityPageEvents(events: TomoActivityPageEvent[]): TomoActivi
  * Derived Tomo-only log for `/activity`: TOMO lines from `actions[].activityLog`
  * plus a small synthetic set tied to CRM + playbook copy (mock only).
  */
-export function getTomoActivityPageEvents(): TomoActivityPageEvent[] {
+export function getTomoActivityPageEvents(relationships: Relationship[]): TomoActivityPageEvent[] {
   const fromActions: TomoActivityPageEvent[] = [];
   for (const a of actions) {
     const wf = workflowLabelForAction(a);

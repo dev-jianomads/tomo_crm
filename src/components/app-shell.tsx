@@ -52,7 +52,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { TomoChatProvider } from "@/components/tomo-chat-context";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
@@ -92,7 +92,7 @@ type AppShellProps = {
 const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
   { href: "/home", label: "Today", icon: HomeIcon, id: "home" },
   { href: "/relationships", label: "Relationships", icon: UserGroupIcon, id: "relationships" },
-  { href: "/pipeline", label: "Pipeline", icon: FunnelIcon, id: "pipeline" },
+  { href: "/pipeline", label: "Lists", icon: FunnelIcon, id: "pipeline" },
   { href: "/workflows", label: "Workflows", icon: ArrowPathRoundedSquareIcon, id: "workflows" },
 ];
 

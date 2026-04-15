@@ -27,7 +27,9 @@ export default defineConfig({
   use: {
     baseURL,
     headless,
-    slowMo,
+    launchOptions: {
+      slowMo,
+    },
     trace: "on-first-retry",
     video: "retain-on-failure",
     screenshot: "only-on-failure",

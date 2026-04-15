@@ -4,7 +4,6 @@
  */
 
 import type { StructuredFilterCriteria } from "./relationshipFilters";
-import { usePersistentState } from "./storage";
 
 export type Pipeline = {
   id: string;
@@ -30,7 +29,7 @@ export const MOCK_PIPELINE_IDS_FUND_1 = {
  * Uses realistic StructuredFilterCriteria based on mock CRM (150 relationships).
  * Filters chosen to yield a useful slice from the seeded distribution.
  */
-function generateMockPipelines(): Pipeline[] {
+export function generateMockPipelines(): Pipeline[] {
   const now = new Date().toISOString();
   const fundId = "fund-1";
 
@@ -70,68 +69,6 @@ function generateMockPipelines(): Pipeline[] {
   ];
 }
 
-function getInitialPipelines(): Pipeline[] {
+export function getInitialPipelines(): Pipeline[] {
   return generateMockPipelines();
-}
-
-export type UsePipelinesResult = {
-  /** Pipelines for the given fund (or all if fundId === "all") */
-  pipelines: Pipeline[];
-  addPipeline: (p: Omit<Pipeline, "id" | "createdAt">) => void;
-  updatePipeline: (id: string, updates: Partial<Pick<Pipeline, "name" | "filterCriteria">>) => void;
-  removePipeline: (id: string) => void;
-  /** Reset to 3 mock pipelines (demo only) */
-  resetToMock: () => void;
-  ready: boolean;
-};
-
-/**
- * Hook for pipelines, scoped by fund.
- * Merges with mock pipelines on first load (empty storage).
- */
-export function usePipelines(fundId: string): UsePipelinesResult {
-  const [allPipelines, setAllPipelines, ready] = usePersistentState<Pipeline[]>(
-    PIPELINES_STORAGE_KEY,
-    getInitialPipelines()
-  );
-
-  const pipelines =
-    fundId === "all"
-      ? allPipelines
-      : allPipelines.filter((p) => p.fundId === fundId);
-
-  const addPipeline = (p: Omit<Pipeline, "id" | "createdAt">) => {
-    const newPipeline: Pipeline = {
-      ...p,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setAllPipelines((prev) => [...prev, newPipeline]);
-  };
-
-  const updatePipeline = (
-    id: string,
-    updates: Partial<Pick<Pipeline, "name" | "filterCriteria">>
-  ) => {
-    setAllPipelines((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  };
-
-  const removePipeline = (id: string) => {
-    setAllPipelines((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const resetToMock = () => {
-    setAllPipelines(generateMockPipelines());
-  };
-
-  return {
-    pipelines,
-    addPipeline,
-    updatePipeline,
-    removePipeline,
-    resetToMock,
-    ready,
-  };
 }

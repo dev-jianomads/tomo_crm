@@ -43,7 +43,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { clearSession, useRequireSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { OnboardingState } from "@/lib/types";
 import { useFunds } from "@/components/fund-provider";
 

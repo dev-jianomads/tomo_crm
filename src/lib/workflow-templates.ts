@@ -8,9 +8,14 @@ export type WorkflowStep = {
   condition?: string;
 };
 
+/** Required on process diagrams (Phase 1): how the workflow is invoked. */
+export type WorkflowTriggerKind = "EVENT" | "THRESHOLD" | "SCHEDULED";
+
 export type WorkflowDefinition = {
   title: string;
   trigger: string;
+  /** Defaults to EVENT when omitted (older markdown / AI updates). */
+  triggerKind?: WorkflowTriggerKind;
   steps: WorkflowStep[];
 };
 
@@ -18,6 +23,7 @@ export type WorkflowDefinition = {
 
 const INTRO_TRACKER: WorkflowDefinition = {
   title: "Warm Intro Tracker",
+  triggerKind: "EVENT",
   trigger: "CC'd introduction email detected",
   steps: [
     { name: "Detect & Log", type: "action", description: "Parse intro from Sarah Kim, log David Park (Redstone) with source credit" },
@@ -29,6 +35,7 @@ const INTRO_TRACKER: WorkflowDefinition = {
 
 const POST_MEETING: WorkflowDefinition = {
   title: "Post-Meeting Execution Loop",
+  triggerKind: "EVENT",
   trigger: "Zoom meeting with Lisa Tanaka (Crestview) ends",
   steps: [
     { name: "Extract & Summarize", type: "action", description: "Pull transcript, extract objections, commitments, next steps" },
@@ -40,6 +47,7 @@ const POST_MEETING: WorkflowDefinition = {
 
 const UPDATE_FOLLOWUP: WorkflowDefinition = {
   title: "Update → Follow-Up Conversion",
+  triggerKind: "THRESHOLD",
   trigger: "Monthly investor update sent",
   steps: [
     { name: "Segment & Track", type: "action", description: "Segment LPs by tier, monitor opens/clicks from Marcus Chen and others" },
@@ -50,6 +58,7 @@ const UPDATE_FOLLOWUP: WorkflowDefinition = {
 
 const NO_RESPONSE_STALL: WorkflowDefinition = {
   title: "No Response → Re-engage",
+  triggerKind: "THRESHOLD",
   trigger: "No response in 5d",
   steps: [
     { name: "Flag as Blocked", type: "action", description: "Mark LP as blocked, add to attention list" },
@@ -61,6 +70,7 @@ const NO_RESPONSE_STALL: WorkflowDefinition = {
 
 const DDQ_RESPONSE: WorkflowDefinition = {
   title: "DDQ Response Engine",
+  triggerKind: "EVENT",
   trigger: "DDQ received from Rachel Novak (Oakmont)",
   steps: [
     { name: "Parse & Match", type: "action", description: "Parse questionnaire sections, match to historical answers with citations" },
@@ -72,6 +82,7 @@ const DDQ_RESPONSE: WorkflowDefinition = {
 
 const NY_ROADSHOW: WorkflowDefinition = {
   title: "New York Roadshow",
+  triggerKind: "SCHEDULED",
   trigger: "7 days before trip on 6 June 2026",
   steps: [
     {
@@ -95,6 +106,7 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
 
 const WEBSITE_CRM_SYNC: WorkflowDefinition = {
   title: "Website → CRM Sync",
+  triggerKind: "EVENT",
   trigger: "Corporate website change detected",
   steps: [
     { name: "Scan Website", type: "action", description: "Crawl corporate website for personnel, role, and contact changes" },
@@ -106,6 +118,7 @@ const WEBSITE_CRM_SYNC: WorkflowDefinition = {
 
 const EMAIL_SCHEDULING: WorkflowDefinition = {
   title: "Email Scheduling Assistant",
+  triggerKind: "EVENT",
   trigger: "Scheduling request detected in email",
   steps: [
     { name: "Detect Request", type: "action", description: "Identify scheduling intent from incoming emails" },
@@ -118,6 +131,7 @@ const EMAIL_SCHEDULING: WorkflowDefinition = {
 
 const MEETING_NOTES_ACTIONS: WorkflowDefinition = {
   title: "Meeting Notes → Actions",
+  triggerKind: "EVENT",
   trigger: "Meeting notes or transcript uploaded",
   steps: [
     { name: "Parse Notes", type: "action", description: "Extract key discussion points, decisions, and quotes" },
@@ -240,8 +254,9 @@ export function workflowSummary(
     })
     .join("\n");
   const context = PLAYBOOK_CONTEXT[playbookType];
+  const kind = def.triggerKind ?? "EVENT";
   return (
-    `${def.title}\nTrigger: ${def.trigger}\n\n` +
+    `${def.title}\nTrigger (${kind}): ${def.trigger}\n\n` +
     `${stepList}\n\n` +
     `${context}\n\n` +
     `Ask me to add, remove, or change any step.`
@@ -251,7 +266,8 @@ export function workflowSummary(
 // ── Markdown generation from structured data ────────────────────────────────
 
 export function workflowToMarkdown(def: WorkflowDefinition): string {
-  const lines: string[] = [`# ${def.title}`, "", `## Trigger`, def.trigger, "", `## Steps`, ""];
+  const kind = def.triggerKind ?? "EVENT";
+  const lines: string[] = [`# ${def.title}`, "", `## Trigger`, kind, def.trigger, "", `## Steps`, ""];
   def.steps.forEach((step, i) => {
     lines.push(`### ${i + 1}. ${step.name}`);
     lines.push(`- type: ${step.type}`);
@@ -268,11 +284,20 @@ export function workflowToMarkdown(def: WorkflowDefinition): string {
 export function parseWorkflowMarkdown(md: string): WorkflowDefinition | null {
   try {
     const titleMatch = md.match(/^#\s+(.+)$/m);
-    const triggerMatch = md.match(/## Trigger\n(.+)/);
-    if (!titleMatch || !triggerMatch) return null;
+    const triggerBlock = md.match(/## Trigger\n([\s\S]*?)(?=\n## Steps\b)/);
+    if (!titleMatch || !triggerBlock) return null;
 
     const title = titleMatch[1].trim();
-    const trigger = triggerMatch[1].trim();
+    const triggerLines = triggerBlock[1].trim().split("\n");
+    const firstLine = triggerLines[0]?.trim() ?? "";
+    let triggerKind: WorkflowTriggerKind | undefined;
+    let trigger: string;
+    if (firstLine === "EVENT" || firstLine === "THRESHOLD" || firstLine === "SCHEDULED") {
+      triggerKind = firstLine;
+      trigger = triggerLines.slice(1).join("\n").trim();
+    } else {
+      trigger = triggerBlock[1].trim();
+    }
     const steps: WorkflowStep[] = [];
 
     const stepBlocks = md.split(/### \d+\.\s+/).slice(1);
@@ -295,7 +320,12 @@ export function parseWorkflowMarkdown(md: string): WorkflowDefinition | null {
       });
     }
 
-    return { title, trigger, steps };
+    return {
+      title,
+      trigger,
+      steps,
+      ...(triggerKind ? { triggerKind } : {}),
+    };
   } catch {
     return null;
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 export type Fund = { id: string; name: string };
 

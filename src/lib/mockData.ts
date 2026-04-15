@@ -207,6 +207,12 @@ export type Commitment = {
   window: "next72h" | "today";
   /** Brief / prep pack status for Coming up badge */
   prepStatus: CommitmentPrepStatus;
+  /** Phase 1 — one-line signal for meeting prep (replaces score-like framing). */
+  prepSignal?: string;
+  /** Phase 1 — overdue promise / missed prep flag */
+  commitmentOverdue?: boolean;
+  /** When set, deep link to this relationship row on Relationships */
+  relationshipId?: string;
 };
 
 export type Brief = {
@@ -607,7 +613,8 @@ function generateRelationships(): Relationship[] {
   return rels;
 }
 
-export const relationships: Relationship[] = generateRelationships();
+/** Generated LP rows (used when `exports/mock-relationships.csv` is missing or invalid). */
+export const relationshipsGenerated: Relationship[] = generateRelationships();
 
 export const actions: ActionItem[] = [
   {
@@ -785,21 +792,25 @@ export const commitments: Commitment[] = [
     id: "c1",
     title: "HF Update",
     datetime: "Today 2:00 PM ET",
-    lp: "UBS",
-    contactName: "Charly Malek",
+    lp: "PAAMCO Prisma",
+    contactName: "Peter Zakowich",
     briefId: "b3",
     window: "today",
     prepStatus: "ready",
+    prepSignal: "Signal: Heating up · Tier 1 — aligns with March diligence thread",
+    relationshipId: "r5",
   },
   {
     id: "c2",
     title: "Investment Update",
     datetime: "Today 4:00 PM ET",
-    lp: "CPPIB",
-    contactName: "Frank Ieraci",
+    lp: "A16z Family Office",
+    contactName: "Michel del Buono",
     briefId: "b4",
     window: "today",
     prepStatus: "ready",
+    prepSignal: "Signal: First contact · cap intro still warm from Liyen",
+    relationshipId: "r6",
   },
   {
     id: "c3",
@@ -810,6 +821,7 @@ export const commitments: Commitment[] = [
     briefId: "b5",
     window: "next72h",
     prepStatus: "ready",
+    prepSignal: "Signal: Active-stable — sleeve sizing on agenda",
   },
   {
     id: "c4",
@@ -819,6 +831,8 @@ export const commitments: Commitment[] = [
     contactName: "Nic Fallows",
     window: "next72h",
     prepStatus: "not_available",
+    commitmentOverdue: true,
+    prepSignal: "Signal: Unknown — limited CRM context for first touch",
   },
 ];
 
@@ -854,23 +868,23 @@ export const briefs: Brief[] = [
   },
   {
     id: "b3",
-    meetingTitle: "HF Update — UBS",
-    lp: "UBS",
+    meetingTitle: "HF Update — PAAMCO Prisma",
+    lp: "PAAMCO Prisma",
     datetime: "Today 2:00 PM ET",
     status: "Ready",
     openLoops: 1,
-    summary: "Quarterly hedge fund update; focus on attribution, capacity, and any strategy shifts Charly flagged in email.",
+    summary: "Quarterly hedge fund update; focus on attribution, capacity, and allocator-desk questions from Peter's team.",
     agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
     commitments: ["Send one-pager after call", "Confirm data room access renewal"],
   },
   {
     id: "b4",
-    meetingTitle: "Investment Update — CPPIB",
-    lp: "CPPIB",
+    meetingTitle: "Investment Update — A16z Family Office",
+    lp: "A16z Family Office",
     datetime: "Today 4:00 PM ET",
     status: "Ready",
     openLoops: 2,
-    summary: "Investment Update on current fund; Frank asked for liquidity terms and co-invest posture last touch.",
+    summary: "Investment update on current fund; Michel asked for liquidity terms and co-invest posture last touch.",
     agenda: ["Portfolio update", "Liquidity & terms", "Path to next IC"],
     commitments: ["Follow up on co-invest deck", "Share updated DDQ index"],
   },

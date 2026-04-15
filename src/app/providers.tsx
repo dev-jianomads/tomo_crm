@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { FundProvider } from "@/components/fund-provider";
+import { RelationshipsProvider } from "@/components/relationships-provider";
 import { Sonner } from "@/components/ui/sonner";
 import { VersionCheck } from "@/components/version-check";
 
@@ -46,7 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <FundProvider>
-      {children}
+      <RelationshipsProvider>{children}</RelationshipsProvider>
       <VersionCheck />
       <Sonner />
     </FundProvider>

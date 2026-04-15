@@ -9,8 +9,10 @@ import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
-import { usePipelines, type Pipeline } from "@/lib/pipelines";
-import { relationships, STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
+import { usePipelines } from "@/lib/use-pipelines";
+import type { Pipeline } from "@/lib/pipelines";
+import { STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
+import { useRelationships } from "@/components/relationships-provider";
 import {
   applyFilters,
   formatFilterSummary,
@@ -19,7 +21,7 @@ import {
 } from "@/lib/relationshipFilters";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { PipelineStageTomoChat } from "@/components/pipeline-stage-tomo-chat";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { toast } from "sonner";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
@@ -33,6 +35,7 @@ type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 export default function PipelinePage() {
   const router = useRouter();
   const { ready } = useRequireSession();
+  const { relationships } = useRelationships();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
   const { pipelines, addPipeline, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
@@ -56,7 +59,7 @@ export default function PipelinePage() {
 
   const filteredCount = useMemo(
     () => applyFilters(relationships, filterCriteria).length,
-    [filterCriteria]
+    [relationships, filterCriteria]
   );
 
   const clearFilters = () => setFilterCriteria({ ...EMPTY_CRITERIA });
@@ -293,6 +296,7 @@ export default function PipelinePage() {
       {useWorkflowPipelineId && useWorkflowPipeline && (
         <UseInWorkflowDialog
           pipeline={useWorkflowPipeline}
+          relationships={relationships}
           selectedPlaybookId={useWorkflowPlaybookId}
           onSelectPlaybook={setUseWorkflowPlaybookId}
           onClose={() => setUseWorkflowPipelineId(null)}
@@ -334,12 +338,14 @@ export default function PipelinePage() {
             selectedFunnelStage ? (
               <PipelineStageDrawerContent
                 pipeline={activePipeline}
+                relationships={relationships}
                 stage={selectedFunnelStage}
                 onBack={() => setSelectedFunnelStage(null)}
               />
             ) : (
               <PipelineDrawerContent
                 pipeline={activePipeline}
+                relationships={relationships}
                 onStageClick={setSelectedFunnelStage}
               />
             )
@@ -372,6 +378,7 @@ type UseInWorkflowDialogMode = "existing" | "custom";
 
 function UseInWorkflowDialog({
   pipeline,
+  relationships,
   selectedPlaybookId,
   onSelectPlaybook,
   onClose,
@@ -380,6 +387,7 @@ function UseInWorkflowDialog({
   router,
 }: {
   pipeline: Pipeline;
+  relationships: Relationship[];
   selectedPlaybookId: string;
   onSelectPlaybook: (id: string) => void;
   onClose: () => void;
@@ -579,16 +587,18 @@ function groupByStage(rels: Relationship[]): Record<Stage, Relationship[]> {
 
 function PipelineStageDrawerContent({
   pipeline,
+  relationships,
   stage,
   onBack,
 }: {
   pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+  relationships: Relationship[];
   stage: Stage;
   onBack: () => void;
 }) {
   const filteredRels = useMemo(
     () => applyFilters(relationships, pipeline.filterCriteria),
-    [pipeline.filterCriteria]
+    [relationships, pipeline.filterCriteria]
   );
   const byStage = useMemo(() => groupByStage(filteredRels), [filteredRels]);
   const relsInStage = byStage[stage];
@@ -629,16 +639,18 @@ function PipelineStageDrawerContent({
 
 function PipelineDrawerContent({
   pipeline,
+  relationships,
   onStageClick,
 }: {
   pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+  relationships: Relationship[];
   onStageClick: (stage: Stage) => void;
 }) {
   const [selectedStage, setSelectedStage] = useState<Stage | null>(null);
 
   const filteredRels = useMemo(
     () => applyFilters(relationships, pipeline.filterCriteria),
-    [pipeline.filterCriteria]
+    [relationships, pipeline.filterCriteria]
   );
   const byStage = useMemo(() => groupByStage(filteredRels), [filteredRels]);
   const total = filteredRels.length;

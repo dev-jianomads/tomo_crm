@@ -29,7 +29,7 @@ import {
   type ManagerStagePreference,
   type NetworkLpMandate,
 } from "@/lib/mockLpNetwork";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 const DEMO_MANDATE_PATCH_KEY = "tomo-lp-demo-mandate";
 

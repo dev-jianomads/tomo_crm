@@ -6,6 +6,7 @@ import { PageListHeader } from "@/components/page-list-header";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { getTomoActivityPageEvents, type TomoActivityEventType, type TomoActivityPageEvent } from "@/lib/tomo-activity-feed";
+import { useRelationships } from "@/components/relationships-provider";
 
 const eventTypes: { value: TomoActivityEventType | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -18,7 +19,8 @@ const eventTypes: { value: TomoActivityEventType | "all"; label: string }[] = [
 export default function ActivityPage() {
   const { ready } = useRequireSession();
   const { funds, activeFundId, setActiveFundId } = useFunds();
-  const allEvents = useMemo(() => getTomoActivityPageEvents(), []);
+  const { relationships } = useRelationships();
+  const allEvents = useMemo(() => getTomoActivityPageEvents(relationships), [relationships]);
   const [typeFilter, setTypeFilter] = useState<TomoActivityEventType | "all">("all");
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("all");
   const [activeId, setActiveId] = useState<string | null>(allEvents[0]?.id ?? null);

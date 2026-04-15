@@ -18,6 +18,13 @@ export type TomoInitialMessage = {
 export type TomoAssistance = {
   initialMessage: TomoInitialMessage;
   suggestedPrompts: string[];
+  /**
+   * Phase 1 — chips that run as lightweight execution (toast / confirm, no chat turn).
+   * When either array is set, they replace the single-row `suggestedPrompts` behavior for chips.
+   */
+  executionChips?: string[];
+  /** Phase 1 — chips that add to the drafted block and may message the model. */
+  draftChips?: string[];
 };
 
 export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
@@ -40,7 +47,9 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Offer different slots", "Add video link", "Skip for now"],
+    executionChips: ["Verify March 18 on calendar", "Copy EA on reply"],
+    draftChips: ["Approve & send", "Offer different slots", "Add video link", "Skip for now"],
+    suggestedPrompts: [],
   },
 
   // a2: Warm Intro Tracker
@@ -57,7 +66,9 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Shorten intro", "Add allocator names", "Explain this playbook"],
+    executionChips: ["Mark intro acknowledged", "Pull Liyen thread"],
+    draftChips: ["Approve & send", "Shorten intro", "Add allocator names", "Explain this playbook"],
+    suggestedPrompts: [],
   },
 
   // a3: Post-Meeting Execution
@@ -74,7 +85,9 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Add CRM tasks from meeting", "Schedule COO call", "Explain SLA"],
+    executionChips: ["Open CRM tasks view", "Snooze SLA reminder 1h"],
+    draftChips: ["Approve & send", "Add CRM tasks from meeting", "Schedule COO call", "Explain SLA"],
+    suggestedPrompts: [],
   },
 
   // a4: No Response → Re-engage (GIC)
@@ -96,7 +109,9 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         },
       ],
     },
-    suggestedPrompts: ["Approve & send", "Soften tone", "Propose new times", "Explain this playbook"],
+    executionChips: ["Log touch attempt", "Copy EA on send"],
+    draftChips: ["Approve & send", "Soften tone", "Propose new times", "Explain this playbook"],
+    suggestedPrompts: [],
   },
 
   // a5: Update → Follow-Up (momentum report)
@@ -188,10 +203,10 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Draft check-in", "Review Q2 timeline", "Open Today action", "Explain playbook"],
   },
 
-  // c1: UBS HF Update
+  // c1: PAAMCO HF Update
   c1: {
     initialMessage: {
-      text: "UBS HF Update at 2pm — prep pack is ready. Focus on attribution vs peers and any allocator questions from Charly's desk.",
+      text: "PAAMCO Prisma HF Update at 2pm — prep pack is ready. Focus on attribution vs peers and allocator-desk questions from Peter's team.",
       blocks: [
         {
           kind: "brief",
@@ -202,13 +217,15 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Open full brief", "3-bullet talking points", "What should I emphasize?", "Draft follow-up email"],
+    executionChips: ["Open brief PDF", "Add peer comp slide"],
+    draftChips: ["3-bullet talking points", "What should I emphasize?", "Draft follow-up email"],
+    suggestedPrompts: [],
   },
 
-  // c2: CPPIB Investment Update
+  // c2: A16z Family Office Investment Update
   c2: {
     initialMessage: {
-      text: "CPPIB Investment Update at 4pm — Frank asked about liquidity terms and co-invest last time. Brief is locked.",
+      text: "A16z Family Office Investment Update at 4pm — Michel asked about liquidity terms and co-invest last time. Brief is locked.",
       blocks: [
         {
           kind: "brief",
@@ -219,7 +236,9 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Open full brief", "Prep liquidity Q&A", "Draft IC timeline email", "Create action"],
+    executionChips: ["Jump to liquidity section", "Star IC timeline slide"],
+    draftChips: ["Prep liquidity Q&A", "Draft IC timeline email", "Create action"],
+    suggestedPrompts: [],
   },
 
   // c3: Blackstone FoF catch-up

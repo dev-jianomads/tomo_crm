@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
 import { OnboardingState } from "@/lib/types";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 const defaultNotifications: OnboardingState["notifications"] = {
   "Morning Recaps": { email: true, slack: false, telegram: false, inApp: true },

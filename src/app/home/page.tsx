@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -24,9 +25,10 @@ import {
   type DailyBriefLink,
 } from "@/lib/dailyBriefFromToday";
 import { actions, briefs, commitments, type ActionAttentionCard, type Commitment } from "@/lib/mockData";
+import { useRelationships } from "@/components/relationships-provider";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 
 type TodaySelection =
@@ -34,6 +36,17 @@ type TodaySelection =
   | { type: "commitment"; id: string }
   | { type: "brief"; id: string }
   | null;
+
+function relationshipIdForCommitment(
+  c: Commitment,
+  relationships: { id: string; name: string; firm: string }[]
+): string | undefined {
+  if (c.relationshipId) return c.relationshipId;
+  return (
+    relationships.find((r) => r.name === c.contactName)?.id ??
+    relationships.find((r) => r.firm === c.lp)?.id
+  );
+}
 
 /**
  * Inline Tomo on Today — same orchestrator as the shell, with todayContext.
@@ -73,6 +86,7 @@ function TomoChatInline({ subtitle }: { subtitle?: string }) {
 
 export default function HomePage() {
   const { ready, session } = useRequireSession();
+  const { relationships } = useRelationships();
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [showDailyBrief, setShowDailyBrief] = useState(false);
@@ -319,6 +333,9 @@ export default function HomePage() {
                     timeLabel: commitmentDayTime(c.datetime),
                     meetingTitle: c.title,
                   },
+                  prepSignal: c.prepSignal,
+                  commitmentOverdue: c.commitmentOverdue,
+                  relationshipId: relationshipIdForCommitment(c, relationships),
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "commitment", id })}
@@ -344,7 +361,12 @@ export default function HomePage() {
         detailContent={detailContent}
         detailVisible={false}
         contextTitle={selectedTitle ?? undefined}
-        assistantChips={["What's urgent today?", "Prep my 4pm CPPIB call", "Summarize what needs attention", "Who needs a follow-up?"]}
+        assistantChips={[
+          "What's urgent today?",
+          "Prep my 4pm A16z Family Office call",
+          "Summarize what needs attention",
+          "Who needs a follow-up?",
+        ]}
         todayContext={{
           actions: sortedActionItems.slice(0, 6).map((a) => ({
             id: a.id,
@@ -389,6 +411,7 @@ export default function HomePage() {
           ) : selection?.type === "commitment" ? (
             <CommitmentDetail
               commitment={selectedCommitment}
+              relationships={relationships}
               brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
               onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
               onCreateAction={() => router.push("/activity")}
@@ -407,6 +430,8 @@ export default function HomePage() {
             <DrawerSection2TomoChat
               initialMessage={getTomoAssistance(selection.id)?.initialMessage}
               suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
+              executionChips={getTomoAssistance(selection.id)?.executionChips}
+              draftChips={getTomoAssistance(selection.id)?.draftChips}
               contextLabel={selectedTitle ?? undefined}
               entityKey={selection.id}
               selection={selection}
@@ -629,6 +654,9 @@ function TodayGroup({
     /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, prep badge). */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
     commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
+    prepSignal?: string;
+    commitmentOverdue?: boolean;
+    relationshipId?: string;
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -685,6 +713,23 @@ function TodayGroup({
                 <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
                 {item.comingUpCard.meetingTitle ? (
                   <p className="mt-0.5 min-w-0 truncate text-[11px] leading-snug text-gray-500">{item.comingUpCard.meetingTitle}</p>
+                ) : null}
+                {item.commitmentOverdue ? (
+                  <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                    Commitment overdue
+                  </p>
+                ) : null}
+                {item.prepSignal ? (
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-700">{item.prepSignal}</p>
+                ) : null}
+                {item.relationshipId ? (
+                  <Link
+                    href="/relationships"
+                    className="mt-1 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Open relationship profile →
+                  </Link>
                 ) : null}
               </>
             ) : (
@@ -1097,12 +1142,14 @@ function ActionDetail({
 
 function CommitmentDetail({
   commitment,
+  relationships,
   brief,
   onOpenBrief,
   onCreateAction,
   detailsOnly = false,
 }: {
   commitment: Commitment | undefined | null;
+  relationships: { id: string; name: string; firm: string }[];
   brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
   onCreateAction: () => void;
@@ -1110,6 +1157,7 @@ function CommitmentDetail({
 }) {
   if (!commitment) return <Placeholder title="No commitment selected" />;
   const prepReady = commitment.prepStatus === "ready";
+  const relId = relationshipIdForCommitment(commitment, relationships);
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -1120,6 +1168,22 @@ function CommitmentDetail({
           <p className="text-sm text-gray-600">
             {commitment.lp} · {commitment.contactName}
           </p>
+          {commitment.prepSignal ? (
+            <p className="mt-1 text-sm text-gray-800">{commitment.prepSignal}</p>
+          ) : null}
+          {commitment.commitmentOverdue ? (
+            <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+              Commitment overdue — needs attention
+            </p>
+          ) : null}
+          {relId ? (
+            <Link
+              href="/relationships"
+              className="mt-2 inline-block text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+            >
+              Open relationship profile →
+            </Link>
+          ) : null}
         </div>
         <span
           className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${

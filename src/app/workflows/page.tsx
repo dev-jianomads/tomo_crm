@@ -7,14 +7,15 @@ import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
+import { WorkflowOutboundSafety } from "@/components/workflow-outbound-safety";
 import { suggestedPlaybooks, Playbook, tomoDefaultWorkflows, type TomoDefaultWorkflow } from "@/lib/mockPlaybooks";
-import { usePipelines } from "@/lib/pipelines";
+import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
-import { relationships } from "@/lib/mockData";
+import { useRelationships } from "@/components/relationships-provider";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
 import { useRequireSession } from "@/lib/auth";
 import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
-import { usePersistentState } from "@/lib/storage";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
 import {
   DEFAULT_TEMPLATES,
@@ -54,6 +55,7 @@ function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
 
 function WorkflowsPageContent() {
   const { ready } = useRequireSession();
+  const { relationships } = useRelationships();
   const searchParams = useSearchParams();
   const router = useRouter();
   const playbookIdFromUrl = searchParams.get("playbook");
@@ -195,12 +197,12 @@ function WorkflowsPageContent() {
       const pipelineId = override?.pipelineId ?? playbook.pipelineId;
       if (pipelineId) {
         const pipeline = pipelines.find((p) => p.id === pipelineId);
-        if (!pipeline) return "Pipeline (not found)";
+        if (!pipeline) return "List (not found)";
         const count = applyFilters(relationships, pipeline.filterCriteria).length;
         const summary = formatFilterSummary(pipeline.filterCriteria);
         return summary
-          ? `Pipeline: ${pipeline.name} (${count}) — ${summary}`
-          : `Pipeline: ${pipeline.name} (${count})`;
+          ? `List: ${pipeline.name} (${count}) — ${summary}`
+          : `List: ${pipeline.name} (${count})`;
       }
       const criteria = playbook.filterCriteria;
       if (criteria && Object.keys(criteria).length > 0) {
@@ -210,7 +212,7 @@ function WorkflowsPageContent() {
       }
       return "Global — no CRM audience";
     };
-  }, [playbookOverrides, pipelines]);
+  }, [playbookOverrides, pipelines, relationships]);
 
   const handleResetWorkflow = useCallback(() => {
     if (selectedPlaybook) {
@@ -242,7 +244,7 @@ function WorkflowsPageContent() {
       relationshipIds: rels.map((r) => r.id),
       relationshipCount: rels.length,
     };
-  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines]);
+  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines, relationships]);
 
   /** Resolved pipeline for user-defined playbook — banner above process flow */
   const playbookPipelineBanner = useMemo(() => {
@@ -266,7 +268,7 @@ function WorkflowsPageContent() {
       count,
       filterSummary,
     };
-  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines]);
+  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines, relationships]);
 
   const listContent = (
     <div className="flex h-full flex-col">
@@ -350,6 +352,8 @@ function WorkflowsPageContent() {
     ? CUSTOM_WORKFLOW_CHAT_CHIPS
     : tomoDefaultSuggestions;
 
+  const outboundAudienceCount = pipelineContext?.relationshipCount ?? (hasSelection ? 9 : 0);
+
   const detailContent = hasSelection && workflow ? (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
@@ -375,7 +379,7 @@ function WorkflowsPageContent() {
           {playbookPipelineBanner?.kind === "ok" && (
             <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-2.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Audience pipeline
+                Audience list
               </p>
               <p className="mt-0.5 text-sm font-semibold text-gray-900">
                 {playbookPipelineBanner.pipeline.name}
@@ -390,10 +394,13 @@ function WorkflowsPageContent() {
           )}
           {playbookPipelineBanner?.kind === "missing" && (
             <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-              Linked pipeline not found for this fund ({playbookPipelineBanner.pipelineId}). Reset
-              filters or pick another pipeline from Pipelines.
+              Linked list not found for this fund ({playbookPipelineBanner.pipelineId}). Reset filters
+              or pick another list from Lists.
             </div>
           )}
+          {outboundAudienceCount > 0 ? (
+            <WorkflowOutboundSafety relationshipCount={outboundAudienceCount} audienceLabel="list" />
+          ) : null}
           <div className="min-h-0 flex-1 overflow-auto">
             <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
           </div>
@@ -606,11 +613,13 @@ function WorkflowTomoChat({
           title: string;
           trigger: string;
           steps: WorkflowDefinition["steps"];
+          triggerKind?: WorkflowDefinition["triggerKind"];
         };
         onWorkflowUpdate({
           title: input.title,
           trigger: input.trigger,
           steps: input.steps,
+          triggerKind: input.triggerKind ?? workflow.triggerKind ?? "EVENT",
         });
       }
     },
