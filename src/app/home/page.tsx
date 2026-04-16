@@ -98,6 +98,10 @@ export default function HomePage() {
   >({});
   const [commitmentOutcomeById, setCommitmentOutcomeById] = useState<Record<string, "approved">>({});
   const [attachDocumentOpen, setAttachDocumentOpen] = useState(false);
+  /** Mock: filenames “attached” for the commitment drawer (per commitment id). */
+  const [attachedFilesByCommitmentId, setAttachedFilesByCommitmentId] = useState<Record<string, string[]>>(
+    {}
+  );
   /** Replaces mock Tomo draft + lead for scheduling actions after "Find another time". */
   const [schedulingDraftOverrideByActionId, setSchedulingDraftOverrideByActionId] = useState<
     Record<string, SchedulingDraftOverride | undefined>
@@ -186,6 +190,13 @@ export default function HomePage() {
   };
 
   const closeDrawerAndReset = () => {
+    if (selection?.type === "commitment") {
+      setAttachedFilesByCommitmentId((prev) => {
+        const next = { ...prev };
+        delete next[selection.id];
+        return next;
+      });
+    }
     setSelection(null);
     setActionDrawerPhase("cta");
     setCommitmentDrawerPhase("cta");
@@ -713,6 +724,20 @@ export default function HomePage() {
               assistance={getTomoAssistance(selection.id)}
               verbLabel={verbPillForCommitment(selection.id)}
               resolution={commitmentOutcomeById[selection.id] === "approved" ? "approved" : null}
+              attachedFiles={attachedFilesByCommitmentId[selection.id] ?? []}
+              onDetachFile={(index) => {
+                setAttachedFilesByCommitmentId((prev) => {
+                  const id = selection.id;
+                  const list = [...(prev[id] ?? [])];
+                  list.splice(index, 1);
+                  if (list.length === 0) {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                  }
+                  return { ...prev, [id]: list };
+                });
+              }}
               onApproveAndSend={() => {
                 setCommitmentOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
                 addToast("Agenda sent to participants");
@@ -807,7 +832,16 @@ export default function HomePage() {
       <AttachDocumentModal
         open={attachDocumentOpen}
         onClose={() => setAttachDocumentOpen(false)}
-        onUploaded={(fileName) => addToast(`Attached: ${fileName}`)}
+        onUploaded={(fileName) => {
+          addToast(`Attached: ${fileName}`);
+          if (selection?.type === "commitment") {
+            const id = selection.id;
+            setAttachedFilesByCommitmentId((prev) => ({
+              ...prev,
+              [id]: [...(prev[id] ?? []), fileName],
+            }));
+          }
+        }}
       />
       <OnMyRadarModal
         open={onMyRadarOpen}

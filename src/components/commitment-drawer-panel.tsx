@@ -1,5 +1,6 @@
 "use client";
 
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { Commitment } from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
@@ -46,6 +47,9 @@ type CommitmentDrawerPanelProps = {
   onAmend: () => void;
   onAttachDocument: () => void;
   onClose: () => void;
+  /** Mock: attached filenames shown above CTAs; each row can be removed. */
+  attachedFiles?: string[];
+  onDetachFile?: (index: number) => void;
   finalApproveLabel?: string;
 };
 
@@ -61,6 +65,8 @@ export function CommitmentDrawerPanel({
   onAmend,
   onAttachDocument,
   onClose,
+  attachedFiles = [],
+  onDetachFile,
   finalApproveLabel = "Approve and Send",
 }: CommitmentDrawerPanelProps) {
   const preview = getCommitmentDrawerAgendaPreview(assistance);
@@ -154,20 +160,47 @@ export function CommitmentDrawerPanel({
       </div>
 
       {showCtas ? (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="button-primary tomo-ai-bg min-w-[7rem]" onClick={onApproveAndSend}>
-            {finalApproveLabel}
-          </button>
-          <button type="button" className="button-secondary" onClick={onAmend}>
-            Amend
-          </button>
-          <button type="button" className="button-secondary" onClick={onAttachDocument}>
-            Attach Document
-          </button>
-          <button type="button" className="button-secondary" onClick={onClose}>
-            Close
-          </button>
-        </div>
+        <>
+          {attachedFiles.length > 0 ? (
+            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Attached</p>
+              <ul className="mt-2 space-y-1.5">
+                {attachedFiles.map((name, index) => (
+                  <li
+                    key={`${name}-${index}`}
+                    className="flex min-w-0 items-center justify-between gap-2 text-sm text-gray-800"
+                  >
+                    <span className="min-w-0 truncate" title={name}>
+                      {name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onDetachFile?.(index)}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                      aria-label={`Remove ${name}`}
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="button-primary tomo-ai-bg min-w-[7rem]" onClick={onApproveAndSend}>
+              {finalApproveLabel}
+            </button>
+            <button type="button" className="button-secondary" onClick={onAmend}>
+              Amend
+            </button>
+            <button type="button" className="button-secondary" onClick={onAttachDocument}>
+              Attach Document
+            </button>
+            <button type="button" className="button-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </>
       ) : (
         <p className="text-xs text-gray-500">Agenda sent — participants will receive the prep pack.</p>
       )}
