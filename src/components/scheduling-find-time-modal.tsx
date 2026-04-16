@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import {
   SCHEDULING_SCENARIO_ANCHOR,
+  addDays,
   buildSchedulingWeekGrid,
+  formatWeekRangeLabel,
+  startOfWeekSunday,
   type SchedulingSlotModel,
 } from "@/lib/schedulingFindTime";
+
+/** Weeks forward/back from the scenario week (PAAMCO / March 18 narrative). */
+const MAX_WEEK_OFFSET = 26;
+const MIN_WEEK_OFFSET = -8;
 
 type SchedulingFindTimeModalProps = {
   open: boolean;
@@ -16,7 +23,16 @@ type SchedulingFindTimeModalProps = {
 };
 
 export function SchedulingFindTimeModal({ open, onClose, onSelectSlot }: SchedulingFindTimeModalProps) {
-  const grid = useMemo(() => buildSchedulingWeekGrid(SCHEDULING_SCENARIO_ANCHOR), []);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const weekStart = useMemo(() => {
+    const base = startOfWeekSunday(SCHEDULING_SCENARIO_ANCHOR);
+    return addDays(base, weekOffset * 7);
+  }, [weekOffset]);
+
+  const grid = useMemo(() => buildSchedulingWeekGrid(weekStart), [weekStart]);
+
+  const weekRangeLabel = useMemo(() => formatWeekRangeLabel(weekStart), [weekStart]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, SchedulingSlotModel[]>();
@@ -84,7 +100,10 @@ export function SchedulingFindTimeModal({ open, onClose, onSelectSlot }: Schedul
             <h2 id="scheduling-find-time-title" className="text-sm font-semibold text-gray-900">
               Find another time
             </h2>
-            <p className="mt-0.5 text-xs text-gray-500">Mock availability · ET · tap a free slot to replace the draft</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Sample availability · ET · pick a week, then tap a free slot to replace the draft
+            </p>
+            <p className="mt-1 text-[11px] font-medium text-gray-700">{weekRangeLabel}</p>
           </div>
           <button
             type="button"
@@ -93,6 +112,30 @@ export function SchedulingFindTimeModal({ open, onClose, onSelectSlot }: Schedul
             aria-label="Close dialog"
           >
             <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={weekOffset <= MIN_WEEK_OFFSET}
+            onClick={() => setWeekOffset((w) => Math.max(MIN_WEEK_OFFSET, w - 1))}
+            aria-label="Previous week"
+          >
+            <ChevronLeftIcon className="h-4 w-4" aria-hidden />
+            Previous week
+          </button>
+          <span className="hidden text-center text-[11px] text-gray-500 sm:inline">Calendar week · times in ET</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={weekOffset >= MAX_WEEK_OFFSET}
+            onClick={() => setWeekOffset((w) => Math.min(MAX_WEEK_OFFSET, w + 1))}
+            aria-label="Next week"
+          >
+            Next week
+            <ChevronRightIcon className="h-4 w-4" aria-hidden />
           </button>
         </div>
 
@@ -112,7 +155,7 @@ export function SchedulingFindTimeModal({ open, onClose, onSelectSlot }: Schedul
                         scope="col"
                         className="min-w-[4.5rem] border-b border-gray-200 px-1 py-2 text-center font-medium text-gray-700"
                       >
-                        <span className="block">{firstSlot?.dayShort ?? dk}</span>
+                        <span className="block leading-tight">{firstSlot?.dayMedium ?? dk}</span>
                       </th>
                     );
                   })}

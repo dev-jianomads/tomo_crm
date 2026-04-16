@@ -41,6 +41,27 @@ export function startOfWeekSunday(anchor: Date): Date {
   return d;
 }
 
+export function addDays(base: Date, deltaDays: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + deltaDays);
+  return d;
+}
+
+/** e.g. "Mar 15 – Mar 21, 2026" (handles cross-month weeks). */
+export function formatWeekRangeLabel(weekStartSunday: Date): string {
+  const start = new Date(weekStartSunday);
+  start.setHours(0, 0, 0, 0);
+  const end = addDays(start, 6);
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const startStr = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const endOpts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  if (!sameYear) {
+    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${end.toLocaleDateString("en-US", endOpts)}`;
+  }
+  const endStr = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${startStr} – ${endStr}, ${end.getFullYear()}`;
+}
+
 /**
  * Hour labels as ET (demo — no real TZ conversion).
  * `hour24` is nominal "office" hours 9–16 local to the picker.
@@ -53,18 +74,21 @@ export function formatEtSlot(hour24: number): string {
 }
 
 /**
- * Deterministic mock: some cells busy. Mar 18 mirrors the story (9am & 11am taken).
+ * Deterministic mock: some cells busy. Exact dates keep the PAAMCO scenario beat when that week is visible.
  */
 function slotAvailable(dateKeyStr: string, hour24: number): boolean {
   const hash = (dateKeyStr.charCodeAt(dateKeyStr.length - 1) + hour24) % 7;
-  if (dateKeyStr.endsWith("-18") && (hour24 === 9 || hour24 === 11)) return false;
-  if (dateKeyStr.endsWith("-16") && hour24 >= 14) return false;
+  if (dateKeyStr === "2026-03-18" && (hour24 === 9 || hour24 === 11)) return false;
+  if (dateKeyStr === "2026-03-16" && hour24 >= 14) return false;
   if (hash === 0 || hash === 1) return false;
   return true;
 }
 
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16] as const;
 
+/**
+ * @param anchor Any date in the desired week (or that week’s Sunday); columns use real calendar dates.
+ */
 export function buildSchedulingWeekGrid(anchor: Date = SCHEDULING_SCENARIO_ANCHOR): SchedulingSlotModel[] {
   const start = startOfWeekSunday(anchor);
   const slots: SchedulingSlotModel[] = [];

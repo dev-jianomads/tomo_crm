@@ -95,6 +95,8 @@ export default function HomePage() {
     Record<string, SchedulingDraftOverride | undefined>
   >({});
   const [schedulingFindTimeOpen, setSchedulingFindTimeOpen] = useState(false);
+  /** Bumps when opening the picker so the modal remounts at the narrative week (week offset resets). */
+  const [schedulingFindTimeEpoch, setSchedulingFindTimeEpoch] = useState(0);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   /** Phase 2: single-line Tomo vs full inline chat */
   const [todayChatExpanded, setTodayChatExpanded] = usePersistentState<boolean>(
@@ -629,7 +631,12 @@ export default function HomePage() {
               }}
               onAmend={() => setActionDrawerPhase("amend")}
               onFindAnotherTime={
-                selectedAction.type === "scheduling" ? () => setSchedulingFindTimeOpen(true) : undefined
+                selectedAction.type === "scheduling"
+                  ? () => {
+                      setSchedulingFindTimeEpoch((n) => n + 1);
+                      setSchedulingFindTimeOpen(true);
+                    }
+                  : undefined
               }
               finalApproveLabel="Approve & send"
             />
@@ -687,6 +694,7 @@ export default function HomePage() {
         section3Entries={getActivityLogEntries()}
       />
       <SchedulingFindTimeModal
+        key={schedulingFindTimeEpoch}
         open={schedulingFindTimeOpen}
         onClose={() => setSchedulingFindTimeOpen(false)}
         onSelectSlot={(slot) => {
