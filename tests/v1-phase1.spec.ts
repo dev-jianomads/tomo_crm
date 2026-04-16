@@ -36,6 +36,7 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await page.getByTestId("today-action-row-a1").click();
     await expect(page.getByRole("button", { name: /Approve & send/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Amend$/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Find another time/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Do later/i })).toBeVisible();
     await expect(page.getByTestId("drawer-tomo-chat")).toHaveCount(0);
     await page.getByRole("button", { name: /^Amend$/ }).click();

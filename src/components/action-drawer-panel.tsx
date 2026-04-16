@@ -62,12 +62,14 @@ type ActionDrawerPanelProps = {
   onApprove: () => void;
   onLater: () => void;
   onAmend: () => void;
+  /** Scheduling actions only — opens week picker; omitted when not supported. */
+  onFindAnotherTime?: () => void;
   /** Primary label for final send (email vs invite vs generic) */
   finalApproveLabel?: string;
 };
 
 /**
- * Today action drawer — section 1: card-aligned header, Tomo draft/preview, three CTAs (until resolved).
+ * Today action drawer — section 1: card-aligned header, Tomo draft/preview, primary CTAs (scheduling adds Find another time).
  */
 export function ActionDrawerPanel({
   action,
@@ -78,6 +80,7 @@ export function ActionDrawerPanel({
   onApprove,
   onLater,
   onAmend,
+  onFindAnotherTime,
   finalApproveLabel = "Approve & send",
 }: ActionDrawerPanelProps) {
   const card = action.attentionCard;
@@ -141,6 +144,11 @@ export function ActionDrawerPanel({
           <button type="button" className="button-secondary" onClick={onAmend}>
             Amend
           </button>
+          {onFindAnotherTime ? (
+            <button type="button" className="button-secondary" onClick={onFindAnotherTime}>
+              Find another time
+            </button>
+          ) : null}
           <button type="button" className="button-secondary" onClick={onLater}>
             Do later
           </button>

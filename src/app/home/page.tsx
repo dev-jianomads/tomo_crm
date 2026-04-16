@@ -17,7 +17,13 @@ import { ActionAmendChat } from "@/components/action-amend-chat";
 import { ActionDrawerPanel } from "@/components/action-drawer-panel";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
+import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
+import {
+  buildRedraftedSchedulingCopy,
+  mergeTomoAssistanceWithSchedulingOverride,
+  type SchedulingDraftOverride,
+} from "@/lib/schedulingFindTime";
 import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
 import { TomoAiBadge } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
@@ -97,6 +103,11 @@ export default function HomePage() {
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
   const [actionOutcomeById, setActionOutcomeById] = useState<Record<string, "approved" | "later">>({});
+  /** Replaces mock Tomo draft + lead for scheduling actions after "Find another time". */
+  const [schedulingDraftOverrideByActionId, setSchedulingDraftOverrideByActionId] = useState<
+    Record<string, SchedulingDraftOverride | undefined>
+  >({});
+  const [schedulingFindTimeOpen, setSchedulingFindTimeOpen] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
   /** Phase 2: single-line Tomo vs full inline chat */
   const [todayChatExpanded, setTodayChatExpanded] = usePersistentState<boolean>(
@@ -169,6 +180,7 @@ export default function HomePage() {
   const closeDrawerAndReset = () => {
     setSelection(null);
     setActionDrawerPhase("cta");
+    setSchedulingFindTimeOpen(false);
     router.replace("/home");
   };
 
@@ -200,6 +212,14 @@ export default function HomePage() {
   const selectedAction = selection?.type === "action" ? actions.find((a) => a.id === selection.id) : null;
   const selectedCommitment = selection?.type === "commitment" ? commitments.find((c) => c.id === selection.id) : null;
   const selectedBrief = selection?.type === "brief" ? briefs.find((b) => b.id === selection.id) : null;
+
+  const effectiveTomoAssistanceForSelectedAction = useMemo(() => {
+    if (selection?.type !== "action") return null;
+    const base = getTomoAssistance(selection.id);
+    if (!base) return null;
+    const override = schedulingDraftOverrideByActionId[selection.id];
+    return mergeTomoAssistanceWithSchedulingOverride(base, override);
+  }, [selection, schedulingDraftOverrideByActionId]);
 
   const getActivityLogEntries = useCallback(() => {
     if (!selection) return [];
@@ -607,7 +627,7 @@ export default function HomePage() {
           selection?.type === "action" && actionDrawerPhase === "amend" ? null : selection?.type === "action" && selectedAction ? (
             <ActionDrawerPanel
               action={selectedAction}
-              assistance={getTomoAssistance(selection.id)}
+              assistance={effectiveTomoAssistanceForSelectedAction ?? getTomoAssistance(selection.id)}
               workflowDisplayName={workflowLabelForAction(selectedAction)}
               verbLabel={verbPillForAction(selection.id)}
               resolution={actionOutcomeById[selection.id] ?? null}
@@ -621,6 +641,9 @@ export default function HomePage() {
                 addToast("Deferred — we’ll remind you.");
               }}
               onAmend={() => setActionDrawerPhase("amend")}
+              onFindAnotherTime={
+                selectedAction.type === "scheduling" ? () => setSchedulingFindTimeOpen(true) : undefined
+              }
               finalApproveLabel="Approve & send"
             />
           ) : selection?.type === "commitment" ? (
@@ -648,6 +671,7 @@ export default function HomePage() {
               selection={selection}
               action={selectedAction}
               assistance={
+                effectiveTomoAssistanceForSelectedAction ??
                 getTomoAssistance(selection.id) ?? {
                   initialMessage: { text: selectedAction.trigger },
                   suggestedPrompts: [],
@@ -675,6 +699,19 @@ export default function HomePage() {
           ) : undefined
         }
         section3Entries={getActivityLogEntries()}
+      />
+      <SchedulingFindTimeModal
+        open={schedulingFindTimeOpen}
+        onClose={() => setSchedulingFindTimeOpen(false)}
+        onSelectSlot={(slot) => {
+          if (!selectedAction || selectedAction.type !== "scheduling") return;
+          const copy = buildRedraftedSchedulingCopy(selectedAction, slot);
+          setSchedulingDraftOverrideByActionId((prev) => ({
+            ...prev,
+            [selectedAction.id]: copy,
+          }));
+          addToast("Draft updated for the new time.");
+        }}
       />
       <ToastViewport toasts={toasts} />
       {chatPortalReady && todayChatOverlayOpen && todayChatExpanded
