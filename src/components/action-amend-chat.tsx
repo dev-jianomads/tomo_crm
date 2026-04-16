@@ -5,7 +5,6 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { ArrowLeftIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import { toast } from "sonner";
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 import { getToolParts } from "@/lib/tomoToolParts";
 import type { DrawerSelection } from "@/components/context-drawer";
@@ -23,10 +22,8 @@ type ActionAmendChatProps = {
   finalApproveLabel?: string;
 };
 
-const FALLBACK_SUGGESTIONS = ["Shorten the recap", "Add COO call times", "Softer tone", "Explain SLA"];
-
 /**
- * Amend subflow: repeats draft + ask line, suggestions, chat, back to CTAs, final approve.
+ * Amend subflow: repeats draft, freeform chat, back to CTAs, final approve.
  */
 export function ActionAmendChat({
   entityKey,
@@ -39,11 +36,8 @@ export function ActionAmendChat({
 }: ActionAmendChatProps) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
-  const processedToolCalls = useRef<Set<string>>(new Set());
 
   const preview = useMemo(() => getActionDrawerDraftPreview(action, assistance), [action, assistance]);
-  const suggestionChips =
-    assistance.draftChips?.length ? assistance.draftChips : assistance.suggestedPrompts?.length ? assistance.suggestedPrompts : FALLBACK_SUGGESTIONS;
 
   const transport = useMemo(
     () =>
@@ -66,7 +60,6 @@ export function ActionAmendChat({
   const isStreaming = status === "streaming" || status === "submitted";
 
   useEffect(() => {
-    processedToolCalls.current.clear();
     setMessages([]);
     setInput("");
   }, [entityKey, setMessages]);
@@ -112,24 +105,7 @@ export function ActionAmendChat({
           ) : (
             <p className="text-sm text-gray-600">{preview.leadText || "No draft body — describe the change you need."}</p>
           )}
-          <p className="border-t border-gray-200 pt-2 text-sm font-medium text-gray-900">How would you like Tomo to amend the above?</p>
         </div>
-
-        {suggestionChips.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {suggestionChips.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                disabled={isStreaming}
-                onClick={() => handleSend(chip)}
-                className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-50"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        ) : null}
 
         {messages.map((msg) => (
           <AmendBubble key={msg.id} message={msg} />
