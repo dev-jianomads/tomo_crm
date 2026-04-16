@@ -365,8 +365,8 @@ function generateRelationships(): Relationship[] {
   // r5–r9: Scenario LPs aligned with Today “What needs your attention” mock cards
   const scenarioLps: Partial<Relationship>[] = [
     {
-      name: "Charly Malek",
-      firm: "UBS",
+      name: "Peter Zakowich",
+      firm: "PAAMCO Prisma",
       daysSinceLastMeaningfulContact: 1,
       stage: "Active diligence",
       momentumDirection: "Heating up",
@@ -621,10 +621,10 @@ export const relationshipsGenerated: Relationship[] = generateRelationships();
 export const actions: ActionItem[] = [
   {
     id: "a1",
-    title: "UBS Meeting Request",
+    title: "PAAMCO Prisma Meeting Request",
     attentionCard: {
-      company: "UBS",
-      contactName: "Charly Malek",
+      company: "PAAMCO Prisma",
+      contactName: "Peter Zakowich",
       verb: "Approve",
       workKind: "Scheduling",
       workSubject: "March 18 meeting — propose slots",
@@ -632,13 +632,13 @@ export const actions: ActionItem[] = [
     status: "approval",
     trigger: "Meeting request via email",
     evidence: [
-      "Charly Malek emailed at 11pm requesting a meeting March 18.",
+      "Peter Zakowich emailed at 11pm requesting a meeting March 18.",
       "Calendar shows you're free at 9am and 11am ET that day.",
       "TOMO drafted a reply proposing both slots.",
     ],
     type: "scheduling",
     draft:
-      "Hi Charly — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
+      "Hi Peter — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
     dueDate: "2025-03-17",
     activityLog: [
       { id: "al-a1-1", ts: "Today 07:15", actor: "TOMO", summary: "Detected meeting request in overnight email" },
@@ -647,7 +647,7 @@ export const actions: ActionItem[] = [
     ],
     workflowTomoDefaultId: "td-email-scheduling",
     emailSourceUrl:
-      "mailto:charly.malek@ubs.com?subject=Re%3A%20March%2018%20meeting%20request",
+      "mailto:peter.zakowich@example.com?subject=Re%3A%20March%2018%20meeting%20request",
   },
   {
     id: "a2",
@@ -753,7 +753,7 @@ export const actions: ActionItem[] = [
     status: "in_progress",
     trigger: "TOMO analysed opens from the monthly newsletter and identified the most active LPs",
     evidence: [
-      "Top openers this send: UBS, GIC, Edelweiss Endowment.",
+      "Top openers this send: PAAMCO Prisma, GIC, Edelweiss Endowment.",
       "Compare this send to the prior three months: who moved up / down in engagement.",
       "Flag LPs who dropped out of the top-engaged tier for proactive outreach.",
       "Pairs with Daily Brief — Momentum Signals (newsletter view).",
@@ -807,7 +807,6 @@ export const commitments: Commitment[] = [
     briefId: "b3",
     window: "today",
     prepStatus: "ready",
-    relationshipId: "r5",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
   {

@@ -31,12 +31,12 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // a1: Email Scheduling Assistant (Tomo Default)
   a1: {
     initialMessage: {
-      text: "Charly Malek (UBS) asked for a meeting March 18. You're free 9am and 11am ET — draft reply proposes both.",
+      text: "Peter Zakowich (PAAMCO Prisma) asked for a meeting March 18. You're free 9am and 11am ET — draft reply proposes both.",
       blocks: [
         {
           kind: "draft",
           content:
-            "Hi Charly — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
+            "Hi Peter — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
           type: "email",
         },
         {
@@ -154,7 +154,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // r5–r9: Scenario relationships (Today card LPs)
   r5: {
     initialMessage: {
-      text: "UBS — Charly Malek is asking to meet March 18. Calendar-aware reply is on your Today list.",
+      text: "PAAMCO Prisma — Peter is asking to meet March 18. Calendar-aware reply is on your Today list.",
       blocks: [
         { kind: "snapshot", text: "Tier 1 momentum heating; diligence-stage. Next: lock time on March 18." },
         { kind: "workflow_link", playbookId: "td-email-scheduling", name: "Email Scheduling Assistant", description: "Scan email for scheduling requests, find availability, draft response." },

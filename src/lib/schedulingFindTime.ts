@@ -1,7 +1,7 @@
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 import type { ActionItem } from "@/lib/mockData";
 
-/** Week containing the UBS scheduling scenario (March 18, 2026 — Wednesday). */
+/** Week containing the PAAMCO scheduling scenario (March 18, 2026 — Wednesday). */
 export const SCHEDULING_SCENARIO_ANCHOR = new Date(2026, 2, 18);
 
 export type SchedulingSlotModel = {
@@ -74,7 +74,7 @@ export function formatEtSlot(hour24: number): string {
 }
 
 /**
- * Deterministic mock: some cells busy. Exact dates keep the UBS scheduling scenario beat when that week is visible.
+ * Deterministic mock: some cells busy. Exact dates keep the PAAMCO scheduling scenario beat when that week is visible.
  */
 function slotAvailable(dateKeyStr: string, hour24: number): boolean {
   const hash = (dateKeyStr.charCodeAt(dateKeyStr.length - 1) + hour24) % 7;
