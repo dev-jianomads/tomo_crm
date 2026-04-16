@@ -844,6 +844,12 @@ function DailyBriefLineRow({
   );
 }
 
+/**
+ * Tomo insights toggle in the On My Radar modal header (peach icon).
+ * Set to `true` to show the control again; insight panels + `showInsights` state stay wired below.
+ */
+const SHOW_ON_MY_RADAR_INSIGHTS_HEADER = false;
+
 /** On My Radar — header control opens this modal (not inline accordion). */
 function OnMyRadarModal({
   open,
@@ -859,6 +865,7 @@ function OnMyRadarModal({
   onLineNavigate: (link: DailyBriefLink) => void;
 }) {
   const [showInsights, setShowInsights] = useState(false);
+  const insightsVisible = SHOW_ON_MY_RADAR_INSIGHTS_HEADER && showInsights;
 
   useEffect(() => {
     if (!open) setShowInsights(false);
@@ -888,17 +895,19 @@ function OnMyRadarModal({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setShowInsights((prev) => !prev)}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-gray-50 ${
-                showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200 bg-white"
-              }`}
-              aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-              title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-            >
-              <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
-            </button>
+            {SHOW_ON_MY_RADAR_INSIGHTS_HEADER ? (
+              <button
+                type="button"
+                onClick={() => setShowInsights((prev) => !prev)}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-gray-50 ${
+                  showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200 bg-white"
+                }`}
+                aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+                title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+              >
+                <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={onClose}
@@ -921,7 +930,7 @@ function OnMyRadarModal({
                 key={`${block.icon}-${block.title}`}
                 className="rounded-xl border border-blue-100 bg-blue-50/40 px-2.5 py-2.5 sm:px-3 sm:py-2.5"
               >
-                <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
+                <div className={insightsVisible ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
                       <BriefSectionIcon kind={block.icon} />
@@ -951,7 +960,7 @@ function OnMyRadarModal({
                     ) : null}
                   </div>
 
-                  {showInsights ? (
+                  {insightsVisible ? (
                     <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-56 sm:shrink-0">
                       <div className="flex items-center justify-start">
                         <TomoAiBadge label="Tomo insight" />
