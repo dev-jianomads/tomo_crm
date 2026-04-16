@@ -25,10 +25,11 @@ function itemHref(baseUrl: string, link: DailyBriefLink): string {
 }
 
 const wrap = (inner: string) =>
-  `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#111827;max-width:560px;margin:0 auto;">${inner}</div>`;
+  `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;color:#111827;max-width:560px;margin:0 auto;padding:0 4px;">${inner}</div>`;
 
 /**
- * Renders the four Daily Brief sections as a single HTML fragment for Loops `content`.
+ * Renders Daily Brief sections for Loops `content`: each block is **title + bullet list** only
+ * (no subtitles, insights, or secondary subheadings — those stay in the in-app brief).
  */
 export function formatDailyBriefBlocksAsEmailHtml(
   blocks: DailyBriefBlock[],
@@ -38,14 +39,6 @@ export function formatDailyBriefBlocksAsEmailHtml(
     /\/$/,
     ""
   );
-  const openApp = `${appBaseUrl}/home`;
-
-  const cta = `
-  <div style="margin-bottom:24px;padding:16px 18px;border-radius:12px;background:#f0f9ff;border:1px solid #bae6fd;">
-    <p style="margin:0 0 10px;font-size:14px;color:#0c4a6e;font-weight:600;">Work your day in Tomo</p>
-    <p style="margin:0 0 14px;font-size:14px;color:#334155;">Open Today to review items, prep meetings, and clear loops.</p>
-    <a href="${escapeHtml(openApp)}" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#0284c7;color:#ffffff !important;text-decoration:none;font-size:14px;font-weight:600;">Open Today</a>
-  </div>`;
 
   const sections = blocks.map((block) => {
     const linesHtml = block.items
@@ -53,37 +46,35 @@ export function formatDailyBriefBlocksAsEmailHtml(
         const text = escapeHtml(line.label);
         if (line.link) {
           const href = escapeHtml(itemHref(appBaseUrl, line.link));
-          return `<li style="margin:0 0 8px;"><a href="${href}" style="color:#0369a1;text-decoration:underline;">${text}</a></li>`;
+          return `<li style="margin:0 0 4px;"><a href="${href}" style="color:#0369a1;text-decoration:underline;">${text}</a></li>`;
         }
-        return `<li style="margin:0 0 8px;color:#374151;">${text}</li>`;
+        return `<li style="margin:0 0 4px;color:#374151;">${text}</li>`;
       })
       .join("");
 
+    /** Second list when present (e.g. Momentum “Cooling”) — no subtitle line in email */
     let secondary = "";
     if (block.secondaryItems?.length) {
-      const sub = block.secondarySubtitle ? `<p style="margin:12px 0 6px;font-size:12px;font-weight:600;color:#6b7280;">${escapeHtml(block.secondarySubtitle)}</p>` : "";
       const secLines = block.secondaryItems
         .map((line) => {
           const text = escapeHtml(line.label);
           if (line.link) {
             const href = escapeHtml(itemHref(appBaseUrl, line.link));
-            return `<li style="margin:0 0 6px;"><a href="${href}" style="color:#0369a1;text-decoration:underline;">${text}</a></li>`;
+            return `<li style="margin:0 0 3px;"><a href="${href}" style="color:#0369a1;text-decoration:underline;">${text}</a></li>`;
           }
-          return `<li style="margin:0 0 6px;color:#374151;">${text}</li>`;
+          return `<li style="margin:0 0 3px;color:#374151;">${text}</li>`;
         })
         .join("");
-      secondary = `${sub}<ul style="margin:0;padding-left:20px;list-style:disc;">${secLines}</ul>`;
+      secondary = `<ul style="margin:6px 0 0;padding-left:18px;list-style:disc;">${secLines}</ul>`;
     }
 
     return `
-  <div style="margin-bottom:28px;padding-bottom:22px;border-bottom:1px solid #e5e7eb;">
-    <h2 style="margin:0 0 4px;font-size:17px;font-weight:700;color:#111827;">${escapeHtml(block.title)}</h2>
-    <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">${escapeHtml(block.subtitle)}</p>
-    <ul style="margin:0;padding-left:20px;list-style:disc;">${linesHtml}</ul>
+  <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">
+    <h2 style="margin:0 0 6px;font-size:16px;font-weight:700;color:#111827;">${escapeHtml(block.title)}</h2>
+    <ul style="margin:0;padding-left:18px;list-style:disc;">${linesHtml}</ul>
     ${secondary}
-    <p style="margin:12px 0 0;font-size:12px;color:#9ca3af;font-style:italic;">${escapeHtml(block.insight)}</p>
   </div>`;
   });
 
-  return wrap(`${cta}${sections.join("")}`);
+  return wrap(sections.join(""));
 }

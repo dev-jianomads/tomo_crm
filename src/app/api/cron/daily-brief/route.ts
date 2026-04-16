@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { sendDailyBriefToEmail } from "@/lib/dailyBriefSendShared";
-import { isLoopsConfigured } from "@/lib/loops";
+import { isDailyBriefTransactionalIdConfigured, isLoopsConfigured } from "@/lib/loops";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,10 @@ export async function GET(request: Request) {
 
   if (!isLoopsConfigured()) {
     return NextResponse.json({ error: "LOOPS_API_KEY is not configured" }, { status: 503 });
+  }
+
+  if (!isDailyBriefTransactionalIdConfigured()) {
+    return NextResponse.json({ error: "LOOPS_TRANSACTIONAL_DAILY_BRIEF_ID is not set" }, { status: 400 });
   }
 
   const to =

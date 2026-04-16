@@ -341,9 +341,19 @@ export default function HomePage() {
     setDailyBriefResendBusy(true);
     try {
       const res = await fetch("/api/email/daily-brief/resend", { method: "POST" });
-      const data = (await res.json()) as { error?: string; detail?: string };
+      let data: { error?: string; detail?: string; loopsHttpStatus?: number } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        /* non-JSON body */
+      }
       if (!res.ok) {
-        throw new Error(data.error ?? data.detail ?? "Could not send daily brief");
+        const detail = data.detail?.trim();
+        const head = data.error ?? "Could not send daily brief";
+        const suffix = detail ? `${head}: ${detail}` : head;
+        const withStatus =
+          data.loopsHttpStatus != null ? `${suffix} (Loops HTTP ${data.loopsHttpStatus})` : suffix;
+        throw new Error(withStatus);
       }
       addToast("Daily brief sent to your inbox.");
     } catch (e) {
