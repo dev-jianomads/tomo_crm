@@ -385,6 +385,39 @@ export default function HomePage() {
     return derived === "Test" || !derived ? "Ken" : derived;
   }, [session?.email]);
 
+  const showDailyBriefResend =
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_SHOW_DAILY_BRIEF_RESEND === "true";
+
+  const [dailyBriefResendBusy, setDailyBriefResendBusy] = useState(false);
+
+  const resendDailyBrief = useCallback(async () => {
+    setDailyBriefResendBusy(true);
+    try {
+      const res = await fetch("/api/email/daily-brief/resend", { method: "POST" });
+      let data: { error?: string; detail?: string; loopsHttpStatus?: number } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        /* non-JSON body */
+      }
+      if (!res.ok) {
+        const detail = data.detail?.trim();
+        const head = data.error ?? "Could not send daily brief";
+        const suffix = detail ? `${head}: ${detail}` : head;
+        const withStatus =
+          data.loopsHttpStatus != null ? `${suffix} (Loops HTTP ${data.loopsHttpStatus})` : suffix;
+        throw new Error(withStatus);
+      }
+      addToast("Daily brief sent to your inbox.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not send daily brief";
+      addToast(msg);
+    } finally {
+      setDailyBriefResendBusy(false);
+    }
+  }, []);
+
   const resetDemoAttention = useCallback(() => {
     setActionOutcomeById({});
     setCommitmentOutcomeById({});
@@ -412,7 +445,18 @@ export default function HomePage() {
             <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900">
               {greeting}, {userName}.
             </h1>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-0.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pt-0.5">
+              {showDailyBriefResend ? (
+                <button
+                  type="button"
+                  onClick={() => void resendDailyBrief()}
+                  disabled={dailyBriefResendBusy}
+                  className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
+                  title="Sends the Daily Brief email via Loops (demo)"
+                >
+                  {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={resetDemoAttention}
