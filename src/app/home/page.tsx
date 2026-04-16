@@ -238,6 +238,12 @@ export default function HomePage() {
     });
   }, [filteredActions]);
 
+  /** Top attention slots, excluding items completed (Approve / Do later) in this session */
+  const attentionActionsVisible = useMemo(
+    () => sortedActionItems.filter((a) => actionOutcomeById[a.id] == null).slice(0, 6),
+    [sortedActionItems, actionOutcomeById]
+  );
+
   const filteredCommitments = useMemo(() => {
     return commitments;
   }, []);
@@ -277,10 +283,7 @@ export default function HomePage() {
     [sortedActionItems, sortedCommitments, filteredBriefs],
   );
 
-  const attentionQueueIds = useMemo(
-    () => sortedActionItems.slice(0, 6).map((a) => a.id),
-    [sortedActionItems],
-  );
+  const attentionQueueIds = useMemo(() => attentionActionsVisible.map((a) => a.id), [attentionActionsVisible]);
   const { state: engagementState, recordEngaged } = useTodayEngagement(attentionQueueIds);
 
   useEffect(() => {
@@ -351,6 +354,11 @@ export default function HomePage() {
     }
   }, []);
 
+  const resetDemoAttention = useCallback(() => {
+    setActionOutcomeById({});
+    addToast("Demo reset — attention list restored.");
+  }, []);
+
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageListHeader label="Today" />
@@ -372,17 +380,27 @@ export default function HomePage() {
             <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900">
               {greeting}, {userName}.
             </h1>
-            {showDailyBriefResend ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pt-0.5">
+              {showDailyBriefResend ? (
+                <button
+                  type="button"
+                  onClick={() => void resendDailyBrief()}
+                  disabled={dailyBriefResendBusy}
+                  className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
+                  title="Sends the Daily Brief email via Loops (demo)"
+                >
+                  {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => void resendDailyBrief()}
-                disabled={dailyBriefResendBusy}
-                className="shrink-0 pt-0.5 text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
-                title="Sends the Daily Brief email via Loops (demo)"
+                onClick={resetDemoAttention}
+                className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline"
+                title="Clears completed Today actions for this browser session (demo)"
               >
-                {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
+                Reset demo
               </button>
-            ) : null}
+            </div>
           </div>
           {todayChatExpanded ? (
             <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
@@ -468,7 +486,8 @@ export default function HomePage() {
             <div className="flex min-h-0 flex-col overflow-hidden">
               <TodayGroup
                 title="What needs your attention"
-                items={sortedActionItems.slice(0, 6).map((a) => {
+                emptyHint="All caught up — nothing needs your attention right now."
+                items={attentionActionsVisible.map((a) => {
                   const attentionWorkflowName =
                     (a.workflowPlaybookId &&
                       suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
@@ -547,7 +566,7 @@ export default function HomePage() {
           "Who needs a follow-up?",
         ]}
         todayContext={{
-          actions: sortedActionItems.slice(0, 6).map((a) => ({
+          actions: attentionActionsVisible.map((a) => ({
             id: a.id,
             title: a.title,
             trigger: a.trigger,
@@ -584,7 +603,8 @@ export default function HomePage() {
               resolution={actionOutcomeById[selection.id] ?? null}
               onApprove={() => {
                 setActionOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
-                addToast("Approved — queued to send.");
+                addToast("Email sent!");
+                closeDrawerAndReset();
               }}
               onLater={() => {
                 setActionOutcomeById((p) => ({ ...p, [selection.id]: "later" }));
@@ -626,8 +646,8 @@ export default function HomePage() {
               onBack={() => setActionDrawerPhase("cta")}
               onFinalApprove={() => {
                 setActionOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
-                setActionDrawerPhase("cta");
-                addToast("Approved — queued to send.");
+                addToast("Email sent!");
+                closeDrawerAndReset();
               }}
               finalApproveLabel="Approve & send"
             />
@@ -881,8 +901,11 @@ function TodayGroup({
   onSelect,
   activeId,
   scrollable = false,
+  emptyHint,
 }: {
   title: string;
+  /** Shown when there are no rows (e.g. attention list after completions) */
+  emptyHint?: string;
   items: {
     id: string;
     title: string;
@@ -912,6 +935,9 @@ function TodayGroup({
     <div className="flex min-h-0 flex-1 flex-col">
       <p className="shrink-0 text-base font-semibold accent-title">{title}</p>
       <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto" : ""}`}>
+        {items.length === 0 && emptyHint ? (
+          <p className="rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-4 text-center text-sm text-gray-500">{emptyHint}</p>
+        ) : null}
         {items.map((item) => (
           <button
             key={item.id}
@@ -928,7 +954,13 @@ function TodayGroup({
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
                     {item.attentionCard.company} : {item.attentionCard.contactName}
                   </p>
-                  <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
+                  <span
+                    className={
+                      (item.verbLabel ?? item.attentionCard.verb) === "Approved"
+                        ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                        : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
+                    }
+                  >
                     {item.verbLabel ?? item.attentionCard.verb}
                   </span>
                 </div>

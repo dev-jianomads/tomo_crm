@@ -87,6 +87,7 @@ export function ActionDrawerPanel({
 
   const preview = getActionDrawerDraftPreview(action, assistance);
   const showCtas = resolution === null;
+  const pillIsApproved = verbLabel === "Approved" || resolution === "approved";
 
   return (
     <div className="space-y-4">
@@ -95,7 +96,13 @@ export function ActionDrawerPanel({
           <p className="min-w-0 flex-1 text-sm font-semibold accent-title">
             {card.company} : {card.contactName}
           </p>
-          <span className="inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]">
+          <span
+            className={
+              pillIsApproved
+                ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
+            }
+          >
             {verbLabel}
           </span>
         </div>
