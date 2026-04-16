@@ -71,10 +71,18 @@ export function CommitmentDrawerPanel({
 }: CommitmentDrawerPanelProps) {
   const preview = getCommitmentDrawerAgendaPreview(assistance);
   const showCtas = resolution === null;
-  const prepReady = commitment.prepStatus === "ready";
   const pillIsSent = verbLabel === "Prep sent" || resolution === "approved";
 
   const timeLine = commitmentDayTime(commitment.datetime);
+
+  const commitmentStatusPillClass =
+    pillIsSent || verbLabel === "Prep sent"
+      ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+      : verbLabel === "First Contact"
+        ? "inline-flex shrink-0 items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900"
+        : verbLabel === "Prep ready"
+          ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
+          : null;
 
   return (
     <div className="space-y-4">
@@ -92,27 +100,33 @@ export function CommitmentDrawerPanel({
                 Commitment overdue — needs attention
               </p>
             ) : null}
-            {commitment.calendarUrl ? (
-              <a
-                href={commitment.calendarUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-              >
-                Open calendar
-              </a>
+            {commitment.calendarUrl || commitment.linkedInUrl ? (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                {commitment.calendarUrl ? (
+                  <a
+                    href={commitment.calendarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  >
+                    Open calendar
+                  </a>
+                ) : null}
+                {commitment.linkedInUrl ? (
+                  <a
+                    href={commitment.linkedInUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-[#0a66c2] underline underline-offset-2 hover:text-[#004182]"
+                  >
+                    LinkedIn profile
+                  </a>
+                ) : null}
+              </div>
             ) : null}
           </div>
-          {pillIsSent || prepReady ? (
-            <span
-              className={
-                pillIsSent
-                  ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                  : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-              }
-            >
-              {pillIsSent ? "Prep sent" : "Prep ready"}
-            </span>
+          {commitmentStatusPillClass && verbLabel ? (
+            <span className={commitmentStatusPillClass}>{verbLabel}</span>
           ) : null}
         </div>
       </div>

@@ -234,3 +234,17 @@ This documents **implementation** of the phased plan: **C** (Still in To-Do + en
 
 No — **C + D** shipped after **A + B** to keep review small. Further work: persist engagement + digest prefs per user server-side; Slack transactional send; timezone-aware cron per tenant.
 
+---
+
+## Appendix — Contact research (LinkedIn deep links & Google Programmable Search)
+
+**Today “Coming up”** can surface **stored LinkedIn profile URLs** (mock or from CRM enrichment) so GPs can open a profile in a new tab before a call. Treat the URL as a normal field on the contact/commitment record (`linkedInUrl` in mock data).
+
+**Is Google Custom Search (Programmable Search Engine + JSON API) a good production approach?**
+
+- **Primary recommendation:** Persist **canonical LinkedIn URLs** from enrichment providers, inbound email signatures, or manual verification. Deep links are predictable, cheap at scale, and avoid search ambiguity (common names, wrong person).
+- **Google Programmable Search** is a **reasonable supplement**, not a replacement for stored URLs: use it for an optional **“Search the web”** or **“Find profile”** action that opens constrained search results (e.g. `site:linkedin.com` + name + firm) or powers a small side panel. Plan for **API quotas/cost**, **key management**, and **rate limits**; results quality varies and LinkedIn’s own rules/robots apply to what Google indexes.
+- **Not ideal as the only identity path:** building “resolve this person to LinkedIn” purely via Custom Search in real time adds latency, cost, and failure modes; pair with enrichment or user confirmation for production CRM trust.
+
+**V1 direction:** ship **explicit LinkedIn links** when known; defer automated Google-backed resolution until product requirements justify the integration overhead.
+

@@ -229,7 +229,9 @@ export default function HomePage() {
       if (commitmentOutcomeById[id] === "approved") return "Prep sent";
       const c = commitments.find((x) => x.id === id);
       if (!c) return "—";
-      return c.prepStatus === "ready" ? "Prep ready" : "";
+      if (c.prepStatus === "ready") return "Prep ready";
+      if (c.prepStatus === "first_contact") return "First Contact";
+      return "";
     },
     [commitmentOutcomeById]
   );
@@ -612,7 +614,9 @@ export default function HomePage() {
                       ? { label: "Prep sent", tone: "green" as const }
                       : c.prepStatus === "ready"
                         ? { label: "Prep ready", tone: "peach" as const }
-                        : undefined,
+                        : c.prepStatus === "first_contact"
+                          ? { label: "First Contact", tone: "violet" as const }
+                          : undefined,
                   comingUpCard: {
                     company: c.lp,
                     contactName: c.contactName,
@@ -621,6 +625,7 @@ export default function HomePage() {
                   },
                   commitmentOverdue: c.commitmentOverdue,
                   calendarUrl: c.calendarUrl,
+                  linkedInUrl: c.linkedInUrl,
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "commitment", id })}
@@ -1127,10 +1132,11 @@ function TodayGroup({
     verbLabel?: string;
     /** Today “Coming up” — title row includes `meetingTitle` after contact name; time on row 2. */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
-    /** Right pill: Prep sent (green) after send; Prep ready (peach) when Tomo has drafted prep. */
-    commitmentStatusPill?: { label: string; tone: "peach" | "green" };
+    /** Right pill: Prep sent (green); Prep ready (peach); First Contact (violet). */
+    commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" };
     commitmentOverdue?: boolean;
     calendarUrl?: string;
+    linkedInUrl?: string;
     attentionEmailSourceUrl?: string;
   }[];
   onSelect: (id: string) => void;
@@ -1205,7 +1211,9 @@ function TodayGroup({
                       className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
                         item.commitmentStatusPill.tone === "green"
                           ? "border-green-200 bg-green-50 text-green-800"
-                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+                          : item.commitmentStatusPill.tone === "violet"
+                            ? "border-violet-200 bg-violet-50 text-violet-900"
+                            : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
                       }`}
                     >
                       {item.commitmentStatusPill.label}
@@ -1218,18 +1226,32 @@ function TodayGroup({
                     Commitment overdue
                   </p>
                 ) : null}
-                {item.calendarUrl ? (
-                  <a
-                    href={item.calendarUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                    data-testid="today-commitment-open-calendar"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Open calendar
-                  </a>
-                ) : null}
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  {item.calendarUrl ? (
+                    <a
+                      href={item.calendarUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                      data-testid="today-commitment-open-calendar"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Open calendar
+                    </a>
+                  ) : null}
+                  {item.linkedInUrl ? (
+                    <a
+                      href={item.linkedInUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium text-[#0a66c2] underline underline-offset-2 hover:text-[#004182]"
+                      data-testid="today-commitment-open-linkedin"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      LinkedIn
+                    </a>
+                  ) : null}
+                </div>
               </>
             ) : (
               <>

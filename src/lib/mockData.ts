@@ -196,8 +196,8 @@ export type ActionItem = {
   emailSourceUrl?: string;
 };
 
-/** `ready` = Tomo has drafted prep; `none` = no prep pill until a draft exists. */
-export type CommitmentPrepStatus = "ready" | "none";
+/** `ready` = Tomo has drafted prep; `first_contact` = first live touch, distinct pill; `none` = no prep status pill. */
+export type CommitmentPrepStatus = "ready" | "none" | "first_contact";
 
 export type Commitment = {
   id: string;
@@ -208,7 +208,7 @@ export type Commitment = {
   contactName: string;
   briefId?: string;
   window: "next72h" | "today";
-  /** Whether Tomo has drafted a prep pack (Coming up shows “Prep ready” when true). */
+  /** Prep state for Coming up / drawer pills (see `CommitmentPrepStatus`). */
   prepStatus: CommitmentPrepStatus;
   /** Phase 1 — overdue promise / missed prep flag */
   commitmentOverdue?: boolean;
@@ -216,6 +216,8 @@ export type Commitment = {
   relationshipId?: string;
   /** Opens from “Open calendar” on Today and in the commitment drawer */
   calendarUrl?: string;
+  /** Mock / enrichment: public LinkedIn profile URL for pre-call research */
+  linkedInUrl?: string;
 };
 
 export type Brief = {
@@ -830,9 +832,10 @@ export const commitments: Commitment[] = [
     contactName: "Kwong Hong Huat",
     briefId: "b5",
     window: "next72h",
-    prepStatus: "none",
+    prepStatus: "first_contact",
     relationshipId: "r8",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
+    linkedInUrl: "https://www.linkedin.com/in/kwong-hong-huat-mock",
   },
   {
     id: "c4",
@@ -841,9 +844,10 @@ export const commitments: Commitment[] = [
     lp: "BNF Capital",
     contactName: "Nic Fallows",
     window: "next72h",
-    prepStatus: "none",
+    prepStatus: "first_contact",
     commitmentOverdue: true,
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
+    linkedInUrl: "https://www.linkedin.com/in/nic-fallows-mock",
   },
 ];
 
