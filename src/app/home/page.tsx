@@ -15,6 +15,9 @@ import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { ActionAmendChat } from "@/components/action-amend-chat";
 import { ActionDrawerPanel } from "@/components/action-drawer-panel";
+import { AttachDocumentModal } from "@/components/attach-document-modal";
+import { CommitmentAmendChat } from "@/components/commitment-amend-chat";
+import { CommitmentDrawerPanel } from "@/components/commitment-drawer-panel";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
@@ -37,7 +40,7 @@ import {
 } from "@/lib/dailyBriefFromToday";
 import { getStillInTodoActions } from "@/lib/todayEngagement";
 import { useTodayEngagement } from "@/hooks/useTodayEngagement";
-import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem, type Commitment } from "@/lib/mockData";
+import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem } from "@/lib/mockData";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -89,7 +92,10 @@ export default function HomePage() {
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
+  const [commitmentDrawerPhase, setCommitmentDrawerPhase] = useState<"cta" | "amend">("cta");
   const [actionOutcomeById, setActionOutcomeById] = useState<Record<string, "approved" | "later">>({});
+  const [commitmentOutcomeById, setCommitmentOutcomeById] = useState<Record<string, "approved">>({});
+  const [attachDocumentOpen, setAttachDocumentOpen] = useState(false);
   /** Replaces mock Tomo draft + lead for scheduling actions after "Find another time". */
   const [schedulingDraftOverrideByActionId, setSchedulingDraftOverrideByActionId] = useState<
     Record<string, SchedulingDraftOverride | undefined>
@@ -169,12 +175,18 @@ export default function HomePage() {
   const closeDrawerAndReset = () => {
     setSelection(null);
     setActionDrawerPhase("cta");
+    setCommitmentDrawerPhase("cta");
+    setAttachDocumentOpen(false);
     setSchedulingFindTimeOpen(false);
     router.replace("/home");
   };
 
   useEffect(() => {
     if (!selection || selection.type !== "action") setActionDrawerPhase("cta");
+  }, [selection]);
+
+  useEffect(() => {
+    if (!selection || selection.type !== "commitment") setCommitmentDrawerPhase("cta");
   }, [selection]);
 
   const verbPillForAction = useCallback(
@@ -185,6 +197,16 @@ export default function HomePage() {
       return actions.find((a) => a.id === id)?.attentionCard?.verb ?? "—";
     },
     [actionOutcomeById]
+  );
+
+  const verbPillForCommitment = useCallback(
+    (id: string) => {
+      if (commitmentOutcomeById[id] === "approved") return "Sent";
+      const c = commitments.find((x) => x.id === id);
+      if (!c) return "—";
+      return c.prepStatus === "ready" ? "Prep ready" : "Prep not available";
+    },
+    [commitmentOutcomeById]
   );
 
   const selectedTitle = useMemo(() => {
@@ -283,6 +305,7 @@ export default function HomePage() {
       return tA - tB;
     });
   }, [filteredCommitments]);
+
   const filteredBriefs = useMemo(() => {
     return briefs;
   }, []);
@@ -375,6 +398,7 @@ export default function HomePage() {
 
   const resetDemoAttention = useCallback(() => {
     setActionOutcomeById({});
+    setCommitmentOutcomeById({});
     addToast("Demo reset — attention list restored.");
   }, []);
 
@@ -541,10 +565,12 @@ export default function HomePage() {
                   extra: undefined,
                   type: "commitment" as const,
                   pills: [] as string[],
-                  commitmentPrepBadge:
-                    c.prepStatus === "ready"
-                      ? { label: "Prep ready", tone: "peach" as const }
-                      : { label: "Prep not available", tone: "amber" as const },
+                  commitmentStatusPill:
+                    commitmentOutcomeById[c.id] === "approved"
+                      ? { label: "Sent", tone: "green" as const }
+                      : c.prepStatus === "ready"
+                        ? { label: "Prep ready", tone: "peach" as const }
+                        : { label: "Prep not available", tone: "amber" as const },
                   comingUpCard: {
                     company: c.lp,
                     contactName: c.contactName,
@@ -606,14 +632,20 @@ export default function HomePage() {
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
         title={selectedTitle ?? "Details"}
-        hideHeaderTitle={selection?.type === "action"}
+        hideHeaderTitle={selection?.type === "action" || selection?.type === "commitment"}
         drawerAriaLabel={
           selection?.type === "action" && selectedAction?.attentionCard
             ? `${selectedAction.attentionCard.company} — ${selectedAction.attentionCard.workKind}`
-            : (selectedTitle ?? "Details")
+            : selection?.type === "commitment" && selectedCommitment
+              ? `${selectedCommitment.lp} — ${selectedCommitment.title || "Commitment"}`
+              : (selectedTitle ?? "Details")
         }
         section1Content={
-          selection?.type === "action" && actionDrawerPhase === "amend" ? null : selection?.type === "action" && selectedAction ? (
+          selection?.type === "action" && actionDrawerPhase === "amend"
+            ? null
+            : selection?.type === "commitment" && commitmentDrawerPhase === "amend"
+              ? null
+              : selection?.type === "action" && selectedAction ? (
             <ActionDrawerPanel
               action={selectedAction}
               assistance={effectiveTomoAssistanceForSelectedAction ?? getTomoAssistance(selection.id)}
@@ -640,13 +672,21 @@ export default function HomePage() {
               }
               finalApproveLabel="Approve & send"
             />
-          ) : selection?.type === "commitment" ? (
-            <CommitmentDetail
+          ) : selection?.type === "commitment" && selectedCommitment ? (
+            <CommitmentDrawerPanel
               commitment={selectedCommitment}
-              brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
-              onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
-              onCreateAction={() => router.push("/activity")}
-              detailsOnly
+              assistance={getTomoAssistance(selection.id)}
+              verbLabel={verbPillForCommitment(selection.id)}
+              resolution={commitmentOutcomeById[selection.id] === "approved" ? "approved" : null}
+              onApproveAndSend={() => {
+                setCommitmentOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
+                addToast("Agenda sent to participants");
+                closeDrawerAndReset();
+              }}
+              onAmend={() => setCommitmentDrawerPhase("amend")}
+              onAttachDocument={() => setAttachDocumentOpen(true)}
+              onClose={closeDrawerAndReset}
+              finalApproveLabel="Approve and Send"
             />
           ) : selection?.type === "brief" ? (
             <BriefDetail
@@ -656,7 +696,10 @@ export default function HomePage() {
             />
           ) : null
         }
-        hideSection2={Boolean(selection?.type === "action" && actionDrawerPhase === "cta")}
+        hideSection2={Boolean(
+          (selection?.type === "action" && actionDrawerPhase === "cta") ||
+            (selection?.type === "commitment" && commitmentDrawerPhase === "cta")
+        )}
         section2Content={
           selection?.type === "action" && actionDrawerPhase === "amend" && selectedAction ? (
             <ActionAmendChat
@@ -678,7 +721,26 @@ export default function HomePage() {
               }}
               finalApproveLabel="Approve & send"
             />
-          ) : selection && selection.type !== "action" ? (
+          ) : selection?.type === "commitment" && commitmentDrawerPhase === "amend" && selectedCommitment ? (
+            <CommitmentAmendChat
+              entityKey={`${selection.id}-amend`}
+              selection={selection}
+              commitment={selectedCommitment}
+              assistance={
+                getTomoAssistance(selection.id) ?? {
+                  initialMessage: { text: `${selectedCommitment.title} — tell Tomo what to change.` },
+                  suggestedPrompts: [],
+                }
+              }
+              onBack={() => setCommitmentDrawerPhase("cta")}
+              onFinalApprove={() => {
+                setCommitmentOutcomeById((p) => ({ ...p, [selection.id]: "approved" }));
+                addToast("Agenda sent to participants");
+                closeDrawerAndReset();
+              }}
+              finalApproveLabel="Approve and Send"
+            />
+          ) : selection?.type === "brief" ? (
             <DrawerSection2TomoChat
               initialMessage={getTomoAssistance(selection.id)?.initialMessage}
               suggestions={getTomoAssistance(selection.id)?.suggestedPrompts ?? []}
@@ -706,6 +768,11 @@ export default function HomePage() {
           }));
           addToast("Draft updated for the new time.");
         }}
+      />
+      <AttachDocumentModal
+        open={attachDocumentOpen}
+        onClose={() => setAttachDocumentOpen(false)}
+        onUploaded={(fileName) => addToast(`Attached: ${fileName}`)}
       />
       <ToastViewport toasts={toasts} />
       {chatPortalReady && todayChatOverlayOpen && todayChatExpanded
@@ -962,7 +1029,8 @@ function TodayGroup({
     verbLabel?: string;
     /** Today “Coming up” — title row includes `meetingTitle` after contact name; time on row 2. */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
-    commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
+    /** Right pill: Sent (green) after agenda send; else prep status. */
+    commitmentStatusPill?: { label: string; tone: "peach" | "amber" | "green" };
     commitmentOverdue?: boolean;
     calendarUrl?: string;
     attentionEmailSourceUrl?: string;
@@ -1034,15 +1102,17 @@ function TodayGroup({
                       <span className="font-semibold text-gray-700"> · {item.comingUpCard.meetingTitle}</span>
                     ) : null}
                   </p>
-                  {item.commitmentPrepBadge ? (
+                  {item.commitmentStatusPill ? (
                     <span
                       className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
-                        item.commitmentPrepBadge.tone === "amber"
-                          ? "border-amber-200 bg-amber-50 text-amber-950"
-                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+                        item.commitmentStatusPill.tone === "green"
+                          ? "border-green-200 bg-green-50 text-green-800"
+                          : item.commitmentStatusPill.tone === "amber"
+                            ? "border-amber-200 bg-amber-50 text-amber-950"
+                            : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
                       }`}
                     >
-                      {item.commitmentPrepBadge.label}
+                      {item.commitmentStatusPill.label}
                     </span>
                   ) : null}
                 </div>
@@ -1132,85 +1202,6 @@ function UrgencyChip({ kind }: { kind: string }) {
   );
 }
 
-
-function CommitmentDetail({
-  commitment,
-  brief,
-  onOpenBrief,
-  onCreateAction,
-  detailsOnly = false,
-}: {
-  commitment: Commitment | undefined | null;
-  brief: (typeof briefs)[number] | null | undefined;
-  onOpenBrief: (briefId: string) => void;
-  onCreateAction: () => void;
-  detailsOnly?: boolean;
-}) {
-  if (!commitment) return <Placeholder title="No commitment selected" />;
-  const prepReady = commitment.prepStatus === "ready";
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Commitment</p>
-          <h3 className="text-lg font-semibold accent-title">
-            {commitment.lp} : {commitment.contactName}
-            {commitment.title ? (
-              <span className="font-semibold text-gray-800"> · {commitment.title}</span>
-            ) : null}
-          </h3>
-          <p className="text-sm text-gray-600">{commitment.datetime}</p>
-          {commitment.commitmentOverdue ? (
-            <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
-              Commitment overdue — needs attention
-            </p>
-          ) : null}
-          {commitment.calendarUrl ? (
-            <a
-              href={commitment.calendarUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-            >
-              Open calendar
-            </a>
-          ) : null}
-        </div>
-        <span
-          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-            prepReady
-              ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
-              : "border-amber-200 bg-amber-50 text-amber-950"
-          }`}
-        >
-          {prepReady ? "Prep ready" : "Prep not available"}
-        </span>
-      </div>
-      {detailsOnly ? null : (
-        <>
-          {prepReady ? (
-            <div className="rounded-md border tomo-ai-border bg-gray-50 px-3 py-2 text-sm text-gray-800">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-gray-900">Meeting prep</p>
-                <TomoAiBadge label="Tomo insight" />
-              </div>
-              <p className="text-sm tomo-ai-text">Brief is ready — skim summary and agenda before you join.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              <p className="font-medium text-amber-950">Prep not available</p>
-              <p className="mt-1 text-sm text-amber-900/90">
-                Intro call with limited CRM context — Tomo couldn’t auto-build a brief. Add notes or request prep manually.
-              </p>
-            </div>
-          )}
-          {brief ? <BriefDetail brief={brief} onCreateAction={onCreateAction} onOpenBrief={onOpenBrief} compact /> : null}
-          <SuggestedWorkflows />
-        </>
-      )}
-    </div>
-  );
-}
 
 function BriefDetail({
   brief,

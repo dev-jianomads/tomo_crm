@@ -44,4 +44,17 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByTestId("action-amend-chat")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Back$/ })).toBeVisible();
   });
+
+  test("Today commitment drawer shows primary CTAs and amend flow (no chat strip until amend)", async ({ page }) => {
+    await page.goto("/home");
+    await page.getByTestId("today-commitment-row-c1").click();
+    await expect(page.getByRole("button", { name: /Approve and Send/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Amend$/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Attach Document/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Close$/ })).toBeVisible();
+    await expect(page.getByTestId("drawer-tomo-chat")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Amend$/ }).click();
+    await expect(page.getByTestId("commitment-amend-chat")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Back$/ })).toBeVisible();
+  });
 });
