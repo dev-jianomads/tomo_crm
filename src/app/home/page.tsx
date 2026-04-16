@@ -215,10 +215,10 @@ export default function HomePage() {
 
   const verbPillForCommitment = useCallback(
     (id: string) => {
-      if (commitmentOutcomeById[id] === "approved") return "Sent";
+      if (commitmentOutcomeById[id] === "approved") return "Prep sent";
       const c = commitments.find((x) => x.id === id);
       if (!c) return "—";
-      return c.prepStatus === "ready" ? "Prep ready" : "Prep not available";
+      return c.prepStatus === "ready" ? "Prep ready" : "";
     },
     [commitmentOutcomeById]
   );
@@ -598,10 +598,10 @@ export default function HomePage() {
                   pills: [] as string[],
                   commitmentStatusPill:
                     commitmentOutcomeById[c.id] === "approved"
-                      ? { label: "Sent", tone: "green" as const }
+                      ? { label: "Prep sent", tone: "green" as const }
                       : c.prepStatus === "ready"
                         ? { label: "Prep ready", tone: "peach" as const }
-                        : { label: "Prep not available", tone: "amber" as const },
+                        : undefined,
                   comingUpCard: {
                     company: c.lp,
                     contactName: c.contactName,
@@ -1093,8 +1093,8 @@ function TodayGroup({
     verbLabel?: string;
     /** Today “Coming up” — title row includes `meetingTitle` after contact name; time on row 2. */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
-    /** Right pill: Sent (green) after agenda send; else prep status. */
-    commitmentStatusPill?: { label: string; tone: "peach" | "amber" | "green" };
+    /** Right pill: Prep sent (green) after send; Prep ready (peach) when Tomo has drafted prep. */
+    commitmentStatusPill?: { label: string; tone: "peach" | "green" };
     commitmentOverdue?: boolean;
     calendarUrl?: string;
     attentionEmailSourceUrl?: string;
@@ -1171,9 +1171,7 @@ function TodayGroup({
                       className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
                         item.commitmentStatusPill.tone === "green"
                           ? "border-green-200 bg-green-50 text-green-800"
-                          : item.commitmentStatusPill.tone === "amber"
-                            ? "border-amber-200 bg-amber-50 text-amber-950"
-                            : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
                       }`}
                     >
                       {item.commitmentStatusPill.label}

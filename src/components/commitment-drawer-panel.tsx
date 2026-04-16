@@ -66,7 +66,7 @@ export function CommitmentDrawerPanel({
   const preview = getCommitmentDrawerAgendaPreview(assistance);
   const showCtas = resolution === null;
   const prepReady = commitment.prepStatus === "ready";
-  const pillIsSent = verbLabel === "Sent" || resolution === "approved";
+  const pillIsSent = verbLabel === "Prep sent" || resolution === "approved";
 
   const timeLine = commitmentDayTime(commitment.datetime);
 
@@ -97,17 +97,17 @@ export function CommitmentDrawerPanel({
               </a>
             ) : null}
           </div>
-          <span
-            className={
-              pillIsSent
-                ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                : prepReady
-                  ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-                  : "inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950"
-            }
-          >
-            {verbLabel}
-          </span>
+          {pillIsSent || prepReady ? (
+            <span
+              className={
+                pillIsSent
+                  ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                  : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
+              }
+            >
+              {pillIsSent ? "Prep sent" : "Prep ready"}
+            </span>
+          ) : null}
         </div>
       </div>
 

@@ -196,7 +196,8 @@ export type ActionItem = {
   emailSourceUrl?: string;
 };
 
-export type CommitmentPrepStatus = "ready" | "not_available";
+/** `ready` = Tomo has drafted prep; `none` = no prep pill until a draft exists. */
+export type CommitmentPrepStatus = "ready" | "none";
 
 export type Commitment = {
   id: string;
@@ -207,7 +208,7 @@ export type Commitment = {
   contactName: string;
   briefId?: string;
   window: "next72h" | "today";
-  /** Brief / prep pack status for Coming up badge */
+  /** Whether Tomo has drafted a prep pack (Coming up shows “Prep ready” when true). */
   prepStatus: CommitmentPrepStatus;
   /** Phase 1 — overdue promise / missed prep flag */
   commitmentOverdue?: boolean;
@@ -829,7 +830,7 @@ export const commitments: Commitment[] = [
     contactName: "Kwong Hong Huat",
     briefId: "b5",
     window: "next72h",
-    prepStatus: "not_available",
+    prepStatus: "none",
     relationshipId: "r8",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
@@ -840,7 +841,7 @@ export const commitments: Commitment[] = [
     lp: "BNF Capital",
     contactName: "Nic Fallows",
     window: "next72h",
-    prepStatus: "not_available",
+    prepStatus: "none",
     commitmentOverdue: true,
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
