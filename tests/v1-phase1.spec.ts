@@ -25,10 +25,11 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByTestId("workflow-outbound-safety")).toBeVisible();
   });
 
-  test("Today commitment row shows signal line", async ({ page }) => {
+  test("Today commitment row shows Open calendar link", async ({ page }) => {
     await page.goto("/home");
-    const prepSignals = page.getByTestId("today-commitment-prep-signal");
-    await expect(prepSignals.first()).toContainText(/Signal: Heating up/);
+    const links = page.getByTestId("today-commitment-open-calendar");
+    await expect(links.first()).toBeVisible();
+    await expect(links.first()).toHaveText("Open calendar");
   });
 
   test("Today action drawer shows primary CTAs and amend flow (no execution strip)", async ({ page }) => {

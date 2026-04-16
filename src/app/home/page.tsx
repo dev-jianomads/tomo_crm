@@ -38,7 +38,6 @@ import {
 import { getStillInTodoActions } from "@/lib/todayEngagement";
 import { useTodayEngagement } from "@/hooks/useTodayEngagement";
 import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem, type Commitment } from "@/lib/mockData";
-import { useRelationships } from "@/components/relationships-provider";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -56,17 +55,6 @@ function workflowLabelForAction(action: ActionItem): string {
     ? tomoDefaultWorkflows.find((w) => w.id === action.workflowTomoDefaultId)?.name
     : undefined;
   return fromPlaybook ?? fromTomo ?? "—";
-}
-
-function relationshipIdForCommitment(
-  c: Commitment,
-  relationships: { id: string; name: string; firm: string }[]
-): string | undefined {
-  if (c.relationshipId) return c.relationshipId;
-  return (
-    relationships.find((r) => r.name === c.contactName)?.id ??
-    relationships.find((r) => r.firm === c.lp)?.id
-  );
 }
 
 /**
@@ -98,7 +86,6 @@ function TomoChatInline({ showAssistantHeader = true }: { showAssistantHeader?: 
 
 export default function HomePage() {
   const { ready, session } = useRequireSession();
-  const { relationships } = useRelationships();
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
@@ -534,6 +521,7 @@ export default function HomePage() {
                     attentionCard: a.attentionCard,
                     attentionWorkflowName,
                     verbLabel: verbPillForAction(a.id),
+                    attentionEmailSourceUrl: a.emailSourceUrl,
                   };
                 })}
                 activeId={selection?.type === "action" ? selection.id : undefined}
@@ -561,9 +549,8 @@ export default function HomePage() {
                     timeLabel: commitmentDayTime(c.datetime),
                     meetingTitle: c.title,
                   },
-                  prepSignal: c.prepSignal,
                   commitmentOverdue: c.commitmentOverdue,
-                  relationshipId: relationshipIdForCommitment(c, relationships),
+                  calendarUrl: c.calendarUrl,
                 }))}
                 activeId={selection?.type === "commitment" ? selection.id : undefined}
                 onSelect={(id) => setSelection({ type: "commitment", id })}
@@ -649,7 +636,6 @@ export default function HomePage() {
           ) : selection?.type === "commitment" ? (
             <CommitmentDetail
               commitment={selectedCommitment}
-              relationships={relationships}
               brief={selectedCommitment?.briefId ? filteredBriefs.find((b) => b.id === selectedCommitment.briefId) : null}
               onOpenBrief={(briefId) => router.push(`/materials?tab=briefs&brief=${briefId}`)}
               onCreateAction={() => router.push("/activity")}
@@ -966,12 +952,12 @@ function TodayGroup({
     attentionWorkflowName?: string;
     /** Right pill; mirrors drawer after Approve / Do later */
     verbLabel?: string;
-    /** Today “Coming up” — same visual rhythm as attention cards (company : name, time row, prep badge). */
+    /** Today “Coming up” — title row includes `meetingTitle` after contact name; time on row 2. */
     comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
     commitmentPrepBadge?: { label: string; tone: "peach" | "amber" };
-    prepSignal?: string;
     commitmentOverdue?: boolean;
-    relationshipId?: string;
+    calendarUrl?: string;
+    attentionEmailSourceUrl?: string;
   }[];
   onSelect: (id: string) => void;
   activeId?: string;
@@ -1017,12 +1003,28 @@ function TodayGroup({
                 <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
                   {item.attentionWorkflowName ?? item.meta}
                 </p>
+                {item.attentionEmailSourceUrl ? (
+                  <a
+                    href={item.attentionEmailSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-0.5 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Open email
+                  </a>
+                ) : null}
               </>
             ) : item.comingUpCard ? (
               <>
                 <div className="flex items-start justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
-                    {item.comingUpCard.company} : {item.comingUpCard.contactName}
+                    <span>
+                      {item.comingUpCard.company} : {item.comingUpCard.contactName}
+                    </span>
+                    {item.comingUpCard.meetingTitle ? (
+                      <span className="font-semibold text-gray-700"> · {item.comingUpCard.meetingTitle}</span>
+                    ) : null}
                   </p>
                   {item.commitmentPrepBadge ? (
                     <span
@@ -1037,30 +1039,22 @@ function TodayGroup({
                   ) : null}
                 </div>
                 <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
-                {item.comingUpCard.meetingTitle ? (
-                  <p className="mt-0.5 min-w-0 truncate text-[11px] leading-snug text-gray-500">{item.comingUpCard.meetingTitle}</p>
-                ) : null}
                 {item.commitmentOverdue ? (
                   <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800">
                     Commitment overdue
                   </p>
                 ) : null}
-                {item.prepSignal ? (
-                  <p
-                    className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-700"
-                    data-testid="today-commitment-prep-signal"
-                  >
-                    {item.prepSignal}
-                  </p>
-                ) : null}
-                {item.relationshipId ? (
-                  <Link
-                    href="/relationships"
+                {item.calendarUrl ? (
+                  <a
+                    href={item.calendarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="mt-1 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    data-testid="today-commitment-open-calendar"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    Open relationship profile →
-                  </Link>
+                    Open calendar
+                  </a>
                 ) : null}
               </>
             ) : (
@@ -1133,14 +1127,12 @@ function UrgencyChip({ kind }: { kind: string }) {
 
 function CommitmentDetail({
   commitment,
-  relationships,
   brief,
   onOpenBrief,
   onCreateAction,
   detailsOnly = false,
 }: {
   commitment: Commitment | undefined | null;
-  relationships: { id: string; name: string; firm: string }[];
   brief: (typeof briefs)[number] | null | undefined;
   onOpenBrief: (briefId: string) => void;
   onCreateAction: () => void;
@@ -1148,32 +1140,32 @@ function CommitmentDetail({
 }) {
   if (!commitment) return <Placeholder title="No commitment selected" />;
   const prepReady = commitment.prepStatus === "ready";
-  const relId = relationshipIdForCommitment(commitment, relationships);
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">Commitment</p>
-          <h3 className="text-lg font-semibold accent-title">{commitment.title}</h3>
+          <h3 className="text-lg font-semibold accent-title">
+            {commitment.lp} : {commitment.contactName}
+            {commitment.title ? (
+              <span className="font-semibold text-gray-800"> · {commitment.title}</span>
+            ) : null}
+          </h3>
           <p className="text-sm text-gray-600">{commitment.datetime}</p>
-          <p className="text-sm text-gray-600">
-            {commitment.lp} · {commitment.contactName}
-          </p>
-          {commitment.prepSignal ? (
-            <p className="mt-1 text-sm text-gray-800">{commitment.prepSignal}</p>
-          ) : null}
           {commitment.commitmentOverdue ? (
             <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
               Commitment overdue — needs attention
             </p>
           ) : null}
-          {relId ? (
-            <Link
-              href="/relationships"
+          {commitment.calendarUrl ? (
+            <a
+              href={commitment.calendarUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-2 inline-block text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
             >
-              Open relationship profile →
-            </Link>
+              Open calendar
+            </a>
           ) : null}
         </div>
         <span

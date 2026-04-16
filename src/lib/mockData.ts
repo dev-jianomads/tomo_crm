@@ -192,6 +192,8 @@ export type ActionItem = {
   workflowTomoDefaultId?: string;
   /** Override pill to display as "Tomo" (peach) even when workflowPlaybookId is set */
   workflowPillOverride?: "Tomo";
+  /** Source email thread — “Open email” on Today cards and in the action drawer */
+  emailSourceUrl?: string;
 };
 
 export type CommitmentPrepStatus = "ready" | "not_available";
@@ -207,12 +209,12 @@ export type Commitment = {
   window: "next72h" | "today";
   /** Brief / prep pack status for Coming up badge */
   prepStatus: CommitmentPrepStatus;
-  /** Phase 1 — one-line signal for meeting prep (replaces score-like framing). */
-  prepSignal?: string;
   /** Phase 1 — overdue promise / missed prep flag */
   commitmentOverdue?: boolean;
   /** When set, deep link to this relationship row on Relationships */
   relationshipId?: string;
+  /** Opens from “Open calendar” on Today and in the commitment drawer */
+  calendarUrl?: string;
 };
 
 export type Brief = {
@@ -644,6 +646,8 @@ export const actions: ActionItem[] = [
       { id: "al-a1-3", ts: "Today 07:17", actor: "TOMO", summary: "Drafted reply with both times" },
     ],
     workflowTomoDefaultId: "td-email-scheduling",
+    emailSourceUrl:
+      "mailto:peter.zakowich@example.com?subject=Re%3A%20March%2018%20meeting%20request",
   },
   {
     id: "a2",
@@ -671,6 +675,7 @@ export const actions: ActionItem[] = [
       { id: "al-a2-2", ts: "Today 08:00", actor: "TOMO", summary: "Flagged unresponded intro — drafted reply" },
     ],
     workflowPlaybookId: "pb-intro-tracker",
+    emailSourceUrl: "mailto:michel.delbuono@example.com?subject=Introduction%20from%20Liyen",
   },
   {
     id: "a3",
@@ -705,6 +710,7 @@ export const actions: ActionItem[] = [
     ],
     workflowPlaybookId: "pb-post-meeting",
     workflowPillOverride: "Tomo",
+    emailSourceUrl: "mailto:james.staltari@albourne.com?subject=Post-meeting%20follow-up",
   },
   {
     id: "a4",
@@ -732,6 +738,7 @@ export const actions: ActionItem[] = [
       { id: "al-a4-2", ts: "Today 08:30", actor: "TOMO", summary: "No reply — drafted follow-up to Kwong + EA" },
     ],
     workflowPlaybookId: "pb-no-response-stall",
+    emailSourceUrl: "mailto:kwong.hong.huat@gic.com.sg?subject=Re%3A%20New%20fund%20launch%20discussion",
   },
   {
     id: "a5",
@@ -757,6 +764,7 @@ export const actions: ActionItem[] = [
       { id: "al-a5-2", ts: "Today 06:45", actor: "TOMO", summary: "Built momentum deltas vs trailing 3 months" },
     ],
     workflowPlaybookId: "pb-update-followup",
+    emailSourceUrl: "mailto:ir-newsletter@example.com?subject=Monthly%20Momentum%20Report",
   },
   {
     id: "a6",
@@ -784,6 +792,7 @@ export const actions: ActionItem[] = [
       { id: "al-a6-2", ts: "Today 07:00", actor: "TOMO", summary: "Cooling signal — drafted check-in email" },
     ],
     workflowPlaybookId: "pb-no-response-stall",
+    emailSourceUrl: "mailto:camille.durand@amundi.com?subject=Check-in%20ahead%20of%20Q2",
   },
 ];
 
@@ -797,8 +806,8 @@ export const commitments: Commitment[] = [
     briefId: "b3",
     window: "today",
     prepStatus: "ready",
-    prepSignal: "Signal: Heating up · Tier 1 — aligns with March diligence thread",
     relationshipId: "r5",
+    calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
   {
     id: "c2",
@@ -809,8 +818,8 @@ export const commitments: Commitment[] = [
     briefId: "b4",
     window: "today",
     prepStatus: "ready",
-    prepSignal: "Signal: First contact · cap intro still warm from Liyen",
     relationshipId: "r6",
+    calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
   {
     id: "c3",
@@ -821,7 +830,7 @@ export const commitments: Commitment[] = [
     briefId: "b5",
     window: "next72h",
     prepStatus: "ready",
-    prepSignal: "Signal: Active-stable — sleeve sizing on agenda",
+    calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
   {
     id: "c4",
@@ -832,7 +841,7 @@ export const commitments: Commitment[] = [
     window: "next72h",
     prepStatus: "not_available",
     commitmentOverdue: true,
-    prepSignal: "Signal: Unknown — limited CRM context for first touch",
+    calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
   },
 ];
 
