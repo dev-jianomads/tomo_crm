@@ -31,12 +31,12 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // a1: Email Scheduling Assistant (Tomo Default)
   a1: {
     initialMessage: {
-      text: "Peter Zakowich (PAAMCO Prisma) asked for a meeting March 18. You're free 9am and 11am ET — draft reply proposes both.",
+      text: "Charly Malek (UBS) asked for a meeting March 18. You're free 9am and 11am ET — draft reply proposes both.",
       blocks: [
         {
           kind: "draft",
           content:
-            "Hi Peter — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
+            "Hi Charly — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
           type: "email",
         },
         {
@@ -55,12 +55,12 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // a2: Warm Intro Tracker
   a2: {
     initialMessage: {
-      text: "Liyen Chow introduced Michel del Buono (A16z Family Office) 2 days ago — no reply yet. Draft references Liyen and Q4 performance.",
+      text: "Liyen Chow introduced Michel del Buono (Edmond de Rothschild Family Office) 2 days ago — no reply yet. Draft references Liyen and Q4 performance.",
       blocks: [
         {
           kind: "draft",
           content:
-            "Hi Michel — great to meet you, and thank you Liyen for the introduction.\n\nBrief context: we had a strong Q4 and are speaking with a small set of aligned family offices. I'd welcome a short intro call at your convenience.\n\nBest regards,",
+            "Hi Michel — great to meet you, and thank you Liyen for the introduction.\n\nBrief context: we had a strong Q4 and are speaking with a small set of aligned allocator relationships. I'd welcome a short intro call at your convenience.\n\nBest regards,",
           type: "email",
         },
         { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
@@ -74,7 +74,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // a3: Post-Meeting Execution
   a3: {
     initialMessage: {
-      text: "Albourne (James Staltari) — post-meeting note is past the 2h SLA. Draft covers recap, materials, and COO call path.",
+      text: "Albourne (James Staltari) — you did not approve TOMO's email summary and next steps; post-meeting note is past the 2h SLA. Draft covers recap, materials, and COO call path.",
       blocks: [
         {
           kind: "draft",
@@ -154,7 +154,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   // r5–r9: Scenario relationships (Today card LPs)
   r5: {
     initialMessage: {
-      text: "PAAMCO Prisma — Peter is asking to meet March 18. Calendar-aware reply is on your Today list.",
+      text: "UBS — Charly Malek is asking to meet March 18. Calendar-aware reply is on your Today list.",
       blocks: [
         { kind: "snapshot", text: "Tier 1 momentum heating; diligence-stage. Next: lock time on March 18." },
         { kind: "workflow_link", playbookId: "td-email-scheduling", name: "Email Scheduling Assistant", description: "Scan email for scheduling requests, find availability, draft response." },
@@ -164,13 +164,13 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
   },
   r6: {
     initialMessage: {
-      text: "Goldman cap intro — Michel del Buono at A16z Family Office. Reply while the intro is fresh.",
+      text: "CPPIB — Frank Ieraci. 4pm investment update today; brief covers liquidity terms, co-invest, and path to next IC.",
       blocks: [
-        { kind: "snapshot", text: "Source credit: Liyen Chow. Strong Q4 narrative fits this first reply." },
-        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
+        { kind: "snapshot", text: "Tier 1; active diligence. Last touch flagged liquidity and co-invest — stay tight on commitments." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
-    suggestedPrompts: ["Draft intro reply", "Pull Liyen thread", "Explain intro playbook", "Create follow-up task"],
+    suggestedPrompts: ["Open prep brief", "Draft liquidity Q&A", "Summarize last thread", "Create follow-up task"],
   },
   r7: {
     initialMessage: {
@@ -203,14 +203,15 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Draft check-in", "Review Q2 timeline", "Open Today action", "Explain playbook"],
   },
 
-  // c1: PAAMCO HF Update
+  // c1: UBS HF Update
   c1: {
     initialMessage: {
-      text: "PAAMCO Prisma HF Update at 2pm — prep pack is ready. Focus on attribution vs peers and allocator-desk questions from Peter's team.",
+      text: "UBS HF Update at 2pm with Charly Malek — prep pack is ready. Focus on attribution vs peers and allocator-desk questions from Charly's team.",
       blocks: [
         {
           kind: "brief",
-          summary: "Quarterly hedge fund update; focus on attribution, capacity, and any strategy shifts Charly flagged in email.",
+          summary:
+            "Signal: Allocator engagement on your January pack is tracking above the peer median — Charly's team re-opened the risk and attribution sections twice in the last week.\n\nContext: Quarterly hedge fund update; focus on attribution, capacity, and allocator-desk questions from Charly's last email. Brief is locked.",
           agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
           commitments: ["Send one-pager after call", "Confirm data room access renewal"],
         },
@@ -222,16 +223,20 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: [],
   },
 
-  // c2: A16z Family Office Investment Update
+  // c2: CPPIB Investment Update
   c2: {
     initialMessage: {
-      text: "A16z Family Office Investment Update at 4pm — Michel asked about liquidity terms and co-invest last time. Brief is locked.",
+      text: "CPPIB Investment Update at 4pm with Frank Ieraci — Frank asked about liquidity terms and co-invest last time. Brief is locked.",
       blocks: [
         {
           kind: "brief",
-          summary: "Investment Update on current fund; Frank asked for liquidity terms and co-invest posture last touch.",
+          summary:
+            "Signal: Frank's reply time shortened from 5 days to 1 day over the last three exchanges — relationship accelerating.\n\nContext: Frank asked about liquidity terms and co-invest last time. Brief is locked from the last meeting transcript.",
           agenda: ["Portfolio update", "Liquidity & terms", "Path to next IC"],
-          commitments: ["Follow up on co-invest deck", "Share updated DDQ index"],
+          commitments: [
+            "Follow up on co-invest deck — ⚠️ promised 8 days ago, not yet sent",
+            "Share updated DDQ index",
+          ],
         },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
@@ -241,16 +246,17 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: [],
   },
 
-  // c3: Blackstone FoF catch-up
+  // c3: GIC intro call
   c3: {
     initialMessage: {
-      text: "Blackstone FoF catch-up tomorrow 10am — Tom is re-scoping sleeve sizing. Brief covers H2 priorities and pacing.",
+      text: "GIC intro call tomorrow 10am with Kwong Hong Huat — new contact, limited history; prep pack still building.",
       blocks: [
         {
           kind: "brief",
-          summary: "Relationship catch-up ahead of allocator season; Tom is re-scoping FoF sleeve sizing.",
-          agenda: ["Priorities for H2", "Allocation pacing", "What they need before IC"],
-          commitments: ["Circulate performance pack", "Propose two follow-up slots"],
+          summary:
+            "New contact — no prior meeting history. First live intro with Kwong; light CRM context and prep pack still building. Focus on mandate fit, pacing, and what GIC needs before deeper diligence.",
+          agenda: ["Credentials & strategy", "Sizing and timeline", "Next steps to allocator reads"],
+          commitments: ["Circulate short deck after call", "Propose two follow-up slots"],
         },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],

@@ -11,7 +11,7 @@ import {
   type SchedulingSlotModel,
 } from "@/lib/schedulingFindTime";
 
-/** Weeks forward/back from the scenario week (PAAMCO / March 18 narrative). */
+/** Weeks forward/back from the scenario week (UBS / March 18 narrative). */
 const MAX_WEEK_OFFSET = 26;
 const MIN_WEEK_OFFSET = -8;
 
