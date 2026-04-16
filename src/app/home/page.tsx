@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -93,7 +93,9 @@ export default function HomePage() {
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
   const [commitmentDrawerPhase, setCommitmentDrawerPhase] = useState<"cta" | "amend">("cta");
-  const [actionOutcomeById, setActionOutcomeById] = useState<Record<string, "approved" | "later">>({});
+  const [actionOutcomeById, setActionOutcomeById] = useState<
+    Record<string, "approved" | "later" | "dismissed">
+  >({});
   const [commitmentOutcomeById, setCommitmentOutcomeById] = useState<Record<string, "approved">>({});
   const [attachDocumentOpen, setAttachDocumentOpen] = useState(false);
   /** Replaces mock Tomo draft + lead for scheduling actions after "Find another time". */
@@ -109,10 +111,7 @@ export default function HomePage() {
     "tomo-today-inline-chat-expanded",
     false
   );
-  const [onMyRadarExpanded, setOnMyRadarExpanded] = usePersistentState<boolean>(
-    "tomo-today-on-my-radar-expanded",
-    true
-  );
+  const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
   /** Larger viewport for the same thread (single TomoAssistant mount — inline or overlay, not both). */
   const [todayChatOverlayOpen, setTodayChatOverlayOpen] = useState(false);
   const [chatPortalReady, setChatPortalReady] = useState(false);
@@ -164,6 +163,20 @@ export default function HomePage() {
     };
   }, [todayChatOverlayOpen]);
 
+  useEffect(() => {
+    if (!onMyRadarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOnMyRadarOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onMyRadarOpen]);
+
   const addToast = (message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts((prev) => [...prev, { id, message }]);
@@ -194,6 +207,7 @@ export default function HomePage() {
       const done = actionOutcomeById[id];
       if (done === "approved") return "Approved";
       if (done === "later") return "Later";
+      if (done === "dismissed") return "Dismissed";
       return actions.find((a) => a.id === id)?.attentionCard?.verb ?? "—";
     },
     [actionOutcomeById]
@@ -348,6 +362,14 @@ export default function HomePage() {
     else setSelection({ type: "brief", id: link.id });
   }, []);
 
+  const navigateBriefLineFromRadar = useCallback(
+    (link: DailyBriefLink) => {
+      navigateBriefLine(link);
+      setOnMyRadarOpen(false);
+    },
+    [navigateBriefLine],
+  );
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -362,39 +384,6 @@ export default function HomePage() {
     const derived = name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : "";
     return derived === "Test" || !derived ? "Ken" : derived;
   }, [session?.email]);
-
-  const showDailyBriefResend =
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_SHOW_DAILY_BRIEF_RESEND === "true";
-
-  const [dailyBriefResendBusy, setDailyBriefResendBusy] = useState(false);
-
-  const resendDailyBrief = useCallback(async () => {
-    setDailyBriefResendBusy(true);
-    try {
-      const res = await fetch("/api/email/daily-brief/resend", { method: "POST" });
-      let data: { error?: string; detail?: string; loopsHttpStatus?: number } = {};
-      try {
-        data = (await res.json()) as typeof data;
-      } catch {
-        /* non-JSON body */
-      }
-      if (!res.ok) {
-        const detail = data.detail?.trim();
-        const head = data.error ?? "Could not send daily brief";
-        const suffix = detail ? `${head}: ${detail}` : head;
-        const withStatus =
-          data.loopsHttpStatus != null ? `${suffix} (Loops HTTP ${data.loopsHttpStatus})` : suffix;
-        throw new Error(withStatus);
-      }
-      addToast("Daily brief sent to your inbox.");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not send daily brief";
-      addToast(msg);
-    } finally {
-      setDailyBriefResendBusy(false);
-    }
-  }, []);
 
   const resetDemoAttention = useCallback(() => {
     setActionOutcomeById({});
@@ -423,18 +412,7 @@ export default function HomePage() {
             <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900">
               {greeting}, {userName}.
             </h1>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pt-0.5">
-              {showDailyBriefResend ? (
-                <button
-                  type="button"
-                  onClick={() => void resendDailyBrief()}
-                  disabled={dailyBriefResendBusy}
-                  className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
-                  title="Sends the Daily Brief email via Loops (demo)"
-                >
-                  {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
-                </button>
-              ) : null}
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-0.5">
               <button
                 type="button"
                 onClick={resetDemoAttention}
@@ -442,6 +420,23 @@ export default function HomePage() {
                 title="Clears completed Today actions for this browser session (demo)"
               >
                 Reset demo
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnMyRadarOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={
+                  onMyRadarLineCount > 0
+                    ? `On My Radar, ${onMyRadarLineCount} items`
+                    : "On My Radar"
+                }
+              >
+                On My Radar
+                {onMyRadarLineCount > 0 ? (
+                  <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-white/20 px-1 text-[11px] font-bold tabular-nums">
+                    {onMyRadarLineCount}
+                  </span>
+                ) : null}
               </button>
             </div>
           </div>
@@ -512,20 +507,12 @@ export default function HomePage() {
           </div>
         ) : null}
 
-        {/* Bottom: On My Radar + attention | coming up */}
+        {/* Bottom: attention | coming up (On My Radar is header + modal) */}
         <div
           className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
           style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
-          <OnMyRadarPanel
-            blocks={onMyRadarBlocks}
-            lineCount={onMyRadarLineCount}
-            expanded={onMyRadarExpanded}
-            onExpandedChange={setOnMyRadarExpanded}
-            onLineNavigate={navigateBriefLine}
-          />
-          {/* Side-by-side: What needs your attention | Coming up */}
-          <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-h-0 flex-col overflow-hidden">
               <TodayGroup
                 title="What needs your attention"
@@ -606,7 +593,6 @@ export default function HomePage() {
         contextTitle={selectedTitle ?? undefined}
         assistantChips={[
           "What's urgent today?",
-          "Prep my 4pm A16z Family Office call",
           "Summarize what needs attention",
           "Who needs a follow-up?",
         ]}
@@ -660,6 +646,11 @@ export default function HomePage() {
               onLater={() => {
                 setActionOutcomeById((p) => ({ ...p, [selection.id]: "later" }));
                 addToast("Deferred — we’ll remind you.");
+              }}
+              onDismiss={() => {
+                setActionOutcomeById((p) => ({ ...p, [selection.id]: "dismissed" }));
+                addToast("Removed from What needs your attention.");
+                closeDrawerAndReset();
               }}
               onAmend={() => setActionDrawerPhase("amend")}
               onFindAnotherTime={
@@ -774,6 +765,13 @@ export default function HomePage() {
         onClose={() => setAttachDocumentOpen(false)}
         onUploaded={(fileName) => addToast(`Attached: ${fileName}`)}
       />
+      <OnMyRadarModal
+        open={onMyRadarOpen}
+        onClose={() => setOnMyRadarOpen(false)}
+        blocks={onMyRadarBlocks}
+        lineCount={onMyRadarLineCount}
+        onLineNavigate={navigateBriefLineFromRadar}
+      />
       <ToastViewport toasts={toasts} />
       {chatPortalReady && todayChatOverlayOpen && todayChatExpanded
         ? createPortal(
@@ -846,69 +844,82 @@ function DailyBriefLineRow({
   );
 }
 
-/** Phase 2 — replaces Daily Brief modal; same blocks, inline on Today */
-function OnMyRadarPanel({
+/** On My Radar — header control opens this modal (not inline accordion). */
+function OnMyRadarModal({
+  open,
+  onClose,
   blocks,
   lineCount,
-  expanded,
-  onExpandedChange,
   onLineNavigate,
 }: {
+  open: boolean;
+  onClose: () => void;
   blocks: DailyBriefBlock[];
   lineCount: number;
-  expanded: boolean;
-  onExpandedChange: (next: boolean) => void;
   onLineNavigate: (link: DailyBriefLink) => void;
 }) {
   const [showInsights, setShowInsights] = useState(false);
 
+  useEffect(() => {
+    if (!open) setShowInsights(false);
+  }, [open]);
+
+  if (!open) return null;
+
   return (
-    <div className="shrink-0 rounded-xl border border-blue-100 bg-blue-50/60">
-      <div className="flex items-center justify-between gap-2 border-b border-blue-100/80 px-3 py-2.5 sm:px-4">
-        <button
-          type="button"
-          onClick={() => onExpandedChange(!expanded)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-          aria-expanded={expanded}
-        >
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Today</span>
-          <span className="text-base font-semibold accent-title">On My Radar</span>
-          {lineCount > 0 ? (
-            <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-white px-1.5 text-xs font-semibold text-gray-800 ring-1 ring-blue-200/80">
-              {lineCount}
-            </span>
-          ) : null}
-          {expanded ? (
-            <ChevronUpIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-          )}
-        </button>
-        {expanded ? (
-          <button
-            type="button"
-            onClick={() => setShowInsights((prev) => !prev)}
-            className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border hover:bg-white/80 ${
-              showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-blue-200/80 bg-white/60"
-            }`}
-            aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-            title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-          >
-            <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
-      {expanded ? (
-        <div className="max-h-[min(42dvh,360px)] overflow-y-auto px-3 py-3 sm:px-4">
+    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="presentation">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="on-my-radar-modal-title"
+        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 id="on-my-radar-modal-title" className="text-sm font-semibold text-gray-900">
+              On My Radar
+            </h2>
+            {lineCount > 0 ? (
+              <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-blue-50 px-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-200/80">
+                {lineCount}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowInsights((prev) => !prev)}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-gray-50 ${
+                showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200 bg-white"
+              }`}
+              aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+              title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
+            >
+              <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <p className="mb-2 text-xs text-gray-600">
-            Priority follow-ups and meetings are in the columns below. On My Radar focuses on momentum, execution loops, and items you haven&apos;t engaged yet.
+            Priority follow-ups and meetings are in the columns below. On My Radar focuses on momentum, execution
+            loops, and items you haven&apos;t engaged yet.
           </p>
-          <p className="mb-2 text-xs text-gray-600">Tap a line to open details in the drawer.</p>
+          <p className="mb-3 text-xs text-gray-600">Tap a line to open details in the drawer.</p>
           <div className="space-y-2.5 sm:space-y-3">
             {blocks.map((block) => (
               <section
                 key={`${block.icon}-${block.title}`}
-                className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2.5 sm:px-3 sm:py-2.5"
+                className="rounded-xl border border-blue-100 bg-blue-50/40 px-2.5 py-2.5 sm:px-3 sm:py-2.5"
               >
                 <div className={showInsights ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                   <div className="min-w-0 flex-1">
@@ -953,7 +964,7 @@ function OnMyRadarPanel({
             ))}
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
