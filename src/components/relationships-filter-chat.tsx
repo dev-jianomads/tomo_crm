@@ -23,15 +23,12 @@ type RelationshipsFilterChatProps = {
   currentFilters: StructuredFilterCriteria;
   onFiltersChange: (filters: StructuredFilterCriteria) => void;
   onClearFilters: () => void;
-  /** Opens the same create-list (pipeline) modal as today */
-  onCreateList?: () => void;
 };
 
 export function RelationshipsFilterChat({
   currentFilters,
   onFiltersChange,
   onClearFilters,
-  onCreateList,
 }: RelationshipsFilterChatProps) {
   const [input, setInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -124,27 +121,6 @@ export function RelationshipsFilterChat({
         ) : (
           <span className="text-xs text-gray-400">No active filters</span>
         )}
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => {
-              onClearFilters();
-              toast.success("Filters cleared");
-            }}
-            className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900"
-          >
-            Reset filter
-          </button>
-        ) : null}
-        {onCreateList && hasFilters ? (
-          <button
-            type="button"
-            onClick={onCreateList}
-            className="shrink-0 text-xs font-medium text-[color:var(--accent)] hover:underline"
-          >
-            Create a list
-          </button>
-        ) : null}
       </div>
 
       <div>
@@ -171,18 +147,35 @@ export function RelationshipsFilterChat({
         </div>
       </div>
 
-      <form onSubmit={handleNlSubmit} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5">
+      <form
+        onSubmit={handleNlSubmit}
+        className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5"
+      >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder='e.g. Tier 1 in EMEA with open loops — type "clear" to reset'
+          placeholder="Build your custom filter here ..."
           disabled={submitting}
-          className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
+          className="min-w-0 flex-1 basis-[min(100%,12rem)] text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
         />
+        {hasFilters ? (
+          <button
+            type="button"
+            onClick={() => {
+              onClearFilters();
+              setInput("");
+              toast.success("Filters cleared");
+            }}
+            disabled={submitting}
+            className="shrink-0 text-xs font-medium text-[color:var(--accent)] hover:underline disabled:opacity-50"
+          >
+            Clear filters
+          </button>
+        ) : null}
         <button
           type="submit"
           disabled={!input.trim() || submitting}
-          className="rounded-md bg-[color:var(--accent)] p-1.5 text-white transition hover:opacity-90 disabled:opacity-50"
+          className="shrink-0 rounded-md bg-[color:var(--accent)] p-1.5 text-white transition hover:opacity-90 disabled:opacity-50"
           aria-label="Apply filter"
         >
           <PaperAirplaneIcon className="h-4 w-4" />

@@ -567,13 +567,12 @@ export default function RelationshipsPage() {
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
-          onCreateList={() => setCreatePipelineModalOpen(true)}
         />
       </div>
 
       <div className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3">
         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="shrink-0 text-xs text-gray-500">
               {Object.keys(filterCriteria).length > 0
                 ? `Showing ${filtered.length} of ${relationshipsWithOverrides.length} relationship${relationshipsWithOverrides.length !== 1 ? "s" : ""}`
@@ -582,11 +581,20 @@ export default function RelationshipsPage() {
             {(() => {
               const summary = formatFilterSummary(filterCriteria);
               return summary ? (
-                <span className="min-w-0 truncate text-xs font-medium peach-text" title={summary}>
+                <span className="min-w-0 max-w-[min(100%,28rem)] truncate text-xs font-medium peach-text" title={summary}>
                   {summary}
                 </span>
               ) : null;
             })()}
+            {Object.keys(filterCriteria).length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setCreatePipelineModalOpen(true)}
+                className="inline-flex shrink-0 items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                Create list
+              </button>
+            ) : null}
           </div>
           <div className="relative flex shrink-0 items-center gap-1" ref={columnsPopoverRef}>
             {viewMode === "list" ? (
