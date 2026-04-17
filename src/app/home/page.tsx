@@ -7,7 +7,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -116,10 +115,6 @@ export default function HomePage() {
     false
   );
   const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
-  /** Larger viewport for the same thread (single TomoAssistant mount — inline or overlay, not both). */
-  const [todayChatOverlayOpen, setTodayChatOverlayOpen] = useState(false);
-  const [chatPortalReady, setChatPortalReady] = useState(false);
-  useEffect(() => setChatPortalReady(true), []);
 
   // Top/bottom split ratio (25–75%), persisted. Default 70% for chatbox (slider up).
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
@@ -148,24 +143,6 @@ export default function HomePage() {
       window.removeEventListener("mouseup", stop);
     };
   }, [draggingSplit, todayChatExpanded, setSplitRatio]);
-
-  useEffect(() => {
-    if (!todayChatExpanded) setTodayChatOverlayOpen(false);
-  }, [todayChatExpanded]);
-
-  useEffect(() => {
-    if (!todayChatOverlayOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setTodayChatOverlayOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [todayChatOverlayOpen]);
 
   useEffect(() => {
     if (!onMyRadarOpen) return;
@@ -500,22 +477,9 @@ export default function HomePage() {
           {todayChatExpanded ? (
             <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
               <div className="flex shrink-0 items-center justify-end gap-2 pb-1">
-                {!todayChatOverlayOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => setTodayChatOverlayOpen(true)}
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500 hover:text-gray-800"
-                    aria-label="Expand Tomo chat to a larger view"
-                  >
-                    Expand view
-                  </button>
-                ) : null}
                 <button
                   type="button"
-                  onClick={() => {
-                    setTodayChatOverlayOpen(false);
-                    setTodayChatExpanded(false);
-                  }}
+                  onClick={() => setTodayChatExpanded(false)}
                   className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500 hover:text-gray-800"
                   aria-label="Collapse Tomo to single-line"
                 >
@@ -523,22 +487,9 @@ export default function HomePage() {
                   <ChevronUpIcon className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              {todayChatOverlayOpen ? (
-                <div className="flex min-h-[120px] shrink-0 flex-col justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50/80 px-3 py-3 text-center">
-                  <p className="text-sm text-gray-600">Conversation open in expanded view.</p>
-                  <button
-                    type="button"
-                    onClick={() => setTodayChatOverlayOpen(false)}
-                    className="mt-2 text-xs font-medium text-[color:var(--accent)] underline-offset-2 hover:underline"
-                  >
-                    Return to inline chat
-                  </button>
-                </div>
-              ) : (
-                <div className="min-h-0 flex-1 overflow-hidden">
-                  <TomoChatInline />
-                </div>
-              )}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <TomoChatInline />
+              </div>
             </div>
           ) : (
             <button
@@ -856,41 +807,6 @@ export default function HomePage() {
         onLineNavigate={navigateBriefLineFromRadar}
       />
       <ToastViewport toasts={toasts} />
-      {chatPortalReady && todayChatOverlayOpen && todayChatExpanded
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="tomo-today-chat-expanded-title"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setTodayChatOverlayOpen(false);
-              }}
-            >
-              <div
-                className="flex h-[min(92dvh,880px)] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-                  <p id="tomo-today-chat-expanded-title" className="text-sm font-medium text-gray-900">
-                    TOMO AI
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setTodayChatOverlayOpen(false)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-800"
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1 overflow-hidden">
-                  <TomoChatInline showAssistantHeader={false} />
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
     </>
   );
 }
