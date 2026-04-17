@@ -97,6 +97,7 @@ Goal: finish remaining V1 commitments and stubs after initial wave stabilization
    - **Shipped (demo):** Relationships header — **Reset demo** restores CRM mock base data (reload from `/api/crm/relationships` or generated fallback), clears **manual contacts** (local persistence `tomo-relationships-manual-v1`), and clears **field overrides** (`tomo-relationship-overrides-v1`). **New contact** opens a two-step modal: step 1 required fields (name, firm, tier, stage, relationship owner); step 2 optional remaining CRM fields with defaults; Confirm appends the row and opens the drawer.
    - **Later V1:** Enrichment (e.g. Clearbit / Apollo) after save, prospect tagging, default next move automation.
    - V1 NL filtering (structured SQL over existing fields) with one clarifying question behavior.
+   - **Production CRM validation (required, not in current demo):** Relationship LP drawer writes—both **Tomo** (single-line `update_crm` / orchestrate) and **manual Section 2** form fields—must share a strict validation layer: allowed field whitelist, enum and format rules, coherent error feedback, and server-side enforcement on tool execution. Today’s behavior accepts unknown field names and loosely normalizes values; see **Appendix — Relationship CRM validation (demo vs production)**.
 
 4. **Verification gates for Phase 3**
    - Baseline computation correctness checks against onboarding history sample set.
@@ -136,6 +137,7 @@ Legend:
 | R6 | Relationships | Chat-only updates for **existing** records; no broad manual edit forms | L | High | Replacing direct-edit pathways | V1 | Later V1 |
 | R7 | Relationships | Manual **New contact** (two-step modal); **Reset demo** on Relationships; enrichment + `Prospect` tag deferred | M → L | Medium | Enrichment provider integration + partial data (future) | V1 | Initial V1 (UI + demo reset); Later V1 (enrichment) |
 | R8 | Relationships | Custom list/kanban organization + activation extensions | XL | High | Data model and UX complexity | V2 | Deferred |
+| R9 | Relationships | **CRM validation** — shared rules for **Tomo** (`update_crm`) and **manual drawer Section 2** (whitelist fields, strict enums, format checks, errors; server validates tool payloads) | M | Medium | Duplicated client/server rules + UX for failures | V1 | Later V1 (production) |
 | L1 | Lists | Rename `Pipeline` -> `Lists` everywhere | L | Medium | Cross-app naming misses | V1 | Initial V1 |
 | L2 | Lists | Remove chat/filter panel, subtitle, header links | M | Low | Page simplification refactor | V1 | Initial V1 |
 | L3 | Lists | Two-panel layout + LP names grouped by stage | L | Medium | Composite fetch/state complexity | V1 | Initial V1 |
@@ -234,6 +236,34 @@ This documents **implementation** of the phased plan: **C** (Still in To-Do + en
 ### Should A–D ship in one release?
 
 No — **C + D** shipped after **A + B** to keep review small. Further work: persist engagement + digest prefs per user server-side; Slack transactional send; timezone-aware cron per tenant.
+
+---
+
+## Appendix — Relationship CRM validation (demo vs production)
+
+**Scope:** The Relationship LP drawer (snapshot, **Section 2** manual CRM fields, **Section 3** single-line Tomo input, activity log). This appendix records **current demo limitations** and what **production** must add. Validation must apply **equally** to AI-applied updates and user **manual** edits in Section 2.
+
+### Current demo behavior (limitations)
+
+1. **Tomo / `update_crm` (orchestrate)**  
+   - The tool’s `execute` stub **does not reject** unknown field names or invalid values; it echoes `rows` through with `applied: true`.  
+   - The model is guided by prompts and `CRM_UPDATE_FIELD_REFERENCE`, but there is **no schema enforcement** at the API boundary.  
+   - On the client, rows are applied with `FIELD_TO_REL_KEY[field] ?? field`, so **unmapped names** can become arbitrary object keys on overrides.  
+   - `normalizeFieldValue` matches known enums when possible; otherwise values often **pass through as raw strings**, so invalid stages/tiers/etc. can be stored.  
+   - The single-line Tomo strip **does not render a chat thread**; if the model does not call `update_crm` (or returns empty rows without status/reminder), the user may see **no success toast** and no structured error path.
+
+2. **Manual Section 2**  
+   - Uses the same **`normalizeFieldValue`** path for persistence; native inputs/selects **do not** fully prevent inconsistent combinations beyond HTML control types (e.g. free text still flows through where enums apply loosely).  
+   - Optional-field clearing and numeric edge cases are handled in-app, but there is **no unified validation surface** (inline errors, block save, server round-trip) comparable to production CRM expectations.
+
+### Production requirements
+
+- **Single source of truth** for allowed CRM fields, types, and enums (shared between UI and API).  
+- **Client:** validate **before** persisting overrides—Section 2 form and Tomo-driven patches should call the same validators; show field-level or summary errors.  
+- **Server:** `update_crm` **execute** (or equivalent) must **validate** `rows` (reject unknown fields, coerce or reject bad enums/formats) and return **explicit errors** the client can surface (e.g. toast or inline), not only silent success.  
+- **Telemetry:** log validation failures for model tuning and UX iteration.
+
+**Tracking:** Consolidated row **R9**; Phase 3 bullet under Relationships V1 additions.
 
 ---
 

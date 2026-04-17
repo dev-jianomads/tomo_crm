@@ -19,8 +19,15 @@ function displayActor(actor: ActivityLogEntry["actor"]) {
  * Section 3: Activity log at bottom of drawer.
  * Accordion — collapsed by default to free vertical space for other sections.
  */
-export function DrawerSection3ActivityLog({ entries }: { entries: ActivityLogEntry[] }) {
-  const [expanded, setExpanded] = useState(false);
+export function DrawerSection3ActivityLog({
+  entries,
+  defaultExpanded = false,
+}: {
+  entries: ActivityLogEntry[];
+  /** When false (default), only the header row is visible until expanded. */
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   const display = entries.slice(0, 5);
   if (!display.length) return null;

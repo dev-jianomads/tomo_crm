@@ -68,8 +68,8 @@ function matchEnum<T extends string>(value: string, options: readonly T[]): T | 
 export function normalizeFieldValue(relKey: string, value: string): string | number {
   const v = value.trim();
 
-  // Numeric field
-  if (relKey === "openLoops") {
+  // Numeric fields
+  if (relKey === "openLoops" || relKey === "daysSinceLastMeaningfulContact") {
     const n = parseInt(v, 10);
     return Number.isNaN(n) ? 0 : Math.max(0, n);
   }

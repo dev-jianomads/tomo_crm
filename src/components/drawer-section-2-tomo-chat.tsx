@@ -1,29 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { PaperAirplaneIcon, WrenchScrewdriverIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { TomoMessageContent } from "./tomo-message-content";
 import type { TomoInitialMessage, TomoAssistance } from "@/lib/mockTomoAssistance";
 import { getToolParts } from "@/lib/tomoToolParts";
+import {
+  useTomoDrawerOrchestrate,
+  type CrmUpdatePayload,
+  type TomoDrawerOrchestrateSelection,
+} from "@/hooks/use-tomo-drawer-orchestrate";
+
+export type { CrmUpdatePayload };
 
 const FALLBACK_SUGGESTIONS = ["Explain why urgent", "Draft follow-up", "Propose times", "Create action"];
 
-export type DrawerSelection =
-  | { type: "relationship"; id: string }
-  | { type: "pipeline_stage"; pipelineId: string; stage: string; relationshipIds: string[] }
-  | { type: string; id: string };
-
-export type CrmUpdatePayload = {
-  entityId?: string;
-  relationshipIds?: string[];
-  rows?: { field: string; update: string }[];
-  status?: string;
-  reminderDuration?: string;
-};
+export type DrawerSelection = TomoDrawerOrchestrateSelection;
 
 type DrawerSection2TomoChatProps = {
   initialMessage?: TomoInitialMessage;
@@ -53,109 +47,23 @@ export function DrawerSection2TomoChat({
   assistanceContext,
   onCrmUpdate,
 }: DrawerSection2TomoChatProps) {
-  const [input, setInput] = useState("");
   const [draftStack, setDraftStack] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
-  // Track which tool calls we've already processed so we don't double-fire
-  const processedToolCalls = useRef<Set<string>>(new Set());
-
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/tomo/orchestrate",
-        body: {
-          context: {
-            surface: "drawer" as const,
-            page:
-              selection?.type === "relationship"
-                ? "relationships"
-                : selection?.type === "pipeline_stage"
-                  ? "pipeline"
-                  : "home",
-            selection,
-            contextTitle: contextLabel,
-            assistanceContext: assistanceContext ?? null,
-          },
-        },
-      }),
-    [selection, contextLabel, assistanceContext]
-  );
-
-  // Stable ref for onCrmUpdate so useEffect always has the latest
-  const onCrmUpdateRef = useRef(onCrmUpdate);
-  onCrmUpdateRef.current = onCrmUpdate;
-  const selectionRef = useRef(selection);
-  selectionRef.current = selection;
-
-  const applyCrmUpdate = useCallback((toolCallId: string, crmInput: unknown, crmOutput: unknown) => {
-    if (processedToolCalls.current.has(toolCallId)) return;
-    processedToolCalls.current.add(toolCallId);
-
-    // Use output if it has rows, otherwise fall back to input
-    const result = (crmOutput ?? crmInput) as CrmUpdatePayload & { applied?: boolean };
-    if (!result) return;
-
-    // Fallback: use selection id when entityId is missing
-    const sel = selectionRef.current;
-    const hasIds = !!(result.entityId || result.relationshipIds?.length);
-    const payload: CrmUpdatePayload = hasIds
-      ? result
-      : sel?.type === "relationship"
-        ? { ...result, entityId: sel.id, relationshipIds: undefined }
-        : result;
-
-    onCrmUpdateRef.current?.(payload);
-
-    const fields = result.rows?.map((r) => r.field) ?? [];
-    const count = result.relationshipIds?.length ?? (result.entityId ? 1 : 0);
-    if (fields.length || result.status || result.reminderDuration) {
-      const target = count > 1 ? `${count} relationships` : "CRM";
-      toast.success(
-        result.status
-          ? `Status set to ${result.status}${count > 1 ? ` (${count} items)` : ""}`
-          : result.reminderDuration
-            ? `Reminder set for ${result.reminderDuration}${count > 1 ? ` (${count} items)` : ""}`
-            : `${target} updated: ${fields.join(", ") || "done"}`
-      );
-    }
-  }, []);
-
-  const { messages, sendMessage, status, setMessages } = useChat({ transport });
-
-  const isStreaming = status === "streaming" || status === "submitted";
-
-  // Watch messages for tool results — robust detection that works with both
-  // typed (type: "tool-update_crm") and dynamic (type: "dynamic-tool") parts
-  useEffect(() => {
-    for (const msg of messages) {
-      if (msg.role !== "assistant") continue;
-      const toolParts = getToolParts(msg);
-      for (const tp of toolParts) {
-        if (tp.toolName === "update_crm" && tp.state === "output-available") {
-          const toolCallId = (tp as { toolCallId?: string }).toolCallId ?? `${msg.id}-update_crm`;
-          applyCrmUpdate(toolCallId, tp.input, tp.output);
-        }
-      }
-    }
-  }, [messages, applyCrmUpdate]);
+  const { input, setInput, handleSend, isStreaming, messages } = useTomoDrawerOrchestrate({
+    entityKey,
+    selection,
+    contextLabel,
+    assistanceContext,
+    onCrmUpdate,
+  });
 
   useEffect(() => {
-    processedToolCalls.current.clear();
-    setMessages([]);
-    setInput("");
     setDraftStack([]);
-  }, [entityKey, setMessages]);
+  }, [entityKey]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const handleSend = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || isStreaming) return;
-    setInput("");
-    sendMessage({ text: trimmed });
-  };
 
   const displaySuggestions = suggestions.length ? suggestions : FALLBACK_SUGGESTIONS;
   const hasSplitChips = executionChips.length > 0 || draftChips.length > 0;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowUpTrayIcon,
@@ -15,8 +14,14 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
-import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
+import { RelationshipCrmForm } from "@/components/relationship-crm-form";
+import { RelationshipDrawerSnapshotSection } from "@/components/relationship-drawer-snapshot";
+import { RelationshipDrawerTomoRow } from "@/components/relationship-drawer-tomo-row";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
+import {
+  buildMockRelationshipSnapshotParagraph,
+  getMockRelationshipActivityEntries,
+} from "@/lib/relationshipDrawerMockActivity";
 import { Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
 import type { MomentumDirection, Stage } from "@/lib/mockData";
@@ -382,41 +387,15 @@ export default function RelationshipsPage() {
     [relationshipsWithOverrides, activeId]
   );
 
-  const activityLogEntries = useMemo(() => {
-    if (!activeId) return [];
-    return [
-      {
-        id: "1",
-        ts: "Yesterday 3:45 PM",
-        actor: "TOMO" as const,
-        summary: "Drafted intro note for allocator; awaiting your send.",
-      },
-      {
-        id: "2",
-        ts: "Yesterday 3:20 PM",
-        actor: "User" as const,
-        summary: "Call — Reviewed allocation timeline and updated next steps.",
-      },
-      {
-        id: "3",
-        ts: "Tue 11:00 AM",
-        actor: "User" as const,
-        summary: "Meeting — Walked through Q4 performance; asked for follow-up.",
-      },
-      {
-        id: "4",
-        ts: "Tue 8:15 AM",
-        actor: "TOMO" as const,
-        summary: "Flagged cooling signal after 21d with no meaningful touch.",
-      },
-      {
-        id: "5",
-        ts: "Mon 9:05 AM",
-        actor: "User" as const,
-        summary: "Email — Sent performance snapshot + availability options.",
-      },
-    ];
-  }, [activeId]);
+  const drawerActivityEntries = useMemo(() => {
+    if (!active || !activeId) return [];
+    return getMockRelationshipActivityEntries(activeId, active.name, active.firm);
+  }, [active, activeId]);
+
+  const snapshotParagraph = useMemo(() => {
+    if (!active || drawerActivityEntries.length === 0) return "";
+    return buildMockRelationshipSnapshotParagraph(active.name, active.firm, drawerActivityEntries);
+  }, [active, drawerActivityEntries]);
 
   const drawerSelection = useMemo(
     () => (activeId ? { type: "relationship" as const, id: activeId } : undefined),
@@ -452,6 +431,32 @@ export default function RelationshipsPage() {
       });
     },
     [setRelationshipOverrides]
+  );
+
+  const handleRelationshipManualField = useCallback(
+    (key: keyof Relationship | string, raw: string) => {
+      if (!activeId) return;
+      const clearOptional = [
+        "contactSeniority",
+        "lastFundCheckSize",
+        "sourceDetail",
+        "consultantName",
+        "lastMeetingDate",
+      ];
+      if (clearOptional.includes(key as string) && raw.trim() === "") {
+        setRelationshipOverrides((prev) => ({
+          ...prev,
+          [activeId]: { ...(prev[activeId] ?? {}), [key]: undefined },
+        }));
+        return;
+      }
+      const norm = normalizeFieldValue(key as string, raw);
+      setRelationshipOverrides((prev) => ({
+        ...prev,
+        [activeId]: { ...(prev[activeId] ?? {}), [key]: norm },
+      }));
+    },
+    [activeId, setRelationshipOverrides]
   );
 
   const commitStageOverride = useCallback(
@@ -776,26 +781,36 @@ export default function RelationshipsPage() {
         open={Boolean(activeId)}
         onClose={() => setActiveId(null)}
         title={active?.name ?? "Relationship"}
+        panelMaxWidthClassName="max-w-5xl"
         section1Content={
-          active ? (
-            <RelationshipDetail relationship={active} onCloseDrawer={() => setActiveId(null)} />
+          active && snapshotParagraph ? (
+            <RelationshipDrawerSnapshotSection summaryText={snapshotParagraph} />
           ) : (
             <div className="text-sm text-gray-500">Select a relationship</div>
           )
         }
+        section2MinHeightClassName="min-h-0"
         section2Content={
-          activeId ? (
-            <DrawerSection2TomoChat
-              initialMessage={{ text: "Can I help you understand this relationship or update their record?" }}
-              suggestions={getTomoAssistance(activeId)?.suggestedPrompts ?? ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
+          active ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <RelationshipCrmForm relationship={active} onFieldChange={handleRelationshipManualField} />
+              </div>
+            </div>
+          ) : undefined
+        }
+        sectionBetween2AndActivity={
+          activeId && drawerSelection ? (
+            <RelationshipDrawerTomoRow
               entityKey={activeId}
               selection={drawerSelection}
+              contextLabel={active?.name}
               assistanceContext={getTomoAssistance(activeId)}
               onCrmUpdate={handleCrmUpdate}
             />
           ) : undefined
         }
-        section3Entries={activityLogEntries}
+        section3Entries={drawerActivityEntries}
       />
       {createPipelineModalOpen && (
         <CreatePipelineModal
@@ -1235,103 +1250,6 @@ function RelationshipCard({
   );
 }
 
-function RelationshipDetail({
-  relationship,
-  onCloseDrawer,
-}: {
-  relationship: Relationship;
-  /** Used to navigate without leaving drawer context */
-  onCloseDrawer: () => void;
-}) {
-  const stallRisk =
-    relationship.band === "Stalled" || relationship.momentumDirection === "Cooling"
-      ? relationship.daysSinceLastMeaningfulContact >= 30
-        ? "High"
-        : "Medium"
-      : "Low";
-
-  return (
-    <div className="space-y-4">
-      {/* Section 1 — Snapshot */}
-      <section aria-labelledby="rel-snapshot-heading">
-        <h3 id="rel-snapshot-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-          Snapshot
-        </h3>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-gray-600">{relationship.firm}</p>
-          <div className="flex items-center gap-2">
-            <MomentumChip direction={relationship.momentumDirection} days={relationship.daysSinceLastMeaningfulContact} />
-            <span className="text-xs text-gray-500">{relationship.band}</span>
-          </div>
-        </div>
-        <p className="mt-2 text-sm text-gray-900">
-          <span className="text-gray-500">Next move · </span>
-          {relationship.nextMove}
-        </p>
-      </section>
-
-      {/* Section 2 — Context (prioritisation + targeting) */}
-      <section aria-labelledby="rel-context-heading" className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
-        <h3 id="rel-context-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-          Context
-        </h3>
-        <div className="mt-2 space-y-3">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Prioritisation</p>
-            <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-              <StatusField label="Days since contact" value={formatDaysSinceContact(relationship.daysSinceLastMeaningfulContact)} />
-              <StatusField label="Stage" value={relationship.stage} />
-              <StatusField label="Signal" value={relationship.momentumDirection} />
-              <StatusField label="Tier" value={relationship.tier} />
-              <StatusField label="Owner" value={relationship.relationshipOwner} />
-              <StatusField label="Stall risk" value={stallRisk} />
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Targeting</p>
-            <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-              <StatusField label="Investor type" value={relationship.investorType} />
-              <StatusField label="Strategy fit" value={relationship.strategyFit} />
-              <StatusField label="Strategy type" value={relationship.strategyType} />
-              <StatusField label="Location" value={relationship.lpLocation} />
-              <StatusField label="Investment remit" value={relationship.investmentRemit} />
-              <StatusField label="Typical check" value={relationship.typicalCheckSize} />
-              <StatusField label="Fund size pref" value={relationship.fundSizePreference} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3 — Sequencing */}
-      <section aria-labelledby="rel-seq-heading" className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
-        <h3 id="rel-seq-heading" className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-          Sequencing
-        </h3>
-        <div className="mt-1.5 grid gap-1.5 text-xs text-gray-800 sm:grid-cols-2">
-          <StatusField label="Source" value={relationship.sourceDetail ? `${relationship.source} (${relationship.sourceDetail})` : relationship.source} />
-          <StatusField label="Last fund" value={relationship.lastFundHistory} />
-          <StatusField label="Decision timeline" value={relationship.decisionTimeline} />
-          <StatusField label="Fiscal year end" value={relationship.fiscalYearEnd} />
-          <StatusField label="Consultant" value={relationship.consultantDependent} />
-          {relationship.consultantName ? <StatusField label="Consultant name" value={relationship.consultantName} /> : null}
-          <StatusField label="ESG required" value={relationship.esgRequired} />
-        </div>
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-        <p className="text-[11px] text-gray-500">Recent touches and Tomo steps also appear in Activity (full history).</p>
-        <Link
-          href="/activity"
-          onClick={() => onCloseDrawer()}
-          className="text-xs font-medium text-[color:var(--accent)] hover:underline"
-        >
-          Open Activity →
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 function MomentumChip({
   direction,
   days,
@@ -1356,15 +1274,6 @@ function MomentumChip({
         {icon}
       </span>
     </span>
-  );
-}
-
-function StatusField({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-[11px] uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="text-sm text-gray-900">{value}</p>
-    </div>
   );
 }
 

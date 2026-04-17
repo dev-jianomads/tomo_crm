@@ -18,18 +18,24 @@ export type ContextDrawerProps = {
   hideHeaderTitle?: boolean;
   /** Accessible name for the drawer panel (defaults to `title`). */
   drawerAriaLabel?: string;
+  /** Tailwind max-width class for the panel (default `max-w-2xl`). */
+  panelMaxWidthClassName?: string;
   /** Section 1: Content details (entity header, evidence, metadata) */
   section1Content: ReactNode;
   /** Section 2: Tomo Chat (initial message + AI conversation) */
   section2Content?: ReactNode;
+  /** Min-height class for the main section (default `min-h-[280px]` for chat); use `min-h-0` with scrollable CRM. */
+  section2MinHeightClassName?: string;
   /** When true, hide Section 2 entirely (e.g. pipeline funnel before Stage 5) */
   hideSection2?: boolean;
+  /** Optional strip between Section 2 and the activity log (e.g. single-line Tomo input). */
+  sectionBetween2AndActivity?: ReactNode;
   /** Section 3: Activity log entries */
   section3Entries: ActivityLogEntry[];
 };
 
 /**
- * 3-section contextual drawer: Content Details → Tomo Chat → Activity Log.
+ * Contextual drawer: Content Details → main section (often Tomo Chat) → optional strip → Activity Log.
  * Slides in from the right. Mobile: side fly-in (same as desktop).
  * Designed for reuse across Today, Relationships, Activity, Materials pages.
  */
@@ -39,9 +45,12 @@ export function ContextDrawer({
   title = "Details",
   hideHeaderTitle = false,
   drawerAriaLabel,
+  panelMaxWidthClassName = "max-w-2xl",
   section1Content,
   section2Content,
+  section2MinHeightClassName = "min-h-[280px]",
   hideSection2 = false,
+  sectionBetween2AndActivity,
   section3Entries,
 }: ContextDrawerProps) {
   useEffect(() => {
@@ -66,7 +75,7 @@ export function ContextDrawer({
 
       {/* Drawer panel */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full ${panelMaxWidthClassName} flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
@@ -95,7 +104,9 @@ export function ContextDrawer({
 
         {/* Section 2: Tomo Chat */}
         {!hideSection2 && (
-          <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden border-t border-gray-100 p-4">
+          <div
+            className={`flex flex-1 flex-col overflow-hidden border-t border-gray-100 p-4 ${section2MinHeightClassName}`}
+          >
             {section2Content ?? (
               <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
                 Tomo chat (coming soon)
@@ -104,7 +115,9 @@ export function ContextDrawer({
           </div>
         )}
 
-        {/* Section 3: Activity Log */}
+        {sectionBetween2AndActivity != null ? sectionBetween2AndActivity : null}
+
+        {/* Activity log */}
         <DrawerSection3ActivityLog entries={section3Entries} />
       </aside>
     </>
