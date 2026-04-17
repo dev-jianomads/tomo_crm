@@ -249,6 +249,59 @@ export function validateAndMergeFilters(
 
 export const EMPTY_CRITERIA: StructuredFilterCriteria = {};
 
+const ENUM_LIKE_KEYS = new Set<keyof StructuredFilterCriteria>([
+  "stage",
+  "momentumDirection",
+  "tier",
+  "relationshipOwner",
+  "investorType",
+  "strategyFit",
+  "strategyType",
+  "lpLocation",
+  "investmentRemit",
+  "typicalCheckSize",
+  "fundSizePreference",
+  "source",
+  "lastFundHistory",
+  "decisionTimeline",
+  "fiscalYearEnd",
+  "consultantDependent",
+  "esgRequired",
+  "band",
+]);
+
+/** Deep equality for saved filter state vs chip definitions (single enums vs one-tuple arrays). */
+export function criteriaEqual(a: StructuredFilterCriteria, b: StructuredFilterCriteria): boolean {
+  const normalizeVal = (key: keyof StructuredFilterCriteria, v: unknown): unknown => {
+    if (v === undefined) return undefined;
+    if (Array.isArray(v)) return [...v].map(String).sort();
+    if (typeof v === "string" && ENUM_LIKE_KEYS.has(key)) return [v].map(String).sort();
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const o = v as { min?: number; max?: number };
+      if ("min" in o || "max" in o) {
+        return { min: o.min ?? null, max: o.max ?? null };
+      }
+    }
+    return v;
+  };
+
+  const normalize = (c: StructuredFilterCriteria): Record<string, unknown> => {
+    const keys = Object.keys(c).sort() as (keyof StructuredFilterCriteria)[];
+    const out: Record<string, unknown> = {};
+    for (const k of keys) {
+      const v = c[k];
+      if (v === undefined) continue;
+      if (v === "All") {
+        out[k as string] = "All";
+        continue;
+      }
+      out[k as string] = normalizeVal(k, v);
+    }
+    return out;
+  };
+  return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+}
+
 /** Human-readable summary of active filters for display next to the count */
 export function formatFilterSummary(criteria: StructuredFilterCriteria): string {
   const parts: string[] = [];

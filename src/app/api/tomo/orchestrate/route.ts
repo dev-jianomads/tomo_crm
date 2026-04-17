@@ -400,13 +400,16 @@ export async function POST(req: Request) {
         execute: async ({ prompt }) => {
           const currentFilters = context.currentFilters ?? {};
           const result = await parseFilterPrompt(prompt, currentFilters);
-          if ("error" in result) {
+          if ("error" in result && result.filters === null) {
             return { success: false, error: result.error };
           }
+          const ok = result as import("@/lib/parseFilterPrompt").ParseFilterOk;
           return {
             success: true,
-            filters: result.filters,
-            fallback: result.fallback,
+            filters: ok.filters,
+            outcome: ok.outcome,
+            message: ok.message,
+            fallback: ok.fallback ?? ok.outcome === "partial",
           };
         },
       });

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpTrayIcon,
   Bars3Icon,
   ChevronDownIcon,
   ChevronUpIcon,
-  FunnelIcon,
   Squares2X2Icon,
   TableCellsIcon,
   ViewColumnsIcon,
@@ -155,6 +155,7 @@ function mergeWithOverrides(
 }
 
 export default function RelationshipsPage() {
+  const router = useRouter();
   const { ready } = useRequireSession();
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
@@ -176,13 +177,6 @@ export default function RelationshipsPage() {
     name: string;
   } | null>(null);
 
-  // Top/bottom split ratio (35% filter chat / 65% content default for Phase 5 chat UI)
-  const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-relationships-split-ratio", 35);
-  /** Phase 2: collapsed single-line filter bar vs full chat */
-  const [filterChatExpanded, setFilterChatExpanded] = usePersistentState<boolean>(
-    "tomo-relationships-filter-chat-expanded",
-    false
-  );
   const [viewMode, setViewMode] = usePersistentState<RelationshipsViewMode>("tomo-relationships-view-mode", "list");
   const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
   const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
@@ -209,8 +203,6 @@ export default function RelationshipsPage() {
   );
   const [resizingColumn, setResizingColumn] = useState<SortColumn | null>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
-  const [draggingSplit, setDraggingSplit] = useState(false);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
   const [columnsPopoverOpen, setColumnsPopoverOpen] = useState(false);
   const columnsPopoverRef = useRef<HTMLDivElement>(null);
 
@@ -234,29 +226,6 @@ export default function RelationshipsPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [columnsPopoverOpen]);
-
-  useEffect(() => {
-    if (!draggingSplit || !filterChatExpanded) return;
-    const handleMove = (e: MouseEvent) => {
-      const el = splitContainerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const newRatio = ((e.clientY - rect.top) / rect.height) * 100;
-      const clamped = Math.min(80, Math.max(10, newRatio));
-      setSplitRatio(clamped);
-    };
-    const stop = () => setDraggingSplit(false);
-    document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", stop);
-    return () => {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", stop);
-    };
-  }, [draggingSplit, filterChatExpanded, setSplitRatio]);
 
   useEffect(() => {
     if (!resizingColumn) return;
@@ -519,7 +488,7 @@ export default function RelationshipsPage() {
   const handleCreatePipeline = () => {
     const trimmed = createPipelineName.trim();
     if (!trimmed) {
-      toast.error("Enter a pipeline name");
+      toast.error("Enter a list name");
       return;
     }
     addPipeline({
@@ -529,7 +498,17 @@ export default function RelationshipsPage() {
     });
     setCreatePipelineName("");
     setCreatePipelineModalOpen(false);
-    toast.success(`Pipeline "${trimmed}" created`);
+    toast.success(`List "${trimmed}" created`, {
+      description: "Open Lists or stay on Relationships.",
+      action: {
+        label: "Go to list",
+        onClick: () => router.push("/pipeline"),
+      },
+      cancel: {
+        label: "Stay",
+        onClick: () => {},
+      },
+    });
   };
 
   const handleResetRelationshipsDemo = useCallback(() => {
@@ -572,43 +551,17 @@ export default function RelationshipsPage() {
           </>
         }
       />
-      <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Top: Tomo filter chat — Phase 2: collapsible to single-line input */}
-      <div
-        className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-white"
-        style={
-          filterChatExpanded
-            ? { flex: `${splitRatio} 1 0`, minHeight: 180 }
-            : { flex: "0 0 auto" }
-        }
-      >
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-gray-200 bg-white">
         <RelationshipsFilterChat
-          expanded={filterChatExpanded}
-          onExpandedChange={setFilterChatExpanded}
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
           onClearFilters={clearFilters}
-          relationshipLookup={filtered.map((r) => ({ id: r.id, name: r.name, firm: r.firm }))}
-          onCrmUpdate={handleCrmUpdate}
+          onCreateList={() => setCreatePipelineModalOpen(true)}
         />
       </div>
 
-      {filterChatExpanded ? (
-        <div
-          role="separator"
-          aria-label="Resize filter and content sections"
-          className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
-          onMouseDown={() => setDraggingSplit(true)}
-        >
-          <div className="h-1 w-12 rounded-full bg-gray-200" />
-        </div>
-      ) : null}
-
-      {/* Bottom: Content area */}
-      <div
-        className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
-        style={{ flex: filterChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
-      >
+      <div className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3">
         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
             <span className="shrink-0 text-xs text-gray-500">
@@ -626,17 +579,6 @@ export default function RelationshipsPage() {
             })()}
           </div>
           <div className="relative flex shrink-0 items-center gap-1" ref={columnsPopoverRef}>
-            {Object.keys(filterCriteria).length > 0 && (
-              <button
-                type="button"
-                onClick={() => setCreatePipelineModalOpen(true)}
-                className="rounded p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Create pipeline"
-                title="Create pipeline from current filters"
-              >
-                <FunnelIcon className="h-4 w-4" />
-              </button>
-            )}
             {viewMode === "list" ? (
               <>
                 <button
@@ -938,11 +880,11 @@ function CreatePipelineModal({
         className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-sm font-semibold text-gray-900">Create pipeline</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Create list</h3>
         <p className="mt-1 text-xs text-gray-500">{filteredCount} relationships in current filters</p>
         <input
           className="mt-3 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-          placeholder="Pipeline name"
+          placeholder="List name"
           value={pipelineName}
           onChange={(e) => onNameChange(e.target.value)}
           autoFocus
@@ -961,7 +903,7 @@ function CreatePipelineModal({
             disabled={!pipelineName.trim()}
             className="button-primary rounded-md px-3 py-1.5 text-sm disabled:opacity-50"
           >
-            Create
+            Create list
           </button>
         </div>
       </div>

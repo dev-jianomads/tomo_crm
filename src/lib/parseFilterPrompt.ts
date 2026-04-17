@@ -82,22 +82,34 @@ const llmFilterSchema = z.object({
   query: z.string().nullable(),
 });
 
+const llmWrappedSchema = z.object({
+  filterFields: llmFilterSchema,
+  parseCompleteness: z.enum(["full", "partial"]),
+  missedIntent: z.string().nullable(),
+});
+
 const SYSTEM_PROMPT = `You parse natural language filter requests for an LP (investor) relationship CRM.
-Return a JSON object with filter fields. Each enum field is an array — use arrays even for single values.
-Set irrelevant fields to null. Valid values are strict — use exactly the enum values provided in the schema.
 
-Examples:
-- "show Tier 1 LPs with no contact in 14 days" → { tier: ["Tier 1"], daysSinceLastMeaningfulContact: { min: 14 } }
-- "Tier 1 or Tier 2" → { tier: ["Tier 1", "Tier 2"] }
-- "cooling relationships" → { momentumDirection: ["Cooling"] } or { band: ["Cooling"] }
-- "family offices or endowments in North America" → { investorType: ["Family office", "Endowment"], lpLocation: ["North America"] }
-- "family offices in North America or EMEA" → { investorType: ["Family office"], lpLocation: ["North America", "EMEA"] }
-- "LPs with open loops" → { openLoops: { min: 1 } }
-- "clear" or "show all" → return empty object {}
-- "Northwind" or "Morgan" → { query: "Northwind" } (name/firm search)
+Return:
+1) filterFields — same shape as before. Each enum field is an array; use arrays even for single values. Set irrelevant fields to null. Valid enum values are strict.
 
-For days: "no contact in X days" → { min: X }; "contacted in last X days" → { max: X }
-When the user says "or" between values of the same field, include all values in the array.`;
+2) parseCompleteness — "full" if everything the user asked for is represented in filterFields. "partial" if they asked for something you cannot map to these fields, or only part of a multi-part request is mappable.
+
+3) missedIntent — when parseCompleteness is "partial", a short user-facing note (one sentence) on what could not be mapped. When "full", use null.
+
+Examples for filterFields:
+- "show Tier 1 LPs with no contact in 14 days" → tier: ["Tier 1"], daysSinceLastMeaningfulContact: { min: 14, max: null }
+- "Tier 1 or Tier 2" → tier: ["Tier 1", "Tier 2"]
+- "cooling relationships" → band: ["Cooling"] or momentumDirection: ["Cooling"]
+- "family offices or endowments in North America" → investorType: ["Family office", "Endowment"], lpLocation: ["North America"]
+- "LPs with open loops" → openLoops: { min: 1, max: null }
+- "clear" or "show all" → all filter fields null (empty result after stripping)
+- "Northwind" → query: "Northwind"
+
+For days: "no contact in X days" → daysSinceLastMeaningfulContact min: X; "contacted in last X days" → max: X.
+When the user says "or" between values of the same field, include all values in the array.
+
+If they ask for a concept that has no corresponding field (e.g. a custom segment name you cannot infer), set parseCompleteness to "partial" and explain in missedIntent.`;
 
 function stripNulls(obj: Record<string, unknown>): Record<string, unknown> {
   const stripped: Record<string, unknown> = {};
@@ -119,43 +131,67 @@ function stripNulls(obj: Record<string, unknown>): Record<string, unknown> {
   return stripped;
 }
 
-export type ParseFilterResult = {
+export type ParseFilterOutcome = "success" | "partial" | "failure";
+
+export type ParseFilterOk = {
   filters: StructuredFilterCriteria;
+  outcome: ParseFilterOutcome;
+  /** User-facing detail for partial matches or heuristic path */
+  message?: string;
+  /** True when heuristics were used instead of or after LLM failure */
   fallback?: boolean;
 };
+
+export type ParseFilterError = { filters: null; error: string };
 
 export async function parseFilterPrompt(
   text: string,
   currentFilters: Partial<StructuredFilterCriteria> = {}
-): Promise<ParseFilterResult | { filters: null; error: string }> {
+): Promise<ParseFilterOk | ParseFilterError> {
   const trimmed = text.trim();
   if (!trimmed) {
-    return { filters: currentFilters as StructuredFilterCriteria };
+    return { filters: currentFilters as StructuredFilterCriteria, outcome: "success" };
   }
   if (/\b(clear|reset|show\s+all)\b/i.test(trimmed)) {
-    return { filters: {} };
+    return { filters: {}, outcome: "success" };
   }
 
   if (process.env.OPENAI_API_KEY) {
     try {
       const { object } = await generateObject({
         model: openai("gpt-4o-mini"),
-        schema: llmFilterSchema,
+        schema: llmWrappedSchema,
         system: SYSTEM_PROMPT,
         prompt: `Parse this filter request: "${trimmed}"`,
       });
 
-      const updates = stripNulls(object as Record<string, unknown>) as Partial<StructuredFilterCriteria>;
-      const validated = validateAndMergeFilters(
-        currentFilters as StructuredFilterCriteria,
-        updates
-      );
-      if (validated) {
-        return { filters: validated };
+      const updates = stripNulls(object.filterFields as Record<string, unknown>) as Partial<StructuredFilterCriteria>;
+      if (Object.keys(updates).length > 0) {
+        const validated = validateAndMergeFilters(
+          currentFilters as StructuredFilterCriteria,
+          updates
+        );
+        if (validated) {
+          const partialFromLlm = object.parseCompleteness === "partial";
+          const missed = object.missedIntent?.trim();
+          if (partialFromLlm) {
+            return {
+              filters: validated,
+              outcome: "partial",
+              message:
+                missed ||
+                "Some of your request could not be mapped to available filters — review active filters.",
+            };
+          }
+          return { filters: validated, outcome: "success" };
+        }
       }
+      // No fields from LLM — try heuristics below
     } catch (err) {
       console.error("[parseFilterPrompt] LLM failed, using heuristic fallback", err);
     }
+  } else {
+    console.warn("[parseFilterPrompt] OPENAI_API_KEY not set, using heuristic only");
   }
 
   const heuristicUpdates = parseFilterPromptHeuristic(trimmed);
@@ -164,7 +200,16 @@ export async function parseFilterPrompt(
     heuristicUpdates
   );
   if (validated) {
-    return { filters: validated, fallback: true };
+    const hasKeys = Object.keys(validated).length > 0;
+    if (!hasKeys) {
+      return { filters: null, error: "Could not interpret that as a filter" };
+    }
+    return {
+      filters: validated,
+      outcome: "partial",
+      fallback: true,
+      message: "Matched using quick rules — review active filters.",
+    };
   }
 
   return { filters: null, error: "Failed to parse filter" };
