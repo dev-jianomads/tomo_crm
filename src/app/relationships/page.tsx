@@ -31,7 +31,12 @@ import {
   EMPTY_CRITERIA,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
-import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
+import {
+  FIELD_TO_REL_KEY,
+  MANUAL_OPTIONAL_CLEAR_KEYS,
+  normalizeFieldValue,
+  validateManualRelationshipField,
+} from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { NewContactModal } from "@/components/new-contact-modal";
@@ -436,24 +441,24 @@ export default function RelationshipsPage() {
   const handleRelationshipManualField = useCallback(
     (key: keyof Relationship | string, raw: string) => {
       if (!activeId) return;
-      const clearOptional = [
-        "contactSeniority",
-        "lastFundCheckSize",
-        "sourceDetail",
-        "consultantName",
-        "lastMeetingDate",
-      ];
-      if (clearOptional.includes(key as string) && raw.trim() === "") {
+      if (
+        (MANUAL_OPTIONAL_CLEAR_KEYS as readonly string[]).includes(key as string) &&
+        raw.trim() === ""
+      ) {
         setRelationshipOverrides((prev) => ({
           ...prev,
           [activeId]: { ...(prev[activeId] ?? {}), [key]: undefined },
         }));
         return;
       }
-      const norm = normalizeFieldValue(key as string, raw);
+      const result = validateManualRelationshipField(key as string, raw);
+      if (!result.ok) {
+        toast.error(result.message, { id: `manual-crm-${String(key)}` });
+        return;
+      }
       setRelationshipOverrides((prev) => ({
         ...prev,
-        [activeId]: { ...(prev[activeId] ?? {}), [key]: norm },
+        [activeId]: { ...(prev[activeId] ?? {}), [key]: result.value },
       }));
     },
     [activeId, setRelationshipOverrides]

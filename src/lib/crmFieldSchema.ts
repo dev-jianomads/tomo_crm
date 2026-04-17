@@ -64,6 +64,41 @@ function matchEnum<T extends string>(value: string, options: readonly T[]): T | 
   return found ?? null;
 }
 
+/** Relationship keys where empty string means clear optional field (manual drawer). */
+export const MANUAL_OPTIONAL_CLEAR_KEYS = [
+  "contactSeniority",
+  "lastFundCheckSize",
+  "sourceDetail",
+  "consultantName",
+  "lastMeetingDate",
+] as const;
+
+/**
+ * Enum-backed Relationship keys (excludes `tier`, which has custom normalization).
+ * Used by `normalizeFieldValue` and `validateManualRelationshipField`.
+ */
+const ENUM_OPTIONS_FOR_REL_KEY: Record<string, readonly string[]> = {
+  stage: STAGE_OPTIONS,
+  band: BAND_OPTIONS,
+  momentumDirection: MOMENTUM_DIRECTION_OPTIONS,
+  relationshipOwner: RELATIONSHIP_OWNER_OPTIONS,
+  investorType: INVESTOR_TYPE_OPTIONS,
+  strategyFit: STRATEGY_FIT_OPTIONS,
+  strategyType: STRATEGY_TYPE_OPTIONS,
+  lpLocation: LP_LOCATION_OPTIONS,
+  investmentRemit: INVESTMENT_REMIT_OPTIONS,
+  typicalCheckSize: TYPICAL_CHECK_SIZE_OPTIONS,
+  fundSizePreference: FUND_SIZE_PREFERENCE_OPTIONS,
+  source: SOURCE_OPTIONS,
+  lastFundHistory: LAST_FUND_HISTORY_OPTIONS,
+  decisionTimeline: DECISION_TIMELINE_OPTIONS,
+  fiscalYearEnd: FISCAL_YEAR_END_OPTIONS,
+  consultantDependent: CONSULTANT_DEPENDENT_OPTIONS,
+  esgRequired: ESG_REQUIRED_OPTIONS,
+  contactSeniority: CONTACT_SENIORITY_OPTIONS,
+  lastFundCheckSize: TYPICAL_CHECK_SIZE_OPTIONS,
+};
+
 /** Normalize a field value for storage. Returns string or number. */
 export function normalizeFieldValue(relKey: string, value: string): string | number {
   const v = value.trim();
@@ -83,30 +118,7 @@ export function normalizeFieldValue(relKey: string, value: string): string | num
     return v;
   }
 
-  // Enum fields: case-insensitive match to canonical
-  const enumMap: Record<string, readonly string[]> = {
-    stage: STAGE_OPTIONS,
-    band: BAND_OPTIONS,
-    momentumDirection: MOMENTUM_DIRECTION_OPTIONS,
-    relationshipOwner: RELATIONSHIP_OWNER_OPTIONS,
-    investorType: INVESTOR_TYPE_OPTIONS,
-    strategyFit: STRATEGY_FIT_OPTIONS,
-    strategyType: STRATEGY_TYPE_OPTIONS,
-    lpLocation: LP_LOCATION_OPTIONS,
-    investmentRemit: INVESTMENT_REMIT_OPTIONS,
-    typicalCheckSize: TYPICAL_CHECK_SIZE_OPTIONS,
-    fundSizePreference: FUND_SIZE_PREFERENCE_OPTIONS,
-    source: SOURCE_OPTIONS,
-    lastFundHistory: LAST_FUND_HISTORY_OPTIONS,
-    decisionTimeline: DECISION_TIMELINE_OPTIONS,
-    fiscalYearEnd: FISCAL_YEAR_END_OPTIONS,
-    consultantDependent: CONSULTANT_DEPENDENT_OPTIONS,
-    esgRequired: ESG_REQUIRED_OPTIONS,
-    contactSeniority: CONTACT_SENIORITY_OPTIONS,
-    lastFundCheckSize: TYPICAL_CHECK_SIZE_OPTIONS,
-  };
-
-  const options = enumMap[relKey];
+  const options = ENUM_OPTIONS_FOR_REL_KEY[relKey];
   if (options) {
     const match = matchEnum(v, options);
     if (match) return match;
@@ -114,6 +126,64 @@ export function normalizeFieldValue(relKey: string, value: string): string | num
 
   // Free-text fields: pass through
   return v;
+}
+
+export type ManualFieldValidation =
+  | { ok: true; value: string | number }
+  | { ok: false; message: string };
+
+/**
+ * Validates manual CRM edits in the Relationship drawer (Section 2).
+ * Call after handling `MANUAL_OPTIONAL_CLEAR_KEYS` clears. On failure, do not persist.
+ */
+export function validateManualRelationshipField(relKey: string, raw: string): ManualFieldValidation {
+  const trimmed = raw.trim();
+
+  if (relKey === "name" || relKey === "firm") {
+    if (!trimmed) {
+      return { ok: false, message: relKey === "name" ? "Name is required." : "Firm is required." };
+    }
+    return { ok: true, value: trimmed };
+  }
+
+  if (relKey === "nextMove") {
+    if (!trimmed) {
+      return { ok: false, message: "Next move is required." };
+    }
+    return { ok: true, value: trimmed };
+  }
+
+  if (relKey === "openLoops" || relKey === "daysSinceLastMeaningfulContact") {
+    if (raw.trim() === "") {
+      return { ok: false, message: "Enter a whole number (0 or greater)." };
+    }
+    const n = parseInt(raw.trim(), 10);
+    if (Number.isNaN(n) || n < 0) {
+      return { ok: false, message: "Use a whole number 0 or greater." };
+    }
+    return { ok: true, value: n };
+  }
+
+  const normalized = normalizeFieldValue(relKey, raw);
+
+  if (relKey === "tier") {
+    const s = String(normalized);
+    if (!TIER_OPTIONS.includes(s as (typeof TIER_OPTIONS)[number])) {
+      return { ok: false, message: "Invalid tier. Choose Tier 1, 2, or 3." };
+    }
+    return { ok: true, value: normalized };
+  }
+
+  const enumOptions = ENUM_OPTIONS_FOR_REL_KEY[relKey];
+  if (enumOptions) {
+    const s = String(normalized);
+    if (!enumOptions.includes(s)) {
+      return { ok: false, message: "That value isn’t valid for this field. Pick an option from the list." };
+    }
+    return { ok: true, value: normalized };
+  }
+
+  return { ok: true, value: normalized };
 }
 
 /** Prompt reference for AI: updatable fields and valid values */
