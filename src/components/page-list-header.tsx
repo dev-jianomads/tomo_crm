@@ -9,6 +9,8 @@ type PageListHeaderProps = {
   description?: string;
   /** e.g. "View lists →" */
   action?: { href: string; label: string };
+  /** Right-aligned actions on the title row (e.g. demo reset + primary CTA). */
+  titleRight?: ReactNode;
   /** Filters, search field, buttons—rendered below the description */
   children?: ReactNode;
 };
@@ -16,13 +18,19 @@ type PageListHeaderProps = {
 /**
  * List-pane header: uppercase label, optional body copy, optional accent link—matches /workflows.
  */
-export function PageListHeader({ label, description, action, children }: PageListHeaderProps) {
+export function PageListHeader({ label, description, action, titleRight, children }: PageListHeaderProps) {
   const labelSlug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page";
   return (
     <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white p-4" data-testid="page-list-header">
-      <p className="text-xs uppercase tracking-wide text-gray-500" data-testid={`page-header-title-${labelSlug}`}>
-        {label}
-      </p>
+      <div className={`flex items-start gap-3 ${titleRight ? "justify-between" : ""}`}>
+        <p
+          className="min-w-0 text-xs uppercase tracking-wide text-gray-500"
+          data-testid={`page-header-title-${labelSlug}`}
+        >
+          {label}
+        </p>
+        {titleRight ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">{titleRight}</div> : null}
+      </div>
       {description ? (
         <p className="mt-1 text-sm text-gray-600" data-testid="page-header-description">
           {description}

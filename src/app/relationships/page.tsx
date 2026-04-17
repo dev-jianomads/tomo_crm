@@ -29,6 +29,7 @@ import {
 import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
+import { NewContactModal } from "@/components/new-contact-modal";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
@@ -153,7 +154,7 @@ function mergeWithOverrides(
 
 export default function RelationshipsPage() {
   const { ready } = useRequireSession();
-  const { relationships } = useRelationships();
+  const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
   const { addPipeline } = usePipelines(activeFundId);
@@ -164,6 +165,7 @@ export default function RelationshipsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
   const [createPipelineName, setCreatePipelineName] = useState("");
+  const [newContactOpen, setNewContactOpen] = useState(false);
   const [kanbanStageConfirm, setKanbanStageConfirm] = useState<{
     relationshipId: string;
     targetStage: Stage;
@@ -527,9 +529,36 @@ export default function RelationshipsPage() {
     toast.success(`Pipeline "${trimmed}" created`);
   };
 
+  const handleResetRelationshipsDemo = useCallback(() => {
+    resetRelationshipsDemo();
+    setRelationshipOverrides({});
+    toast.success("Demo reset — relationships restored to default.");
+  }, [resetRelationshipsDemo, setRelationshipOverrides]);
+
   const listContent = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <PageListHeader label="Relationships" />
+      <PageListHeader
+        label="Relationships"
+        titleRight={
+          <>
+            <button
+              type="button"
+              onClick={handleResetRelationshipsDemo}
+              className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline"
+              title="Clears manual contacts and field overrides; reloads CRM mock from default (demo)"
+            >
+              Reset demo
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewContactOpen(true)}
+              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            >
+              New Contact
+            </button>
+          </>
+        }
+      />
       <div ref={splitContainerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top: Tomo filter chat — Phase 2: collapsible to single-line input */}
       <div
@@ -847,6 +876,15 @@ export default function RelationshipsPage() {
           }}
         />
       ) : null}
+      <NewContactModal
+        open={newContactOpen}
+        onClose={() => setNewContactOpen(false)}
+        onConfirm={(r) => {
+          addRelationship(r);
+          setActiveId(r.id);
+          toast.success(`${r.name} added`);
+        }}
+      />
     </>
   );
 }

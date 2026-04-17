@@ -94,7 +94,8 @@ Goal: finish remaining V1 commitments and stubs after initial wave stabilization
    - Snooze/reminder queue (GP-set + TOMO-detected commitment reminders).
 
 3. **Relationships V1 additions**
-   - Manual prospect entry (`Add prospect`) + enrichment + prospect tagging/default next move.
+   - **Shipped (demo):** Relationships header — **Reset demo** restores CRM mock base data (reload from `/api/crm/relationships` or generated fallback), clears **manual contacts** (local persistence `tomo-relationships-manual-v1`), and clears **field overrides** (`tomo-relationship-overrides-v1`). **New contact** opens a two-step modal: step 1 required fields (name, firm, tier, stage, relationship owner); step 2 optional remaining CRM fields with defaults; Confirm appends the row and opens the drawer.
+   - **Later V1:** Enrichment (e.g. Clearbit / Apollo) after save, prospect tagging, default next move automation.
    - V1 NL filtering (structured SQL over existing fields) with one clarifying question behavior.
 
 4. **Verification gates for Phase 3**
@@ -132,8 +133,8 @@ Legend:
 | R3 | Relationships | NL query -> SQL (structured fields) + clarifying question | L | High | Query safety and reliability | V1 | Later V1 |
 | R4 | Relationships | `Momentum` -> `Signal`, evidence text | M | Low | Data contract and copy alignment | V1 | Phase 0 |
 | R5 | Relationships | LP drawer restructure (3 sections) + 5-log + link | L | Medium | Drawer architecture churn | V1 | Initial V1 |
-| R6 | Relationships | Chat-only updates, no manual record forms | L | High | Replacing direct-edit pathways | V1 | Later V1 |
-| R7 | Relationships | Manual `Add prospect` + enrichment + `Prospect` tag | L | Medium | Provider integration + partial data | V1 | Later V1 |
+| R6 | Relationships | Chat-only updates for **existing** records; no broad manual edit forms | L | High | Replacing direct-edit pathways | V1 | Later V1 |
+| R7 | Relationships | Manual **New contact** (two-step modal); **Reset demo** on Relationships; enrichment + `Prospect` tag deferred | M → L | Medium | Enrichment provider integration + partial data (future) | V1 | Initial V1 (UI + demo reset); Later V1 (enrichment) |
 | R8 | Relationships | Custom list/kanban organization + activation extensions | XL | High | Data model and UX complexity | V2 | Deferred |
 | L1 | Lists | Rename `Pipeline` -> `Lists` everywhere | L | Medium | Cross-app naming misses | V1 | Initial V1 |
 | L2 | Lists | Remove chat/filter panel, subtitle, header links | M | Low | Page simplification refactor | V1 | Initial V1 |
