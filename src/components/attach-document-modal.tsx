@@ -9,7 +9,16 @@ type AttachDocumentModalProps = {
   /** Called after the user picks a file (mock success). */
   onUploaded: (fileName: string) => void;
   title?: string;
+  /** Body copy below the title (default: commitment attach). */
+  description?: string;
+  /** Passed to `<input type="file" accept={accept} />` (e.g. `.csv,text/csv`). */
+  accept?: string;
+  /** When the modal opens, immediately open the OS file picker (still shows sheet if user cancels). */
+  autoOpenFilePicker?: boolean;
 };
+
+const DEFAULT_DESCRIPTION =
+  "Choose a file from your computer to attach to this commitment.";
 
 /**
  * Mock file picker — opens OS dialog; reports success for demo flows.
@@ -19,8 +28,17 @@ export function AttachDocumentModal({
   onClose,
   onUploaded,
   title = "Attach document",
+  description = DEFAULT_DESCRIPTION,
+  accept,
+  autoOpenFilePicker = false,
 }: AttachDocumentModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open || !autoOpenFilePicker) return;
+    const id = window.setTimeout(() => inputRef.current?.click(), 0);
+    return () => clearTimeout(id);
+  }, [open, autoOpenFilePicker]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,12 +80,13 @@ export function AttachDocumentModal({
           </button>
         </div>
         <div className="px-4 py-4">
-          <p className="text-sm text-gray-600">Choose a file from your computer to attach to this commitment.</p>
+          <p className="text-sm text-gray-600">{description}</p>
           <input
             ref={inputRef}
             type="file"
             className="sr-only"
             tabIndex={-1}
+            accept={accept}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) onUploaded(file.name);

@@ -30,6 +30,8 @@ import { FIELD_TO_REL_KEY, normalizeFieldValue } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { NewContactModal } from "@/components/new-contact-modal";
+import { AttachDocumentModal } from "@/components/attach-document-modal";
+import { buildMockRelationshipFromCsvImport } from "@/lib/buildManualRelationship";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
@@ -166,6 +168,7 @@ export default function RelationshipsPage() {
   const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
   const [createPipelineName, setCreatePipelineName] = useState("");
   const [newContactOpen, setNewContactOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [kanbanStageConfirm, setKanbanStageConfirm] = useState<{
     relationshipId: string;
     targetStage: Stage;
@@ -556,6 +559,16 @@ export default function RelationshipsPage() {
             >
               New Contact
             </button>
+            <button
+              type="button"
+              onClick={() => setCsvImportOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label="Upload CSV"
+              title="Upload CSV"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4 shrink-0" aria-hidden />
+              Upload CSV
+            </button>
           </>
         }
       />
@@ -624,15 +637,6 @@ export default function RelationshipsPage() {
                 <FunnelIcon className="h-4 w-4" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => toast.info("Upload CSV coming soon")}
-              className="rounded p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-              aria-label="Upload CSV"
-              title="Upload CSV"
-            >
-              <ArrowUpTrayIcon className="h-4 w-4" />
-            </button>
             {viewMode === "list" ? (
               <>
                 <button
@@ -883,6 +887,20 @@ export default function RelationshipsPage() {
           addRelationship(r);
           setActiveId(r.id);
           toast.success(`${r.name} added`);
+        }}
+      />
+      <AttachDocumentModal
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        title="Upload CSV"
+        description="Select a CSV file to import LP relationships. Demo only — the file is not sent to a server; one preview row is added from the filename."
+        accept=".csv,text/csv"
+        autoOpenFilePicker
+        onUploaded={(fileName) => {
+          const r = buildMockRelationshipFromCsvImport(fileName);
+          addRelationship(r);
+          setActiveId(r.id);
+          toast.success(`CSV processed — ${fileName} imported and added to CRM`);
         }}
       />
     </>

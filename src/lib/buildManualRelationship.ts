@@ -120,3 +120,24 @@ export function buildRelationshipFromManualContact(
       : undefined,
   };
 }
+
+/** Demo CSV import: one LP row derived from the uploaded file name (no server parse). */
+export function buildMockRelationshipFromCsvImport(fileName: string): Relationship {
+  const stem = fileName.replace(/\.[^/.]+$/, "").trim() || "import";
+  const firm = stem.slice(0, 120);
+  return buildRelationshipFromManualContact(
+    {
+      name: "Imported contact",
+      firm,
+      tier: "Tier 2",
+      stage: "First contact",
+      relationshipOwner: "You",
+    },
+    {
+      ...defaultStep2(),
+      source: "Direct",
+      lastFundHistory: "New prospect",
+      nextMove: "Review CSV import",
+    }
+  );
+}
