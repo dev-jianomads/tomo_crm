@@ -244,7 +244,9 @@ function ListDrawerActions({
           className="button-primary rounded-md px-3 py-2 text-sm font-medium"
           onClick={() => {
             onClose();
-            router.push(`/workflows?pipelineId=${encodeURIComponent(pipelineId)}`);
+            router.push(
+              `/workflows?openList=${encodeURIComponent(pipelineId)}&attach=1`
+            );
           }}
         >
           Create workflow

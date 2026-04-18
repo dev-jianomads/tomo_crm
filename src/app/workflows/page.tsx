@@ -1,14 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
-import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
-import { WorkflowOutboundSafety } from "@/components/workflow-outbound-safety";
-import { suggestedPlaybooks, Playbook, tomoDefaultWorkflows, type TomoDefaultWorkflow } from "@/lib/mockPlaybooks";
+import { WorkflowDetailDrawer } from "@/components/workflow-detail-drawer";
+import { WorkflowAttachModal } from "@/components/workflow-attach-modal";
+import {
+  suggestedPlaybooks,
+  Playbook,
+  tomoDefaultWorkflows,
+  type TomoDefaultWorkflow,
+} from "@/lib/mockPlaybooks";
 import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
@@ -23,19 +26,12 @@ import {
   TOMO_DEFAULT_TEMPLATES,
   PLAYBOOK_SUGGESTIONS,
   TOMO_DEFAULT_SUGGESTIONS,
-  workflowToMarkdown,
   type WorkflowDefinition,
 } from "@/lib/workflow-templates";
 import type { PlaybookType } from "@/lib/mockPlaybooks";
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ArrowPathIcon,
-} from "@heroicons/react/24/outline";
 
 type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 
-/** Suggestion chips when a user-created (custom) workflow is selected */
 const CUSTOM_WORKFLOW_CHAT_CHIPS = [
   "Make the trigger more specific",
   "Clarify the action in one sentence",
@@ -59,48 +55,26 @@ function WorkflowsPageContent() {
   const { relationships } = useRelationships();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const playbookIdFromUrl = searchParams.get("playbook");
-  const tomoDefaultIdFromUrl = searchParams.get("tomoDefault");
-  const pipelineIdFromUrl = searchParams.get("pipelineId");
+  const openListFromUrl = searchParams.get("openList") ?? searchParams.get("pipelineId");
+  const attachFromUrl = searchParams.get("attach") === "1";
+
   const { activeFundId } = useFunds();
   const { pipelines } = usePipelines(activeFundId);
 
-  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(
-    () => (playbookIdFromUrl && playbookIdFromUrl.startsWith("pb-") ? playbookIdFromUrl : null)
-  );
-  const [selectedTomoDefaultId, setSelectedTomoDefaultId] = useState<string | null>(
-    () => (tomoDefaultIdFromUrl && tomoDefaultIdFromUrl.startsWith("td-") ? tomoDefaultIdFromUrl : null)
-  );
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(null);
+  const [selectedTomoDefaultId, setSelectedTomoDefaultId] = useState<string | null>(null);
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
     {}
   );
-  const [customPlaybooks] = useCustomPlaybooksPersistentState();
-  const [tomoDefaultOpen, setTomoDefaultOpen] = useState(true);
-
-  // When landing from Today with ?tomoDefault=td-xxx, expand Tomo Default accordion
-  useEffect(() => {
-    if (tomoDefaultIdFromUrl) setTomoDefaultOpen(true);
-  }, [tomoDefaultIdFromUrl]);
-  const [userDefinedOpen, setUserDefinedOpen] = useState(true);
-
-  const handleSelectPlaybook = useCallback((id: string) => {
-    setSelectedPlaybookId(id);
-    setSelectedTomoDefaultId(null);
-  }, []);
-
-  const handleSelectTomoDefault = useCallback((id: string) => {
-    setSelectedTomoDefaultId(id);
-    setSelectedPlaybookId(null);
-  }, []);
-  const [topPanelHeight, setTopPanelHeight] = usePersistentState<number>(
-    "tomo-workflows-split-height",
-    50
+  const [workflowEnabledOverrides, setWorkflowEnabledOverrides] = usePersistentState<Record<string, boolean>>(
+    "tomo-workflow-enabled-overrides-v1",
+    {}
   );
-  const [draggingRow, setDraggingRow] = useState(false);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const [customPlaybooks] = useCustomPlaybooksPersistentState();
+  const [attachModalOpen, setAttachModalOpen] = useState(false);
 
-  // ── Workflow markdown state (in-memory, resets on playbook switch) ──────
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [highlightVersion, setHighlightVersion] = useState(0);
 
@@ -119,12 +93,24 @@ function WorkflowsPageContent() {
     [selectedTomoDefaultId]
   );
 
-  const hasSelection =
+  const hasDrawerSelection =
     Boolean(selectedPlaybook) || Boolean(selectedCustomPlaybook) || Boolean(selectedTomoDefault);
   const selectedName =
     selectedPlaybook?.name ?? selectedCustomPlaybook?.name ?? selectedTomoDefault?.name ?? null;
 
-  // Load default template when selection changes
+  const effectiveEnabled = useCallback(
+    (rowId: string, defaultEnabled: boolean) => workflowEnabledOverrides[rowId] ?? defaultEnabled,
+    [workflowEnabledOverrides]
+  );
+
+  const toggleRowEnabled = useCallback(
+    (rowId: string, defaultEnabled: boolean) => {
+      const next = !effectiveEnabled(rowId, defaultEnabled);
+      setWorkflowEnabledOverrides((prev) => ({ ...prev, [rowId]: next }));
+    },
+    [effectiveEnabled, setWorkflowEnabledOverrides]
+  );
+
   useEffect(() => {
     if (selectedPlaybook) {
       setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
@@ -137,60 +123,69 @@ function WorkflowsPageContent() {
     }
   }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
 
-  // When pipelineId in URL (from /pipeline "Use in workflow"), assign to playbook and clean URL
+  /** Deep link: open list + optional attach modal */
   useEffect(() => {
-    if (!pipelineIdFromUrl || !pipelines.length) return;
-    const pipeline = pipelines.find((p) => p.id === pipelineIdFromUrl);
-    if (!pipeline) return;
-    const urlPlaybookValid =
-      Boolean(playbookIdFromUrl) &&
-      (suggestedPlaybooks.some((p) => p.id === playbookIdFromUrl) ||
-        customPlaybooks.some((c) => c.id === playbookIdFromUrl));
-    const targetPlaybookId =
-      urlPlaybookValid && playbookIdFromUrl ? playbookIdFromUrl : suggestedPlaybooks[0]?.id;
-    if (!targetPlaybookId) return;
-    setPlaybookOverrides((prev) => ({
-      ...prev,
-      [targetPlaybookId]: { pipelineId: pipeline.id },
-    }));
-    setSelectedTomoDefaultId(null);
-    setSelectedPlaybookId(targetPlaybookId);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("pipelineId");
-    router.replace(params.toString() ? `?${params}` : "/workflows", { scroll: false });
-  }, [
-    pipelineIdFromUrl,
-    pipelines,
-    playbookIdFromUrl,
-    router,
-    searchParams,
-    setPlaybookOverrides,
-    customPlaybooks,
-  ]);
+    if (!openListFromUrl || !pipelines.length) return;
+    const p = pipelines.find((x) => x.id === openListFromUrl);
+    if (!p) return;
+    setSelectedPipelineId(p.id);
+    if (attachFromUrl) setAttachModalOpen(true);
+    router.replace("/workflows", { scroll: false });
+  }, [openListFromUrl, attachFromUrl, pipelines, router]);
 
-  // Row resize handler
+  /** Deep link: ?playbook= — select list + workflow row */
   useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      if (!draggingRow || !splitContainerRef.current) return;
-      const rect = splitContainerRef.current.getBoundingClientRect();
-      const newHeight = ((e.clientY - rect.top) / rect.height) * 100;
-      const clamped = Math.min(80, Math.max(20, newHeight));
-      setTopPanelHeight(clamped);
-    };
-    const handleUp = () => setDraggingRow(false);
-    if (draggingRow) {
-      document.body.classList.add("select-none");
-      document.body.style.cursor = "row-resize";
+    const pb = searchParams.get("playbook");
+    if (!pb) return;
+    const sp = suggestedPlaybooks.find((x) => x.id === pb);
+    const cp = customPlaybooks.find((c) => c.id === pb);
+    if (!sp && !cp) return;
+    const pid = sp
+      ? playbookOverrides[sp.id]?.pipelineId ?? sp.pipelineId
+      : playbookOverrides[pb]?.pipelineId;
+    if (pid) setSelectedPipelineId(pid);
+    setSelectedPlaybookId(pb);
+    setSelectedTomoDefaultId(null);
+    router.replace("/workflows", { scroll: false });
+  }, [searchParams, playbookOverrides, customPlaybooks, router]);
+
+  useEffect(() => {
+    const td = searchParams.get("tomoDefault");
+    if (!td?.startsWith("td-")) return;
+    setSelectedTomoDefaultId(td);
+    setSelectedPlaybookId(null);
+    router.replace("/workflows", { scroll: false });
+  }, [searchParams, router]);
+
+  const handleSelectPlaybook = useCallback((id: string) => {
+    setSelectedPlaybookId(id);
+    setSelectedTomoDefaultId(null);
+  }, []);
+
+  const handleSelectTomoDefault = useCallback((id: string) => {
+    setSelectedTomoDefaultId(id);
+    setSelectedPlaybookId(null);
+  }, []);
+
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedPlaybookId(null);
+    setSelectedTomoDefaultId(null);
+  }, []);
+
+  const handleResetWorkflow = useCallback(() => {
+    if (selectedPlaybook) {
+      setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
+    } else if (selectedCustomPlaybook) {
+      setWorkflow(workflowDefinitionFromCustomStored(selectedCustomPlaybook));
+    } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
+      setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     }
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-      document.body.classList.remove("select-none");
-      document.body.style.cursor = "";
-    };
-  }, [draggingRow, setTopPanelHeight]);
+  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
+
+  const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
+    setWorkflow(def);
+    setHighlightVersion((v) => v + 1);
+  }, []);
 
   const getPlaybookTargetsSummary = useMemo(() => {
     return (playbook: Playbook): string => {
@@ -215,21 +210,6 @@ function WorkflowsPageContent() {
     };
   }, [playbookOverrides, pipelines, relationships]);
 
-  const handleResetWorkflow = useCallback(() => {
-    if (selectedPlaybook) {
-      setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
-    } else if (selectedCustomPlaybook) {
-      setWorkflow(workflowDefinitionFromCustomStored(selectedCustomPlaybook));
-    } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
-      setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
-    }
-  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
-
-  const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
-    setWorkflow(def);
-    setHighlightVersion((v) => v + 1);
-  }, []);
-
   const pipelineContext = useMemo(() => {
     const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
     if (!rowId) return null;
@@ -247,8 +227,8 @@ function WorkflowsPageContent() {
     };
   }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines, relationships]);
 
-  /** Resolved pipeline for user-defined playbook — banner above process flow */
   const playbookPipelineBanner = useMemo(() => {
+    if (selectedTomoDefault) return null;
     const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
     if (!rowId) return null;
     const override = playbookOverrides[rowId];
@@ -256,94 +236,37 @@ function WorkflowsPageContent() {
     if (!pipelineId) return null;
     const pipeline = pipelines.find((p) => p.id === pipelineId);
     if (!pipeline) {
-      return {
-        kind: "missing" as const,
-        pipelineId,
-      };
+      return { kind: "missing" as const, pipelineId };
     }
     const count = getPipelineMembers(relationships, pipeline).length;
     const filterSummary = formatFilterSummary(pipeline.filterCriteria);
     return {
       kind: "ok" as const,
-      pipeline,
+      name: pipeline.name,
       count,
       filterSummary,
     };
-  }, [selectedPlaybook, selectedCustomPlaybook, playbookOverrides, pipelines, relationships]);
+  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefault, playbookOverrides, pipelines, relationships]);
 
-  const listContent = (
-    <div className="flex h-full flex-col">
-      <PageListHeader label="Workflows" action={{ href: "/pipeline", label: "View lists →" }} />
+  const outboundAudienceCount = pipelineContext?.relationshipCount ?? 0;
 
-      <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
-        {/* Tomo Default accordion */}
-        <div className="rounded-lg border border-gray-200 bg-gray-50/60">
-          <button
-            onClick={() => setTomoDefaultOpen((o) => !o)}
-            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100/80"
-          >
-            <span>Tomo Default</span>
-            {tomoDefaultOpen ? (
-              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 text-gray-500" />
-            )}
-          </button>
-          {tomoDefaultOpen && (
-            <div className="border-t border-gray-200 px-3 py-2 space-y-2">
-              {tomoDefaultWorkflows.map((wf) => (
-                <TomoDefaultWorkflowCard
-                  key={wf.id}
-                  workflow={wf}
-                  isSelected={selectedTomoDefaultId === wf.id}
-                  onSelect={() => handleSelectTomoDefault(wf.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+  const listWorkflowRows = useMemo(() => {
+    if (!selectedPipelineId) return [];
+    const rows: Array<{ id: string; playbook: Playbook }> = [];
+    for (const pb of suggestedPlaybooks) {
+      const pid = playbookOverrides[pb.id]?.pipelineId ?? pb.pipelineId;
+      if (pid === selectedPipelineId) rows.push({ id: pb.id, playbook: pb });
+    }
+    for (const c of customPlaybooks) {
+      const pid = playbookOverrides[c.id]?.pipelineId;
+      if (pid === selectedPipelineId) rows.push({ id: c.id, playbook: stubPlaybookCardRow(c) });
+    }
+    return rows;
+  }, [selectedPipelineId, playbookOverrides, customPlaybooks]);
 
-        {/* User Defined accordion */}
-        <div className="rounded-lg border border-gray-200 bg-gray-50/60">
-          <button
-            onClick={() => setUserDefinedOpen((o) => !o)}
-            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100/80"
-          >
-            <span>User Defined</span>
-            {userDefinedOpen ? (
-              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 text-gray-500" />
-            )}
-          </button>
-          {userDefinedOpen && (
-            <div className="border-t border-gray-200 px-3 py-2 space-y-2">
-              {suggestedPlaybooks.map((playbook) => (
-                <PlaybookCard
-                  key={playbook.id}
-                  playbook={playbook}
-                  targetsSummary={getPlaybookTargetsSummary(playbook)}
-                  isSelected={selectedPlaybookId === playbook.id}
-                  onSelect={() => handleSelectPlaybook(playbook.id)}
-                />
-              ))}
-              {customPlaybooks.map((c) => {
-                const row = stubPlaybookCardRow(c);
-                return (
-                  <PlaybookCard
-                    key={c.id}
-                    playbook={row}
-                    targetsSummary={getPlaybookTargetsSummary(row)}
-                    isSelected={selectedPlaybookId === c.id}
-                    onSelect={() => handleSelectPlaybook(c.id)}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+  const selectedPipeline = useMemo(
+    () => (selectedPipelineId ? pipelines.find((p) => p.id === selectedPipelineId) ?? null : null),
+    [pipelines, selectedPipelineId]
   );
 
   const tomoDefaultSuggestions = selectedTomoDefaultId
@@ -351,88 +274,160 @@ function WorkflowsPageContent() {
     : undefined;
   const workflowChatSuggestions = selectedCustomPlaybook
     ? CUSTOM_WORKFLOW_CHAT_CHIPS
-    : tomoDefaultSuggestions;
+    : selectedTomoDefaultId
+      ? tomoDefaultSuggestions
+      : selectedPlaybook
+        ? PLAYBOOK_SUGGESTIONS[selectedPlaybook.type]
+        : undefined;
 
-  const outboundAudienceCount = pipelineContext?.relationshipCount ?? (hasSelection ? 9 : 0);
+  const drawerOpen = hasDrawerSelection && Boolean(workflow);
 
-  const detailContent = hasSelection && workflow ? (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            {selectedName}
+  const listContent = (
+    <div className="flex h-full min-h-0 flex-col">
+      <PageListHeader label="Workflows" action={{ href: "/pipeline", label: "View lists →" }} />
+
+      <div className="flex min-h-0 flex-1">
+        {/* Column 1 — fund-scoped lists */}
+        <div className="flex w-[280px] shrink-0 flex-col border-r border-gray-200 bg-white">
+          <p className="shrink-0 border-b border-gray-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            Lists
           </p>
-        </div>
-        <button
-          onClick={handleResetWorkflow}
-          className="flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
-          title="Reset to default"
-        >
-          <ArrowPathIcon className="h-3.5 w-3.5" />
-          Reset
-        </button>
-      </div>
-      <div ref={splitContainerRef} className="relative flex flex-1 min-h-0 flex-col">
-        <div
-          className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-gray-200 bg-gray-50/50"
-          style={{ height: `${topPanelHeight}%` }}
-        >
-          {playbookPipelineBanner?.kind === "ok" && (
-            <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                Audience list
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-gray-900">
-                {playbookPipelineBanner.pipeline.name}
-              </p>
-              <p className="mt-0.5 text-xs text-gray-600">
-                {playbookPipelineBanner.count} relationships
-                {playbookPipelineBanner.filterSummary
-                  ? ` · ${playbookPipelineBanner.filterSummary}`
-                  : ""}
-              </p>
-            </div>
-          )}
-          {playbookPipelineBanner?.kind === "missing" && (
-            <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-              Linked list not found for this fund ({playbookPipelineBanner.pipelineId}). Reset filters
-              or pick another list from Lists.
-            </div>
-          )}
-          {outboundAudienceCount > 0 ? (
-            <WorkflowOutboundSafety relationshipCount={outboundAudienceCount} audienceLabel="list" />
-          ) : null}
-          <div className="min-h-0 flex-1 overflow-auto">
-            <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
+            {pipelines.length === 0 ? (
+              <p className="px-2 text-xs text-gray-500">No lists for this fund.</p>
+            ) : (
+              pipelines.map((p) => {
+                const count = getPipelineMembers(relationships, p).length;
+                const sel = selectedPipelineId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPipelineId(p.id)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+                      sel
+                        ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-900">{p.name}</p>
+                    <p className="text-[11px] text-gray-500">{count} relationships</p>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
-        <div
-          className="h-2 shrink-0 cursor-row-resize bg-gray-100 transition-colors hover:bg-blue-100 active:bg-blue-200"
-          onMouseDown={() => setDraggingRow(true)}
-          aria-label="Resize panes"
-        />
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <WorkflowTomoChat
-            workflow={workflow}
-            playbookName={selectedName!}
-            playbookType={selectedPlaybook?.type}
-            pipelineContext={
-              selectedPlaybook || selectedCustomPlaybook ? pipelineContext : null
-            }
-            onWorkflowUpdate={handleWorkflowUpdate}
-            suggestions={workflowChatSuggestions}
-          />
+
+        {/* Column 2 — Tomo Default + workflows for selected list */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-gray-50/40">
+          <div className="shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Tomo Default</p>
+            <p className="text-xs text-gray-500">Global automations — not tied to a list</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tomoDefaultWorkflows.map((wf) => (
+                <TomoDefaultWorkflowPill
+                  key={wf.id}
+                  workflow={wf}
+                  enabled={effectiveEnabled(wf.id, wf.enabled)}
+                  isSelected={selectedTomoDefaultId === wf.id}
+                  onSelect={() => handleSelectTomoDefault(wf.id)}
+                  onToggleEnabled={() => toggleRowEnabled(wf.id, wf.enabled)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {!selectedPipeline ? (
+              <div className="flex flex-1 items-center justify-center px-6 text-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Select a list</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Choose a fund list on the left to see and attach workflows.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 py-2">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      Workflows for list
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedPipeline.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttachModalOpen(true)}
+                    className="rounded-md border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-gray-900 hover:opacity-90"
+                  >
+                    Attach workflow
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+                  {listWorkflowRows.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+                      No workflows linked yet. Use Attach workflow to link an existing playbook or create a custom
+                      one.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {listWorkflowRows.map((row) => (
+                        <li key={row.id}>
+                          <WorkflowListRow
+                            playbook={row.playbook}
+                            targetsSummary={getPlaybookTargetsSummary(row.playbook)}
+                            enabled={effectiveEnabled(row.id, row.playbook.enabled)}
+                            isSelected={selectedPlaybookId === row.id && selectedTomoDefaultId === null}
+                            onSelect={() => handleSelectPlaybook(row.id)}
+                            onToggleEnabled={() => toggleRowEnabled(row.id, row.playbook.enabled)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  ) : (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-8 py-12 text-center">
-        <p className="text-sm font-medium text-gray-700">Select a workflow</p>
-        <p className="mt-1 text-xs text-gray-500">
-          Click a workflow on the left to open Tomo and configure it.
-        </p>
-      </div>
+
+      <WorkflowAttachModal
+        open={attachModalOpen}
+        pipeline={selectedPipeline}
+        relationships={relationships}
+        customPlaybooks={customPlaybooks}
+        onClose={() => setAttachModalOpen(false)}
+        setPlaybookOverrides={setPlaybookOverrides}
+        onLinkedPlaybook={(id) => {
+          handleSelectPlaybook(id);
+        }}
+      />
+
+      {drawerOpen && workflow ? (
+        <WorkflowDetailDrawer
+          open={drawerOpen}
+          title={selectedName ?? "Workflow"}
+          onClose={handleCloseDrawer}
+          onReset={handleResetWorkflow}
+          workflow={workflow}
+          highlightVersion={highlightVersion}
+          playbookPipelineBanner={playbookPipelineBanner}
+          outboundAudienceCount={outboundAudienceCount}
+          playbookName={selectedName ?? ""}
+          playbookType={selectedPlaybook?.type}
+          pipelineContext={pipelineContext}
+          onWorkflowUpdate={handleWorkflowUpdate}
+          suggestions={workflowChatSuggestions}
+          headerNote={
+            selectedTomoDefault ? (
+              <p className="text-xs text-gray-500">Global — no CRM audience</p>
+            ) : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 
@@ -442,17 +437,12 @@ function WorkflowsPageContent() {
     <AppShell
       section="workflows"
       listContent={listContent}
-      detailContent={detailContent}
-      detailVisible={hasSelection}
+      detailContent={null}
+      detailVisible={false}
       contextTitle={selectedName ?? undefined}
       assistantChips={
-        hasSelection
-          ? [
-              "Add a wait step",
-              "Remove the last step",
-              "Change the trigger",
-              "Add an escalation step",
-            ]
+        drawerOpen
+          ? ["Add a wait step", "Remove the last step", "Change the trigger", "Add an escalation step"]
           : undefined
       }
     />
@@ -475,323 +465,89 @@ function WorkflowsPageFallback() {
   );
 }
 
-function TomoDefaultWorkflowCard({
+function TomoDefaultWorkflowPill({
   workflow,
+  enabled,
   isSelected,
   onSelect,
+  onToggleEnabled,
 }: {
   workflow: TomoDefaultWorkflow;
+  enabled: boolean;
   isSelected: boolean;
   onSelect: () => void;
+  onToggleEnabled: () => void;
 }) {
   return (
-    <button
-      onClick={onSelect}
-      className={`w-full rounded-lg border px-3 py-3 text-left transition ${
-        isSelected
-          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
-          : "border-gray-200 bg-white hover:border-gray-300"
+    <div
+      className={`flex max-w-full items-center gap-2 rounded-lg border px-2 py-1.5 ${
+        isSelected ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{workflow.name}</p>
-        </div>
-        {workflow.enabled ? (
-          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
-            On
-          </span>
-        ) : (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-            Off
-          </span>
-        )}
-      </div>
-    </button>
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+        <p className="truncate text-xs font-semibold text-gray-900">{workflow.name}</p>
+      </button>
+      <label className="flex shrink-0 cursor-pointer items-center gap-1 text-[10px] text-gray-600">
+        <span className="sr-only">Active</span>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => {
+            e.stopPropagation();
+            onToggleEnabled();
+          }}
+          className="h-3.5 w-3.5 rounded border-gray-300"
+        />
+        {enabled ? "On" : "Off"}
+      </label>
+    </div>
   );
 }
 
-function PlaybookCard({
+function WorkflowListRow({
   playbook,
   targetsSummary,
+  enabled,
   isSelected,
   onSelect,
+  onToggleEnabled,
 }: {
   playbook: Playbook;
   targetsSummary: string;
+  enabled: boolean;
   isSelected: boolean;
   onSelect: () => void;
+  onToggleEnabled: () => void;
 }) {
   return (
-    <button
-      onClick={onSelect}
-      className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+    <div
+      className={`flex items-stretch gap-2 rounded-lg border transition ${
         isSelected
           ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
           : "border-gray-200 bg-white hover:border-gray-300"
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
-          <p
-            className="mt-1 text-[11px] leading-snug text-gray-500 break-words"
-            title={targetsSummary}
-          >
-            {targetsSummary}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {playbook.enabled ? (
-            <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
-              On
-            </span>
-          ) : (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-              Off
-            </span>
-          )}
-          {playbook.targetCount != null && playbook.targetCount > 0 ? (
-            <span className="text-[11px] text-gray-500">
-              {playbook.targetCount} targets
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ── AI-powered workflow chat ────────────────────────────────────────────────
-
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import type { UIMessage } from "ai";
-
-function WorkflowTomoChat({
-  workflow,
-  playbookName,
-  playbookType,
-  pipelineContext,
-  onWorkflowUpdate,
-  suggestions: externalSuggestions,
-}: {
-  workflow: WorkflowDefinition;
-  playbookName: string;
-  playbookType?: PlaybookType;
-  pipelineContext: {
-    pipelineId: string;
-    pipelineName: string;
-    relationshipIds: string[];
-    relationshipCount: number;
-  } | null;
-  onWorkflowUpdate: (def: WorkflowDefinition) => void;
-  suggestions?: string[];
-}) {
-  const currentMarkdown = workflowToMarkdown(workflow);
-  const endRef = useRef<HTMLDivElement>(null);
-
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/tomo/orchestrate",
-        body: {
-          context: {
-            surface: "workflow" as const,
-            page: "workflows",
-            playbookName,
-            ...(playbookType ? { playbookType } : {}),
-          },
-        },
-      }),
-    [playbookName, playbookType]
-  );
-
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport,
-    onToolCall: ({ toolCall }) => {
-      if (toolCall.toolName === "update_workflow") {
-        const input = toolCall.input as {
-          title: string;
-          trigger: string;
-          steps: WorkflowDefinition["steps"];
-          triggerKind?: WorkflowDefinition["triggerKind"];
-        };
-        onWorkflowUpdate({
-          title: input.title,
-          trigger: input.trigger,
-          steps: input.steps,
-          triggerKind: input.triggerKind ?? workflow.triggerKind ?? "EVENT",
-        });
-      }
-    },
-  });
-
-  const isStreaming = status === "streaming" || status === "submitted";
-  const allSuggestions = externalSuggestions ?? (playbookType ? PLAYBOOK_SUGGESTIONS[playbookType] : []);
-  const [usedChips, setUsedChips] = useState<Set<string>>(new Set());
-  const visibleSuggestions = useMemo(
-    () => allSuggestions.filter((s) => !usedChips.has(s)),
-    [allSuggestions, usedChips]
-  );
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSend = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || isStreaming) return;
-    if (allSuggestions.includes(trimmed)) {
-      setUsedChips((prev) => new Set([...prev, trimmed]));
-    }
-    sendMessage(
-      { text: trimmed },
-      {
-        body: {
-          context: {
-            surface: "workflow" as const,
-            page: "workflows",
-            workflowContext: currentMarkdown,
-            playbookName,
-            ...(playbookType ? { playbookType } : {}),
-            pipelineContext,
-          },
-        },
-      }
-    );
-  };
-
-  return (
-    <div className="flex h-full min-h-0 flex-col rounded-md border border-gray-200 bg-white">
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-gray-900">TOMO AI</p>
-          <p className="text-xs text-gray-500">{playbookName}</p>
-        </div>
-        {messages.length > 0 && (
-          <button
-            onClick={() => setMessages([])}
-            className="text-xs text-gray-400 hover:text-gray-600 transition"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-
-      {/* Context-aware suggestion chips */}
-      {visibleSuggestions.length > 0 && (
-        <div className="flex shrink-0 flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
-          {visibleSuggestions.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => handleSend(chip)}
-              disabled={isStreaming}
-              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
-        {/* Tomo's initial message */}
-        <div className="flex justify-start">
-          <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-            <p className="text-sm text-gray-900">Can I help you understand or update this workflow?</p>
-          </div>
-        </div>
-        {messages.map((msg) => (
-          <ChatBubble key={msg.id} message={msg} />
-        ))}
-        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-
-      {/* Input */}
-      <ChatInput onSend={handleSend} disabled={isStreaming} playbookName={playbookName} />
-    </div>
-  );
-}
-
-function ChatBubble({ message }: { message: UIMessage }) {
-  const isUser = message.role === "user";
-
-  const displayText =
-    message.parts
-      ?.filter((p) => p.type === "text")
-      .map((p) => p.text)
-      .join("") ?? "";
-
-  if (!displayText.trim()) return null;
-
-  return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
-          isUser
-            ? "border-blue-200 bg-blue-50 text-gray-900"
-            : "border-gray-200 bg-gray-50 text-gray-900"
-        }`}
-      >
-        <p className="whitespace-pre-line leading-relaxed">{displayText}</p>
-      </div>
-    </div>
-  );
-}
-
-function ChatInput({
-  onSend,
-  disabled,
-  playbookName,
-}: {
-  onSend: (text: string) => void;
-  disabled: boolean;
-  playbookName: string;
-}) {
-  const [input, setInput] = useState("");
-
-  const handleSubmit = () => {
-    if (!input.trim() || disabled) return;
-    onSend(input);
-    setInput("");
-  };
-
-  return (
-    <div className="shrink-0 border-t border-gray-200 px-3 py-3">
-      <div className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`Ask Tomo about ${playbookName}…`}
-          disabled={disabled}
-          className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={disabled || !input.trim()}
-          className="flex h-9 w-9 items-center justify-center rounded-md tomo-ai-bg text-white transition disabled:opacity-50"
-          aria-label="Send to TOMO"
-        >
-          <PaperAirplaneIcon className="h-4 w-4" />
-        </button>
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-3 py-3 text-left">
+        <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
+        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-500 break-words" title={targetsSummary}>
+          {targetsSummary}
+        </p>
+      </button>
+      <div className="flex shrink-0 flex-col items-center justify-center border-l border-gray-100 px-2">
+        <label className="flex flex-col items-center gap-0.5 text-[10px] text-gray-600">
+          <span className="sr-only">Active</span>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleEnabled();
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Active
+        </label>
       </div>
     </div>
   );
