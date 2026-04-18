@@ -6,6 +6,7 @@ import { DefaultChatTransport } from "ai";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import {
+  mergeStepsPreservingDraftTemplates,
   workflowToMarkdown,
   PLAYBOOK_SUGGESTIONS,
   type WorkflowDefinition,
@@ -72,7 +73,7 @@ export function WorkflowTomoStrip({
       onWorkflowUpdate({
         title: raw.title,
         trigger: raw.trigger,
-        steps: raw.steps,
+        steps: mergeStepsPreservingDraftTemplates(workflow.steps, raw.steps),
         triggerKind: raw.triggerKind ?? workflow.triggerKind ?? "EVENT",
       });
       toast.success("Workflow updated");

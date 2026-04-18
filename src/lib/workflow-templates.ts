@@ -6,7 +6,41 @@ export type WorkflowStep = {
   description: string;
   duration?: string;
   condition?: string;
+  /** Saved outbound draft shell for draft-style action steps (demo / GP default). */
+  draftTemplate?: string;
 };
+
+/**
+ * Heuristic draft detection (no extra schema): keeps the UI simple; rename the step to drop draft tooling.
+ */
+export function isDraftStyleStep(step: WorkflowStep): boolean {
+  const n = step.name.toLowerCase();
+  return /\bdraft\b/.test(n) || /\bauto-?draft\b/.test(n);
+}
+
+/**
+ * When Tomo returns updated steps, keep GP-authored draft shells if the model omits them.
+ */
+export function mergeStepsPreservingDraftTemplates(
+  prev: WorkflowStep[] | undefined,
+  next: WorkflowStep[]
+): WorkflowStep[] {
+  if (!prev?.length) return next;
+  return next.map((s, i) => {
+    const p = prev[i];
+    if (!p?.draftTemplate?.trim()) return s;
+    if (s.draftTemplate?.trim()) return s;
+    return { ...s, draftTemplate: p.draftTemplate };
+  });
+}
+
+function escapeDraftTemplateLine(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n");
+}
+
+function unescapeDraftTemplateLine(s: string): string {
+  return s.replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+}
 
 /** Required on process diagrams (Phase 1): how the workflow is invoked. */
 export type WorkflowTriggerKind = "EVENT" | "THRESHOLD" | "SCHEDULED";
@@ -34,7 +68,7 @@ const INTRO_TRACKER: WorkflowDefinition = {
 };
 
 const POST_MEETING: WorkflowDefinition = {
-  title: "Post-Meeting Execution Loop",
+  title: "Post-Meeting Follow-Up",
   triggerKind: "EVENT",
   trigger: "Zoom meeting with Lisa Tanaka (Crestview) ends",
   steps: [
@@ -57,7 +91,7 @@ const UPDATE_FOLLOWUP: WorkflowDefinition = {
 };
 
 const NO_RESPONSE_STALL: WorkflowDefinition = {
-  title: "No Response → Re-engage",
+  title: "Silence → Re-engage",
   triggerKind: "THRESHOLD",
   trigger: "No response in 5d",
   steps: [
@@ -80,15 +114,134 @@ const DDQ_RESPONSE: WorkflowDefinition = {
   ],
 };
 
-const NY_ROADSHOW: WorkflowDefinition = {
-  title: "New York Roadshow",
+const ROADSHOW_PREP: WorkflowDefinition = {
+  title: "Roadshow Prep",
   triggerKind: "SCHEDULED",
-  trigger: "7 days before trip on 6 June 2026",
+  trigger: "N days before trip date (GP sets trip date & target geography; default lead time 7 days)",
   steps: [
     {
-      name: "Request availability",
+      name: "Pull geography cohort",
       type: "action",
-      description: "Send draft email to your list requesting availability",
+      description: "Select LPs in target geography from linked list; exclude recent suppressions",
+    },
+    {
+      name: "Draft availability request",
+      type: "action",
+      description: "Draft availability / meeting request email for cohort — GP approves before send",
+    },
+    {
+      name: "Log confirmed meetings",
+      type: "action",
+      description: "As replies arrive, log confirmed slots to CRM and calendar holds",
+    },
+  ],
+};
+
+const THREE_TOUCH_QUALIFICATION: WorkflowDefinition = {
+  title: "Three-Touch Qualification",
+  triggerKind: "SCHEDULED",
+  trigger: "Manual launch or scheduled run for fat-middle / cold LP segment (GP selects cohort)",
+  steps: [
+    {
+      name: "Touch 1 — Insight email",
+      type: "action",
+      description: "Draft value-forward insight email for cohort — GP approves before send",
+    },
+    { name: "Wait", type: "wait", duration: "2–4 days", description: "Spacing before touch 2" },
+    {
+      name: "Touch 2 — Direction question",
+      type: "action",
+      description: "Draft direction question (intent / fit) — GP approves; target day 5–7 from touch 1",
+    },
+    { name: "Wait", type: "wait", duration: "5–8 days", description: "Allow replies before touch 3" },
+    {
+      name: "Touch 3 — Qualifying close",
+      type: "action",
+      description: "Draft qualifying close (next step / fit) — GP approves; target day 12–14 from start",
+    },
+  ],
+};
+
+const QUARTERLY_LP_UPDATE: WorkflowDefinition = {
+  title: "Quarterly LP Update",
+  triggerKind: "SCHEDULED",
+  trigger: "Quarterly investor update published or distributed to LPs",
+  steps: [
+    {
+      name: "Segment by tier",
+      type: "action",
+      description: "Classify each LP as Tier 1, 2, or 3 from CRM and engagement",
+    },
+    {
+      name: "Tier 1 — Personalized follow-up",
+      type: "action",
+      description: "Draft personalized follow-up for Tier 1 — GP approves",
+      condition: "Tier 1",
+    },
+    {
+      name: "Tier 2 — Generic nudge",
+      type: "action",
+      description: "Draft short generic nudge for Tier 2 — GP approves",
+      condition: "Tier 2",
+    },
+    {
+      name: "Tier 3 — No touch",
+      type: "wait",
+      duration: "Monitor only",
+      description: "No automated outbound; track opens/clicks only for Tier 3",
+      condition: "Tier 3",
+    },
+  ],
+};
+
+const COMMITMENT_CLOSE: WorkflowDefinition = {
+  title: "Commitment → Close",
+  triggerKind: "THRESHOLD",
+  trigger: "Soft commitment recorded with expected IC / wire close date",
+  steps: [
+    {
+      name: "Track timeline",
+      type: "action",
+      description: "Monitor days-to-close vs expected IC and wire checklist",
+    },
+    {
+      name: "Draft nudge — 14 days",
+      type: "action",
+      description: "Draft reminder 14 days before close — GP approves",
+    },
+    {
+      name: "Draft nudge — 7 days",
+      type: "action",
+      description: "Draft urgency nudge 7 days before close — GP approves",
+    },
+    {
+      name: "Escalate if unconfirmed",
+      type: "action",
+      description: "Flag relationship if no confirmation by T−2 business days",
+      condition: "No confirmation",
+    },
+  ],
+};
+
+const REENGAGEMENT_URGENT: WorkflowDefinition = {
+  title: "Re-Engagement Urgent",
+  triggerKind: "EVENT",
+  trigger: "Inbound email from LP detected after 45+ days without GP-originated touch",
+  steps: [
+    {
+      name: "Verify silence window",
+      type: "action",
+      description: "Confirm no outbound from GP in 45d; classify thread priority",
+    },
+    {
+      name: "Draft same-day reply",
+      type: "action",
+      description: "Draft warm, urgent reply acknowledging gap — GP approves same day",
+    },
+    {
+      name: "Log & next step",
+      type: "action",
+      description: "Update CRM; create follow-up task within 48h",
     },
   ],
 };
@@ -99,20 +252,32 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
   update_followup: UPDATE_FOLLOWUP,
   no_response_stall: NO_RESPONSE_STALL,
   ddq_response: DDQ_RESPONSE,
-  ny_roadshow: NY_ROADSHOW,
+  roadshow_prep: ROADSHOW_PREP,
+  three_touch_qualification: THREE_TOUCH_QUALIFICATION,
+  quarterly_lp_update: QUARTERLY_LP_UPDATE,
+  commitment_close: COMMITMENT_CLOSE,
+  reengagement_urgent: REENGAGEMENT_URGENT,
 };
 
 // ── Tomo Default workflow templates (keyed by workflow id) ───────────────────
 
 const WEBSITE_CRM_SYNC: WorkflowDefinition = {
-  title: "Website → CRM Sync",
+  title: "Website & News → Relationship Updates",
   triggerKind: "EVENT",
-  trigger: "Corporate website change detected",
+  trigger: "Corporate website change or relevant news item detected for coverage universe",
   steps: [
-    { name: "Scan Website", type: "action", description: "Crawl corporate website for personnel, role, and contact changes" },
-    { name: "Compare with CRM", type: "action", description: "Diff website data against existing CRM records" },
-    { name: "Suggest Updates", type: "action", description: "Surface proposed CRM changes (title, role, contact info) for review" },
-    { name: "Apply Approved", type: "action", description: "Apply user-approved updates to CRM records" },
+    {
+      name: "Scan sources",
+      type: "action",
+      description: "Crawl website and trusted news for personnel, role, mandate, and material changes",
+    },
+    { name: "Compare with CRM", type: "action", description: "Diff findings against existing relationship records" },
+    {
+      name: "Suggest updates",
+      type: "action",
+      description: "Surface proposed relationship updates (title, role, coverage, contact info) for review",
+    },
+    { name: "Apply approved", type: "action", description: "Apply user-approved updates to CRM records" },
   ],
 };
 
@@ -130,14 +295,14 @@ const EMAIL_SCHEDULING: WorkflowDefinition = {
 };
 
 const MEETING_NOTES_ACTIONS: WorkflowDefinition = {
-  title: "Meeting Notes → Actions",
+  title: "Meeting → Follow-Up",
   triggerKind: "EVENT",
   trigger: "Meeting notes or transcript uploaded",
   steps: [
-    { name: "Parse Notes", type: "action", description: "Extract key discussion points, decisions, and quotes" },
-    { name: "Identify Actions", type: "action", description: "Pull out action items, commitments, and deadlines" },
-    { name: "Suggest CRM Updates", type: "action", description: "Propose relationship status changes based on meeting content" },
-    { name: "Create Follow-Ups", type: "action", description: "Generate follow-up tasks and reminders from action items" },
+    { name: "Parse notes", type: "action", description: "Extract key discussion points, decisions, and quotes" },
+    { name: "Identify actions", type: "action", description: "Pull out action items, commitments, and deadlines" },
+    { name: "Suggest CRM updates", type: "action", description: "Propose relationship status changes based on meeting content" },
+    { name: "Create follow-ups", type: "action", description: "Generate follow-up tasks and reminders from action items" },
   ],
 };
 
@@ -203,11 +368,35 @@ export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {
     "Change review wait to 24h deadline",
     "Auto-attach audited financials from Oakmont request",
   ],
-  ny_roadshow: [
-    "Mention specific NYC dates in the draft",
+  roadshow_prep: [
+    "Set lead time to 10 days before the trip",
+    "Attach one-pager and data room link to the draft",
     "Add CC to ops for calendar holds",
-    "Shorten lead time to 5 days instead of 7",
-    "Attach one-pager PDF to the draft",
+    "Mention city and venue block in the subject line",
+  ],
+  three_touch_qualification: [
+    "Compress touches to 7 / 14 days for hot cohort only",
+    "Add deck link to touch 1",
+    "Auto-exclude LPs who replied after touch 2",
+    "Route non-responders to Silence → Re-engage",
+  ],
+  quarterly_lp_update: [
+    "Bump Tier 2 nudge to day 3 after send",
+    "Add call task for Tier 1 non-openers",
+    "Suppress Tier 3 entirely this quarter",
+    "Attach performance PDF to Tier 1 drafts only",
+  ],
+  commitment_close: [
+    "Change 14d nudge to 21d for large tickets",
+    "Add Slack ping to IR on T−3",
+    "CC fund counsel on final nudge",
+    "Pause if IC date slips by >5 days",
+  ],
+  reengagement_urgent: [
+    "Mention specific last meeting date in reply",
+    "Offer two concrete times to reconnect",
+    "Escalate to partner if Tier 1 and 60d+ silence",
+    "Add unsubscribe check before send",
   ],
 };
 
@@ -227,17 +416,28 @@ const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
     `Marcus Chen (Blueridge Ventures) opened 4x but no reply. ` +
     `12 LPs opened, 6 haven't opened yet. 2 follow-up drafts queued.`,
   no_response_stall:
-    `Lumen LP: No response after 2 touches (5d ago, 2d ago).\n` +
+    `Lumen LP: Silence after 2 touches (5d ago, 2d ago).\n` +
     `Workflow flagged as blocked. CRM updates suggested (stall risk, status). ` +
     `Set a 3-day reminder to re-engage. Card visible in Today.`,
   ddq_response:
     `1 active DDQ in progress.\n` +
     `Rachel Novak (Oakmont Fund of Funds) sent a 47-question DDQ 2 days ago. ` +
     `31 answers matched from historical responses. 8 flagged for legal review.`,
-  ny_roadshow:
-    `NYC roadshow: trip date 6 June 2026.\n` +
-    `Schedule trigger: 7 days prior (30 May 2026). ` +
-    `Next run will draft a single outbound email asking your list for availability — no CRM segment; you choose recipients when sending.`,
+  roadshow_prep:
+    `Trip date + geography locked for next roadshow block.\n` +
+    `Cohort pulled from Family Office Outreach (NA Tier 1–2). Next run drafts availability requests and logs confirmations to CRM.`,
+  three_touch_qualification:
+    `18 LPs in fat-middle / cold cohort on Q1 Target List.\n` +
+    `Touch 1 insight queued — awaiting GP approval. Spacing: 5–7d to touch 2, 12–14d to touch 3.`,
+  quarterly_lp_update:
+    `Q4 quarterly PDF sent 2 days ago to 40 LPs.\n` +
+    `Tier 1: 6 personalized drafts ready; Tier 2: 14 nudges; Tier 3: monitor-only (no outbound).`,
+  commitment_close:
+    `6 soft commits in Active Diligence with IC spread over next 21 days.\n` +
+    `Next automated nudge: 14d before Crestview close — drafts pending approval.`,
+  reengagement_urgent:
+    `Last GP-originated outbound to Meridian Capital: 52 days ago.\n` +
+    `Inbound thread opened this morning — same-day draft reply queued for approval.`,
 };
 
 // ── Welcome summary for initial chat context ────────────────────────────────
@@ -274,6 +474,9 @@ export function workflowToMarkdown(def: WorkflowDefinition): string {
     lines.push(`- description: ${step.description}`);
     if (step.duration) lines.push(`- duration: ${step.duration}`);
     if (step.condition) lines.push(`- condition: ${step.condition}`);
+    if (step.draftTemplate) {
+      lines.push(`- draftTemplate: ${escapeDraftTemplateLine(step.draftTemplate)}`);
+    }
     lines.push("");
   });
   return lines.join("\n");
@@ -311,12 +514,14 @@ export function parseWorkflowMarkdown(md: string): WorkflowDefinition | null {
       const type = getField("type");
       const description = getField("description");
       if (!type || !description) continue;
+      const rawDraft = getField("draftTemplate");
       steps.push({
         name,
         type: type as "action" | "wait",
         description,
         duration: getField("duration"),
         condition: getField("condition"),
+        draftTemplate: rawDraft ? unescapeDraftTemplateLine(rawDraft) : undefined,
       });
     }
 

@@ -132,9 +132,9 @@ export function getTomoActivityPageEvents(relationships: Relationship[]): TomoAc
       actor: "TOMO",
       summary: "Post-Meeting playbook: aligned transcript signals with open follow-up drafts",
       type: "meeting",
-      entity: "Post-Meeting Execution",
+      entity: "Post-Meeting Follow-Up",
       fundId: "fund-2",
-      workflowLabel: "Post-Meeting Execution",
+      workflowLabel: "Post-Meeting Follow-Up",
     },
     {
       id: "syn-lumen-cooling",
@@ -146,7 +146,7 @@ export function getTomoActivityPageEvents(relationships: Relationship[]): TomoAc
       type: "update",
       entity: rLumen ? `${rLumen.firm} · ${rLumen.name}` : "Lumen LP",
       fundId: "fund-3",
-      workflowLabel: "No Response → Re-engage",
+      workflowLabel: "Silence → Re-engage",
     },
     {
       id: "syn-newsletter-segment",

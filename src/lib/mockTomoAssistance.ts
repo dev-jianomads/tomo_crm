@@ -71,7 +71,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: [],
   },
 
-  // a3: Post-Meeting Execution
+  // a3: Post-Meeting Follow-Up
   a3: {
     initialMessage: {
       text: "Albourne (James Staltari) — you did not approve TOMO's email summary and next steps; post-meeting note is past the 2h SLA. Draft covers recap, materials, and COO call path.",
@@ -82,7 +82,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
             "Hi James — thank you for yesterday's time. Quick recap: we covered portfolio positioning, liquidity terms, and next steps toward Q2 allocator reads. I'll follow up with the materials we discussed and propose times for a call with our COO.\n\nBest regards,",
           type: "email",
         },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     executionChips: ["Open CRM tasks view", "Snooze SLA reminder 1h"],
@@ -90,7 +90,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: [],
   },
 
-  // a4: No Response → Re-engage (GIC)
+  // a4: Silence → Re-engage (GIC)
   a4: {
     initialMessage: {
       text: "No reply from Kwong Hong Huat @ GIC in 2 days after your propose-times email. Draft follow-up copies his EA.",
@@ -104,7 +104,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         {
           kind: "workflow_link",
           playbookId: "pb-no-response-stall",
-          name: "No Response → Re-engage",
+          name: "Silence → Re-engage",
           description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
         },
       ],
@@ -129,7 +129,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Summarize top 5 risers", "Who should we call first?", "Draft follow-up for cooling LP", "Explain this playbook"],
   },
 
-  // a6: No Response → Re-engage (Amundi cooling)
+  // a6: Silence → Re-engage (Amundi cooling)
   a6: {
     initialMessage: {
       text: "Amundi FoF — 18 days since last meaningful touch; Q2 decision ahead. Draft check-in is short and non-pushy.",
@@ -143,7 +143,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
         {
           kind: "workflow_link",
           playbookId: "pb-no-response-stall",
-          name: "No Response → Re-engage",
+          name: "Silence → Re-engage",
           description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
         },
       ],
@@ -167,7 +167,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "CPPIB — Frank Ieraci. 4pm investment update today; brief covers liquidity terms, co-invest, and path to next IC.",
       blocks: [
         { kind: "snapshot", text: "Tier 1; active diligence. Last touch flagged liquidity and co-invest — stay tight on commitments." },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Open prep brief", "Draft liquidity Q&A", "Summarize last thread", "Create follow-up task"],
@@ -177,7 +177,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "Albourne — James Staltari. Post-meeting execution loop is open; SLA note is on Today.",
       blocks: [
         { kind: "snapshot", text: "Consultant path; Met / active-stable. COO call is the next structural step." },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Open post-meeting draft", "List CRM tasks", "Schedule COO prep", "Explain playbook"],
@@ -187,7 +187,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "GIC — Kwong Hong Huat. Waiting on meeting confirm for new fund launch; gentle nudge drafted.",
       blocks: [
         { kind: "snapshot", text: "Sovereign / Tier 1; APAC. Two days silence after propose-times email." },
-        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "Silence → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
     },
     suggestedPrompts: ["Review follow-up draft", "Suggest alternate times", "Summarize last email", "Explain playbook"],
@@ -197,7 +197,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "Amundi FoF — relationship cooling into Q2. Light check-in keeps you in the allocator's active set.",
       blocks: [
         { kind: "snapshot", text: "18d since last touch; last meeting tone was positive. Allocation read expected Q2." },
-        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "Silence → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
     },
     suggestedPrompts: ["Draft check-in", "Review Q2 timeline", "Open Today action", "Explain playbook"],
@@ -215,7 +215,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
           agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
           commitments: ["Send one-pager after call", "Confirm data room access renewal"],
         },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     executionChips: ["Open brief PDF", "Add peer comp slide"],
@@ -238,7 +238,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
             "Share updated DDQ index",
           ],
         },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     executionChips: ["Jump to liquidity section", "Star IC timeline slide"],
@@ -258,7 +258,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
           agenda: ["Credentials & strategy", "Sizing and timeline", "Next steps to allocator reads"],
           commitments: ["Circulate short deck after call", "Propose two follow-up slots"],
         },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Open full brief", "Draft opener email", "Summarize last thread", "Create action"],
@@ -282,7 +282,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "Northwind is leaning in after strong Q4; wants clarity on pipeline and risk.",
       blocks: [
         { kind: "brief", agenda: ["Performance highlights", "Risk / hedging stance", "Next allocation step"], commitments: ["Send follow-up deck", "Confirm allocation window"] },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Create follow-up action", "Draft email", "Open full brief"],
@@ -294,7 +294,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
       text: "Peakline opened deck multiple times; need to secure a concrete slot.",
       blocks: [
         { kind: "brief", agenda: ["Scheduling decision", "Performance Q&A", "Next steps to commit"], commitments: ["Lock meeting time", "Share concise 3-bullet update"] },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Create follow-up action", "Draft email", "Open full brief"],
@@ -326,7 +326,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
           content: "Hi Jamie,\n\nTomo found a 30m slot next Tuesday at 2pm. Want me to send the invite with a brief agenda? We can cover the allocation review and next steps.\n\nBest,",
           type: "invite",
         },
-        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Execution", description: "Pull transcript, draft follow-up, require human approval before sending." },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },
     suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
@@ -341,7 +341,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
           content: "Hi Priya,\n\nBrief Q4 snapshot attached. One question: still interested in the allocation window? Happy to jump on a quick call if helpful.\n\nBest,",
           type: "email",
         },
-        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "Silence → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
     },
     suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],
@@ -356,7 +356,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
           content: "Hi Samir,\n\nQ4 performance snapshot attached. Happy to walk through when you have 15 minutes.\n\nBest,",
           type: "email",
         },
-        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "No Response → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
+        { kind: "workflow_link", playbookId: "pb-no-response-stall", name: "Silence → Re-engage", description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder." },
       ],
     },
     suggestedPrompts: ["Summarize last thread", "Draft outreach", "Propose next step", "Create action"],

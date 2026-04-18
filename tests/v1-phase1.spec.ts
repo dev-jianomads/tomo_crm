@@ -55,7 +55,42 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(kindBadge).toBeVisible();
     await expect(kindBadge).toHaveAttribute("data-trigger-kind", "EVENT");
     await expect(kindBadge).toHaveText("EVENT");
-    await expect(page.getByTestId("workflow-outbound-safety")).toBeVisible();
+    await expect(page.getByTestId("workflow-outbound-safety-chip")).toBeVisible();
+    await page.getByTestId("workflow-outbound-safety-chip").click();
+    await expect(page.getByTestId("workflow-duplicate-prevention-modal")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Duplicate workflow prevention" })).toBeVisible();
+    await page.getByTestId("workflow-dup-modal-close").click();
+  });
+
+  test("Workflow drawer: add-step placeholder, persist trigger override, reset restores default", async ({
+    page,
+  }) => {
+    await page.goto("/workflows");
+    await page.evaluate(() => localStorage.removeItem("tomo-workflow-definition-overrides-v2"));
+    await page.goto("/workflows?playbook=pb-intro-tracker");
+
+    await expect(page.getByTestId("workflow-detail-drawer")).toBeVisible();
+    await expect(page.getByTestId("workflow-process-flow")).toBeVisible();
+
+    await page.getByTestId("workflow-flow-add-step").click();
+    await expect(page.getByTestId("workflow-add-step-placeholder")).toBeVisible();
+    await page.getByTestId("workflow-add-step-placeholder").getByRole("button", { name: "Close" }).click();
+    await expect(page.getByTestId("workflow-add-step-placeholder")).toHaveCount(0);
+
+    const marker = `E2E_TRIGGER_${Date.now()}`;
+    await page.getByTestId("workflow-flow-trigger").click();
+    await expect(page.getByTestId("workflow-step-config-panel")).toBeVisible();
+    await page.getByTestId("workflow-step-config-panel").locator("textarea").first().fill(marker);
+    await page.getByRole("button", { name: "Save as default" }).click();
+    await expect(page.getByTestId("workflow-flow-trigger")).toContainText(marker);
+
+    await page.reload();
+    await expect(page.getByTestId("workflow-detail-drawer")).toBeVisible();
+    await expect(page.getByTestId("workflow-flow-trigger")).toContainText(marker);
+
+    await page.getByTestId("workflow-drawer-reset").click();
+    await expect(page.getByTestId("workflow-flow-trigger")).toContainText("CC'd introduction email detected");
+    await expect(page.getByTestId("workflow-flow-trigger")).not.toContainText(marker);
   });
 
   test("Today commitment row shows Open calendar link", async ({ page }) => {

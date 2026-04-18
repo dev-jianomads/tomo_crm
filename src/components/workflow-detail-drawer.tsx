@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { WorkflowProcessFlow } from "@/components/workflow-process-flow";
-import { WorkflowOutboundSafety } from "@/components/workflow-outbound-safety";
+import { WorkflowProcessFlow, type FlowSelection } from "@/components/workflow-process-flow";
+import { WorkflowOutboundSafetyChip } from "@/components/workflow-outbound-safety-chip";
+import { WorkflowAddStepPlaceholder } from "@/components/workflow-add-step-placeholder";
+import { WorkflowStepConfigPanel } from "@/components/workflow-step-config-panel";
+import { WorkflowActivityLogAccordion } from "@/components/workflow-activity-log-accordion";
 import { WorkflowTomoStrip } from "@/components/workflow-tomo-strip";
 import type { WorkflowDefinition } from "@/lib/workflow-templates";
 import type { PlaybookType } from "@/lib/mockPlaybooks";
@@ -42,6 +46,14 @@ type WorkflowDetailDrawerProps = {
   suggestions?: string[];
   /** Optional extra node under header (e.g. Tomo Default note) */
   headerNote?: ReactNode;
+  /** First LP from the linked list (or a demo relationship) for draft previews */
+  previewLp?: { name: string; firm: string } | null;
+  /** Mock activity log is keyed by this id (playbook / custom / Tomo default row id) */
+  workflowRowId: string | null;
+  /** Linked list name for log copy; optional when global or missing banner */
+  activityLogListName?: string | null;
+  /** Tomo Default workflows — log shows global recipient note */
+  activityLogIsGlobal?: boolean;
 };
 
 /**
@@ -62,7 +74,25 @@ export function WorkflowDetailDrawer({
   onWorkflowUpdate,
   suggestions,
   headerNote,
+  previewLp = null,
+  workflowRowId,
+  activityLogListName = null,
+  activityLogIsGlobal = false,
 }: WorkflowDetailDrawerProps) {
+  const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
+
+  useEffect(() => {
+    if (!open) setFlowSelection(null);
+  }, [open]);
+
+  useEffect(() => {
+    setFlowSelection((sel) => {
+      if (!sel) return null;
+      if (sel.kind === "trigger" || sel.kind === "add-step") return sel;
+      return sel.index < workflow.steps.length ? sel : null;
+    });
+  }, [workflow]);
+
   return (
     <>
       <div
@@ -88,6 +118,7 @@ export function WorkflowDetailDrawer({
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
+              data-testid="workflow-drawer-reset"
               onClick={onReset}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
               title="Reset to default"
@@ -124,11 +155,39 @@ export function WorkflowDetailDrawer({
               </div>
             )}
             {outboundAudienceCount > 0 ? (
-              <WorkflowOutboundSafety relationshipCount={outboundAudienceCount} audienceLabel="list" />
+              <WorkflowOutboundSafetyChip
+                relationshipCount={outboundAudienceCount}
+                audienceLabel="list"
+                workflowTitle={title}
+              />
             ) : null}
             <div className="px-2 py-3">
-              <WorkflowProcessFlow workflow={workflow} highlightVersion={highlightVersion} />
+              <WorkflowProcessFlow
+                workflow={workflow}
+                highlightVersion={highlightVersion}
+                selection={flowSelection}
+                onSelect={setFlowSelection}
+              />
+              {flowSelection?.kind === "add-step" ? (
+                <WorkflowAddStepPlaceholder onDismiss={() => setFlowSelection(null)} />
+              ) : flowSelection ? (
+                <WorkflowStepConfigPanel
+                  workflow={workflow}
+                  target={flowSelection}
+                  previewLp={previewLp}
+                  onSave={(def) => {
+                    onWorkflowUpdate(def);
+                  }}
+                  onDismiss={() => setFlowSelection(null)}
+                />
+              ) : null}
             </div>
+
+            <WorkflowActivityLogAccordion
+              workflowRowId={workflowRowId}
+              listName={activityLogListName}
+              isGlobalWorkflow={activityLogIsGlobal}
+            />
           </div>
 
           <WorkflowTomoStrip

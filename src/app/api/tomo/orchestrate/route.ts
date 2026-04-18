@@ -325,6 +325,11 @@ const stepSchema = z.object({
   description: z.string().max(100).describe("What this step does"),
   duration: z.string().optional().describe("Duration for wait steps, e.g. '24h', '5 business days'"),
   condition: z.string().optional().describe("Condition for this step, e.g. 'No reply detected'"),
+  draftTemplate: z
+    .string()
+    .max(2000)
+    .optional()
+    .describe("Optional saved draft shell for draft-style outbound steps"),
 });
 
 const workflowSchema = z.object({

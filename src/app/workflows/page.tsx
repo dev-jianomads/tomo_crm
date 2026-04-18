@@ -43,7 +43,7 @@ function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
   return {
     id: c.id,
     name: c.name,
-    type: "ny_roadshow",
+    type: "roadshow_prep",
     description: c.trigger,
     summary: c.action,
     createdAt: c.createdAt,
@@ -76,6 +76,10 @@ function WorkflowsPageContent() {
   const [customPlaybooks] = useCustomPlaybooksPersistentState();
   const [attachModalOpen, setAttachModalOpen] = useState(false);
 
+  const [workflowDefOverrides, setWorkflowDefOverrides, workflowOverridesReady] = usePersistentState<
+    Record<string, WorkflowDefinition>
+  >("tomo-workflow-definition-overrides-v2", {});
+
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null);
   const [highlightVersion, setHighlightVersion] = useState(0);
 
@@ -99,6 +103,18 @@ function WorkflowsPageContent() {
   const selectedName =
     selectedPlaybook?.name ?? selectedCustomPlaybook?.name ?? selectedTomoDefault?.name ?? null;
 
+  const workflowRowId =
+    selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? selectedTomoDefaultId ?? null;
+
+  const baseWorkflow = useMemo((): WorkflowDefinition | null => {
+    if (selectedPlaybook) return DEFAULT_TEMPLATES[selectedPlaybook.type];
+    if (selectedCustomPlaybook) return workflowDefinitionFromCustomStored(selectedCustomPlaybook);
+    if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
+      return TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId];
+    }
+    return null;
+  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
+
   const effectiveEnabled = useCallback(
     (rowId: string, defaultEnabled: boolean) => workflowEnabledOverrides[rowId] ?? defaultEnabled,
     [workflowEnabledOverrides]
@@ -113,16 +129,16 @@ function WorkflowsPageContent() {
   );
 
   useEffect(() => {
-    if (selectedPlaybook) {
-      setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
-    } else if (selectedCustomPlaybook) {
-      setWorkflow(workflowDefinitionFromCustomStored(selectedCustomPlaybook));
-    } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
-      setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
-    } else {
+    if (!workflowRowId || !baseWorkflow) {
       setWorkflow(null);
+      return;
     }
-  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
+    if (!workflowOverridesReady) {
+      setWorkflow(baseWorkflow);
+      return;
+    }
+    setWorkflow(workflowDefOverrides[workflowRowId] ?? baseWorkflow);
+  }, [workflowRowId, baseWorkflow, workflowDefOverrides, workflowOverridesReady]);
 
   /** Deep link: open list + optional attach modal */
   useEffect(() => {
@@ -136,7 +152,8 @@ function WorkflowsPageContent() {
 
   /** Deep link: ?playbook= — select list + workflow row */
   useEffect(() => {
-    const pb = searchParams.get("playbook");
+    const raw = searchParams.get("playbook");
+    const pb = raw === "pb-ny-roadshow-2026" ? "pb-roadshow-prep" : raw;
     if (!pb) return;
     const sp = suggestedPlaybooks.find((x) => x.id === pb);
     const cp = customPlaybooks.find((c) => c.id === pb);
@@ -174,6 +191,12 @@ function WorkflowsPageContent() {
   }, []);
 
   const handleResetWorkflow = useCallback(() => {
+    if (!workflowRowId) return;
+    setWorkflowDefOverrides((prev) => {
+      const next = { ...prev };
+      delete next[workflowRowId];
+      return next;
+    });
     if (selectedPlaybook) {
       setWorkflow(DEFAULT_TEMPLATES[selectedPlaybook.type]);
     } else if (selectedCustomPlaybook) {
@@ -181,12 +204,24 @@ function WorkflowsPageContent() {
     } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
       setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     }
-  }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefaultId]);
+  }, [
+    workflowRowId,
+    setWorkflowDefOverrides,
+    selectedPlaybook,
+    selectedCustomPlaybook,
+    selectedTomoDefaultId,
+  ]);
 
-  const handleWorkflowUpdate = useCallback((def: WorkflowDefinition) => {
-    setWorkflow(def);
-    setHighlightVersion((v) => v + 1);
-  }, []);
+  const handleWorkflowUpdate = useCallback(
+    (def: WorkflowDefinition) => {
+      if (workflowRowId) {
+        setWorkflowDefOverrides((prev) => ({ ...prev, [workflowRowId]: def }));
+      }
+      setWorkflow(def);
+      setHighlightVersion((v) => v + 1);
+    },
+    [workflowRowId, setWorkflowDefOverrides]
+  );
 
   const pipelineContext = useMemo(() => {
     const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
@@ -227,6 +262,16 @@ function WorkflowsPageContent() {
   }, [selectedPlaybook, selectedCustomPlaybook, selectedTomoDefault, playbookOverrides, pipelines, relationships]);
 
   const outboundAudienceCount = pipelineContext?.relationshipCount ?? 0;
+
+  const previewLp = useMemo(() => {
+    if (pipelineContext?.relationshipIds.length) {
+      const id = pipelineContext.relationshipIds[0];
+      const r = relationships.find((x) => x.id === id);
+      if (r) return { name: r.name, firm: r.firm };
+    }
+    const r0 = relationships[0];
+    return r0 ? { name: r0.name, firm: r0.firm } : null;
+  }, [pipelineContext, relationships]);
 
   const listWorkflowRows = useMemo(() => {
     if (!selectedPipelineId) return [];
@@ -402,6 +447,14 @@ function WorkflowsPageContent() {
               <p className="text-xs text-gray-500">Global — no CRM audience</p>
             ) : undefined
           }
+          previewLp={previewLp}
+          workflowRowId={workflowRowId}
+          activityLogListName={
+            playbookPipelineBanner?.kind === "ok"
+              ? playbookPipelineBanner.name
+              : pipelineContext?.pipelineName ?? null
+          }
+          activityLogIsGlobal={Boolean(selectedTomoDefault)}
         />
       ) : null}
     </div>
@@ -459,10 +512,12 @@ function ActiveToggle({
   enabled,
   onToggle,
   showLabel = true,
+  disabled = false,
 }: {
   enabled: boolean;
   onToggle: () => void;
   showLabel?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-gray-100 px-2 py-2">
@@ -473,12 +528,13 @@ function ActiveToggle({
         type="button"
         role="switch"
         aria-checked={enabled}
+        disabled={disabled}
         aria-label={enabled ? "Active: on" : "Active: off"}
         onClick={(e) => {
           e.stopPropagation();
-          onToggle();
+          if (!disabled) onToggle();
         }}
-        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1 ${
+        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 ${
           enabled ? "bg-green-500" : "bg-gray-300"
         }`}
       >
@@ -562,12 +618,23 @@ function WorkflowListRow({
       }`}
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-3 py-3 text-left">
-        <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
+          {playbook.comingSoonLabel ? (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+              {playbook.comingSoonLabel}
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-gray-500 break-words" title={subtitle}>
           {subtitle}
         </p>
       </button>
-      <ActiveToggle enabled={enabled} onToggle={onToggleEnabled} />
+      <ActiveToggle
+        enabled={enabled}
+        onToggle={onToggleEnabled}
+        disabled={Boolean(playbook.comingSoonLabel)}
+      />
     </div>
   );
 }

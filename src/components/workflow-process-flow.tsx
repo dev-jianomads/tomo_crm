@@ -78,16 +78,26 @@ function stepEquals(a: WorkflowStep | undefined, b: WorkflowStep | undefined): b
     a.type === b.type &&
     a.description === b.description &&
     (a.duration ?? "") === (b.duration ?? "") &&
-    (a.condition ?? "") === (b.condition ?? "")
+    (a.condition ?? "") === (b.condition ?? "") &&
+    (a.draftTemplate ?? "") === (b.draftTemplate ?? "")
   );
 }
+
+export type FlowSelection =
+  | { kind: "trigger" }
+  | { kind: "step"; index: number }
+  | { kind: "add-step" };
 
 export function WorkflowProcessFlow({
   workflow,
   highlightVersion = 0,
+  selection = null,
+  onSelect,
 }: {
   workflow: WorkflowDefinition;
   highlightVersion?: number;
+  selection?: FlowSelection | null;
+  onSelect?: (target: FlowSelection) => void;
 }) {
   const { trigger, steps } = workflow;
   const triggerKind: WorkflowTriggerKind = workflow.triggerKind ?? "EVENT";
@@ -132,6 +142,15 @@ export function WorkflowProcessFlow({
   const isGlowing = (key: string) => changedSet.has(key);
   const glowFor = (key: string) => (isGlowing(key) ? GLOW_CLASS : "");
   const kindStyle = TRIGGER_KIND_STYLES[triggerKind];
+  const interactive = Boolean(onSelect);
+  const flowKey = (k: FlowSelection) =>
+    k.kind === "trigger" ? "trigger" : k.kind === "add-step" ? "add-step" : `step-${k.index}`;
+  const selectionMatches = (a: FlowSelection | null, b: FlowSelection) =>
+    Boolean(a && flowKey(a) === flowKey(b) && (a.kind !== "step" || b.kind !== "step" || a.index === b.index));
+  const isSel = (k: FlowSelection) =>
+    selectionMatches(selection, k) ? "ring-2 ring-[color:var(--accent)] ring-offset-1" : "";
+  const cardInteractive =
+    "cursor-pointer text-left transition hover:border-gray-300 hover:bg-gray-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]";
 
   return (
     <div className="flex flex-col overflow-hidden" data-testid="workflow-process-flow">
@@ -141,8 +160,12 @@ export function WorkflowProcessFlow({
           {/* Trigger card */}
           <div className="flex shrink-0 flex-col items-center">
             <span className="mb-1 w-full text-center text-[10px] font-medium text-gray-400">Step 1</span>
-            <div
-              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 px-3 py-1.5 shadow-sm sm:w-[190px] ${kindStyle.card} ${glowFor("trigger")}`}
+            <button
+              type="button"
+              disabled={!interactive}
+              data-testid="workflow-flow-trigger"
+              onClick={() => onSelect?.({ kind: "trigger" })}
+              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 px-3 py-1.5 shadow-sm sm:w-[190px] ${kindStyle.card} ${glowFor("trigger")} ${isSel({ kind: "trigger" })} ${interactive ? cardInteractive : ""}`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] font-medium uppercase tracking-wide ${kindStyle.label}`}>
@@ -160,7 +183,7 @@ export function WorkflowProcessFlow({
               <span className="mt-0.5 text-xs font-semibold leading-snug text-gray-900 line-clamp-4">
                 {trigger}
               </span>
-            </div>
+            </button>
             {isGlowing("trigger") && <TomoUpdatedLabel />}
           </div>
 
@@ -173,8 +196,12 @@ export function WorkflowProcessFlow({
                   <span className="mb-1 w-full min-w-[140px] text-center text-[10px] font-medium text-gray-400 sm:min-w-[170px]">
                     Step {i + 2}
                   </span>
-                  <div
-                    className={`flex w-[140px] min-h-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-1.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)}`}
+                  <button
+                    type="button"
+                    disabled={!interactive}
+                    data-testid={`workflow-flow-step-${i}`}
+                    onClick={() => onSelect?.({ kind: "step", index: i })}
+                    className={`flex w-[140px] min-h-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-1.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)} ${isSel({ kind: "step", index: i })} ${interactive ? cardInteractive : ""}`}
                   >
                     <span className="text-xs font-semibold text-gray-900">{step.name}</span>
                     <span className="mt-0.5 text-[10px] leading-snug text-gray-500 line-clamp-4">
@@ -185,7 +212,7 @@ export function WorkflowProcessFlow({
                         {step.duration}
                       </span>
                     )}
-                  </div>
+                  </button>
                   {isGlowing(key) && <TomoUpdatedLabel />}
                 </div>
               </div>
@@ -196,10 +223,16 @@ export function WorkflowProcessFlow({
           <Connector />
           <div className="flex w-[80px] shrink-0 flex-col items-center">
             <span className="mb-1 invisible text-[10px]">.</span>
-            <div className="flex min-h-0 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-2 py-1.5">
+            <button
+              type="button"
+              disabled={!interactive}
+              data-testid="workflow-flow-add-step"
+              onClick={() => onSelect?.({ kind: "add-step" })}
+              className={`flex min-h-0 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-2 py-1.5 ${isSel({ kind: "add-step" })} ${interactive ? `${cardInteractive} disabled:cursor-not-allowed disabled:opacity-60` : ""}`}
+            >
               <span className="text-lg font-light leading-none text-gray-400">+</span>
               <span className="mt-0.5 text-[10px] text-gray-500">Add step</span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
