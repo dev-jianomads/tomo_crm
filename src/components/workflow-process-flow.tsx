@@ -18,6 +18,28 @@ const TRIGGER_KIND_LABEL: Record<WorkflowTriggerKind, string> = {
   SCHEDULED: "SCHEDULED",
 };
 
+/** Border/background + chip colors so EVENT / THRESHOLD / SCHEDULED read at a glance. */
+const TRIGGER_KIND_STYLES: Record<
+  WorkflowTriggerKind,
+  { card: string; label: string; chip: string }
+> = {
+  EVENT: {
+    card: "border-sky-300 bg-sky-50/70",
+    label: "text-sky-600",
+    chip: "bg-sky-600",
+  },
+  THRESHOLD: {
+    card: "border-amber-300 bg-amber-50/80",
+    label: "text-amber-800",
+    chip: "bg-amber-600",
+  },
+  SCHEDULED: {
+    card: "border-violet-300 bg-violet-50/70",
+    label: "text-violet-700",
+    chip: "bg-violet-600",
+  },
+};
+
 /** Matches label row (subtle Step N line + mb-1) so arrows align with cards, not labels. */
 const CONNECTOR_TOP_PAD = "pt-[20px]";
 
@@ -109,6 +131,7 @@ export function WorkflowProcessFlow({
 
   const isGlowing = (key: string) => changedSet.has(key);
   const glowFor = (key: string) => (isGlowing(key) ? GLOW_CLASS : "");
+  const kindStyle = TRIGGER_KIND_STYLES[triggerKind];
 
   return (
     <div className="flex flex-col overflow-hidden" data-testid="workflow-process-flow">
@@ -119,12 +142,14 @@ export function WorkflowProcessFlow({
           <div className="flex shrink-0 flex-col items-center">
             <span className="mb-1 w-full text-center text-[10px] font-medium text-gray-400">Step 1</span>
             <div
-              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-1.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
+              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 px-3 py-1.5 shadow-sm sm:w-[190px] ${kindStyle.card} ${glowFor("trigger")}`}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">Trigger</span>
+                <span className={`text-[10px] font-medium uppercase tracking-wide ${kindStyle.label}`}>
+                  Trigger
+                </span>
                 <span
-                  className="rounded-full bg-blue-600/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white ${kindStyle.chip}`}
                   title={`Trigger type: ${TRIGGER_KIND_LABEL[triggerKind]}`}
                   data-testid="workflow-trigger-kind-badge"
                   data-trigger-kind={triggerKind}
