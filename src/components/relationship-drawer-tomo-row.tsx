@@ -44,7 +44,7 @@ export function RelationshipDrawerTomoRow({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. Set stage to Met and next move to book diligence call…"
+          placeholder="How can I help update this CRM record?"
           disabled={isStreaming}
           className="min-w-0 flex-1 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50"
           aria-label="Ask Tomo to update CRM fields"
