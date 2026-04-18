@@ -9,9 +9,12 @@ import { ContextDrawer } from "@/components/context-drawer";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePipelines } from "@/lib/use-pipelines";
+import { AmendListModal } from "@/components/amend-list-modal";
+import type { Pipeline } from "@/lib/pipelines";
+import { getPipelineMembers } from "@/lib/pipelines";
 import { STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
-import { applyFilters, formatFilterSummary, type StructuredFilterCriteria } from "@/lib/relationshipFilters";
+import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { toast } from "sonner";
 
@@ -20,9 +23,11 @@ export default function PipelinePage() {
   const { ready } = useRequireSession();
   const { relationships } = useRelationships();
   const { activeFundId } = useFunds();
-  const { pipelines, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
+  const { pipelines, resetToMock, updatePipeline, ready: pipelinesReady } = usePipelines(activeFundId);
 
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  /** Opens amend modal; drawer closes so the modal is the only focus */
+  const [amendPipelineId, setAmendPipelineId] = useState<string | null>(null);
 
   const handlePipelineClick = (id: string) => {
     setActivePipelineId(id);
@@ -66,7 +71,7 @@ export default function PipelinePage() {
           <div className="space-y-2 px-4 py-3">
             {pipelines.length ? (
               pipelines.map((pipeline) => {
-                const count = applyFilters(relationships, pipeline.filterCriteria).length;
+                const count = getPipelineMembers(relationships, pipeline).length;
                 const summary = formatFilterSummary(pipeline.filterCriteria);
                 const isSelected = activePipelineId === pipeline.id;
                 return (
@@ -144,9 +149,29 @@ export default function PipelinePage() {
               pipelineId={activePipeline.id}
               onClose={handleDrawerClose}
               router={router}
+              onOpenAmend={() => {
+                setAmendPipelineId(activePipeline.id);
+                handleDrawerClose();
+              }}
             />
           ) : null
         }
+      />
+
+      <AmendListModal
+        open={amendPipelineId !== null}
+        pipeline={pipelines.find((p) => p.id === amendPipelineId) ?? null}
+        relationships={relationships}
+        onClose={() => setAmendPipelineId(null)}
+        onConfirm={(excludedIds, addedIds) => {
+          if (!amendPipelineId) return;
+          updatePipeline(amendPipelineId, {
+            excludedRelationshipIds: excludedIds,
+            addedRelationshipIds: addedIds,
+          });
+          toast.success("List updated");
+          setAmendPipelineId(null);
+        }}
       />
     </>
   );
@@ -196,10 +221,12 @@ function ListDrawerActions({
   pipelineId,
   onClose,
   router,
+  onOpenAmend,
 }: {
   pipelineId: string;
   onClose: () => void;
   router: ReturnType<typeof useRouter>;
+  onOpenAmend: () => void;
 }) {
   return (
     <div className="flex flex-col gap-2 px-4 py-3" data-testid="list-drawer-actions">
@@ -208,10 +235,7 @@ function ListDrawerActions({
         <button
           type="button"
           className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
-          onClick={() => {
-            onClose();
-            router.push("/relationships");
-          }}
+          onClick={onOpenAmend}
         >
           Amend list
         </button>
@@ -242,12 +266,12 @@ function PipelineDrawerContent({
   pipeline,
   relationships,
 }: {
-  pipeline: { id: string; name: string; filterCriteria: StructuredFilterCriteria };
+  pipeline: Pipeline;
   relationships: Relationship[];
 }) {
   const filteredRels = useMemo(
-    () => applyFilters(relationships, pipeline.filterCriteria),
-    [relationships, pipeline.filterCriteria]
+    () => getPipelineMembers(relationships, pipeline),
+    [relationships, pipeline]
   );
   const byStage = useMemo(() => groupByStage(filteredRels), [filteredRels]);
   const total = filteredRels.length;

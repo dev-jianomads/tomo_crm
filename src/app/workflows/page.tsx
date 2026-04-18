@@ -13,6 +13,7 @@ import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
 import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
+import { getPipelineMembers } from "@/lib/pipelines";
 import { useRequireSession } from "@/lib/auth";
 import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -198,7 +199,7 @@ function WorkflowsPageContent() {
       if (pipelineId) {
         const pipeline = pipelines.find((p) => p.id === pipelineId);
         if (!pipeline) return "List (not found)";
-        const count = applyFilters(relationships, pipeline.filterCriteria).length;
+        const count = getPipelineMembers(relationships, pipeline).length;
         const summary = formatFilterSummary(pipeline.filterCriteria);
         return summary
           ? `List: ${pipeline.name} (${count}) — ${summary}`
@@ -237,7 +238,7 @@ function WorkflowsPageContent() {
     if (!pipelineId) return null;
     const pipeline = pipelines.find((p) => p.id === pipelineId);
     if (!pipeline) return null;
-    const rels = applyFilters(relationships, pipeline.filterCriteria);
+    const rels = getPipelineMembers(relationships, pipeline);
     return {
       pipelineId: pipeline.id,
       pipelineName: pipeline.name,
@@ -260,7 +261,7 @@ function WorkflowsPageContent() {
         pipelineId,
       };
     }
-    const count = applyFilters(relationships, pipeline.filterCriteria).length;
+    const count = getPipelineMembers(relationships, pipeline).length;
     const filterSummary = formatFilterSummary(pipeline.filterCriteria);
     return {
       kind: "ok" as const,

@@ -12,7 +12,18 @@ export type UsePipelinesResult = {
   /** Pipelines for the given fund (or all if fundId === "all") */
   pipelines: Pipeline[];
   addPipeline: (p: Omit<Pipeline, "id" | "createdAt">) => void;
-  updatePipeline: (id: string, updates: Partial<Pick<Pipeline, "name" | "filterCriteria">>) => void;
+  updatePipeline: (
+    id: string,
+    updates: Partial<
+      Pick<
+        Pipeline,
+        | "name"
+        | "filterCriteria"
+        | "excludedRelationshipIds"
+        | "addedRelationshipIds"
+      >
+    >
+  ) => void;
   removePipeline: (id: string) => void;
   /** Reset to 3 mock pipelines (demo only) */
   resetToMock: () => void;
@@ -43,7 +54,15 @@ export function usePipelines(fundId: string): UsePipelinesResult {
 
   const updatePipeline = (
     id: string,
-    updates: Partial<Pick<Pipeline, "name" | "filterCriteria">>
+    updates: Partial<
+      Pick<
+        Pipeline,
+        | "name"
+        | "filterCriteria"
+        | "excludedRelationshipIds"
+        | "addedRelationshipIds"
+      >
+    >
   ) => {
     setAllPipelines((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };

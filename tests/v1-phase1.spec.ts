@@ -40,6 +40,12 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByRole("button", { name: "Amend list" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Create workflow" })).toBeVisible();
     await expect(page.getByText("Use in workflow")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Amend list" }).click();
+    await expect(page.getByTestId("amend-list-modal")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible();
+    await expect(page.getByLabel("Add to list")).toBeVisible();
   });
 
   test("Workflow diagram shows trigger kind badge", async ({ page }) => {
