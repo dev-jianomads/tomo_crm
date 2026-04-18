@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
@@ -13,13 +12,7 @@ import { usePipelines } from "@/lib/use-pipelines";
 import type { Pipeline } from "@/lib/pipelines";
 import { STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
-import {
-  applyFilters,
-  formatFilterSummary,
-  EMPTY_CRITERIA,
-  type StructuredFilterCriteria,
-} from "@/lib/relationshipFilters";
-import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
+import { applyFilters, formatFilterSummary, type StructuredFilterCriteria } from "@/lib/relationshipFilters";
 import { PipelineStageTomoChat } from "@/components/pipeline-stage-tomo-chat";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { toast } from "sonner";
@@ -36,16 +29,13 @@ export default function PipelinePage() {
   const router = useRouter();
   const { ready } = useRequireSession();
   const { relationships } = useRelationships();
-  const { funds, activeFundId } = useFunds();
-  const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
-  const { pipelines, addPipeline, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
+  const { activeFundId } = useFunds();
+  const { pipelines, resetToMock, ready: pipelinesReady } = usePipelines(activeFundId);
   const [, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
     {}
   );
 
-  const [filterCriteria, setFilterCriteria] = useState<StructuredFilterCriteria>(() => ({ ...EMPTY_CRITERIA }));
-  const [listName, setListName] = useState("");
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<Stage | null>(null);
   /** Saved list id when "Use in workflow" dialog is open */
@@ -53,28 +43,6 @@ export default function PipelinePage() {
   const [useWorkflowPlaybookId, setUseWorkflowPlaybookId] = useState<string>(
     () => suggestedPlaybooks[0]?.id ?? ""
   );
-
-  const filteredCount = useMemo(
-    () => applyFilters(relationships, filterCriteria).length,
-    [relationships, filterCriteria]
-  );
-
-  const clearFilters = () => setFilterCriteria({ ...EMPTY_CRITERIA });
-
-  const handleCreatePipeline = () => {
-    const trimmed = listName.trim();
-    if (!trimmed) {
-      toast.error("Enter a list name");
-      return;
-    }
-    addPipeline({
-      name: trimmed,
-      fundId: effectiveFundId,
-      filterCriteria: { ...filterCriteria },
-    });
-    setListName("");
-    toast.success(`List "${trimmed}" created`);
-  };
 
   const handlePipelineClick = (id: string) => {
     setActivePipelineId(id);
@@ -90,74 +58,8 @@ export default function PipelinePage() {
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <PageListHeader
-        label="Lists"
-        description="Refine the CRM with natural-language filters, save the result as a named list, and open it for funnel stages or workflow audiences."
-      >
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Link
-            href="/workflows"
-            className="text-xs font-medium text-[color:var(--accent)] hover:underline"
-          >
-            View workflows →
-          </Link>
-          <Link
-            href="/lp-network"
-            className="text-xs font-medium text-[color:var(--accent)] hover:underline"
-          >
-            LP Network intros (demo) →
-          </Link>
-        </div>
-      </PageListHeader>
+      <PageListHeader label="Lists" />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-gray-200 bg-white">
-        <RelationshipsFilterChat
-          currentFilters={filterCriteria}
-          onFiltersChange={setFilterCriteria}
-          onClearFilters={clearFilters}
-        />
-      </div>
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Create list */}
-        <div className="shrink-0 space-y-2 border-b border-gray-200 bg-gray-50/50 p-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900">Create list</p>
-            <span className="text-xs text-gray-500">
-              {Object.keys(filterCriteria).length > 0
-                ? `Showing ${filteredCount} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
-                : `${relationships.length} relationship${relationships.length !== 1 ? "s" : ""} (filter to create)`}
-            </span>
-          </div>
-          {Object.keys(filterCriteria).length > 0 && (() => {
-            const summary = formatFilterSummary(filterCriteria);
-            return summary ? (
-              <span className="min-w-0 truncate text-xs font-medium peach-text" title={summary}>
-                {summary}
-              </span>
-            ) : null;
-          })()}
-        </div>
-        <input
-          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-          placeholder="Name your list here"
-          value={listName}
-          onChange={(e) => setListName(e.target.value)}
-        />
-        <button
-          className={`w-full rounded-md px-3 py-2 text-sm font-medium transition ${
-            Object.keys(filterCriteria).length === 0
-              ? "cursor-not-allowed bg-gray-200 text-gray-500"
-              : "button-primary"
-          }`}
-          onClick={handleCreatePipeline}
-          disabled={Object.keys(filterCriteria).length === 0 || !listName.trim()}
-        >
-          Create
-        </button>
-        </div>
-
         {/* Saved lists */}
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="border-b border-gray-100 px-4 py-2">
@@ -230,12 +132,11 @@ export default function PipelinePage() {
             })
           ) : (
             <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
-              No lists yet. Filter the CRM above and create one.
+              No lists yet. Save a filtered view as a list from Relationships, or reset demo for sample lists.
             </div>
           )}
         </div>
         </div>
-      </div>
       </div>
     </div>
   );

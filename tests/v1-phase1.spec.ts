@@ -15,6 +15,18 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByRole("link", { name: "Pipeline" })).toHaveCount(0);
   });
 
+  test("Lists page is browse-only: title-only header, no create/filter strip (L2)", async ({ page }) => {
+    await page.goto("/pipeline");
+
+    await expect(page.getByTestId("page-header-title-lists")).toHaveText("Lists");
+    const header = page.getByTestId("page-list-header");
+    await expect(header).not.toContainText("Refine the CRM with natural-language filters");
+    await expect(page.getByRole("link", { name: /View workflows/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /LP Network/ })).toHaveCount(0);
+    await expect(page.getByTestId("lists-quick-filters")).toHaveCount(0);
+    await expect(page.getByPlaceholder("Name your list here")).toHaveCount(0);
+  });
+
   test("Workflow diagram shows trigger kind badge", async ({ page }) => {
     await page.goto("/workflows?playbook=pb-intro-tracker");
     await expect(page.getByTestId("workflow-process-flow")).toBeVisible();
