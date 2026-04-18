@@ -53,16 +53,13 @@ test.describe("Phase 0 stabilization checks", () => {
     await expect(chipBar.getByRole("button", { name: chipName })).toBeVisible();
   });
 
-  test("Workflows page header updates to lists naming and no subtitle", async ({ page }) => {
+  test("Workflows page header is title-only with no subtitle", async ({ page }) => {
     await page.goto("/workflows");
 
     await expect(page.getByTestId("page-header-title-workflows")).toHaveText("Workflows");
     await expect(page.getByTestId("page-list-header")).not.toContainText(
       "Workflows run on schedule, check evidence, and create drafts."
     );
-    const actionLink = page.getByTestId("page-header-action-link");
-    await expect(actionLink).toBeVisible();
-    await expect(actionLink).toHaveText("View lists →");
-    await expect(actionLink).toHaveAttribute("href", "/pipeline");
+    await expect(page.getByTestId("page-list-header")).not.toContainText("View lists");
   });
 });

@@ -15,7 +15,7 @@ import {
 import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
-import { applyFilters, formatFilterSummary } from "@/lib/relationshipFilters";
+import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { getPipelineMembers } from "@/lib/pipelines";
 import { useRequireSession } from "@/lib/auth";
 import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
@@ -46,6 +46,7 @@ function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
     type: "ny_roadshow",
     description: c.trigger,
     summary: c.action,
+    createdAt: c.createdAt,
     enabled: true,
   };
 }
@@ -187,29 +188,6 @@ function WorkflowsPageContent() {
     setHighlightVersion((v) => v + 1);
   }, []);
 
-  const getPlaybookTargetsSummary = useMemo(() => {
-    return (playbook: Playbook): string => {
-      const override = playbookOverrides[playbook.id];
-      const pipelineId = override?.pipelineId ?? playbook.pipelineId;
-      if (pipelineId) {
-        const pipeline = pipelines.find((p) => p.id === pipelineId);
-        if (!pipeline) return "List (not found)";
-        const count = getPipelineMembers(relationships, pipeline).length;
-        const summary = formatFilterSummary(pipeline.filterCriteria);
-        return summary
-          ? `List: ${pipeline.name} (${count}) — ${summary}`
-          : `List: ${pipeline.name} (${count})`;
-      }
-      const criteria = playbook.filterCriteria;
-      if (criteria && Object.keys(criteria).length > 0) {
-        const count = applyFilters(relationships, criteria).length;
-        const summary = formatFilterSummary(criteria);
-        return summary ? `${count} targets — ${summary}` : `${count} targets`;
-      }
-      return "Global — no CRM audience";
-    };
-  }, [playbookOverrides, pipelines, relationships]);
-
   const pipelineContext = useMemo(() => {
     const rowId = selectedPlaybook?.id ?? selectedCustomPlaybook?.id ?? null;
     if (!rowId) return null;
@@ -284,7 +262,7 @@ function WorkflowsPageContent() {
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col">
-      <PageListHeader label="Workflows" action={{ href: "/pipeline", label: "View lists →" }} />
+      <PageListHeader label="Workflows" />
 
       <div className="flex min-h-0 flex-1">
         {/* Column 1 — fund-scoped lists */}
@@ -350,26 +328,25 @@ function WorkflowsPageContent() {
               </div>
             ) : (
               <>
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 py-2">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      Workflows for list
+                <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-gray-200 bg-white px-4 py-3">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">User Custom</p>
+                    <p className="mt-0.5 text-xs leading-snug text-gray-600">
+                      Workflows linked to your selected list. Open one to edit, or create from a template or with Tomo.
                     </p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedPipeline.name}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setAttachModalOpen(true)}
-                    className="rounded-md border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-gray-900 hover:opacity-90"
+                    className="shrink-0 rounded-md border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-gray-900 hover:opacity-90"
                   >
-                    Attach workflow
+                    Create workflow
                   </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
                   {listWorkflowRows.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
-                      No workflows linked yet. Use Attach workflow to link an existing playbook or create a custom
-                      one.
+                      No workflows linked yet. Use Create workflow to link a template or build a custom one with Tomo.
                     </div>
                   ) : (
                     <ul className="space-y-2">
@@ -377,7 +354,6 @@ function WorkflowsPageContent() {
                         <li key={row.id}>
                           <WorkflowListRow
                             playbook={row.playbook}
-                            targetsSummary={getPlaybookTargetsSummary(row.playbook)}
                             enabled={effectiveEnabled(row.id, row.playbook.enabled)}
                             isSelected={selectedPlaybookId === row.id && selectedTomoDefaultId === null}
                             onSelect={() => handleSelectPlaybook(row.id)}
@@ -465,6 +441,57 @@ function WorkflowsPageFallback() {
   );
 }
 
+/** DD MMM YYYY (e.g. 08 Nov 2025) — date only, locale-friendly */
+function formatWorkflowCardDate(iso: string): string {
+  const d = new Date(iso);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatWorkflowCardSubtitle(playbook: Playbook): string {
+  const summary = (playbook.summary || playbook.description || "").trim();
+  const created = playbook.createdAt ? formatWorkflowCardDate(playbook.createdAt) : "—";
+  return `Created ${created}: ${summary}`;
+}
+
+function ActiveToggle({
+  enabled,
+  onToggle,
+  showLabel = true,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+  showLabel?: boolean;
+}) {
+  return (
+    <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-gray-100 px-2 py-2">
+      {showLabel ? (
+        <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Active</span>
+      ) : null}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={enabled ? "Active: on" : "Active: off"}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1 ${
+          enabled ? "bg-green-500" : "bg-gray-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+            enabled ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function TomoDefaultWorkflowPill({
   workflow,
   enabled,
@@ -480,48 +507,55 @@ function TomoDefaultWorkflowPill({
 }) {
   return (
     <div
-      className={`flex max-w-full items-center gap-2 rounded-lg border px-2 py-1.5 ${
+      className={`flex max-w-full items-center gap-1 rounded-lg border px-2 py-1.5 ${
         isSelected ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white"
       }`}
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
         <p className="truncate text-xs font-semibold text-gray-900">{workflow.name}</p>
       </button>
-      <label className="flex shrink-0 cursor-pointer items-center gap-1 text-[10px] text-gray-600">
-        <span className="sr-only">Active</span>
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => {
+      <div className="flex items-center border-l border-transparent pl-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={enabled ? `${workflow.name}: on` : `${workflow.name}: off`}
+          onClick={(e) => {
             e.stopPropagation();
             onToggleEnabled();
           }}
-          className="h-3.5 w-3.5 rounded border-gray-300"
-        />
-        {enabled ? "On" : "Off"}
-      </label>
+          className={`relative h-6 w-9 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] ${
+            enabled ? "bg-green-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? "translate-x-3" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
 
 function WorkflowListRow({
   playbook,
-  targetsSummary,
   enabled,
   isSelected,
   onSelect,
   onToggleEnabled,
 }: {
   playbook: Playbook;
-  targetsSummary: string;
   enabled: boolean;
   isSelected: boolean;
   onSelect: () => void;
   onToggleEnabled: () => void;
 }) {
+  const subtitle = formatWorkflowCardSubtitle(playbook);
   return (
     <div
-      className={`flex items-stretch gap-2 rounded-lg border transition ${
+      className={`flex items-stretch gap-0 rounded-lg border transition ${
         isSelected
           ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
           : "border-gray-200 bg-white hover:border-gray-300"
@@ -529,26 +563,11 @@ function WorkflowListRow({
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-3 py-3 text-left">
         <p className="text-sm font-semibold text-gray-900">{playbook.name}</p>
-        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-500 break-words" title={targetsSummary}>
-          {targetsSummary}
+        <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-gray-500 break-words" title={subtitle}>
+          {subtitle}
         </p>
       </button>
-      <div className="flex shrink-0 flex-col items-center justify-center border-l border-gray-100 px-2">
-        <label className="flex flex-col items-center gap-0.5 text-[10px] text-gray-600">
-          <span className="sr-only">Active</span>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => {
-              e.stopPropagation();
-              onToggleEnabled();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          Active
-        </label>
-      </div>
+      <ActiveToggle enabled={enabled} onToggle={onToggleEnabled} />
     </div>
   );
 }

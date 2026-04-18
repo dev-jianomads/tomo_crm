@@ -20,6 +20,8 @@ export type Playbook = {
   type: PlaybookType;
   description: string;
   summary: string;
+  /** Demo seed time for UI (user-defined workflow cards). */
+  createdAt?: string;
   enabled: boolean;
   targetCount?: number;
   /** @deprecated Use pipelineId. Kept for backward compatibility. */
@@ -37,6 +39,7 @@ export const suggestedPlaybooks: Playbook[] = [
     type: "intro_tracker",
     description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent.",
     summary: "Intro tracker: Detect intro → log source credit → draft reply 24h → escalate if silent. Draft only.",
+    createdAt: "2025-11-08T14:30:00.000Z",
     enabled: true,
     targetCount: 1,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.q1TargetList,
@@ -48,6 +51,7 @@ export const suggestedPlaybooks: Playbook[] = [
     type: "post_meeting",
     description: "Pull transcript, draft follow-up, require human approval before sending.",
     summary: "Post-meeting: Extract transcript → draft follow-up → human approval → send & monitor. Draft only.",
+    createdAt: "2025-10-22T09:15:00.000Z",
     enabled: true,
     targetCount: 1,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
@@ -59,6 +63,7 @@ export const suggestedPlaybooks: Playbook[] = [
     type: "update_followup",
     description: "After monthly update, segment LPs by engagement and auto-draft follow-ups.",
     summary: "Update follow-up: Segment by tier → track opens → auto-draft after 5d. Draft only.",
+    createdAt: "2025-12-01T16:45:00.000Z",
     enabled: true,
     targetCount: 24,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.q1TargetList,
@@ -70,6 +75,7 @@ export const suggestedPlaybooks: Playbook[] = [
     type: "no_response_stall",
     description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
     summary: "No response 5d: Flag blocked → suggest CRM updates → set reminder. Links to Today card.",
+    createdAt: "2025-09-14T11:00:00.000Z",
     enabled: true,
     targetCount: 1,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.familyOfficeOutreach,
@@ -81,6 +87,7 @@ export const suggestedPlaybooks: Playbook[] = [
     type: "ddq_response",
     description: "Parse incoming DDQ, match historical answers, draft responses with citations.",
     summary: "DDQ engine: Parse questionnaire → match answers → draft with citations → human review. Sandboxed.",
+    createdAt: "2025-08-30T08:20:00.000Z",
     enabled: false,
     targetCount: 1,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
@@ -93,6 +100,7 @@ export const suggestedPlaybooks: Playbook[] = [
       "One week before the NYC trip, draft an email to your list asking for meeting availability.",
     summary:
       "7 days before 6 June 2026 → draft email to your list requesting availability. Global workflow (no CRM audience).",
+    createdAt: "2026-01-10T10:00:00.000Z",
     enabled: true,
   },
 ];

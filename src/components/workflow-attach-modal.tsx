@@ -110,7 +110,7 @@ export function WorkflowAttachModal({
         <div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Attach workflow</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Create workflow</p>
               <h2 id="workflow-attach-title" className="text-lg font-semibold text-gray-900">
                 Link to this list
               </h2>
