@@ -3,7 +3,7 @@
 /**
  * Visual process flow for a workflow/playbook.
  * Renders from a WorkflowDefinition (parsed from markdown).
- * Pattern: [Trigger] → [Step 1] → [Step 2] → ... → [+]
+ * Pattern: [Step 1 trigger] → [Step 2] → [Step 3] → ... → [+]
  *
  * When highlightVersion bumps, only cards that actually changed
  * (or were newly added) get the pulse-glow animation.
@@ -18,9 +18,14 @@ const TRIGGER_KIND_LABEL: Record<WorkflowTriggerKind, string> = {
   SCHEDULED: "SCHEDULED",
 };
 
+/** Matches label row (subtle Step N line + mb-1) so arrows align with cards, not labels. */
+const CONNECTOR_TOP_PAD = "pt-[20px]";
+
 function Connector() {
   return (
-    <div className="mx-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center sm:mx-1 sm:w-10">
+    <div
+      className={`mx-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center self-start sm:mx-1 sm:w-10 ${CONNECTOR_TOP_PAD}`}
+    >
       <svg
         className="h-4 w-4 text-gray-300"
         viewBox="0 0 24 24"
@@ -106,14 +111,15 @@ export function WorkflowProcessFlow({
   const glowFor = (key: string) => (isGlowing(key) ? GLOW_CLASS : "");
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" data-testid="workflow-process-flow">
-      <p className="px-4 pt-3 text-[11px] font-medium uppercase tracking-wide text-gray-500">Process flow</p>
-      <div className="flex flex-1 items-center overflow-x-auto px-4 py-3">
-        <div className="flex items-stretch gap-0">
+    <div className="flex flex-col overflow-hidden" data-testid="workflow-process-flow">
+      <p className="px-4 pt-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Process flow</p>
+      <div className="flex min-h-0 items-start overflow-x-auto px-4 py-2">
+        <div className="flex items-start gap-0">
           {/* Trigger card */}
           <div className="flex shrink-0 flex-col items-center">
+            <span className="mb-1 w-full text-center text-[10px] font-medium text-gray-400">Step 1</span>
             <div
-              className={`flex w-[160px] flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-2.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
+              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 border-blue-200 bg-blue-50/50 px-3 py-1.5 shadow-sm sm:w-[190px] ${glowFor("trigger")}`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-blue-500">Trigger</span>
@@ -126,7 +132,7 @@ export function WorkflowProcessFlow({
                   {TRIGGER_KIND_LABEL[triggerKind]}
                 </span>
               </div>
-              <span className="mt-0.5 text-xs font-semibold text-gray-900 leading-tight line-clamp-3">
+              <span className="mt-0.5 text-xs font-semibold leading-snug text-gray-900 line-clamp-4">
                 {trigger}
               </span>
             </div>
@@ -136,20 +142,21 @@ export function WorkflowProcessFlow({
           {steps.map((step, i) => {
             const key = `step-${i}`;
             return (
-              <div key={`${step.name}-${i}`} className="flex items-center">
+              <div key={`${step.name}-${i}`} className="flex items-start">
                 <Connector />
                 <div className="flex flex-col items-center">
+                  <span className="mb-1 w-full min-w-[140px] text-center text-[10px] font-medium text-gray-400 sm:min-w-[170px]">
+                    Step {i + 2}
+                  </span>
                   <div
-                    className={`flex w-[140px] flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)}`}
+                    className={`flex w-[140px] min-h-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-1.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)}`}
                   >
-                    <span className="text-xs font-semibold text-gray-900 truncate">
-                      {step.name}
-                    </span>
-                    <span className="mt-0.5 text-[10px] text-gray-500 leading-tight line-clamp-3">
+                    <span className="text-xs font-semibold text-gray-900">{step.name}</span>
+                    <span className="mt-0.5 text-[10px] leading-snug text-gray-500 line-clamp-4">
                       {step.description}
                     </span>
                     {step.duration && (
-                      <span className="mt-1 inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                      <span className="mt-1 inline-flex items-center self-start rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
                         {step.duration}
                       </span>
                     )}
@@ -162,9 +169,12 @@ export function WorkflowProcessFlow({
 
           {/* Add step card */}
           <Connector />
-          <div className="flex w-[80px] shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-3 py-3">
-            <span className="text-xl font-light text-gray-400">+</span>
-            <span className="mt-0.5 text-[10px] text-gray-500">Add step</span>
+          <div className="flex w-[80px] shrink-0 flex-col items-center">
+            <span className="mb-1 invisible text-[10px]">.</span>
+            <div className="flex min-h-0 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-2 py-1.5">
+              <span className="text-lg font-light leading-none text-gray-400">+</span>
+              <span className="mt-0.5 text-[10px] text-gray-500">Add step</span>
+            </div>
           </div>
         </div>
       </div>

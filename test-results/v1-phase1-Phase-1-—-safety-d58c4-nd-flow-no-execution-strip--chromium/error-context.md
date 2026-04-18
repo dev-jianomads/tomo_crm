@@ -7,12 +7,12 @@
 # Test info
 
 - Name: v1-phase1.spec.ts >> Phase 1 — safety + demo-critical >> Today action drawer shows primary CTAs and amend flow (no execution strip)
-- Location: tests/v1-phase1.spec.ts:35:7
+- Location: tests/v1-phase1.spec.ts:68:7
 
 # Error details
 
 ```
-Error: browserType.launch: Executable doesn't exist at /var/folders/kr/5_d2qh7937d7dl4_t7nxnqq80000gn/T/cursor-sandbox-cache/dd1eb0dda5f9fdd3e8f323c267b4b7f7/playwright/chromium-1217/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+Error: browserType.launch: Executable doesn't exist at /var/folders/kr/5_d2qh7937d7dl4_t7nxnqq80000gn/T/cursor-sandbox-cache/dd1eb0dda5f9fdd3e8f323c267b4b7f7/playwright/chromium-1217/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
 ╔════════════════════════════════════════════════════════════╗
 ║ Looks like Playwright was just installed or updated.       ║
 ║ Please run the following command to download new browsers: ║
