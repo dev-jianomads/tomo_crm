@@ -27,6 +27,21 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByPlaceholder("Name your list here")).toHaveCount(0);
   });
 
+  test("Lists drawer: funnel, companies by stage, workflows, CTAs; no tile Use in workflow (L3)", async ({
+    page,
+  }) => {
+    await page.goto("/pipeline");
+    await page.getByRole("button", { name: /Q1 Target List/i }).first().click();
+
+    await expect(page.getByText("Funnel by stage")).toBeVisible();
+    await expect(page.getByText("Companies by stage")).toBeVisible();
+    await expect(page.getByTestId("list-drawer-workflows")).toBeVisible();
+    await expect(page.getByTestId("list-drawer-actions")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Amend list" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create workflow" })).toBeVisible();
+    await expect(page.getByText("Use in workflow")).toHaveCount(0);
+  });
+
   test("Workflow diagram shows trigger kind badge", async ({ page }) => {
     await page.goto("/workflows?playbook=pb-intro-tracker");
     await expect(page.getByTestId("workflow-process-flow")).toBeVisible();

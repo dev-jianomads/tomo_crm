@@ -32,6 +32,12 @@ export type ContextDrawerProps = {
   sectionBetween2AndActivity?: ReactNode;
   /** Section 3: Activity log entries */
   section3Entries: ActivityLogEntry[];
+  /** When set, replaces the default activity log (e.g. Lists drawer CTAs). */
+  section3Custom?: ReactNode;
+  /**
+   * Lists-style layout: Section 1 scrolls and grows; Section 2 is a compact middle band (no tall Tomo chat flex).
+   */
+  listContextDrawerLayout?: boolean;
 };
 
 /**
@@ -52,6 +58,8 @@ export function ContextDrawer({
   hideSection2 = false,
   sectionBetween2AndActivity,
   section3Entries,
+  section3Custom,
+  listContextDrawerLayout = false,
 }: ContextDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -97,15 +105,25 @@ export function ContextDrawer({
 
         {/* Section 1: Content Details — compact to maximize Tomo chat space, or flex-1 when Section 2 hidden */}
         {section1Content != null ? (
-          <div className={`min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`}>
+          <div
+            className={
+              listContextDrawerLayout
+                ? "min-h-0 min-w-0 flex-1 overflow-y-auto"
+                : `min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`
+            }
+          >
             <div className="border-b border-gray-100 px-4 py-3">{section1Content}</div>
           </div>
         ) : null}
 
-        {/* Section 2: Tomo Chat */}
+        {/* Section 2: Tomo Chat (or Lists workflows, etc.) */}
         {!hideSection2 && (
           <div
-            className={`flex flex-1 flex-col overflow-hidden border-t border-gray-100 p-4 ${section2MinHeightClassName}`}
+            className={
+              listContextDrawerLayout
+                ? `flex max-h-[min(280px,42vh)] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4 min-h-0 ${section2MinHeightClassName}`
+                : `flex flex-1 flex-col overflow-hidden border-t border-gray-100 p-4 ${section2MinHeightClassName}`
+            }
           >
             {section2Content ?? (
               <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
@@ -117,8 +135,12 @@ export function ContextDrawer({
 
         {sectionBetween2AndActivity != null ? sectionBetween2AndActivity : null}
 
-        {/* Activity log */}
-        <DrawerSection3ActivityLog entries={section3Entries} />
+        {/* Activity log or custom footer */}
+        {section3Custom != null ? (
+          <div className="shrink-0 border-t border-gray-200 bg-gray-50/80">{section3Custom}</div>
+        ) : (
+          <DrawerSection3ActivityLog entries={section3Entries} />
+        )}
       </aside>
     </>
   );

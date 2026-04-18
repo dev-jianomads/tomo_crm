@@ -67,14 +67,14 @@ Goal: complete core usability, compliance, and key architecture changes needed f
    - Keep workflow chat panel scoped to workflow-modification only.
 
 3. **Lists + Activity + Settings V1 baseline**
-   - Lists page two-panel layout and inline workflow linking.
+   - **Lists (L3):** Single main column — **Your lists** only; no second shell column. Per-list **Use in workflow** on the list tile is retired in favor of drawer-based actions (see **Appendix — Lists L3 (page + action drawer)**). Until that ships, existing tile CTAs may remain in code; target UX is drawer-first.
    - Activity page chronological feed + event coverage + filtering + CSV export.
    - Settings five-section IA with connection health, tone calibration rerun, threshold controls, notifications, team/access.
    - Slack webhook notifications + test/send flows.
 
 4. **Verification gates for Phase 2**
    - End-to-end activity attribution (`GP` vs `TOMO`) consistency checks across Today/Relationships/Activity.
-   - Integration tests for link workflow inline state and list context panel.
+   - Integration tests for list-selected drawer context and workflow navigation from drawer (**L3**/**L4**).
    - Notification test matrix (Slack/email schedule edge cases + timezone handling).
 
 ## Phase 3 - V1 Completion (Not Initial Wave)
@@ -140,8 +140,8 @@ Legend:
 | R9 | Relationships | **CRM validation** — shared rules for **Tomo** (`update_crm`) and **manual drawer Section 2** (whitelist fields, strict enums, format checks, errors; server validates tool payloads) | M | Medium | Duplicated client/server rules + UX for failures | V1 | Later V1 (production) |
 | L1 | Lists | Rename `Pipeline` -> `Lists` everywhere | L | Medium | Cross-app naming misses | V1 | Initial V1 |
 | L2 | Lists | Remove chat/filter panel, subtitle, header links | M | Low | Page simplification refactor | V1 | Initial V1 |
-| L3 | Lists | Two-panel layout + LP names grouped by stage | L | Medium | Composite fetch/state complexity | V1 | Initial V1 |
-| L4 | Lists | Inline workflow linking on tile, no navigation | M | Medium | Modal-to-tile sync errors | V1 | Initial V1 |
+| L3 | Lists | Single-column **Your lists**; **action drawer** for selected list — **S1:** retain Funnel by stage graphic; **default** show **company** chips (CRM firm/company field) per stage; **S2:** active workflows (demo may show one); row navigates to Workflows page; **S3:** CTAs **Amend list**, **Create workflow**; **no** Tomo chat / orchestration strip in drawer | L | Medium | Drawer sectioning + default chip density vs funnel | V1 | Initial V1 |
+| L4 | Lists | Workflow entry moves from list tile to drawer (**S2**); tile-level **Use in workflow** removed when drawer ships (see appendix) | M | Medium | Navigation + list context preservation | V1 | Initial V1 |
 | L5 | LP Network | Dedicated locked nav item + evidence text | M | Low | Nav/routing/copy alignment | V1 | Initial V1 |
 | W1 | Workflows | Trigger type labels in process diagrams | M | Low | Visual metadata plumbing | V1 | Initial V1 |
 | W2 | Workflows | Clickable flow boxes -> inline edit + draft preview | L | High | Graph-edit interaction complexity | V1 | Initial V1 |
@@ -160,6 +160,32 @@ Legend:
 | S1 | Settings | Five-section IA and settings structure | L | Medium | Consolidation regressions | V1 | Initial V1 |
 | S2 (A3) | Settings | Slack webhook + toggles + test + email timing + WA stub | L | Medium | Notification reliability | V1 | Initial V1 |
 | C1 (A4) | Collateral | First 14 Days doc update (`pipeline` -> `list`) | S | Low | Content alignment only | V1 | Later V1 |
+
+---
+
+## Appendix — Lists L3 (page + action drawer)
+
+**Goal:** One-column Lists surface + a **context drawer** driven by the user’s selected list row (not a permanent two-panel shell).
+
+### Main column
+- **Keep:** **Your lists** (saved lists for the active fund / total).
+- **Remove (target):** **Use in workflow** button on each list tile — workflow entry moves into the drawer (**L4**). Implementation can lag the spec; do not block doc on deleting the button early if product prefers to ship drawer first.
+
+### Action drawer (selected list)
+Drawer content reflects the **selected list** in the one column.
+
+| Section | Content |
+|--------|---------|
+| **1** | Retain **Funnel by stage** graphic. **By default**, show **company chips** for relationships in each stage (map to CRM **company / firm** field used in mock data). |
+| **2** | **Active workflows** associated with this list (demo may only expose one mocked workflow). Each row is clickable and **navigates** to the Workflows page (appropriate workflow selected/opened as implementation allows). |
+| **3** | Primary CTAs: **Amend list**, **Create workflow**. |
+
+### Out of scope in this drawer
+- **No** Tomo chat UI and **no** orchestration / single-line Tomo strip in the Lists drawer for L3.
+
+### Verification notes
+- Drawer opens from list selection; closing or changing selection updates drawer context.
+- No Tomo panel in Lists drawer (contrast with Relationships LP drawer or Workflow builder chat).
 
 ---
 
