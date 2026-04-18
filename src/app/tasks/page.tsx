@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function TasksRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/activity");
+    router.replace("/home");
   }, [router]);
   return null;
 }

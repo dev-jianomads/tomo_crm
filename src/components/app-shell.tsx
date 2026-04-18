@@ -43,8 +43,6 @@ import {
   Cog6ToothIcon,
   HomeIcon,
   UserGroupIcon,
-  UserPlusIcon,
-  ClipboardDocumentListIcon,
   ArrowPathRoundedSquareIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
@@ -56,7 +54,7 @@ import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
-// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, LP NETWORK, ACTIVITY, SETTINGS
+// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, SETTINGS (Activity + LP Network routes hidden from nav; sections still supported)
 type Section =
   | "home"
   | "relationships"
@@ -97,8 +95,6 @@ const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Sect
 ];
 
 const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
-  { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" },
-  { href: "/lp-network", label: "LP Network", icon: UserPlusIcon, id: "lp_network" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
 
@@ -161,14 +157,12 @@ function NavRail({ active }: { active: Section }) {
 
 /**
  * Mobile bottom navigation bar
- * Uses pathname prefix matching (like the desktop rail) so e.g. /lp-network/mandate highlights LP Net.
+ * Uses pathname prefix matching (like the desktop rail).
  */
 function BottomNav({ active }: { active: Section }) {
   const pathname = usePathname();
   const items = [
     ...primaryNav,
-    { href: "/activity", label: "Activity", icon: ClipboardDocumentListIcon, id: "activity" as Section },
-    { href: "/lp-network", label: "LP Net", icon: UserPlusIcon, id: "lp_network" as Section },
     { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section },
   ];
   return (

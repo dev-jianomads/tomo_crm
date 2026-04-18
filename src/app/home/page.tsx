@@ -707,7 +707,7 @@ export default function HomePage() {
           ) : selection?.type === "brief" ? (
             <BriefDetail
               brief={selectedBrief}
-              onCreateAction={() => router.push("/activity")}
+              onCreateAction={() => addToast("Follow-up captured (demo).")}
               detailsOnly
             />
           ) : null
