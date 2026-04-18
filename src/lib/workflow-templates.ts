@@ -52,7 +52,7 @@ const UPDATE_FOLLOWUP: WorkflowDefinition = {
   steps: [
     { name: "Segment & Track", type: "action", description: "Segment LPs by tier, monitor opens/clicks from Marcus Chen and others" },
     { name: "Wait", type: "wait", duration: "5 business days", description: "Allow time for organic engagement" },
-    { name: "Auto-Draft Follow-Up", type: "action", description: "Draft personalized follow-up based on pipeline stage and engagement", condition: "Low engagement detected" },
+    { name: "Auto-Draft Follow-Up", type: "action", description: "Draft personalized follow-up based on funnel stage and engagement", condition: "Low engagement detected" },
   ],
 };
 
@@ -88,7 +88,7 @@ const NY_ROADSHOW: WorkflowDefinition = {
     {
       name: "Request availability",
       type: "action",
-      description: "Send draft email to pipeline requesting availability",
+      description: "Send draft email to your list requesting availability",
     },
   ],
 };
@@ -237,7 +237,7 @@ const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
   ny_roadshow:
     `NYC roadshow: trip date 6 June 2026.\n` +
     `Schedule trigger: 7 days prior (30 May 2026). ` +
-    `Next run will draft a single outbound email asking your pipeline for availability — no CRM segment; you choose recipients when sending.`,
+    `Next run will draft a single outbound email asking your list for availability — no CRM segment; you choose recipients when sending.`,
 };
 
 // ── Welcome summary for initial chat context ────────────────────────────────

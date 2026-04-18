@@ -90,14 +90,14 @@ export const suggestedPlaybooks: Playbook[] = [
     name: "New York Roadshow",
     type: "ny_roadshow",
     description:
-      "One week before the NYC trip, draft an email to your pipeline asking for meeting availability.",
+      "One week before the NYC trip, draft an email to your list asking for meeting availability.",
     summary:
-      "7 days before 6 June 2026 → draft email to pipeline requesting availability. Global workflow (no CRM audience).",
+      "7 days before 6 June 2026 → draft email to your list requesting availability. Global workflow (no CRM audience).",
     enabled: true,
   },
 ];
 
-/** Tomo Default workflows — simple trigger → action, no pipeline targeting */
+/** Tomo Default workflows — simple trigger → action, no list targeting */
 export type TomoDefaultWorkflow = {
   id: string;
   name: string;

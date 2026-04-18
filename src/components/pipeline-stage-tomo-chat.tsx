@@ -17,7 +17,7 @@ type PipelineStageTomoChatProps = {
 };
 
 /**
- * Tomo chat for a pipeline stage. Wraps DrawerSection2TomoChat with pipeline_stage selection
+ * Tomo chat for a list funnel stage. Wraps DrawerSection2TomoChat with pipeline_stage selection
  * so the orchestrator receives relationshipIds for the selected stage.
  */
 export function PipelineStageTomoChat({

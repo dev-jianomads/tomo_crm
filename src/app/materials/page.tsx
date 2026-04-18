@@ -40,7 +40,7 @@ export default function MaterialsPage() {
     <div className="flex h-full flex-col">
       <PageListHeader
         label="Materials"
-        description="Review investor-facing materials with engagement level, momentum impact, and follow-up signals so prep stays tied to pipeline motion."
+        description="Review investor-facing materials with engagement level, momentum impact, and follow-up signals so prep stays tied to list and funnel motion."
       />
 
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">

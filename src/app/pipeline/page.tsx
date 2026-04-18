@@ -48,7 +48,7 @@ export default function PipelinePage() {
   const [listName, setListName] = useState("");
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<Stage | null>(null);
-  /** Pipeline id when "Use in workflow" dialog is open */
+  /** Saved list id when "Use in workflow" dialog is open */
   const [useWorkflowPipelineId, setUseWorkflowPipelineId] = useState<string | null>(null);
   const [useWorkflowPlaybookId, setUseWorkflowPlaybookId] = useState<string>(
     () => suggestedPlaybooks[0]?.id ?? ""
@@ -64,7 +64,7 @@ export default function PipelinePage() {
   const handleCreatePipeline = () => {
     const trimmed = listName.trim();
     if (!trimmed) {
-      toast.error("Enter a pipeline name");
+      toast.error("Enter a list name");
       return;
     }
     addPipeline({
@@ -73,7 +73,7 @@ export default function PipelinePage() {
       filterCriteria: { ...filterCriteria },
     });
     setListName("");
-    toast.success(`Pipeline "${trimmed}" created`);
+    toast.success(`List "${trimmed}" created`);
   };
 
   const handlePipelineClick = (id: string) => {
@@ -91,8 +91,8 @@ export default function PipelinePage() {
   const listContent = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <PageListHeader
-        label="Pipeline"
-        description="Refine the CRM with natural-language filters, save the result as a named pipeline, and open it for funnel stages or workflow audiences."
+        label="Lists"
+        description="Refine the CRM with natural-language filters, save the result as a named list, and open it for funnel stages or workflow audiences."
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link
@@ -119,11 +119,11 @@ export default function PipelinePage() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Create pipeline */}
+        {/* Create list */}
         <div className="shrink-0 space-y-2 border-b border-gray-200 bg-gray-50/50 p-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900">Create pipeline</p>
+            <p className="text-sm font-semibold text-gray-900">Create list</p>
             <span className="text-xs text-gray-500">
               {Object.keys(filterCriteria).length > 0
                 ? `Showing ${filteredCount} of ${relationships.length} relationship${relationships.length !== 1 ? "s" : ""}`
@@ -141,7 +141,7 @@ export default function PipelinePage() {
         </div>
         <input
           className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-          placeholder="Name your pipeline here"
+          placeholder="Name your list here"
           value={listName}
           onChange={(e) => setListName(e.target.value)}
         />
@@ -158,11 +158,11 @@ export default function PipelinePage() {
         </button>
         </div>
 
-        {/* Pipeline list */}
+        {/* Saved lists */}
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="border-b border-gray-100 px-4 py-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold accent-title">Pipelines</p>
+            <p className="text-sm font-semibold accent-title">Your lists</p>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-gray-500">
                 {pipelines.length} {activeFundId === "all" ? "total" : "in fund"}
@@ -172,10 +172,10 @@ export default function PipelinePage() {
                 onClick={() => {
                   resetToMock();
                   setActivePipelineId(null);
-                  toast.success("Reset to 3 demo pipelines");
+                  toast.success("Reset to 3 demo lists");
                 }}
                 className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                title="Reset to 3 demo pipelines"
+                title="Reset to 3 demo lists"
                 aria-label="Reset to demo"
               >
                 <ArrowPathIcon className="h-4 w-4" />
@@ -230,7 +230,7 @@ export default function PipelinePage() {
             })
           ) : (
             <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
-              No pipelines yet. Filter the CRM above and create one.
+              No lists yet. Filter the CRM above and create one.
             </div>
           )}
         </div>
@@ -285,8 +285,8 @@ export default function PipelinePage() {
         onClose={handleDrawerClose}
         title={
           selectedFunnelStage
-            ? `${activePipeline?.name ?? "Pipeline"} — ${selectedFunnelStage}`
-            : (activePipeline?.name ?? "Pipeline")
+            ? `${activePipeline?.name ?? "List"} — ${selectedFunnelStage}`
+            : (activePipeline?.name ?? "List")
         }
         section1Content={
           activePipeline ? (
@@ -305,7 +305,7 @@ export default function PipelinePage() {
               />
             )
           ) : (
-            <p className="text-sm text-gray-500">No pipeline selected</p>
+            <p className="text-sm text-gray-500">No list selected</p>
           )
         }
         section2Content={
@@ -410,7 +410,7 @@ function UseInWorkflowDialog({
             <div className="min-w-0">
               <p className="text-xs uppercase tracking-wide text-gray-500">Use in workflow</p>
               <h2 id="use-in-workflow-title" className="text-lg font-semibold accent-title">
-                Link pipeline to a workflow
+                Link list to a workflow
               </h2>
               <p className="mt-1 text-sm text-gray-600">
                 <span className="font-medium text-gray-900">{pipeline.name}</span>

@@ -43,7 +43,7 @@ function ChatBubble({ message }: { message: UIMessage }) {
 }
 
 /**
- * Tomo chat for pipeline “Use in workflow” → Custom. Surface workflow_creator + create_user_workflow (typed action).
+ * Tomo chat for Lists “Use in workflow” → Custom. Surface workflow_creator + create_user_workflow (typed action).
  */
 export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -130,14 +130,14 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
     <div className="flex min-h-[220px] max-h-[40vh] flex-col rounded-lg border border-gray-200 bg-white">
       <div className="shrink-0 border-b border-gray-100 px-3 py-2">
         <p className="text-xs font-medium text-gray-900">TOMO — create workflow</p>
-        <p className="text-[11px] text-gray-500">Share a name, trigger, and action for this pipeline.</p>
+        <p className="text-[11px] text-gray-500">Share a name, trigger, and action for this list.</p>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
         <div className="flex justify-start">
           <div className="max-w-[90%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
             <p className="text-sm text-gray-900">
               I’ll ask for a short <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong>. When
-              we’re aligned, I’ll finalize the workflow for pipeline &quot;{pipeline.name}&quot;.
+              we’re aligned, I’ll finalize the workflow for list &quot;{pipeline.name}&quot;.
             </p>
           </div>
         </div>

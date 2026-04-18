@@ -26,7 +26,7 @@ export type ContextDrawerProps = {
   section2Content?: ReactNode;
   /** Min-height class for the main section (default `min-h-[280px]` for chat); use `min-h-0` with scrollable CRM. */
   section2MinHeightClassName?: string;
-  /** When true, hide Section 2 entirely (e.g. pipeline funnel before Stage 5) */
+  /** When true, hide Section 2 entirely (e.g. list funnel before a stage is selected) */
   hideSection2?: boolean;
   /** Optional strip between Section 2 and the activity log (e.g. single-line Tomo input). */
   sectionBetween2AndActivity?: ReactNode;

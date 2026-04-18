@@ -239,7 +239,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "materials") return [...base, "Draft follow-up", "Summarize this brief", "Create action"];
     if (section === "activity") return [...base, "Summarize activity", "Filter by fund", "Export this log"];
     if (section === "workflows") return [...base, "Edit workflow rules", "Add target filters", "Test run"];
-    if (section === "pipeline") return [...base, "Propose a target list", "Add a filter", "Who qualifies?"];
+    if (section === "pipeline") return [...base, "Propose a saved list", "Add a filter", "Who qualifies?"];
     if (section === "lp_network") return [...base, "Who fits our fundraise?", "Summarize intro status", "Explain double opt-in"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
@@ -408,7 +408,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button — hidden where Tomo is inline (Today, Workflows) or in drawer (Relationships, Pipeline). LP Network keeps the FAB (Phase 5). */}
+      {/* Floating action button — hidden where Tomo is inline (Today, Workflows) or in drawer (Relationships, Lists). LP Network keeps the FAB (Phase 5). */}
       {section !== "home" &&
         section !== "workflows" &&
         section !== "relationships" &&

@@ -27,7 +27,7 @@ export function WorkflowOutboundSafety({
   audienceLabel = "list",
 }: {
   relationshipCount: number;
-  /** "list" or "pipeline" — copy aligns with Lists rename */
+  /** Audience label for outbound safety copy */
   audienceLabel?: string;
 }) {
   const { unique, removed } = mockDedupedCount(relationshipCount);

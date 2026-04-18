@@ -128,7 +128,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       const pc = context.pipelineContext;
       lines.push(
         ``,
-        `This workflow targets pipeline "${pc.pipelineName}" (${pc.relationshipCount} relationships).`,
+        `This workflow targets list "${pc.pipelineName}" (${pc.relationshipCount} relationships).`,
         `Relationship IDs: ${pc.relationshipIds.slice(0, 20).join(", ")}${pc.relationshipIds.length > 20 ? ` ... and ${pc.relationshipIds.length - 20} more` : ""}`,
       );
     }
@@ -167,7 +167,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
   } else if (surface === "workflow_creator") {
     lines.push(
       ``,
-      `You are in **workflow creator** mode. The user is defining a new user-defined workflow from the pipeline dialog.`,
+      `You are in **workflow creator** mode. The user is defining a new user-defined workflow from the Lists page dialog.`,
       ``,
       `You have exactly one tool: **create_user_workflow**. Call it only when you have **name**, **trigger**, and a complete **action** object.`,
       ``,
@@ -181,7 +181,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ``,
       `Do not call the tool until every required field for the chosen kind is known. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
       ``,
-      `The pre-selected pipeline (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different pipeline unless they explicitly want to cancel.`,
+      `The pre-selected list (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different list unless they explicitly want to cancel.`,
       `After a successful tool call, confirm briefly in plain language; do not claim server-side database persistence (the client applies the result).`,
       ``,
       `Keep replies concise.`,
@@ -190,11 +190,11 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     if (wc) {
       lines.push(
         ``,
-        `Pre-selected pipeline: "${wc.pipelineName}" (id: ${wc.pipelineId}).`,
+        `Pre-selected list: "${wc.pipelineName}" (id: ${wc.pipelineId}).`,
         wc.filterSummary ? `Filter summary: ${wc.filterSummary}` : `No filter summary provided.`,
       );
     } else {
-      lines.push(``, `workflowCreator context was not sent — ask the user to reopen the dialog from a pipeline if needed.`);
+      lines.push(``, `workflowCreator context was not sent — ask the user to reopen the dialog from Lists if needed.`);
     }
     // Do not append shared context below (page, todayContext, workflowContext, etc.) — it would
     // contradict the narrow creator task if the client sends a bloated context payload.
@@ -259,7 +259,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
 
     lines.push(
       ``,
-      `SCOPE: You only have the Today snapshot above (attention items, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Pipeline for broader lookup, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
+      `SCOPE: You only have the Today snapshot above (attention items, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Lists for broader lookup, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
     );
   }
 
@@ -277,7 +277,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       };
       lines.push(
         ``,
-        `Selected pipeline stage: ${ps.pipelineId} / ${ps.stage}`,
+        `Selected list funnel stage: ${ps.pipelineId} / ${ps.stage}`,
         `Relationship IDs in this stage (${ps.relationshipIds.length}): ${ps.relationshipIds.join(", ")}`,
         `When updating CRM: use entityId for single updates, or pass relationshipIds for bulk updates.`,
       );
@@ -367,7 +367,7 @@ export async function POST(req: Request) {
     const pipelineIdForCreator = context.workflowCreator?.pipelineId;
     tools.create_user_workflow = tool({
       description:
-        "Finalize a new user-defined workflow. Call when name, trigger, and action (typed object: send_email | schedule_meeting | schedule_call | other) are complete. The client persists and links the pre-selected pipeline.",
+        "Finalize a new user-defined workflow. Call when name, trigger, and action (typed object: send_email | schedule_meeting | schedule_call | other) are complete. The client persists and links the pre-selected list.",
       inputSchema: createUserWorkflowInputSchema,
       execute: async ({ name, trigger, action }) => {
         const nameT = name.trim();
