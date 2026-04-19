@@ -45,6 +45,7 @@ import {
   UserGroupIcon,
   ArrowPathRoundedSquareIcon,
   FunnelIcon,
+  PresentationChartLineIcon,
 } from "@heroicons/react/24/outline";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -54,12 +55,13 @@ import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
 
-// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, SETTINGS (Activity + LP Network routes hidden from nav; sections still supported)
+// IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, INSIGHTS, SETTINGS (Activity + LP Network routes hidden from nav; sections still supported)
 type Section =
   | "home"
   | "relationships"
   | "pipeline"
   | "workflows"
+  | "insights"
   | "lp_network"
   | "activity"
   | "materials"
@@ -95,6 +97,7 @@ const primaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Sect
 ];
 
 const secondaryNav: { href: string; label: string; icon: typeof HomeIcon; id: Section }[] = [
+  { href: "/insights", label: "Insights", icon: PresentationChartLineIcon, id: "insights" },
   { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" },
 ];
 
@@ -161,10 +164,7 @@ function NavRail({ active }: { active: Section }) {
  */
 function BottomNav({ active }: { active: Section }) {
   const pathname = usePathname();
-  const items = [
-    ...primaryNav,
-    { href: "/settings", label: "Settings", icon: Cog6ToothIcon, id: "settings" as Section },
-  ];
+  const items = [...primaryNav, ...secondaryNav];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-t border-gray-200 bg-white px-2">
       {items.map((item) => {
@@ -236,6 +236,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     if (section === "pipeline") return [...base, "Propose a saved list", "Add a filter", "Who qualifies?"];
     if (section === "lp_network") return [...base, "Who fits our fundraise?", "Summarize intro status", "Explain double opt-in"];
     if (section === "search") return [...base, "Show top matches", "Filter to fund", "Draft outreach"];
+    if (section === "insights") return [...base, "Explain compliance trend", "What counts as Fat Middle?", "How is velocity defined?"];
     if (section === "home") return [...base, "What's urgent today?", "Prep my next meeting"];
     return base;
   }, [section]);
