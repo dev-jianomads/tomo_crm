@@ -5,12 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
-import {
-  mergeStepsPreservingDraftTemplates,
-  workflowToMarkdown,
-  PLAYBOOK_SUGGESTIONS,
-  type WorkflowDefinition,
-} from "@/lib/workflow-templates";
+import { mergeStepsPreservingDraftTemplates, workflowToMarkdown, type WorkflowDefinition } from "@/lib/workflow-templates";
 import type { PlaybookType } from "@/lib/mockPlaybooks";
 
 type PipelineCtx = {
@@ -26,7 +21,6 @@ type WorkflowTomoStripProps = {
   playbookType?: PlaybookType;
   pipelineContext: PipelineCtx;
   onWorkflowUpdate: (def: WorkflowDefinition) => void;
-  suggestions?: string[];
 };
 
 /**
@@ -38,11 +32,9 @@ export function WorkflowTomoStrip({
   playbookType,
   pipelineContext,
   onWorkflowUpdate,
-  suggestions: externalSuggestions,
 }: WorkflowTomoStripProps) {
   const currentMarkdown = workflowToMarkdown(workflow);
   const [input, setInput] = useState("");
-  const [usedChips, setUsedChips] = useState<Set<string>>(new Set());
 
   const transport = useMemo(
     () =>
@@ -84,18 +76,10 @@ export function WorkflowTomoStrip({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const allSuggestions = externalSuggestions ?? (playbookType ? PLAYBOOK_SUGGESTIONS[playbookType] : []);
-  const visibleSuggestions = useMemo(
-    () => allSuggestions.filter((s) => !usedChips.has(s)),
-    [allSuggestions, usedChips]
-  );
 
   const handleSend = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
-    if (allSuggestions.includes(trimmed)) {
-      setUsedChips((prev) => new Set([...prev, trimmed]));
-    }
     sendMessage(
       { text: trimmed },
       {
@@ -116,21 +100,6 @@ export function WorkflowTomoStrip({
 
   return (
     <div className="shrink-0 border-t border-gray-200 bg-white" data-testid="workflow-tomo-strip">
-      {visibleSuggestions.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-4 py-2">
-          {visibleSuggestions.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              onClick={() => handleSend(chip)}
-              disabled={isStreaming}
-              className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] text-gray-700 transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-      ) : null}
       <div className="flex items-center gap-2 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">TOMO AI</p>
@@ -138,7 +107,7 @@ export function WorkflowTomoStrip({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Ask Tomo to update ${playbookName}…`}
+              placeholder="Ask Tomo to amend this step"
               disabled={isStreaming}
               className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
               onKeyDown={(e) => {

@@ -123,7 +123,7 @@ export function WorkflowStepConfigPanel({
     });
 
     onSave({ ...workflow, steps: nextSteps });
-    toast.success("Step saved as default for this workflow");
+    toast.success("Saved");
   };
 
   return (
@@ -292,7 +292,7 @@ export function WorkflowStepConfigPanel({
           onClick={handleSave}
           className="rounded-md border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-gray-900 hover:opacity-90"
         >
-          Save as default
+          Save
         </button>
       </div>
     </div>

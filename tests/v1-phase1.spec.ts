@@ -81,7 +81,7 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await page.getByTestId("workflow-flow-trigger").click();
     await expect(page.getByTestId("workflow-step-config-panel")).toBeVisible();
     await page.getByTestId("workflow-step-config-panel").locator("textarea").first().fill(marker);
-    await page.getByRole("button", { name: "Save as default" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByTestId("workflow-flow-trigger")).toContainText(marker);
 
     await page.reload();

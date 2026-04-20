@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -21,23 +22,10 @@ import { useRequireSession } from "@/lib/auth";
 import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
-import {
-  DEFAULT_TEMPLATES,
-  TOMO_DEFAULT_TEMPLATES,
-  PLAYBOOK_SUGGESTIONS,
-  TOMO_DEFAULT_SUGGESTIONS,
-  type WorkflowDefinition,
-} from "@/lib/workflow-templates";
+import { DEFAULT_TEMPLATES, TOMO_DEFAULT_TEMPLATES, type WorkflowDefinition } from "@/lib/workflow-templates";
 import type { PlaybookType } from "@/lib/mockPlaybooks";
 
 type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
-
-const CUSTOM_WORKFLOW_CHAT_CHIPS = [
-  "Make the trigger more specific",
-  "Clarify the action in one sentence",
-  "Add a wait step after the action",
-  "Rename the workflow title",
-];
 
 function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
   return {
@@ -191,7 +179,10 @@ function WorkflowsPageContent() {
   }, []);
 
   const handleResetWorkflow = useCallback(() => {
-    if (!workflowRowId) return;
+    if (!workflowRowId) {
+      toast.error("Nothing to reset");
+      return;
+    }
     setWorkflowDefOverrides((prev) => {
       const next = { ...prev };
       delete next[workflowRowId];
@@ -204,6 +195,8 @@ function WorkflowsPageContent() {
     } else if (selectedTomoDefaultId && TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]) {
       setWorkflow(TOMO_DEFAULT_TEMPLATES[selectedTomoDefaultId]);
     }
+    setHighlightVersion((v) => v + 1);
+    toast.success("Workflow reset to default");
   }, [
     workflowRowId,
     setWorkflowDefOverrides,
@@ -291,17 +284,6 @@ function WorkflowsPageContent() {
     () => (selectedPipelineId ? pipelines.find((p) => p.id === selectedPipelineId) ?? null : null),
     [pipelines, selectedPipelineId]
   );
-
-  const tomoDefaultSuggestions = selectedTomoDefaultId
-    ? TOMO_DEFAULT_SUGGESTIONS[selectedTomoDefaultId]
-    : undefined;
-  const workflowChatSuggestions = selectedCustomPlaybook
-    ? CUSTOM_WORKFLOW_CHAT_CHIPS
-    : selectedTomoDefaultId
-      ? tomoDefaultSuggestions
-      : selectedPlaybook
-        ? PLAYBOOK_SUGGESTIONS[selectedPlaybook.type]
-        : undefined;
 
   const drawerOpen = hasDrawerSelection && Boolean(workflow);
 
@@ -441,7 +423,6 @@ function WorkflowsPageContent() {
           playbookType={selectedPlaybook?.type}
           pipelineContext={pipelineContext}
           onWorkflowUpdate={handleWorkflowUpdate}
-          suggestions={workflowChatSuggestions}
           headerNote={
             selectedTomoDefault ? (
               <p className="text-xs text-gray-500">Global — no CRM audience</p>

@@ -43,7 +43,6 @@ type WorkflowDetailDrawerProps = {
   playbookType?: PlaybookType;
   pipelineContext: PipelineCtx;
   onWorkflowUpdate: (def: WorkflowDefinition) => void;
-  suggestions?: string[];
   /** Optional extra node under header (e.g. Tomo Default note) */
   headerNote?: ReactNode;
   /** First LP from the linked list (or a demo relationship) for draft previews */
@@ -72,7 +71,6 @@ export function WorkflowDetailDrawer({
   playbookType,
   pipelineContext,
   onWorkflowUpdate,
-  suggestions,
   headerNote,
   previewLp = null,
   workflowRowId,
@@ -121,7 +119,7 @@ export function WorkflowDetailDrawer({
               data-testid="workflow-drawer-reset"
               onClick={onReset}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-              title="Reset to default"
+              title="Restore this workflow to its default template (clears saved edits for this row)"
             >
               <ArrowPathIcon className="h-3.5 w-3.5" />
               Reset
@@ -196,7 +194,6 @@ export function WorkflowDetailDrawer({
             playbookType={playbookType}
             pipelineContext={pipelineContext}
             onWorkflowUpdate={onWorkflowUpdate}
-            suggestions={suggestions}
           />
         </div>
       </aside>
