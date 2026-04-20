@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { isDraftStyleStep, type WorkflowDefinition, type WorkflowStep } from "@/lib/workflow-templates";
+import { isDraftStyleStep, type WorkflowDefinition } from "@/lib/workflow-templates";
 import type { FlowSelection } from "@/components/workflow-process-flow";
 
 type PreviewLp = { name: string; firm: string };
@@ -15,11 +15,13 @@ type WorkflowStepConfigPanelProps = {
   onDismiss: () => void;
 };
 
-function defaultDraftTemplate(step: WorkflowStep): string {
-  if (step.draftTemplate?.trim()) return step.draftTemplate;
+/** Shell persisted on the step; built from the single “what should this reply say” field. */
+function buildDraftTemplateFromDescription(description: string): string {
+  const trimmed = description.trim();
+  const snippet = trimmed ? `${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}` : "…";
   return (
     `Thanks for your note — I wanted to follow up on our last conversation.\n\n` +
-    `[Tomo fills specifics from: ${step.description.slice(0, 80)}${step.description.length > 80 ? "…" : ""}]`
+    `[Tomo fills specifics from: ${snippet}]`
   );
 }
 
@@ -40,7 +42,6 @@ export function WorkflowStepConfigPanel({
   const [stepDescription, setStepDescription] = useState(step?.description ?? "");
   const [stepDuration, setStepDuration] = useState(step?.duration ?? "");
   const [stepCondition, setStepCondition] = useState(step?.condition ?? "");
-  const [draftTemplate, setDraftTemplate] = useState(step ? defaultDraftTemplate(step) : "");
 
   useEffect(() => {
     setTriggerText(workflow.trigger);
@@ -53,25 +54,29 @@ export function WorkflowStepConfigPanel({
     setStepDescription(step.description);
     setStepDuration(step.duration ?? "");
     setStepCondition(step.condition ?? "");
-    setDraftTemplate(defaultDraftTemplate(step));
   }, [step, target, workflow]);
 
   const triggerKind = workflow.triggerKind ?? "EVENT";
   const isWait = step?.type === "wait";
   const isDraft = step ? isDraftStyleStep(step) && step.type === "action" : false;
 
+  const resolvedDraftTemplate = useMemo(
+    () => (isDraft ? buildDraftTemplateFromDescription(stepDescription) : ""),
+    [isDraft, stepDescription]
+  );
+
   const previewBody = useMemo(() => {
     const lp = previewLp;
     const greeting = lp ? `Hi ${lp.name},` : "Hi [LP name],";
-    const core = draftTemplate.trim() || "…";
+    const core = resolvedDraftTemplate.trim() || "…";
     return `${greeting}\n\n${core}\n\nBest,\n[You]`;
-  }, [draftTemplate, previewLp]);
+  }, [resolvedDraftTemplate, previewLp]);
 
   const title = useMemo(() => {
     if (target.kind === "trigger") return "Configure trigger";
     if (!step) return "Step";
     if (isWait) return "Amend schedule";
-    if (isDraft) return "Draft template";
+    if (isDraft) return "Draft reply";
     return "Configure step";
   }, [target.kind, step, isWait, isDraft]);
 
@@ -102,11 +107,12 @@ export function WorkflowStepConfigPanel({
         };
       }
       if (isDraft) {
+        const desc = stepDescription.trim() || s.description;
         return {
           ...s,
           name: stepName.trim() || s.name,
-          description: stepDescription.trim() || s.description,
-          draftTemplate: draftTemplate.trim() || undefined,
+          description: desc,
+          draftTemplate: buildDraftTemplateFromDescription(desc),
         };
       }
       return {
@@ -221,25 +227,14 @@ export function WorkflowStepConfigPanel({
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Instructions (for Tomo)</label>
+              <label className="text-[11px] font-medium text-gray-600">What should this reply say?</label>
               <textarea
                 value={stepDescription}
                 onChange={(e) => setStepDescription(e.target.value)}
-                rows={2}
+                rows={3}
+                placeholder="e.g. Thank them, recap AI landscape and our fund thesis, propose a short call"
                 className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
               />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-gray-600">Default draft template</label>
-              <textarea
-                value={draftTemplate}
-                onChange={(e) => setDraftTemplate(e.target.value)}
-                rows={5}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 font-mono text-[11px] leading-snug text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
-              />
-              <p className="mt-1 text-[10px] text-gray-500">
-                Saved as the default shell for this step. Tomo still personalizes per run.
-              </p>
             </div>
             <div className="rounded-md border border-dashed border-gray-200 bg-white px-2 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Preview</p>
