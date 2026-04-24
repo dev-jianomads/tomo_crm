@@ -174,9 +174,9 @@ The main app nav still lands on **Settings** at `/settings` (redirects to **`/se
 | `/settings` | Redirect to profile |
 | `/settings/profile` | Name, email, preferences |
 | `/settings/funds` | Active fund + fund list |
-| `/settings/integrations` | Calendar, contacts, email, Affinity, Sheets |
-| `/settings/messaging` | Slack, Telegram |
-| `/settings/notifications` | Daily brief and related prefs |
+| `/settings/integrations` | Calendar, contacts, email, Affinity, Sheets (connect, status, **disconnect** w/ confirm) |
+| `/settings/messaging` | Slack, Telegram (connect/status; **disconnect** w/ confirm when linked) |
+| `/settings/notifications` | Daily brief, **Channels** (email / Slack / Telegram connection status and disconnect), related prefs |
 | `/settings/billing` | Plan comparison, manage seats entry, advanced placeholders |
 | `/settings/billing/manage` | Subscription summary, payment method, invoices, cancel flow |
 | `/settings/team` | Seat usage, invites, member list |
@@ -214,11 +214,15 @@ These four nested routes are the **subscription and workspace-admin** cluster. T
    - Fund choice applies across all fund-scoped pages in the same session; switching fund refreshes dependent data.
    - Users only see funds they belong to; admin-only fund setup is gated by role.
 
-4. **Story:** As a user, I can connect, view status of, and disconnect **integrations** (e.g. mail, calendar, CRM sources) per product scope.  
+4. **Story:** As a user, I can connect, view status of, and disconnect **integrations** and **messaging channel** links (e.g. mail, calendar, CRM sources, Slack, Telegram) from **Settings**, per product scope. The same connection may surface in more than one Settings area (e.g. **Integrations**, **Messaging**, **Notifications**); status and availability of **Disconnect** must stay **consistent** for a given connection.  
    **Acceptance criteria**
    - OAuth or API flows complete with success/failure surfaced; tokens are stored server-side with rotation/revocation handling.
    - Connection health (sync errors, last sync time) is accurate enough to trust for operations.
-   - Disconnect removes access and stops scheduled jobs for that connection.
+   - **Disconnect** is offered only when the integration or channel is **connected**; it is not a silent action— the user must **confirm** (e.g. modal or equivalent) with a **clear title**, **short explanation of impact** (e.g. sync or delivery stops, can reconnect later), **Cancel**, and a **primary destructive CTA** whose label names the action (e.g. “Disconnect Slack”).
+   - After disconnect, the UI shows **not connected** (or the correct next state) everywhere that connection appears; any dependent toggles (e.g. notification routing) disable or show dependency messaging as designed.
+   - Disconnect removes access and **revokes or invalidates credentials server-side**; scheduled jobs, webhooks, and digests for that connection **stop** once disconnect completes.
+
+   **Implementation note (repo / mock):** The UI pattern is implemented with `IntegrationRow` and `DisconnectIntegrationDialog` in `src/components/settings/settings-widgets.tsx` (confirm dialog, Cancel + destructive CTA, **link-slash** affordance on disconnect). **Integrations** — Calendar, Contacts, Email, **Affinity CRM**, **Google Sheets**. **Messaging** — Slack, Telegram. **Notifications** — **Channels** (Email, Slack, Telegram) with copy that state is shared with Integrations / Messaging. In the mock, connection state uses **`tomo-onboarding`** in local storage; production should use a **single** server-backed source of truth and real token revocation with the same user-visible contract.
 
 5. **Story:** As a subscriber, I can review **plans**, **trial**, and **seat-oriented** actions on **Billing & Plan** (`/settings/billing`).  
    **Acceptance criteria**
