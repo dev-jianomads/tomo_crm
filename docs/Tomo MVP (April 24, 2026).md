@@ -1,223 +1,222 @@
 # Tomo MVP 3
 
-**Stakeholder-facing revision of MVP 2,** incorporating the current mock app UI, route-level behavior, and feature decisions. **Revised to match the code in this repository as of April 24, 2026** (MVP3 prototype / Next.js app in `tomo_crm`).
+**Stakeholder-facing alignment doc** for TOMO’s **MVP3** product definition and the **Next.js mock** in this repo (`tomo_crm`), **April 24, 2026**.
 
-| | |
+This document is organized in **four layers** so readers do not mix them up:
+
+| Part | What it answers |
 | --- | --- |
-| **Document purpose** | Align the original MVP 2 document to the evolved mock app and clarified product decisions, while keeping the format readable for non-technical stakeholders. |
-| **How to read this** | The document distinguishes **intended MVP 3 product scope** from **prototype-only behavior** so stakeholders can separate shipping intent from the current implementation. In navigation and chrome, the prototype has **intentional label differences** (e.g. **Lists** for Pipeline) that are called out in §2.1. |
+| **1. Introduction** | What TOMO is and what “MVP3” means here. |
+| **2. What’s in the mock app** | What you can see and click in the **current repository** (prototype). |
+| **3. From mock to MVP3 ship** | What is **missing or stubbed** relative to the **intended MVP3** release (backlog / product gap). |
+| **4. Post-MVP** | What is **explicitly not** in MVP3 baseline (later). |
+
+**Deep product and engineering detail** (sync rules, signal math, schema sketches, API tables) lives in **appendices** at the end.
 
 ---
 
-## Executive summary
+## 1. Introduction
 
-- MVP 3 keeps the original TOMO goal: an AI-assisted execution workspace for fundraising, investor relations, and deal flow.
-- **Information architecture (shipping intent):** **Today, Relationships, Pipeline (list building), Workflows, Activity, and Settings.** Momentum is not a dedicated page.
-- **Current prototype (this repo):** Primary navigation is **Today** (`/home`), **Relationships**, **Lists** (route `/pipeline` — same surface as Pipeline), **Workflows**, **Insights** (`/insights`), and **Settings**. **Activity** exists at `/activity` but is **omitted from the main rail and bottom nav**; **LP Network** and **Materials** are additional **prototype** routes, not part of the core MVP3 IA.
-- **Pipeline** (shown as **Lists** in the shell) is the canonical list-building surface; **legacy `/targets` redirects to `/pipeline`.**
-- **Today** is built around two primary columns: **What needs your attention** and **Coming up** (no third column for “Momentum shifts”). The prototype also exposes **On My Radar** (button + modal) for signal-style callouts. **Details** for actions and meetings use a **context drawer**; the list/detail split column is not used on Today (`detailVisible={false}` in code).
-- **Tomo** is integrated as **inline chat on Today** and **workflows** use the workflow-specific surfaces; elsewhere the app uses a **FAB → dock or sheet** (not shown on Home, Workflows, Relationships, or Pipeline). On Today, inline chat defaults to a **single-line “expand to chat”** control (user-expandable, persisted) rather than a permanently expanded panel.
-- **Settings** remains a first-class MVP surface: profile, integrations, notifications, billing and plan, and fund management.
-- **Integrations and exports:** Google Workspace, Microsoft 365, Stripe billing, **CSV-first** CRM import, Affinity, **Google Sheets export**, and a **scoped Slack integration** remain in the MVP3 **product** narrative. **Slack V1** is limited to **daily brief notifications** and **selected** Tomo skills or tool-call entry points rather than broad messaging workflows; **broader Slack workflows and Telegram** are **post-MVP** for a full messaging product (the Settings UI may still list Slack/Telegram for demos — see §9).
-- MVP 3 makes the **Tomo agent orchestration layer** explicit: the assistant is not only a chat surface, but a **coordinating layer** that assembles context, proposes actions, and drives workflow execution with human review. Implementation: **`POST /api/tomo/orchestrate`** with **surface-gated tools** (see **Appendix B**).
-- MVP 3 can support **Level A post-meeting capture** as a responsive web workflow. Stronger **mobile** behavior and **voice/transcription** sit in post-MVP (see §7).
+**TOMO** is a lightweight, **AI-assisted execution workspace** for fundraising, investor relations, and deal flow.
+
+**MVP3** is the **evolution of the MVP2 vision**: same North Star, updated information architecture (no **Momentum** page; **Pipeline** is list-building; **Workflows** and **Tomo orchestration** are explicit), and clarified **integrations** and **messaging** scope.
+
+**“Mock app”** in this doc means: the **code in this repository** (mock data, local auth/session patterns, stub integrations, partial server apply paths). It is **not** a promise of production behavior.
+
+**Core value the product aims for in MVP3:**
+
+- Connect **Google Workspace** / **Microsoft 365** (email, calendar, contacts) and keep a **clean relationship** record with **minimal** manual entry.
+- Turn that context into **next steps** on **Today**, with **human-in-the-loop** outbound.
+- **Pipeline (Lists)** for audience and list work; **Workflows** for playbooks; **Activity** for traceability.
+- **Tomo** as an **orchestrating** assistant (context + **tool calls** + review), not chat-only.
+- **Settings** as a first-class surface: profile, integrations, notifications, billing, funds.
+
+**Tomo** = product name; **tomo_crm** = repository folder name in examples.
 
 ---
 
-## Resolved product decisions carried into MVP 3
+## 2. What’s in the mock app (this repository)
 
-| Decision area | MVP 3 position | Current prototype (repo) |
+**Summary:** A **navigable UI** with **mock data** and a **real orchestrator route**; many “connected” or “paid” flows are **UI-only** or **stub** until backend work lands.
+
+### 2.1 Navigation and shell
+
+**Primary navigation** (desktop rail + mobile bottom bar): **Today** (`/home`), **Relationships**, **Lists** (route `/pipeline` — the Pipeline / list-building surface), **Workflows**, **Insights**, **Settings**. Source: `src/components/app-shell.tsx`.
+
+**Not in the main nav** but implemented: **Activity** at `/activity` (direct URL or links).
+
+**Extra prototype routes** (not described as core MVP3 IA, but in the app): **LP Network** (`/lp-network`…), **Materials** (`/materials`), standalone **`/search`**.
+
+**Header:** Tomo title + user avatar placeholder. **No** global **search** in the header. **Fund** selector appears **in header on LP Network**; **not** globally for all pages.
+
+**Legacy redirects (examples):** `/targets` → `/pipeline`; `/today` → `/home`; `/tasks` → `/home`; `/contacts` → `/relationships`; `/workflow` → `/workflows`; `/briefs` → `/materials?tab=briefs`.
+
+### 2.2 Surfaces (high level)
+
+| Surface | In the mock |
+| --- | --- |
+| **Today** | “What needs your attention” and “Coming up” columns; **On My Radar** (button + modal); **Daily Brief** / email demo flows; **context drawers** for actions and meetings. **List/detail** split in `AppShell` is **off** on Today. **Inline Tomo** defaults to a **single-line** expand-into-full-chat control (persisted). |
+| **Pipeline / Lists** | Natural-language and structured list behavior, saved lists, workflow linkage, funnel-style ideas — **as implemented** with **mock** relationship data. |
+| **Workflows** | Playbooks, Tomo defaults, custom flows, **drawer**-based editing; **no** **global** shell Tomo on this route (workflow-scoped Tomo in drawer). |
+| **Relationships** | List / **kanban** / filters; **drawer** with Tomo/CRM/draft affordances. |
+| **Activity** | Filterable log; **mock** feed. |
+| **Settings** | Sections for profile, integrations, notifications, billing, funds; **stubs** for many connections and Stripe. **Slack / Telegram** may appear for demo copy. |
+| **Insights** | **Demo** page (`/insights`) with **Singapore-style** mock metrics — **prototype slice**, not locked as a shipping requirement in §4. |
+
+### 2.3 Tomo and agent orchestration (as coded)
+
+- **Endpoint:** `POST /api/tomo/orchestrate` — streaming assistant with **surface-gated** tools (see **Appendix B**).
+- **Today** can pass **`todayContext`** (actions, commitments, daily **brief** blocks) when the user has inline chat open.
+- **Caveat:** many tool **apply** paths (e.g. CRM update persistence) are **acknowledged in code** but **not** fully wired to a production database — the UI may **simulate** state.
+
+**FAB / dock / sheet:** Global Tomo is **not** on Today, Workflows, Relationships, or Pipeline; those surfaces use **inline** or **drawer** chat. **Insights** and **Settings** (among others) use a **FAB** → dock (desktop) or sheet (mobile).
+
+### 2.4 Integrations, auth, billing, security (mock honesty)
+
+- **Gmail, Outlook, Calendar, Contacts, Affinity, Sheets, Stripe:** **stub** or **local flags**; not production OAuth/token handling.
+- **Session:** **mock** patterns (e.g. `localStorage`) **do not** meet production “no secrets in the browser” posture.
+- **Team / RBAC:** plan choice in UI where present; **no** real **enforced** workspace RBAC in app logic (see **§3**).
+
+---
+
+## 3. From mock to MVP3 ship (gaps)
+
+This section is the **backlog in product terms**: what the **mock** is **missing** to match **MVP3 shipping intent** (as agreed in product decisions, not as “everything in Appendix C is done day one” — Appendix C is the **spec depth** for delivery teams).
+
+### 3.1 Product shape and navigation
+
+| Gap | MVP3 ship intent |
+| --- | --- |
+| **Activity** not in main nav | **Activity** in **primary** **navigation** (with Today, Relationships, Pipeline, Workflows, Settings) and **header** / mobile patterns aligned with spec. |
+| **Insights** in primary nav; `/insights` demo | **Not** a committed MVP3 core nav item **unless** product pulls it in from **roadmap**; current page is a **slice** of future analytics, not a ship blocker by itself. |
+| **“Lists”** vs “Pipeline” label | Aligned to **one** product vocabulary (repo already leans **Lists** in the shell; confirm with **PRODUCT_DECISIONS** and marketing). **Route** can stay `/pipeline`. |
+| **No header search; only `/search`** | **Header** **search** (MVP2/MVP3 intent) with real index; **Cmd+K** / omnibar remains **out** of MVP3 (see **§4**). |
+| **Fund selector** not global | **Fund** list from **Settings** drives a **global** **header** (or agreed) **selector** “All + funds” for relevant surfaces, not only LP Network. |
+| **Materials / LP Network** in codebase | Treat as **prototype**; **MVP3** **scope** for LP-network-style flows is a **separate** product decision. |
+
+### 3.2 Data, sync, and integrations
+
+| Gap | MVP3 ship intent |
+| --- | --- |
+| Stub OAuth / **localStorage** “connected” | **Real** **OAuth**, **server-stored** tokens, **metadata-first** (and **policy**-controlled **content**) ingestion. |
+| No durable multi-tenant data | **Persistent** **CRM** and **event** data with **tenant** isolation. |
+| **CSV** import (may be partial in UI) | **Required** path: **import**, **mapping** preview, **duplicates**, **non-empty** Today/Pipeline after onboarding. |
+| **Affinity** / **Sheets** | **As** in packaging: real **connectors** or **export** to agreed layout. |
+| **Slack V1** | **Scoped** **daily** **brief** (and **selected** **entry** points), **not** a full **messaging** **OS**; **wiring** + **compliance** with tenant policy. |
+| **Telegram** in Settings | **Out** of **MVP3** as a **messaging** **product** (see **§4**) — UI can stay **off** or **clearly** **“**post-MVP**”** so it is not confused with **ship**. |
+
+### 3.3 Tomo agent, tools, and audit
+
+| Gap | MVP3 ship intent |
+| --- | --- |
+| **Tool** calls **not** always **persisting** | **update_crm**, **workflows**, **drafts** **write** to **authoritative** **store**; **Activity** and **server** **audit** **log** for **material** **actions** and **integration** **events**. |
+| “Tomo did it” in UI only | **Attribution** and **traceability** meet **compliance**-minded **expectations** (see Appendix C, Activity coverage). |
+
+### 3.4 Commercial, workspace, and security
+
+| Gap | MVP3 ship intent |
+| --- | --- |
+| **Stripe** placeholder | **Live** **billing**: **Individual** / **Team**, **Checkout**, **Customer** **Portal** as per **packaging**; **no** **downgrade** to **Individual** in MVP3 **per** prior **decision**. |
+| **Solo** vs **team** in UI | **Enforced** **server-side** **RBAC** (Admin, Partner, Analyst), **shared** data model where **Team** is sold, **per-user** **OAuth** where **required**. |
+| **Prototype** **storage** | **Production** **security** **baseline**: **region** choice, **encryption**, **no** **sensitive** **data** in **browser** **storage** for **secrets** **bodies**, **HITL** **outbound**, **audit** (align with **§6** in **prior** **specs** and **org** **checklists**). |
+
+### 3.5 How to use the detailed specs
+
+The **operational** and **architectural** **depth** (sync **SLOs**, **onboarding** **steps**, **signal** **flags**, **retrieval** **recipes**, **schema** **sketches**) lives in **Appendix C** and **D**. Those sections are **MVP3-aligned** **delivery** **reference**; they are **not** a claim that the **current** **mock** **implements** them end-to-end.
+
+---
+
+## 4. Post-MVP (explicitly not MVP3 baseline)
+
+**Out of scope** for **MVP3** **shipping** **intent** (non-exhaustive):
+
+- **Dedicated** **Momentum** page and “**view** in **Momentum**” **flows**.
+- **Briefs** as a **standalone** **first-class** product **page** (redirects to **materials** are **not** a substitute for a **strategic** **decision** if the **market** **requires** a **separate** **surface**).
+- **Cmd+K** / **global** **omnibar** (header **search** is the **MVP3** **pattern**).
+- **Telegram** and **broad** **Slack** **workflows** (beyond the **scoped** **Slack** **V1** in **§3**), **messaging**-native **OS**.
+- **Multi-party** **conversational** **scheduling** and **autonomous** **booking**.
+- **Deep** **enrichment** / **web** **scraping** for **allocator** **intelligence** (beyond what **MVP3** **locks** in).
+- **CRM** **pluralism**: **more** than **Affinity** + **Sheets** **export** on **day** one **(baseline** **MVP3** as **documented**).
+- **Permissions** **beyond** **simple** **RBAC**.
+- **Tomo** **meeting** **bot**; **transcript**-**first** **ingestion**; **recording**-**derived** **notes** as a **default** **input** **layer**.
+- **Strong** **Level** **B** **post**-**meeting** **capture** (push, **voice**, **deeper** **mobile**), **as** the **default** **promise** (see **Level** **A** in **Appendix** **C** for **web**-first **framing**).
+
+**Directional** **later** (illustrative): richer **messaging** **connectors**, **Insights**-style **analytics** **in** **full**, **deeper** **mobile**, **transcripts**, **meeting** **bot**, **vector** / **RAG** **at** **scale**, **more** **drafting** and **orchestration** **surfaces**.
+
+**Post**-**meeting** **capture:** **level** **A** (**responsive** **web** **reminder** + **save** to **CRM**) can **sit** in **MVP3**; **level** **B** (**strong** **mobile**, **push**, **voice**) and **any** **bot**-**centric** **capture** are **not** the **same** as **MVP3** **baseline** **in** this **doc**.
+
+---
+
+## Appendix: MVP2 → MVP3 (narrative change map)
+
+| Area | MVP 2 | MVP 3 |
 | --- | --- | --- |
-| Information architecture | No dedicated Momentum page. Pipeline is the canonical list-building surface. Legacy `/targets` may redirect to `/pipeline`. | Nav label **Lists**; route `/pipeline`. **Insights** in primary nav. **Activity** not in main nav (route still `/activity`). |
-| Today surface | **What needs your attention** and **Coming up** only; no third column for momentum shifts. | **On My Radar** as **button + modal** (momentum/signal content), not a main column. Daily Brief in flows/modals. Inline Tomo: **default collapsed** to single-line; expands to full inline chat. |
-| Assistant behavior | Tomo is not required to be collapsed by default. Inline on Today and Workflows is part of the intended experience. | Today defaults to **collapsed** expander; Workflows: shell assistant **hidden**; **workflow drawer** has workflow-scoped Tomo. FAB hidden on home, workflows, relationships, pipeline. |
-| Briefs | Not a dedicated MVP **product** surface, tab, or page as a requirement. | `/briefs` **redirects** to `/materials?tab=briefs`. |
-| Exports and connectors | Google Sheets export in MVP. Slack narrowed for **daily brief** + entry points. Telegram / broad Slack: post-MVP. | Loops used for **demo** daily-brief email resend; Slack in Settings (stub / “soon”). |
-| Search model | Header search = intended MVP pattern. **Cmd+K / global omnibar** = post-MVP. | **No** search in the app header; standalone **`/search`** page with mock data. |
-| Traceability | Activity = chronological log of user actions and Tomo/system actions. | `/activity` with fund/type filters; **mock** feed. |
+| **IA** | Today, Momentum, Relationships, **Targets**, Activity, Settings | **No** Momentum page; **Pipeline/Lists**; **Workflows**; Activity; Settings (**Insights** = **optional** / **proto** in **app**) |
+| **List building** | Targets | **Pipeline/Lists**; `/targets` → `/pipeline` |
+| **Tomo** | “**Collapsed** **everywhere**” (older copy) | **Inline** on **Today**; **workflow**-scoped on **Workflows**; **FAB** **elsewhere** |
+| **Today** | Momentum **column** | **What** **needs** **attention** + **Coming** **up**; **On** **My** **Radar** as **optional** **modal** in **mock** |
+| **Messaging** | Undecided / **broad** | **Slack** **V1** **narrow**; **Telegram** / **broad** **Slack** = **post**-MVP **(§4**)** |
+| **Search** | Header | Header **(ship)**; **omnibar** **=** **post**-MVP |
 
 ---
 
-## 1. Product overview
+## Appendix A — Routes and stack (engineering snapshot)
 
-TOMO is a lightweight, AI-assisted execution workspace for fundraising, investor relations, and deal flow. MVP 3 preserves the original product intent from MVP 2, but updates the narrative to reflect the mock app’s navigation, assistant behavior, and clarified shipping decisions.
+| Route | Behavior |
+| --- | --- |
+| `/` | Auth / onboarding / → `/home` when session+onboarding |
+| `/home` | **Today** |
+| `/relationships` | **Relationships** |
+| `/pipeline` | **Pipeline (Lists in UI)** |
+| `/workflows` | **Workflows** |
+| `/insights` | **Insights (demo / prototype metrics slice)** |
+| `/activity` | **Activity** (not in main nav) |
+| `/settings` | **Settings** |
+| `/targets` | Redirect → `/pipeline` |
+| `/today` | Redirect → `/home` |
+| `/tasks` | Redirect → `/home` |
+| `/contacts` | Redirect → `/relationships` |
+| `/workflow` | Redirect → `/workflows` |
+| `/briefs` | Redirect → `/materials?tab=briefs` |
+| `/lp-network`, `/lp-network/mandate` | Prototype **LP** network |
+| `/materials` | Prototype |
+| `/search` | Prototype (mock) |
 
-**Core value in MVP 3:**
+**Stack:** Next.js 16, React 19, Tailwind 4, Vercel AI SDK, Zod 4, Sonner.
 
-- Auto-organise investor interactions from **Google Workspace** or **Microsoft 365** across email, calendar, and contacts.
-- Maintain a clean relationship system with minimal manual data entry.
-- Turn context into next steps inside **Today**, with a human in the loop for outbound actions.
-- Support list building and workflow audience creation through **Pipeline** (in-product **Lists**) rather than legacy Targets.
-- Make movement, health, and status visible through relationship, materials, and pipeline views, **without a separate Momentum page**.
-- Provide traceability through **Activity** as a chronological audit trail of user and Tomo/system actions.
-- Use **Tomo agent orchestration** to combine synced context, workflow logic, and user intent into guided next steps rather than treating chat as a standalone feature.
-
----
-
-## 2. Web workspace scope
-
-### 2.1 Global layout and navigation
-
-**MVP3 product intent (shipping):** Desktop and mobile: **Today, Relationships, Pipeline, Workflows, Activity, Settings**; header **search**; **Fund** selector (funds from Settings).
-
-**Current prototype (`src/components/app-shell.tsx`):** **Desktop** left rail: **Today** (`/home`), **Relationships**, **Lists** ( `/pipeline` ), **Workflows**; **Insights** (`/insights`); **Settings**. **No Activity in the rail.** **Mobile** bottom nav uses the same items. The **header** has the Tomo mark and a **placeholder user avatar**; it does **not** include a global search box or a global **Fund** dropdown—**with one exception: the fund selector is shown on LP Network** (prototype).
-
-### 2.2 TOMO assistant
-
-**Intent:** On **Today** and **Workflows**, Tomo is part of the primary workflow (inline or workflow drawer). On other areas, a **floating action button** opens a **dock** (desktop) or **sheet** (mobile). Suggestion chips are **context-aware** (page and section).
-
-**Prototype:** Default chips vary by `section` (e.g. Home, relationships, pipeline, insights). **Today** passes **`todayContext`** (actions, commitments, daily brief blocks) into the orchestrator when expanded. **Relationships** and **Pipeline** do not use the global FAB. See **Appendix B** for tool surfaces.
-
-### 2.3 Today
-
-**Intent:** **What needs your attention** and **Coming up**; **Daily Brief** (e.g. first daily login / modal); selecting items opens a **context drawer** without a full page navigation.
-
-**Prototype:** Two main columns match the intent. **On My Radar** (modal) adds a compact view of “radar” lines in addition. **Detail column** in `AppShell` is **turned off**; drawers present detail. **Inline Tomo** is **collapsible** (single-line by default, persisted in `localStorage`).
-
-### 2.4 Pipeline (Lists in the UI)
-
-**Pipeline** at **`/pipeline`**: natural-language and structured filters, named saved lists, funnel-style stage distribution, workflow linking. **Legacy** **`/targets` → `/pipeline`**.
-
-**Note:** The implementation plan in `docs/PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md` standardizes the label **Lists** in nav/CTAs for demo coherence.
-
-### 2.5 Workflows
-
-Playbooks, Tomo defaults, user-created processes, and AI-assisted editing. **Shell-level** Tomo is **not** mounted on the workflows route; interaction is via the **workflow detail drawer** and related components.
-
-### 2.6 Relationships
-
-List, card, or kanban-style access and a **detail drawer** (snapshot, status, open loops, actions).
-
-### 2.7 Materials
-
-Investor-facing materials; **`/briefs` redirects to materials with the briefs tab**. Not required to ship a **standalone Briefs product page** in MVP3.
-
-### 2.8 Activity
-
-Chronological audit trail with fund, type, and date-style filters. **In the shipping IA** it sits with other core surfaces. **In the current prototype** it is **not** in the main navigation (direct URL or deep links only).
-
-### 2.9 Settings
-
-**Profile, Integrations, Notifications, Billing and plan, Funds** (first-class in MVP3). The **Fund** list configured here is intended to feed a global **Fund** selector (prototype: selector shown only in selected contexts).
+**APIs (non-exhaustive):** `POST /api/tomo/orchestrate`, `POST /api/tomo/filter-relationships`, `GET /api/version`, `POST /api/cron/daily-brief` (as present in repo for demos).
 
 ---
 
-## 3. Integrations and data flow
+## Appendix B — Tomo orchestration (API in repo)
 
-### 3.1 Google Workspace and Microsoft 365
+| Piece | Role |
+| --- | --- |
+| `POST /api/tomo/orchestrate` | Streaming agent; **tools** and system prompt depend on `context.surface` and other `context` fields. |
+| `POST /api/tomo/filter-relationships` | NL → structured filter; shared with `filter_relationships` tool. |
+| `GET /api/version` | Build / deploy id. |
 
-MVP3 ships (product intent) with authenticated connections for email, calendar, and contacts. **Ingestion** remains **metadata-first** with optional, policy-controlled content. Onboarding may offer **up to 90 days** of historical email/calendar context for Day 1 enrichment.
+**Tools (names as in code):** `filter_relationships`, `update_workflow`, `update_crm`, `draft_reply`, `create_user_workflow` (where enabled).
 
-**Prototype:** Stub OAuth, mock providers, and `localStorage` flags are **not** production.
+| Surface (examples) | Tool scope (summary) |
+| --- | --- |
+| `general` | `filter_relationships`, `update_workflow`, `update_crm`, `draft_reply` — Today can enrich with `todayContext` |
+| `drawer` | `update_crm`, `draft_reply` |
+| `workflow` | `update_workflow` only |
+| `filter` | `filter_relationships`, `update_crm` (with disambiguation context) |
+| `workflow_creator` | `create_user_workflow` only |
 
-### 3.2 Relationship system and destinations
+**Caveat:** many apply paths are stubbed; production requires persistence, RBAC, and audit wiring.
 
-Built-in TOMO relationship data is the core system of record. **CSV-first import** is the universal baseline. **Affinity** and **Google Sheets** export stay in scope. **Slack** in MVP3 narrative = **tight** scope: daily brief notifications + **selected** tool entry points, not a full messaging OS.
-
-### 3.3 Agent orchestration (product) + implementation (repo)
-
-**Product:** Tomo assembles context, proposes actions, and coordinates workflow steps; **human-in-the-loop** for outbound send.
-
-**Repository:** A single streaming endpoint and **surface-gated** tools. See **Appendix B** for the API and tool table (source: `src/app/api/tomo/orchestrate/route.ts`).
-
-### 3.4 Prototype honesty
-
-Stub OAuth, local state, and browser persistence for sessions or demo flags are **placeholders** only.
-
----
-
-## 4. Workspaces, funds, and user models
-
-MVP3 continues to support **individual** and **team** workspaces. **RBAC (Admin, Partner, Analyst)** in product intent. **Prototype:** no enforced shared workspace or RBAC in app logic.
+**Related doc:** `docs/WORKFLOW_CREATOR_ORCHESTRATOR_PLAN.md`, `docs/PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md`.
 
 ---
 
-## 5. Subscription and billing
+## Appendix C — Detailed MVP3 product and delivery specifications
 
-**Stripe** remains the billing platform. **Individual** and **Team** plans; upgrade from Individual to Team; **no downgrade to Individual** in MVP3 per prior decisions.
+*The subsections below are the prior “§11 V1 operational” content: sync, onboarding, signals, meeting prep, Activity coverage, Daily Brief, Slack V1, post-meeting capture rules, etc. They are **reference** for **delivery**, not a claim that the mock implements each item.*
 
-**Prototype:** no live Stripe; Settings shows placeholders.
-
----
-
-## 6. Security and compliance
-
-Production target unchanged from prior specs: **region-aware hosting, encryption, tenant isolation, metadata-first defaults, no secrets in browser storage, HITL outbound, auditable events.**
-
-**Prototype:** `localStorage` and mock session violate several production requirements by design.
-
----
-
-## 7. Post-meeting capture scope
-
-MVP3 remains a **web workspace**; **Level A** = responsive web: reminder after a meeting, structured notes back into the relationship system—**not** a meeting bot, recording, or transcript as first-class input. **Level B** = stronger mobile, push, voice, transcription — post-MVP. Meeting bot and transcript-first ingestion remain **out of** MVP3 baseline (see §8).
-
----
-
-## 8. Out of scope and post-MVP
-
-**Out of MVP** for this release (non-exhaustive; overlaps with prior specs):
-
-- Dedicated **Momentum** page and any **“View in Momentum”** drill-through links.
-- **Briefs** as a standalone product surface.
-- **Telegram** connectors and **broad Slack workflows** beyond the scoped **Slack V1** (daily brief + entry points) described above and in the executive summary.
-- **Cmd+K** or **global omnibar** search.
-- Multi-party conversational scheduling and autonomous booking.
-- Deep enrichment or web scraping for allocator intelligence.
-- **Additional CRM integrations** beyond **Affinity** and **Google Sheets export** (in baseline MVP3).
-- **Advanced permissions** beyond simple RBAC.
-- **Tomo meeting bot**; **transcript-first** meeting ingestion; **recording-derived** notes as an additional first-class product input.
-- **Insights** (as in the current `/insights` **Singapore-style demo** page): treated as a **prototype slice** of nightly/execution metrics, not a required MVP3 ship list unless product promotes it from roadmap.
-
-**Directional post-MVP:** Broader messaging, richer drafting, **Insights-style** analytics in full, stronger mobile post-meeting capture, voice, meeting bot, transcript ingestion, etc.
-
-For clarity: a **light post-meeting capture** reminder can sit inside the responsive web boundary; **meeting bot** and **transcript-first** ingestion are **post-MVP** input-layer expansions.
-
----
-
-## 9. Prototype vs intended MVP 3
-
-| Area | MVP3 intent | This repository today |
-| --- | --- | --- |
-| Primary nav / labels | Today, Relationships, **Pipeline**, Workflows, Activity, Settings | **Lists** label for pipeline route; **Insights** in nav; **Activity** not in main nav; **/insights** = demo page |
-| Today layout | Two columns + Daily Brief; drawer detail | + **On My Radar** modal; **collapsible** inline Tomo; **no** list/detail `AppShell` column |
-| Fund selector | In header, funds from Settings | Shown on **LP Network**; not global in header for all pages |
-| Search | Header search | **`/search` page only** (mock results) |
-| Integrations | Real OAuth and sync | Stubs, `localStorage` |
-| Slack / Telegram in Settings | Product: Slack V1 scope only for MVP3 narrative | **Both** can appear in UI; wiring partial / stub |
-| `/tasks` | (Product TBD) | **Redirects to `/home`**, not Activity |
-| `/briefs` | / | **Redirects to `/materials?tab=briefs`** |
-| **Tomo** | Orchestrated tools + audit | **Orchestrator live**; many apply paths **stubbed** |
-
----
-
-## 10. Clarifications
-
-This document is an **alignment** update, not a full product reset. **MVP3** is the MVP 2 vision, revised to match the **evolved** mock and clarified decisions.
-
----
-
-## Appendix: high-level change map from MVP 2 to MVP 3 (product narrative)
-
-| Area | MVP 2 framing | MVP 3 update |
-| --- | --- | --- |
-| IA | Today, Momentum, Relationships, Targets, Activity, Settings | Today, Relationships, **Pipeline/Lists**, **Workflows**, Activity, Settings (+ **Insights** as prototype add-on) |
-| List building | Targets | **Pipeline/Lists** canonical; `/targets` → `/pipeline` |
-| Assistant | Collapsed by default everywhere | **Inline** on Today (expandable) and **workflow-scoped** on Workflows; **FAB** elsewhere |
-| Today | Momentum shifts + Momentum | **What needs your attention** + **Coming up**; **On My Radar** as prototype (modal) |
-| Briefs | Right-panel / embedded | No dedicated Briefs product surface; redirect to materials may exist in prototype |
-| Messaging | Slack / Telegram optional | **Slack V1** in MVP3 narrative: daily brief + entry points; **Telegram** / broad messaging post-MVP |
-| Search | Header search | Still intended; **Cmd+K** post-MVP |
-
-**Additional clarity:** **Tomo agent orchestration** is explicit in the narrative; **Slack** is **narrowed** to scoped MVP3 use; **post-meeting capture** = Level A (web) vs Level B (mobile) vs meeting-bot post-MVP.
-
----
-
-## 11. V1 operational additions and feature specifications
-
-These sections are **product/engineering** specifications for the MVP3 wave. They are not implied to be fully implemented in the current prototype (see §9).
-
-### 11.1 Sync, historical context, and degraded-state handling
+### C.1 Sync, historical context, and degraded-state handling
 
 MVP3 should make the sync boundary more explicit. During onboarding, a user may optionally grant Tomo access to up to **90 days** of historical email and calendar context so the system can compute real last-touch dates, generate initial meeting briefs, create more specific follow-up drafts, and surface Day 1 pipeline insight immediately after setup.
 
@@ -231,7 +230,7 @@ For MVP3, the practical operating target is **near-real-time enough** for daily 
 - **Thread linkage** should preserve conversation continuity so replies are treated as part of the same relationship thread.
 - If sync becomes stale beyond the acceptable operating window, the product should **degrade visibly** rather than silently. Pipeline and signal-dependent surfaces should show a clear **sync-delayed** or **signals may be out of date** state rather than presenting stale certainty.
 
-### 11.2 CSV-first import and onboarding sequence
+### C.2 CSV-first import and onboarding sequence
 
 MVP3 should make the onboarding path explicit rather than assuming data will already exist. A **CSV-first** CRM import path is required in V1 so that teams without a direct connector can still get immediate value. **Affinity** can remain an MVP connector, but **CSV import** is the universal baseline.
 
@@ -248,7 +247,7 @@ MVP3 should make the onboarding path explicit rather than assuming data will alr
 
 The document should explicitly state that onboarding cannot proceed to a **completed** operating state until at least **one LP record** has been created successfully, and that the product should **not** show an **empty** Today or **empty** Pipeline if processing is still underway. **Partial** results, **sync-in-progress** states, and **progress milestones** are part of the value demonstration.
 
-### 11.3 Nightly computation job and event-driven processing
+### C.3 Nightly computation job and event-driven processing
 
 MVP3 can include a practical backend computation layer without overcommitting to unnecessary theory. In product terms, the system should recompute relationship state on a **regular schedule** so pipeline flags, daily brief content, and summary counts remain current even when not every insight is calculated live in the browser.
 
@@ -259,7 +258,7 @@ A reasonable MVP3 specification is:
 - This is an **implementation approach**, not a promise of a particular architecture. The product requirement is that these **derived** states stay **current** and **explainable**.
 - **Re-engagement** should be treated **separately** from the nightly job because it is **time-sensitive**. Where feasible, it should use an **event-driven** path so an LP re-engaging after silence can surface **the same day** rather than waiting for the next scheduled recompute.
 
-### 11.4 Day 1 pipeline enrichment and the CRM–reality gap
+### C.4 Day 1 pipeline enrichment and the CRM–reality gap
 
 MVP3 should explicitly preserve the **Day 1** product moment: the user sees the gap between what their **CRM** says is active and what their **real** email and calendar history suggests is actually happening. This should not be left as an implied benefit.
 
@@ -271,7 +270,7 @@ The Pipeline surface should make clear that Tomo is using **real** relationship 
 
 **Meaningful touch** should be framed as a core concept in MVP3 because it underpins pipeline enrichment, silence logic, and later signal flags.
 
-### 11.5 Meeting prep brief
+### C.5 Meeting prep brief
 
 Meeting prep should be locked into MVP3 as a **first-class** workflow outcome rather than a vague assistant capability. The brief is **not** a generic summary. Its job is to make the user better prepared for a real **LP** meeting within minutes.
 
@@ -285,7 +284,7 @@ The meeting prep brief in MVP3 should identify:
 
 The document should also state that **prompt iteration** is required before shipping. **Prompt quality** is part of the product requirement here. A generic or fluffy brief is not good enough just because a brief exists.
 
-### 11.6 Follow-up draft standards
+### C.6 Follow-up draft standards
 
 MVP3 should tighten the follow-up draft specification so it reads like an **operational** product feature rather than a general drafting capability.
 
@@ -298,7 +297,7 @@ The follow-up draft should include:
 
 Where post-meeting capture is **skipped**, the draft can still be generated, but the product should acknowledge that **additional user context** improves specificity.
 
-### 11.7 Signal flags, thresholds, and exclusions
+### C.7 Signal flags, thresholds, and exclusions
 
 MVP3 should move from general language about status and movement to a more **codified** flag model. The exact numeric rules can still be refined in implementation, but the product document should state that flags are **rule-based**, **threshold-driven**, and **explained** in plain language.
 
@@ -317,7 +316,7 @@ A simple mock structure for MVP3 is:
 
 The point of codifying this in MVP3 is to make the signal layer feel **objective** and **explainable** rather than “magical.”
 
-### 11.8 Re-engagement urgent flag
+### C.8 Re-engagement urgent flag
 
 MVP3 should explicitly include a **re-engagement urgent** path. This is separate from general pipeline status because it is a **same-day** operating event, not just a dashboard condition.
 
@@ -330,7 +329,7 @@ A reasonable MVP3 rule mock-up is:
 
 The important point for the document is that re-engagement is **time-critical** and should **not** depend **solely** on the slower **scheduled** computation path.
 
-### 11.9 Named pipeline filters
+### C.9 Named pipeline filters
 
 MVP3 should make the practitioner-facing **named** filters explicit in the Pipeline surface. These should not be left as a generic idea about audience creation.
 
@@ -343,7 +342,7 @@ The **named** filters to call out are:
 
 Each filter should use **practitioner** language and should imply an **action**, not merely a data slice. The **One-Way** filter is especially useful as a simple first-pass diagnostic because it requires little interpretation.
 
-### 11.10 Three-Touch qualification sequence
+### C.10 Three-Touch qualification sequence
 
 MVP3 should include a **guided** qualification workflow for **quiet** relationships rather than stopping at passive observation. A reasonable MVP3 version is a **Three-Touch Qualification Sequence** with **strict** user **approval** at each step.
 
@@ -361,13 +360,13 @@ The sequence should be described as a stateful workflow with timing windows, exp
 
 This gives the product a defined answer to the user question: what do I do with quiet LPs now?
 
-### 11.11 Tone calibration
+### C.11 Tone calibration
 
 MVP3 should explicitly state that Tomo can read a sample of the user’s historical sent emails, infer tone and style patterns, store a tone profile on the user or workspace profile, and use that profile in drafting. This is important enough to mention directly because draft quality depends on it.
 
 The tone profile can capture elements such as greeting style, sign-off preference, formality, sentence shape, and paragraph structure. It should be reusable in follow-up drafts and other drafting workflows, and should be refreshable over time.
 
-### 11.12 Activity, auditability, and event coverage
+### C.12 Activity, auditability, and event coverage
 
 MVP3 should strengthen the rationale for Activity beyond generic traceability. For institutional users, this surface helps support auditability, internal review, and trust in an AI-assisted system.
 
@@ -383,7 +382,7 @@ The document should make clear that Activity covers examples such as:
 
 This keeps the system legible to users and easier to explain to compliance-minded stakeholders.
 
-### 11.13 Daily Brief behavior and Slack V1 scope
+### C.13 Daily Brief behavior and Slack V1 scope
 
 MVP3 should tighten the Daily Brief behavior and broaden the scoped Slack statement carefully.
 
@@ -395,11 +394,11 @@ Daily Brief behavior should specify:
 
 Slack V1 can be broadened, but still remain controlled. A reasonable MVP3 statement is that Slack supports daily brief notifications and selected Tomo skills or tool-call entry points that help users jump into work, not a full Slack-native operating model.
 
-### 11.14 Warm intro detection
+### C.14 Warm intro detection
 
 MVP3 should make warm intro detection explicit because it already aligns with the prototype workflow direction. A reasonable V1 rule is that Tomo can detect likely introduction emails where the user is included alongside other parties, classify them with high confidence, create or suggest the relevant relationship record, and prepare a draft reply workflow for the user to approve.
 
-### 11.15 Post-meeting capture refinements
+### C.15 Post-meeting capture refinements
 
 The post-meeting capture section should be tightened further with a few concrete operating rules:
 
@@ -409,13 +408,15 @@ The post-meeting capture section should be tightened further with a few concrete
 
 These rules help the feature stay useful rather than turning into administrative friction.
 
+**Post-meeting scope (MVP3 vs post-MVP, recap):** MVP3 is a **web** workspace. **Level A** = **responsive** **web** **reminder** and **structured** **save** to the relationship system — not a **meeting** **bot** or **transcript**-first **ingestion** as **default**. **Level B** = **stronger** **mobile**, **push**, **voice** — see **§4**. See also **C.6** and **C.15** above.
+
 ---
 
-## 12. Draft for discussion — simplified retrieval architecture and signal layer
+## Appendix D — Draft: retrieval architecture and signal layer (engineering)
 
-This section replaces the earlier narrative draft with compact tables, concrete schema, and one worked example for discussion with engineering. The goal is a retrieval and signal architecture that is tight enough for MVP yet extensible later. It does **not** assert that every table exists in the repository today.
+*Prior “§12” content: bounded retrieval vs RAG, intent recipes, deterministic signals, schema sketch, reply-velocity example. Does not assert every table exists in the database today.*
 
-### 12.1 Simplified MVP retrieval architecture
+### D.1 Simplified MVP retrieval architecture
 
 - Use synced email, calendar, contacts, structured CRM records, and bounded LLM orchestration rather than broad semantic retrieval in the first release.
 - Optimise for the actual MVP jobs: who needs attention, what happened recently, what should happen next, and what draft or CRM update should be proposed.
@@ -427,7 +428,7 @@ This section replaces the earlier narrative draft with compact tables, concrete 
 | Bounded retrieval over SQL + filters + indexed text | High | Matches Today, Pipeline, drawer, follow-up draft, and guided actions. Lower operational complexity and easier debugging. |
 | Broad semantic search over vector DB + RAG | Low for initial MVP | Useful later for open-ended recall, but adds infrastructure, product ambiguity, and harder-to-explain failures before core workflows are proven. |
 
-### 12.2 Limitations and mitigation via intent classification and retrieval recipes
+### D.2 Limitations and mitigation via intent classification and retrieval recipes
 
 | Limitation | MVP mitigation | Level 1 retrieval recipe |
 | --- | --- | --- |
@@ -439,7 +440,7 @@ This section replaces the earlier narrative draft with compact tables, concrete 
 - Each intent maps to a fixed SQL / filter recipe, not open-ended retrieval.
 - Level 1 should stay cheap and immediate for MVP: no vector lookup, no corpus-wide scan, no freeform semantic answerability promise.
 
-### 12.3 MVP signal layer — deterministic where possible
+### D.3 MVP signal layer — deterministic where possible
 
 | Signal | Priority in MVP | Deterministic formula / window | Store current state | Log event when |
 | --- | --- | --- | --- | --- |
@@ -452,7 +453,7 @@ This section replaces the earlier narrative draft with compact tables, concrete 
 - Treat re-engagement after silence, richer pipeline flags, meeting composition shifts, document engagement, and NLP-based interpretation as post-MVP enhancements unless confidence improves materially.
 - Calculation pattern: append raw interaction events first, compute rolling-window metrics second, update current state third, and write a signal log row only when a meaningful change or trigger occurs.
 
-### 12.4 Supporting schema and tables — tight MVP shape
+### D.4 Supporting schema and tables — tight MVP shape
 
 | Table | Purpose | Key columns for MVP |
 | --- | --- | --- |
@@ -467,7 +468,7 @@ This section replaces the earlier narrative draft with compact tables, concrete 
 - Use `relationship_signal_log` for historical detections, auditability, and trigger traceability.
 - Keep schema tight in MVP; additional signal tables and richer event models can be added later if required.
 
-### 12.5 Concrete example — reply velocity
+### D.5 Concrete example — reply velocity
 
 | Step | What happens | Example |
 | --- | --- | --- |
@@ -484,56 +485,4 @@ This section replaces the earlier narrative draft with compact tables, concrete 
 
 ---
 
-## Appendix A — Engineering reference (prototype routes, April 2026)
-
-| Route | Behavior |
-| --- | --- |
-| `/` | Auth / onboarding / **→ `/home`** when session+onboarding |
-| `/home` | **Today** |
-| `/relationships` | Relationships |
-| `/pipeline` | **Pipeline (Lists in UI)** |
-| `/workflows` | Workflows |
-| `/insights` | **Insights (demo / prototype metrics slice)** |
-| `/activity` | Activity (**not in main nav**) |
-| `/settings` | Settings |
-| `/targets` | **Redirect** → `/pipeline` |
-| `/today` | **Redirect** → `/home` |
-| `/tasks` | **Redirect** → `/home` |
-| `/contacts` | **Redirect** → `/relationships` |
-| `/workflow` | **Redirect** → `/workflows` |
-| `/briefs` | **Redirect** → `/materials?tab=briefs` |
-| `/lp-network`, `/lp-network/mandate` | **Prototype** LP network |
-| `/materials` | Prototype |
-| `/search` | Prototype (mock) |
-
-**Stack (package.json):** Next.js 16, React 19, Tailwind 4, Vercel AI SDK, Zod 4, Sonner.
-
-**APIs (non-exhaustive):** `POST /api/tomo/orchestrate`, `POST /api/tomo/filter-relationships`, `GET /api/version`, `POST /api/cron/daily-brief` (as present in repo for demos).
-
----
-
-## Appendix B — Tomo agent orchestration (implementation in repo)
-
-| Piece | Role |
-| --- | --- |
-| `POST /api/tomo/orchestrate` | Streaming agent; **tools** and **system prompt** depend on `context.surface` and other `context` fields. |
-| `POST /api/tomo/filter-relationships` | NL → structured filter; shared with `filter_relationships` tool. |
-| `GET /api/version` | Build / deploy id. |
-
-**Tools (exposed to the model; names as in code):** `filter_relationships`, `update_workflow`, `update_crm`, `draft_reply`, `create_user_workflow` (where enabled).
-
-| Surface (examples) | Tool scope (summary) |
-| --- | --- |
-| `general` | `filter_relationships`, `update_workflow`, `update_crm`, `draft_reply` — **Today** enriches with `todayContext` in `general` |
-| `drawer` | `update_crm`, `draft_reply` |
-| `workflow` | `update_workflow` only |
-| `filter` | `filter_relationships`, `update_crm` (with disambiguation context) |
-| `workflow_creator` | `create_user_workflow` only |
-
-**Caveat:** many **apply** paths are **stubbed** on the server; production MVP3 requires **persistence, RBAC, and audit** wiring.
-
-**Related doc:** `docs/WORKFLOW_CREATOR_ORCHESTRATOR_PLAN.md`, `docs/PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md`.
-
----
-
-*Last updated: April 24, 2026 — aligned to `tomo_crm` (MVP3 prototype) and MVP3 product narrative.*
+*Last updated: April 24, 2026. Main body: four-part structure; appendices: engineering reference and detailed specs.*
