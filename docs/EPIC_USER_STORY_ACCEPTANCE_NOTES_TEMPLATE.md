@@ -1,94 +1,270 @@
-# TOMO CRM Product Backlog (Epic / Story / AC / Notes)
+# TOMO CRM — Epics by page (with acceptance criteria)
 
-Use this table for **epic → user story → acceptance criteria → engineering notes**. Keep **Notes** honest about what the **current Next.js mock** in `tomo_crm` does versus what **MVP3 ship** requires.
+One **epic per main surface** (usually a route). Each **user story** includes **acceptance criteria (AC)** so engineering knows what a **fully functional** app must deliver. The current repo is still a **partly functional Next.js mock**; these AC describe the **target product behavior**, not the limits of today’s stubs.
 
-**Authoritative product + mock inventory:** `docs/Tomo MVP (April 24, 2026).md`  
-**Delivery phasing (Phase 0 / Initial V1 / …):** `docs/PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md`
+**Optional depth:** phased delivery, integrations, and security specifics may live in other `docs/` files.
 
-## Practical rules
+**How to read AC:** treat each bullet as a **testable outcome** (user-visible or API-backed as appropriate).
 
-- **Epic** = big area  
-- **User story** = user need  
-- **Acceptance criteria** = business / test detail  
-- **Notes / technical considerations** = implementation guidance (point to routes, APIs, and known stubs)
+---
 
-## Repository snapshot (aligns with latest code)
+## Shell & global behavior
 
-**Stack:** Next.js 16 (App Router), React 19, Tailwind 4, Vercel AI SDK, Zod 4, Sonner (see MVP doc Appendix A).
+**Epic:** App chrome and cross-cutting assistant  
 
-**Primary shell navigation** (`src/components/app-shell.tsx`): **Today** → `/home`, **Relationships** → `/relationships`, **Lists** → `/pipeline`, **Workflows** → `/workflows`; **secondary:** **Insights** → `/insights`, **Settings** → `/settings`. Desktop + mobile bottom bar use the same six items.
+1. **Story:** As a user, I can move between primary areas using the main navigation (Today, Relationships, Lists, Workflows) and open Insights and Settings from the secondary nav.  
+   **Acceptance criteria**
+   - All primary destinations load without broken routes; active nav state reflects the current section.
+   - Insights and Settings are reachable from the agreed secondary nav on desktop and mobile.
+   - Mobile layout preserves the same destinations (e.g. bottom nav or equivalent) without trapping the user on a single screen.
 
-**Implemented but not on the main rail:** **Activity** (`/activity`), **Materials** (`/materials`), **LP Network** (`/lp-network`, `/lp-network/mandate` — fund selector in header on LP Network only), standalone **`/search`**.
+2. **Story:** As a user, I can work in a consistent layout with list/detail panels and access **Tomo** (floating assistant / inline chat depending on the page).  
+   **Acceptance criteria**
+   - List + detail pattern is stable across supported viewports; resizing or closing panels does not lose unsaved work without warning where edits exist.
+   - Tomo is available where the product specifies (global assistant vs page-inline); sending a message returns a response or a clear error state (no silent failure).
+   - Assistant context is scoped appropriately to the current page or selected record when that is a product requirement.
 
-**Legacy redirects (examples):** `/targets` → `/pipeline`; `/today` → `/home`; `/tasks` → `/home` (client redirect); `/contacts` → `/relationships`; `/workflow` → `/workflows`; `/briefs` → `/materials?tab=briefs`.
+3. **Story:** As a user, I can rely on **legacy URLs** redirecting to the current routes (e.g. old “Today” or “Contacts” paths) where the product still supports those links.  
+   **Acceptance criteria**
+   - Documented legacy paths return HTTP redirects (or client redirects where required) to the canonical route.
+   - Bookmarks and shared links using legacy paths land on the correct screen with equivalent meaning (no 404 for supported aliases).
+   - Query parameters that carry meaning (e.g. open a specific entity) are preserved or mapped when feasible.
 
-**Tomo AI:** `POST /api/tomo/orchestrate` (streaming; tools and `context.surface` vary). Related: `POST /api/tomo/filter-relationships`, `GET /api/version`, demo/cron paths under `src/app/api/cron/` and `src/app/api/email/daily-brief/`. **Today** uses **inline** chat wired to the same orchestrator with optional `todayContext` (actions, commitments, daily brief blocks). **Shell Tomo** (FAB → dock/sheet on many routes) also calls `/api/tomo/orchestrate` with `surface: "general"`. Many **tool apply** paths are still **stub / partial** vs a production DB.
+---
 
-**Auth / session:** mock session + onboarding flags (e.g. `src/lib/auth.ts`, local persistence) — **not** production OAuth or tenant isolation.
+## Today (`/home`)
 
-**Integrations / billing:** Settings and onboarding show **Google, Microsoft, Affinity, Sheets, Slack, Stripe**, etc.; most flows are **UI and local flags**, not live OAuth or webhooks.
+**Epic:** Daily command center  
 
-## Planning table
+1. **Story:** As a user, I can see **actions**, **commitments**, and **brief / radar** style blocks that summarize what needs attention.  
+   **Acceptance criteria**
+   - Data shown is **workspace-scoped** (and fund-scoped if applicable) and reflects server state, not only static demo JSON.
+   - Items appear in sensible groupings (e.g. due today, overdue, upcoming) when those concepts exist in the domain.
+   - Empty states explain that there is nothing to show and how to add work (or link to the right surface).
 
-| Epic | User story | Acceptance criteria | Notes / technical considerations |
-|------|------------|---------------------|----------------------------------|
-| MVP3 IA + routes | As a user, I want a coherent primary navigation so I can move between execution surfaces without dead ends | - [ ] Primary nav matches agreed MVP3 set (Today, Relationships, Lists, Workflows, Settings; Insights per roadmap)<br>- [ ] Legacy URLs redirect correctly<br>- [ ] Activity / materials / search access matches product decision (in nav vs linked) | **In repo:** six-item rail + bottom nav in `app-shell.tsx`. **Gap (MVP3):** Activity not in primary nav; header search and global fund selector still product gaps per MVP doc §3. |
-| Tomo orchestration | As a user, I want Tomo to act with the right tools on each surface so assistance is safe and relevant | - [ ] Tool allow-lists match surface (e.g. workflow vs drawer vs general)<br>- [ ] CRM/workflow updates persist with audit for material actions<br>- [ ] `filter_relationships` / NL filters stay in sync with Relationships UI | **In repo:** `src/app/api/tomo/orchestrate/route.ts`; tools include `filter_relationships`, `update_workflow`, `update_crm`, `draft_reply`, `create_user_workflow` (where enabled). **Gap:** persistence and RBAC per MVP doc §3.3. See MVP Appendix B and `docs/WORKFLOW_CREATOR_ORCHESTRATOR_PLAN.md`. |
-| Trust + demo polish (Phase 0–1) | As a GP, I want consistent terminology and reliable Today/Relationships behavior so demos are credible | - [ ] Relationships filter vs action chips behave correctly (no full chip reset)<br>- [ ] Attribution uses agreed standard (`GP` / `TOMO`, not generic “User”)<br>- [ ] Signal (not legacy “Momentum”) naming + evidence copy<br>- [ ] Incomplete Today cards carry forward (no bogus midnight reset) | **Tracked in:** `PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md` Phase 0–1. Coordinate with pipeline **Lists** labeling in nav (`Lists` at `/pipeline`). |
-| Workspace + identity model | As a company admin, I want to create and manage a workspace so my team can collaborate in one CRM environment | - [ ] Admin can create workspace and invite users by email<br>- [ ] User can accept invite and join correct workspace<br>- [ ] Users cannot access records outside their workspace | Add core tables: `workspaces`, `workspace_memberships`, `roles`; enforce `workspace_id` on all shared CRM entities; support invite lifecycle (pending, accepted, expired, revoked). **Mock today:** no durable multi-tenant backend. |
-| Authentication and session security | As a user, I want secure sign-in so my account and data are protected | - [ ] Support Google and Microsoft login (plus email/password optional)<br>- [ ] Sessions expire and refresh safely<br>- [ ] Sign-out revokes access immediately | **In repo:** `/auth` UI with OAuth buttons and plan selection; session via `src/lib/auth.ts` patterns. **Gap:** move to server-validated tokens; no secrets in browser for production. |
-| Roles and permissions (RBAC) | As an admin, I want role-based controls so users have appropriate access | - [ ] Admin / partner / analyst (or packaged role set) enforced for Team workspaces<br>- [ ] `user`-class role can use CRM but cannot manage admin-only areas where restricted<br>- [ ] A dedicated internal `it_ops_support` role can access user-private data only for support under strict controls | **MVP3 ship intent** names roles such as **Admin, Partner, Analyst** (see `Tomo MVP` §3.4). **In repo:** plan choice UI; **no** enforced server RBAC. Enforce at API; permission matrix; audit role changes. |
-| Shared CRM + personal contacts separation | As a user, I want personal contacts visible to me only while still accessing shared company CRM | - [ ] Shared contacts are visible to all workspace members per role rules<br>- [ ] Personal contacts, mail, and calendar are never visible to company admins<br>- [ ] Only owner (and approved `it_ops_support`) can access personal data<br>- [ ] User can promote a personal contact into shared CRM with explicit action | Ownership model (`scope: workspace|personal`, `owner_user_id`); harden search/filter/export; merge flows for duplicates. **Not** fully implemented in mock data layer. |
-| Onboarding and workspace setup | As a new user, I want guided onboarding so I can connect tools and start quickly | - [ ] Onboarding persists progress across sessions<br>- [ ] User can skip optional steps and finish setup<br>- [ ] Connected statuses appear in settings and onboarding completion state | **In repo:** eight-step flow `src/app/onboarding/page.tsx` (`totalSteps = 8`). **Gap:** persist server-side; CSV-first import + mapping + dedupe per MVP doc Appendix C.2. |
-| Google integration suite | As a user, I want Gmail, Google Calendar, and Google Contacts integrated so TOMO can assist with daily workflow | - [ ] User can connect Google account once and grant required scopes<br>- [ ] Calendar/events and contacts sync run successfully with visible status<br>- [ ] MVP is read-only sync (no write-back to Google)<br>- [ ] User can use Tomo chat to push relevant personal-contact updates into shared CRM | **In repo:** stub connect flows. Production: OAuth, server token storage, webhooks/polling, least-privilege scopes. |
-| Microsoft integration suite | As a user, I want Outlook Mail, Calendar, and Contacts integrated so TOMO works with Microsoft 365 | - [ ] User can connect Microsoft account and grant Graph scopes<br>- [ ] Mail/calendar/contacts sync works with clear status/errors<br>- [ ] MVP is read-only sync (no write-back to Microsoft)<br>- [ ] Reconnect flow handles expired/revoked consent | Mirror Google via Microsoft Graph; provider abstraction; tenant admin consent for enterprises. **Stubs in UI today.** |
-| Slack integration | As a user, I want Slack connection so I can receive recaps and interact with TOMO in workspace tools | - [ ] Admin/user can install app to Slack workspace with OAuth<br>- [ ] Recaps and notifications are delivered to expected channel/DM<br>- [ ] Incoming Slack actions/commands are authenticated and processed | **MVP3:** narrow Slack V1 (e.g. daily brief scope), not a full messaging OS — see MVP doc §3–4. **Product plan:** test/send + webhook flows in later phases (`PRODUCT_DECISIONS` Phase 2). |
-| Affinity integration | As an operations user, I want to sync Affinity people/companies so TOMO starts with existing CRM data | - [ ] Workspace admin sees guided setup steps that require their Affinity admin to create an API key and provide List ID<br>- [ ] App validates credentials immediately (test call) before marking connected<br>- [ ] Initial import and incremental sync run with dedupe and mapping rules<br>- [ ] Sync failures are logged with actionable retry states | Checklist UI + secure secret handling (encrypt, mask, rotate). **In repo:** settings/onboarding placeholders only until backend exists. |
-| Google Sheets integration | As a user, I want to export/sync CRM to Google Sheets for flexible reporting | - [ ] User can authenticate and create/select sheet destination<br>- [ ] Export produces correct schema and row counts<br>- [ ] Sync mode (export-only or bidirectional) is clearly defined | Track `external_sheet_id`, job history, schema drift from manual edits. |
-| Billing and subscription (Stripe) | As an admin, I want to manage plan, seats, and payment so workspace billing is reliable | - [ ] Workspace-level billing is supported in v1 (single payer per workspace)<br>- [ ] Team plans support seat management and proration<br>- [ ] Webhooks keep subscription status accurate in app | **In repo:** Stripe placeholders in settings. **Gap:** Checkout, Portal, webhooks, `stripe_customer_id` on workspace, entitlement gating. |
-| Settings and preferences | As a user, I want profile, notification, and integration settings so I can control my experience | - [ ] User can update profile and notification routing per channel<br>- [ ] Admin can manage workspace-wide settings separately from personal settings<br>- [ ] Settings changes persist and are audited for critical fields | **In repo:** `src/app/settings/page.tsx` — profile, funds, integrations, notifications, billing; **five-section / connection-health** evolution per `PRODUCT_DECISIONS` Phase 2. |
-| Activity, materials, and insights | As a user, I want traceability and optional analytics so I can see what changed and how we are trending | - [ ] Activity feed matches material CRM and Tomo events with filters/export where promised<br>- [ ] Insights, if in nav, is clearly “beta” or production per roadmap<br>- [ ] Materials/briefs behavior matches IA (e.g. `/materials?tab=briefs`) | **In repo:** Activity at `/activity` (filterable mock); Insights demo at `/insights` (Singapore-style mock metrics) — **not** all locked as MVP3 core per MVP doc §2–3. **Materials** prototype at `/materials`. |
-| Audit, compliance, and enterprise security | As an enterprise buyer, I want controls and logs so adoption meets security/compliance standards | - [ ] Critical actions (role change, export, integration connect/disconnect, billing changes) are audited<br>- [ ] Data export and deletion workflows are available<br>- [ ] Access controls are testable and documented | Add `audit_logs` (actor, action, target, time, metadata); GDPR/CCPA; retention; evidence for SOC2. |
-| Reliability and operations | As an internal operator, I want observability and safe background jobs so integrations stay healthy | - [ ] Sync jobs are queued, retryable, and idempotent<br>- [ ] Failures surface in dashboard/alerts<br>- [ ] APIs expose health and rate-limit protections | Queue + DLQ; logs/metrics/traces; SLOs for sync/API; circuit breakers. **Partial:** e.g. `GET /api/version` for build id. |
+2. **Story:** As a user, I can open an item in a **drawer** to review context, amend details, attach documents, or schedule (where the UI exposes those actions).  
+   **Acceptance criteria**
+   - Opening/closing the drawer preserves list selection and scroll position unless the user navigates away.
+   - Edits persist to the backend and appear after refresh; optimistic UI errors roll back or show a recoverable message.
+   - Attachments and scheduling actions enforce permissions; unauthorized users see a clear denial, not a broken control.
 
-## Additional enterprise items you are likely missing
+3. **Story:** As a user, I can use **inline Tomo** with Today-specific context so the assistant reflects what is on the page.  
+   **Acceptance criteria**
+   - The assistant receives structured context (e.g. current actions, commitments, brief blocks) consistent with what the user sees.
+   - Answers do not invent records that are not in the user’s workspace; if data is missing, Tomo says so or asks a clarifying question.
+   - Tool or action proposals that mutate CRM data require confirmation where product rules require human-in-the-loop.
 
-- **SSO and enterprise provisioning (v2):** SAML/OIDC SSO, SCIM user provisioning/deprovisioning.  
-- **MFA and conditional access:** required MFA policies, device/location risk controls.  
-- **Granular data access model:** field-level restrictions and export controls for sensitive data.  
-- **Approval workflows:** admin approval for high-risk automations and bulk updates.  
-- **Data governance:** retention windows, legal hold, backup/restore, disaster recovery targets.  
-- **Observability and support tooling:** admin diagnostics, sync job monitor, customer support impersonation with strict audit.  
-- **Contract/billing ops:** invoices, tax handling, failed payment grace periods, dunning.  
-- **Performance and scale:** pagination/indexing for large CRM datasets and search relevance tuning.
+4. **Story:** As a user, I can jump to related areas (e.g. materials / prep) when the UI links there.  
+   **Acceptance criteria**
+   - Links navigate to the correct route and, when applicable, open the related entity or filter.
+   - Deep links work when pasted in a fresh session (subject to auth), not only when clicked inside an existing session.
 
-## Affinity setup (easy + secure)
+---
 
-1. Workspace admin clicks `Connect Affinity` and sees a short wizard with: what is needed (`Affinity List ID` + `Affinity API key`), who must do it (customer **Affinity admin**), and copyable short instructions.  
-2. Admin pastes key once; backend performs immediate validation call.  
-3. On success, store encrypted secret server-side, show only masked fingerprint (`••••1234`), and set health status.  
-4. Provide `Rotate key` and `Disconnect`; both audited.  
-5. If validation fails, show actionable error (`invalid key`, `insufficient permissions`, `wrong list id`) without exposing sensitive values.
+## Relationships (`/relationships`)
 
-## Recommended next slice (implementation order)
+**Epic:** CRM relationship workspace  
 
-1. **Phase 0** stabilization: chip behavior, attribution, Signal naming, Today carry-forward, verification gates — per `docs/PRODUCT_DECISIONS_V1_PHASED_IMPLEMENTATION_PLAN.md`.  
-2. **Phase 1** safety + demo-critical: workflow guardrails (dedupe, overlap, suppression), Today drawer/append behavior, required workflow diagram labels, Lists naming alignment.  
-3. **Durable model:** workspace, membership, server auth, tenant-scoped APIs.  
-4. **OAuth + token lifecycle** for Google and Microsoft (read paths first).  
-5. **Shared vs personal** data model and UI enforcement.  
-6. **Stripe** billing + entitlements.  
-7. **Audit** + **job orchestration** for integration sync.  
+1. **Story:** As a user, I can browse relationships in **table** or **board** views and sort or scan key fields (stage, momentum, tier, etc.).  
+   **Acceptance criteria**
+   - Table and board views read from the same underlying dataset; switching views does not drop filters without user action.
+   - Sorting and column display match user expectations for the chosen column (stable sort, correct type ordering).
+   - Large lists paginate or virtualize so the page remains usable at production data sizes.
 
-(Adjust order with PM/EM against MVP3 date and packaging.)
+2. **Story:** As a user, I can **filter** relationships (including natural-language style filtering where wired to Tomo).  
+   **Acceptance criteria**
+   - Structured filters combine correctly (AND/OR as designed) and match the filter summary string shown in the UI.
+   - NL or assistant-driven filters update the same filter model as manual controls (no “split brain” between Tomo and UI).
+   - Clearing filters restores the full authorized dataset for the workspace.
 
-## Confirmed v1 / MVP3 decisions (summary — confirm in `Tomo MVP`)
+3. **Story:** As a user, I can **add** a contact and **edit** CRM-style fields on a relationship record.  
+   **Acceptance criteria**
+   - Validation errors are field-level and blocking saves until resolved (or explicit “save draft” if product supports it).
+   - Created records appear in list views without a full page reload; duplicates follow product rules (warn, block, or merge flow).
+   - Field-level permissions are enforced server-side, not only hidden in the UI.
 
-1. Company admins **cannot** access user-private contacts, mail, or calendar.  
-2. Internal `it_ops_support` can access private data only under SOC2-style controls and full audit.  
-3. Personal Google/Microsoft integrations are read-only in MVP (no write-back) unless product revises.  
-4. Users can use Tomo to move relevant personal-contact updates into company CRM (human-in-the-loop).  
-5. Company CRM is source of truth for shared contacts/relationships.  
-6. **No** SSO/SCIM in v1 baseline (plan for v2) per MVP doc.  
-7. **Billing** workspace-level in v1; fund/sub-team billing later.  
-8. **Telegram** / broad messaging OS-style Slack **out** of MVP3 baseline; **Slack V1** scoped (e.g. daily brief) per MVP doc.
+4. **Story:** As a user, I can open a **detail drawer** for snapshot, activity-style context, documents, and Tomo assistance for that relationship.  
+   **Acceptance criteria**
+   - Snapshot and activity reflect audit-backed or integration-backed events with timestamps and actors where required.
+   - Document attach/list is permissioned; downloads respect auth.
+   - Tomo uses the selected relationship id so answers and proposed actions target the correct record.
+
+---
+
+## Lists (`/pipeline`)
+
+**Epic:** Saved lists / pipelines of relationships  
+
+1. **Story:** As a user, I can see **lists** for the active fund context and open a list to inspect membership and metadata.  
+   **Acceptance criteria**
+   - List membership matches server-defined rules (static, filter-based, or hybrid) and updates when underlying relationships change.
+   - Fund (or workspace) switch updates visible lists and membership counts without stale cache confusing the user.
+   - Unauthorized lists are not visible; shared lists respect role rules.
+
+2. **Story:** As a user, I can **amend** list configuration where the product provides that flow (criteria, membership, or metadata).  
+   **Acceptance criteria**
+   - Amendments persist and are reflected in list membership or metadata after save.
+   - Conflicting edits (two users) surface a clear resolution path (refresh, merge, or last-write-wins per product spec).
+   - Destructive changes (e.g. removing many members) require confirmation when volume exceeds a defined threshold.
+
+3. **Story:** As a user, I can use **seed or demo data** only in non-production environments when the product allows it (optional for prod).  
+   **Acceptance criteria**
+   - Production tenants never see “reset demo” or destructive demo actions unless explicitly gated and permissioned.
+   - If demo reset exists in lower environments, it is idempotent and logged.
+
+---
+
+## Workflows (`/workflows`)
+
+**Epic:** Playbooks and process templates  
+
+1. **Story:** As a user, I can browse **suggested playbooks** and **Tomo default** workflow templates.  
+   **Acceptance criteria**
+   - Templates are versioned or immutable per release rules; users see names, descriptions, and applicability (fund, stage, etc.) as designed.
+   - Enabling/disabling a template (if allowed) affects **new** runs only unless product says otherwise.
+
+2. **Story:** As a user, I can open a workflow to see **steps**, attachments, and activity-style detail in a drawer.  
+   **Acceptance criteria**
+   - Step order and status match persisted workflow runs; completed steps cannot be “uncompleted” without an audit trail if forbidden.
+   - Attachments and comments are tied to the workflow instance and visible to authorized roles only.
+
+3. **Story:** As a user, I can start or adjust **custom / creator** workflows where the product supports it (including chat-assisted creation).  
+   **Acceptance criteria**
+   - Created workflows validate required fields (trigger, owner, steps) before activation.
+   - Assistant-created definitions are reviewed and confirmed by the user before persisting side effects (per product policy).
+   - Invalid graphs (cycles, unreachable steps) are blocked with actionable errors.
+
+4. **Story:** As a user, I can associate workflows with **lists** or relationships as the product requires.  
+   **Acceptance criteria**
+   - Associations are stored and visible from both the workflow and the relationship/list surface where cross-links are promised.
+   - Removing an association follows product rules (orphan runs, cancel, or block).
+
+---
+
+## Insights (`/insights`)
+
+**Epic:** Portfolio / funnel analytics  
+
+1. **Story:** As a user, I can view **dashboard-style metrics** and charts that summarize pipeline health for my workspace (and fund context if applicable).  
+   **Acceptance criteria**
+   - Metrics are computed from authoritative CRM data with documented definitions (e.g. what “active” means).
+   - Date ranges and filters apply consistently across all widgets on the page.
+   - Users without entitlement to Insights see a clear upsell or hide per product; no partial leakage of restricted data.
+
+---
+
+## Settings (`/settings`)
+
+**Epic:** Profile, fund context, and connections  
+
+1. **Story:** As a user, I can review and adjust **profile** and **preferences** shown in Settings.  
+   **Acceptance criteria**
+   - Profile changes persist and appear on next login on another device.
+   - Email or identity changes that require verification follow a secure flow (confirmation link or re-auth).
+
+2. **Story:** As a user, I can manage **fund** selection / context where the app is fund-scoped.  
+   **Acceptance criteria**
+   - Fund choice applies across all fund-scoped pages in the same session; switching fund refreshes dependent data.
+   - Users only see funds they belong to; admin-only fund setup is gated by role.
+
+3. **Story:** As a user, I can connect, view status of, and disconnect **integrations** (e.g. mail, calendar, CRM sources) per product scope.  
+   **Acceptance criteria**
+   - OAuth or API flows complete with success/failure surfaced; tokens are stored server-side with rotation/revocation handling.
+   - Connection health (sync errors, last sync time) is accurate enough to trust for operations.
+   - Disconnect removes access and stops scheduled jobs for that connection.
+
+4. **Story:** As a workspace admin, I can manage **billing** and plan controls where the product includes them.  
+   **Acceptance criteria**
+   - Plan and seat changes reflect in-app entitlements after provider webhooks or polling (no indefinite stale state).
+   - Payment failures surface in UI and email (or equivalent) per billing product rules.
+
+---
+
+## Activity (`/activity`)
+
+**Epic:** Event timeline  
+
+1. **Story:** As a user, I can browse a filterable **activity** feed of CRM- and product-relevant events.  
+   **Acceptance criteria**
+   - Events are scoped to the user’s workspace (and role); private data never appears to unauthorized viewers.
+   - Filters (type, actor, date, entity) narrow results correctly and perform adequately on large histories.
+   - Each event links to the underlying record when applicable.
+
+---
+
+## Materials (`/materials`)
+
+**Epic:** Decks and collateral  
+
+1. **Story:** As a user, I can browse a **materials** list with filters and open a **detail** view for an item.  
+   **Acceptance criteria**
+   - List data is workspace-scoped; filters match metadata fields consistently.
+   - Detail view shows the latest version or active version per document model; version history is available if promised.
+
+2. **Story:** As a user, I can use this area as the **briefs / materials** hub, including canonical URLs and redirects from legacy brief routes.  
+   **Acceptance criteria**
+   - Legacy `/briefs` (or equivalent) redirects preserve intent (e.g. correct tab or entity).
+   - Permissions for confidential materials are enforced on list, detail, and download.
+
+---
+
+## LP Network (`/lp-network`, `/lp-network/mandate`)
+
+**Epic:** LP introduction and mandate exploration  
+
+1. **Story:** As a user, I can review **qualified LPs** and introduction **status** per fund.  
+   **Acceptance criteria**
+   - Status and qualification rules are computed from CRM or workflow data, not only from browser-local demo state in production.
+   - Fund switch updates the LP list and counts consistently.
+
+2. **Story:** As a user, I can open **introduction detail** and advance or record status transitions the product supports.  
+   **Acceptance criteria**
+   - Valid state transitions only; invalid transitions show why they are blocked.
+   - Changes are audited (who, when, from → to) when the domain requires compliance or handoffs.
+
+3. **Story:** As a user, I can open the **mandate** sub-area and view mandate-oriented content.  
+   **Acceptance criteria**
+   - Mandate data respects fund and role permissions.
+   - Deep links to a specific mandate load correctly for authorized users.
+
+---
+
+## Search (`/search`)
+
+**Epic:** Global search surface  
+
+1. **Story:** As a user, I can search across authorized **relationships** (and other entity types the product promises) from the search experience.  
+   **Acceptance criteria**
+   - Results respect tenant and role boundaries; no cross-workspace leakage.
+   - Query returns ranked results within an acceptable latency budget; empty results explain limits (e.g. min characters).
+   - Selecting a result navigates to the canonical record screen.
+
+---
+
+## Auth (`/auth`)
+
+**Epic:** Sign-in and session  
+
+1. **Story:** As a user, I can sign in with the **supported identity providers** and complete **plan / workspace** selection required before using the app.  
+   **Acceptance criteria**
+   - Sessions are server-validated; expired sessions redirect to auth without data corruption.
+   - Sign-out invalidates the session on server and clears client tokens/cookies per security baseline.
+   - Brute-force and credential-stuffing mitigations exist at the edge or auth provider as required.
+
+---
+
+## Onboarding (`/onboarding`)
+
+**Epic:** First-run setup  
+
+1. **Story:** As a new user, I can complete **onboarding** steps and resume later without losing required progress.  
+   **Acceptance criteria**
+   - Progress persists server-side; clearing local storage alone does not reset completed steps incorrectly.
+   - Required vs optional steps are explicit; users can finish minimal onboarding and access the app.
+   - Skipped optional steps can be completed later from Settings or an equivalent entry point.
+
+---
+
+## How to extend this doc
+
+When you add a route or epic: write **1–5 stories**, each with **3–6 acceptance criteria** that are **testable** and describe **production** behavior (auth, persistence, permissions, scale, error handling). Keep page-level grouping so PM and dev share the same map from UI → obligations.
