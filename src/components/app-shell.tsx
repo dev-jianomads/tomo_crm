@@ -408,11 +408,12 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Bottom nav for mobile */}
       {isMobile && <BottomNav active={section} />}
 
-      {/* Floating action button — hidden where Tomo is inline (Today, Workflows) or in drawer (Relationships, Lists). LP Network keeps the FAB (Phase 5). */}
+      {/* Floating action button — hidden where Tomo is inline (Today, Workflows) or in drawer (Relationships, Lists), and on Settings (no assistant). LP Network keeps the FAB (Phase 5). */}
       {section !== "home" &&
         section !== "workflows" &&
         section !== "relationships" &&
-        section !== "pipeline" && (
+        section !== "pipeline" &&
+        section !== "settings" && (
         <button
           onClick={() => setAssistantOpen(true)}
           className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
@@ -422,8 +423,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         </button>
       )}
 
-      {/* Assistant surface - hidden on workflows (has its own inline AI chat) */}
-      {section !== "workflows" && (
+      {/* Assistant surface — hidden on workflows (inline AI) and Settings (no chat). */}
+      {section !== "workflows" && section !== "settings" && (
         isMobile ? (
           <AssistantSheet open={assistantOpen} onClose={() => setAssistantOpen(false)}>
             <TomoAssistant

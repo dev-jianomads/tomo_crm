@@ -182,11 +182,27 @@ The main app nav still lands on **Settings** at `/settings` (redirects to **`/se
 | `/settings/team` | Seat usage, invites, member list |
 | `/settings/team/roles` | Role vs capability matrix (admin vs member, etc.) |
 
+### Subscription & team pages (billing surfaces)
+
+These four nested routes are the **subscription and workspace-admin** cluster. They stay under `/settings` (sidebar group **Subscription & team**) and cross-link to each other so users can move from **plan choice → subscription management → seats → roles** without hunting the sidebar.
+
+| Path | What this page owns (production) |
+|------|----------------------------------|
+| **`/settings/billing`** | Compare Individual vs Team (and future tiers); show current plan / trial badges; entry to **Manage seats** (e.g. Stripe Customer Portal or in-app seat SKUs); links to **Manage subscription**, **Team & seats**, and **Roles & permissions**; optional “coming soon” tiles (approvals, CRM sync rules, consent) stay clearly non-blocking. |
+| **`/settings/billing/manage`** | Authoritative subscription summary (plan, renewal, trial, seat counts vs billing); **Change plan** back to billing compare; **Payment method** and **Invoices** from the billing provider; **Cancel** (or downgrade) with confirmation and effective-date messaging; **Manage team seats** deep link when seat count is purchased in-app or via portal. |
+| **`/settings/team`** | Purchased vs assigned seats; **invite** and pending vs active members; link to adjust purchased seats via subscription management; link to **Roles & permissions** for capability clarity. |
+| **`/settings/team/roles`** | Documented **Owner / Admin / Member** (and future roles) vs capabilities; assignment UX for admins; link back to **Team & seats**. |
+
+**Implementation note:** The repo currently ships **UI mocks** for this cluster (placeholder pricing, mock invoices, local-only invite rows). Acceptance criteria below describe **target production** behavior; replace mocks with provider + database-backed state without changing the canonical routes above.
+
+**Stripe (or equivalent) return URLs:** Success and cancel URLs from Checkout, and return URL from Customer Portal, should land on agreed Settings routes—e.g. **`/settings/billing/manage`** after payment or portal session, and **`/settings/billing`** for plan comparison when the user cancels checkout—so deep links and bookmarks stay valid.
+
 1. **Story:** As a user, I can move between Settings sections using the **in-app Settings sidebar** without leaving the Settings layout.  
    **Acceptance criteria**
    - Every path in the table above loads without 404; the sidebar highlights the **current** section.
    - Deep links (e.g. bookmark `/settings/billing/manage`) open the correct section when the user is authenticated.
    - Mobile and desktop both expose the same Settings destinations (list + detail pattern preserved).
+   - Cross-links among **`/settings/billing`**, **`/settings/billing/manage`**, **`/settings/team`**, and **`/settings/team/roles`** resolve correctly and match the sidebar entries (no orphan CTAs).
 
 2. **Story:** As a user, I can review and adjust **profile** and **preferences** shown in Settings.  
    **Acceptance criteria**
@@ -204,30 +220,35 @@ The main app nav still lands on **Settings** at `/settings` (redirects to **`/se
    - Connection health (sync errors, last sync time) is accurate enough to trust for operations.
    - Disconnect removes access and stops scheduled jobs for that connection.
 
-5. **Story:** As a subscriber, I can review **plans**, **trial**, and **seat-oriented** actions on the billing surfaces.  
+5. **Story:** As a subscriber, I can review **plans**, **trial**, and **seat-oriented** actions on **Billing & Plan** (`/settings/billing`).  
    **Acceptance criteria**
    - Current plan, trial state, and renewal (or cancellation) dates reflect the billing provider or database of record.
-   - “Select plan” / upgrade flows complete in the provider (e.g. Checkout) and return to an agreed Settings URL with clear success or failure.
+   - “Select plan” / upgrade flows complete in the provider (e.g. Checkout) and return to an agreed Settings URL (see **Subscription & team pages**) with clear success or failure.
    - Seat quantity changes for Team plans update entitlements for the workspace after webhooks or authoritative polling.
+   - **Manage seats** (or equivalent) opens the correct provider or in-app flow and returns without losing workspace context.
+   - Users without permission to change billing see this page as read-only or are redirected per product rules (Members must not silently see inactive checkout buttons that fail server-side).
 
-6. **Story:** As a subscriber (or billing admin), I can **manage subscription** details: payment method, invoices, plan change entry, and cancellation.  
+6. **Story:** As a subscriber (or billing admin), I can **manage subscription** details on **Manage subscription** (`/settings/billing/manage`): payment method, invoices, plan change entry, and cancellation.  
    **Acceptance criteria**
    - Payment method updates go through a secure provider flow; the UI never stores raw card data.
    - Invoice history lists real charges with links or identifiers from the provider; empty and error states are explicit.
    - Cancel / downgrade shows effective date, retention rules, and seat or data impact; accidental cancel is mitigated (e.g. confirm step).
    - Payment failures and grace periods surface in this area (or linked provider surfaces) and via email per billing rules.
+   - **Change plan** and **Manage team seats** entry points align with live subscription state (no stale seat counts after portal or webhook updates).
 
-7. **Story:** As a team workspace admin, I can **invite**, **review**, and **remove** members and see **seat usage** against purchased seats.  
+7. **Story:** As a team workspace admin, I can **invite**, **review**, and **remove** members and see **seat usage** on **Team & seats** (`/settings/team`).  
    **Acceptance criteria**
    - Invites are permissioned; only roles allowed to invite can send or revoke invites.
    - Pending vs active members are distinguishable; removing a user frees or reallocates a seat per product rules.
    - Seat counts match billing; over-capacity or payment issues surface clearly.
+   - Purchased vs assigned seat summary matches **`/settings/billing/manage`** (single source of truth after sync).
 
-8. **Story:** As a workspace admin, I can understand and assign **roles** (e.g. Owner, Admin, Member) against documented **capabilities**.  
+8. **Story:** As a workspace admin, I can understand and assign **roles** on **Roles & permissions** (`/settings/team/roles`) (e.g. Owner, Admin, Member) against documented **capabilities**.  
    **Acceptance criteria**
    - The capability matrix (or equivalent) matches enforcement **server-side**; UI-only checks are insufficient for production.
    - Users without a permission see a clear denial for gated actions (not silent failure).
    - Role changes are audited when the domain requires compliance or handoffs.
+   - Role assignment UI is consistent with the member list on **`/settings/team`** (same users, no conflicting labels).
 
 ---
 
