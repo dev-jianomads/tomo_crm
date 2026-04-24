@@ -1,16 +1,123 @@
 "use client";
 
-import { useState } from "react";
+import { LinkSlashIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-export function IntegrationRow({ title, status }: { title: string; status: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
-      <div>
-        <p className="text-sm font-medium text-gray-900">{title}</p>
-        <p className="text-xs text-gray-600">Manage connection</p>
+type DisconnectIntegrationDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  /** Shown on the primary button (e.g. "Disconnect Slack") */
+  confirmLabel: string;
+};
+
+export function DisconnectIntegrationDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmLabel,
+}: DisconnectIntegrationDialogProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="disconnect-integration-title"
+    >
+      <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close dialog" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+        <h2 id="disconnect-integration-title" className="text-base font-semibold text-gray-900">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm text-gray-600">{description}</p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" className="button-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-100"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
-      <span className="text-xs text-gray-500">{status}</span>
-    </div>
+    </div>,
+    document.body
+  );
+}
+
+type IntegrationRowProps = {
+  title: string;
+  status: string;
+  /** When true, a disconnect control is available if onDisconnect is set */
+  connected: boolean;
+  onDisconnect?: () => void;
+  /** Override default disconnect dialog copy */
+  disconnectDescription?: string;
+};
+
+export function IntegrationRow({ title, status, connected, onDisconnect, disconnectDescription }: IntegrationRowProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const canDisconnect = connected && typeof onDisconnect === "function";
+  const defaultDescription = `You can reconnect ${title} later from Settings. Some features may stop working until you connect again.`;
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">{title}</p>
+          <p className="text-xs text-gray-600">Manage connection</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-gray-500">{status}</span>
+          {canDisconnect ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+              onClick={() => setDialogOpen(true)}
+              title={`Disconnect ${title}`}
+            >
+              <LinkSlashIcon className="h-3.5 w-3.5" aria-hidden />
+              Disconnect
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {canDisconnect && onDisconnect ? (
+        <DisconnectIntegrationDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onConfirm={onDisconnect}
+          title={`Disconnect ${title}?`}
+          description={disconnectDescription ?? defaultDescription}
+          confirmLabel={`Disconnect ${title}`}
+        />
+      ) : null}
+    </>
   );
 }
 

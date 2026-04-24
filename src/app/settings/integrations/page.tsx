@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { connectAffinity, createGoogleSheet, startGoogleAuth } from "@/lib/integrations";
 import {
+  DisconnectIntegrationDialog,
   generatePresetSheetName,
   IntegrationRow,
 } from "@/components/settings/settings-widgets";
+import { LinkSlashIcon } from "@heroicons/react/24/outline";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { OnboardingState } from "@/lib/types";
 
@@ -31,14 +33,31 @@ export default function SettingsIntegrationsPage() {
   const [savingAffinity, setSavingAffinity] = useState(false);
   const [authingSheet, setAuthingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
+  const [affinityDisconnectOpen, setAffinityDisconnectOpen] = useState(false);
+  const [sheetsDisconnectOpen, setSheetsDisconnectOpen] = useState(false);
 
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold accent-title">Integrations</h2>
 
-      <IntegrationRow title="Calendar" status={integrations.calendarConnected ? "Connected" : "Not connected"} />
-      <IntegrationRow title="Contacts" status={integrations.contactsConnected ? "Connected" : "Not connected"} />
-      <IntegrationRow title="Email" status={integrations.emailConnected ? "Connected" : "Optional"} />
+      <IntegrationRow
+        title="Calendar"
+        status={integrations.calendarConnected ? "Connected" : "Not connected"}
+        connected={integrations.calendarConnected}
+        onDisconnect={() => setIntegrations((prev) => ({ ...prev, calendarConnected: false }))}
+      />
+      <IntegrationRow
+        title="Contacts"
+        status={integrations.contactsConnected ? "Connected" : "Not connected"}
+        connected={integrations.contactsConnected}
+        onDisconnect={() => setIntegrations((prev) => ({ ...prev, contactsConnected: false }))}
+      />
+      <IntegrationRow
+        title="Email"
+        status={integrations.emailConnected ? "Connected" : "Optional"}
+        connected={integrations.emailConnected}
+        onDisconnect={() => setIntegrations((prev) => ({ ...prev, emailConnected: false }))}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-gray-200 p-4">
@@ -103,20 +122,29 @@ export default function SettingsIntegrationsPage() {
             {integrations.affinityConnected ? (
               <button
                 type="button"
-                className="button-secondary"
-                onClick={() => {
-                  setIntegrations((prev) => ({
-                    ...prev,
-                    affinityConnected: false,
-                    affinityListId: undefined,
-                    affinityTokenLast4: undefined,
-                  }));
-                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50"
+                onClick={() => setAffinityDisconnectOpen(true)}
               >
+                <LinkSlashIcon className="h-4 w-4" aria-hidden />
                 Disconnect
               </button>
             ) : null}
           </div>
+          <DisconnectIntegrationDialog
+            open={affinityDisconnectOpen}
+            onClose={() => setAffinityDisconnectOpen(false)}
+            onConfirm={() => {
+              setIntegrations((prev) => ({
+                ...prev,
+                affinityConnected: false,
+                affinityListId: undefined,
+                affinityTokenLast4: undefined,
+              }));
+            }}
+            title="Disconnect Affinity CRM?"
+            description="Sync with Affinity will stop. You can connect again with a new list and token at any time."
+            confirmLabel="Disconnect Affinity"
+          />
           {integrations.affinityConnected ? (
             <p className="mt-2 text-xs text-green-700">
               Connected to list {integrations.affinityListId ?? affinityListId}. Token ending {integrations.affinityTokenLast4 ?? "••••"}.
@@ -188,7 +216,32 @@ export default function SettingsIntegrationsPage() {
             >
               {savingSheet ? "Creating..." : integrations.googleSheetsConnected ? "Update filename" : "Create sheet"}
             </button>
+            {integrations.googleSheetsConnected ? (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50"
+                onClick={() => setSheetsDisconnectOpen(true)}
+              >
+                <LinkSlashIcon className="h-4 w-4" aria-hidden />
+                Disconnect
+              </button>
+            ) : null}
           </div>
+          <DisconnectIntegrationDialog
+            open={sheetsDisconnectOpen}
+            onClose={() => setSheetsDisconnectOpen(false)}
+            onConfirm={() => {
+              setIntegrations((prev) => ({
+                ...prev,
+                googleSheetsConnected: false,
+                googleSheetsFilename: undefined,
+                googleSheetsAuthed: false,
+              }));
+            }}
+            title="Disconnect Google Sheets?"
+            description="The link to your sheet will be removed. You can authenticate and create a sheet again any time."
+            confirmLabel="Disconnect Google Sheets"
+          />
           {integrations.googleSheetsConnected ? (
             <p className="mt-2 text-xs text-green-700">Google Sheets ready. Filename {integrations.googleSheetsFilename ?? sheetName}.</p>
           ) : null}

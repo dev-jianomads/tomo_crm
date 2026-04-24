@@ -1,9 +1,26 @@
 "use client";
 
+import { IntegrationRow } from "@/components/settings/settings-widgets";
 import { resetTodayEngagement } from "@/lib/todayEngagement";
 import { usePersistentState } from "@/lib/usePersistentState";
+import { OnboardingState } from "@/lib/types";
 
 export default function SettingsNotificationsPage() {
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", {
+    calendarConnected: false,
+    contactsConnected: false,
+    emailConnected: false,
+    slackConnected: false,
+    telegramConnected: false,
+    affinityConnected: false,
+    googleSheetsConnected: false,
+    googleSheetsAuthed: false,
+    contactImportUploaded: false,
+    fundStrategyUploaded: false,
+    notifications: {},
+    completed: false,
+  });
+
   const [dailyDigestPrefs, setDailyDigestPrefs] = usePersistentState<{
     emailDigest: boolean;
     slackDigest: boolean;
@@ -17,6 +34,34 @@ export default function SettingsNotificationsPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold accent-title">Notifications</h2>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-gray-900">Channels</h3>
+        <p className="text-xs text-gray-600">
+          Routing and digest delivery use these connections. Disconnect here or under Integrations / Messaging; state is
+          shared.
+        </p>
+        <IntegrationRow
+          title="Email"
+          status={integrations.emailConnected ? "Connected" : "Not connected"}
+          connected={integrations.emailConnected}
+          disconnectDescription="Daily Brief and other email notifications may be paused until you connect email again."
+          onDisconnect={() => setIntegrations((prev) => ({ ...prev, emailConnected: false }))}
+        />
+        <IntegrationRow
+          title="Slack"
+          status={integrations.slackConnected ? "Connected" : "Not connected"}
+          connected={integrations.slackConnected}
+          onDisconnect={() => setIntegrations((prev) => ({ ...prev, slackConnected: false }))}
+        />
+        <IntegrationRow
+          title="Telegram"
+          status={integrations.telegramConnected ? "Onboarding link sent" : "Not connected"}
+          connected={integrations.telegramConnected}
+          disconnectDescription="Telegram will stop receiving Tomo messages until you go through onboarding again."
+          onDisconnect={() => setIntegrations((prev) => ({ ...prev, telegramConnected: false, telegramPhone: undefined }))}
+        />
+      </div>
 
       <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900">Daily Brief (email)</h3>
