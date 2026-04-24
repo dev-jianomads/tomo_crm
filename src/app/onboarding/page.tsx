@@ -492,8 +492,10 @@ export default function OnboardingPage() {
                         setGoogleAuthing(true);
                         try {
                           const res = await startGoogleAuth();
-                          if (res.authUrl) window.open(res.authUrl, "_blank");
-                          setState((prev) => ({ ...prev, googleSheetsAuthed: true }));
+                          if (res.ok && res.authUrl) {
+                            window.open(res.authUrl, "_blank");
+                            setState((prev) => ({ ...prev, googleSheetsAuthed: true }));
+                          }
                         } finally {
                           setGoogleAuthing(false);
                         }

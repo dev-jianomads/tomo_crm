@@ -161,30 +161,73 @@ One **epic per main surface** (usually a route). Each **user story** includes **
 
 ---
 
-## Settings (`/settings`)
+## Settings (`/settings`, nested routes)
 
-**Epic:** Profile, fund context, and connections  
+**Epic:** Profile, fund context, connections, subscription, and team administration  
 
-1. **Story:** As a user, I can review and adjust **profile** and **preferences** shown in Settings.  
+The main app nav still lands on **Settings** at `/settings` (redirects to **`/settings/profile`**). All other areas use **nested routes** and a **Settings-only sidebar** so the primary rail (Today, Relationships, etc.) stays unchanged.
+
+**Routes (current IA):**
+
+| Path | Purpose |
+|------|---------|
+| `/settings` | Redirect to profile |
+| `/settings/profile` | Name, email, preferences |
+| `/settings/funds` | Active fund + fund list |
+| `/settings/integrations` | Calendar, contacts, email, Affinity, Sheets |
+| `/settings/messaging` | Slack, Telegram |
+| `/settings/notifications` | Daily brief and related prefs |
+| `/settings/billing` | Plan comparison, manage seats entry, advanced placeholders |
+| `/settings/billing/manage` | Subscription summary, payment method, invoices, cancel flow |
+| `/settings/team` | Seat usage, invites, member list |
+| `/settings/team/roles` | Role vs capability matrix (admin vs member, etc.) |
+
+1. **Story:** As a user, I can move between Settings sections using the **in-app Settings sidebar** without leaving the Settings layout.  
+   **Acceptance criteria**
+   - Every path in the table above loads without 404; the sidebar highlights the **current** section.
+   - Deep links (e.g. bookmark `/settings/billing/manage`) open the correct section when the user is authenticated.
+   - Mobile and desktop both expose the same Settings destinations (list + detail pattern preserved).
+
+2. **Story:** As a user, I can review and adjust **profile** and **preferences** shown in Settings.  
    **Acceptance criteria**
    - Profile changes persist and appear on next login on another device.
    - Email or identity changes that require verification follow a secure flow (confirmation link or re-auth).
 
-2. **Story:** As a user, I can manage **fund** selection / context where the app is fund-scoped.  
+3. **Story:** As a user, I can manage **fund** selection / context where the app is fund-scoped.  
    **Acceptance criteria**
    - Fund choice applies across all fund-scoped pages in the same session; switching fund refreshes dependent data.
    - Users only see funds they belong to; admin-only fund setup is gated by role.
 
-3. **Story:** As a user, I can connect, view status of, and disconnect **integrations** (e.g. mail, calendar, CRM sources) per product scope.  
+4. **Story:** As a user, I can connect, view status of, and disconnect **integrations** (e.g. mail, calendar, CRM sources) per product scope.  
    **Acceptance criteria**
    - OAuth or API flows complete with success/failure surfaced; tokens are stored server-side with rotation/revocation handling.
    - Connection health (sync errors, last sync time) is accurate enough to trust for operations.
    - Disconnect removes access and stops scheduled jobs for that connection.
 
-4. **Story:** As a workspace admin, I can manage **billing** and plan controls where the product includes them.  
+5. **Story:** As a subscriber, I can review **plans**, **trial**, and **seat-oriented** actions on the billing surfaces.  
    **Acceptance criteria**
-   - Plan and seat changes reflect in-app entitlements after provider webhooks or polling (no indefinite stale state).
-   - Payment failures surface in UI and email (or equivalent) per billing product rules.
+   - Current plan, trial state, and renewal (or cancellation) dates reflect the billing provider or database of record.
+   - “Select plan” / upgrade flows complete in the provider (e.g. Checkout) and return to an agreed Settings URL with clear success or failure.
+   - Seat quantity changes for Team plans update entitlements for the workspace after webhooks or authoritative polling.
+
+6. **Story:** As a subscriber (or billing admin), I can **manage subscription** details: payment method, invoices, plan change entry, and cancellation.  
+   **Acceptance criteria**
+   - Payment method updates go through a secure provider flow; the UI never stores raw card data.
+   - Invoice history lists real charges with links or identifiers from the provider; empty and error states are explicit.
+   - Cancel / downgrade shows effective date, retention rules, and seat or data impact; accidental cancel is mitigated (e.g. confirm step).
+   - Payment failures and grace periods surface in this area (or linked provider surfaces) and via email per billing rules.
+
+7. **Story:** As a team workspace admin, I can **invite**, **review**, and **remove** members and see **seat usage** against purchased seats.  
+   **Acceptance criteria**
+   - Invites are permissioned; only roles allowed to invite can send or revoke invites.
+   - Pending vs active members are distinguishable; removing a user frees or reallocates a seat per product rules.
+   - Seat counts match billing; over-capacity or payment issues surface clearly.
+
+8. **Story:** As a workspace admin, I can understand and assign **roles** (e.g. Owner, Admin, Member) against documented **capabilities**.  
+   **Acceptance criteria**
+   - The capability matrix (or equivalent) matches enforcement **server-side**; UI-only checks are insufficient for production.
+   - Users without a permission see a clear denial for gated actions (not silent failure).
+   - Role changes are audited when the domain requires compliance or handoffs.
 
 ---
 

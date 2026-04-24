@@ -151,7 +151,9 @@ export async function disconnectAffinity() {
  * Body: { values: [[...]] }
  * ```
  */
-export async function startGoogleAuth() {
+export type StartGoogleAuthResult = { ok: true; authUrl: string } | { ok: false; error?: string };
+
+export async function startGoogleAuth(): Promise<StartGoogleAuthResult> {
   // MOCK: Simulates OAuth initiation
   await wait(400);
   
@@ -160,8 +162,10 @@ export async function startGoogleAuth() {
   // const response = await fetch('/api/integrations/google/auth-url', {
   //   headers: { 'Authorization': `Bearer ${await getFirebaseIdToken()}` },
   // });
-  // const { authUrl } = await response.json();
-  // return { ok: true, authUrl };
+  // const data = await response.json();
+  // if (!response.ok) return { ok: false, error: data.error ?? 'Auth URL request failed' };
+  // if (!data.authUrl) return { ok: false, error: 'No auth URL returned' };
+  // return { ok: true, authUrl: data.authUrl };
   // ```
   
   return { ok: true, authUrl: "https://accounts.google.com/o/oauth2/auth?mock" };
