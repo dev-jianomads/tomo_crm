@@ -59,6 +59,14 @@ One **epic per main surface** (usually a route). Each **user story** includes **
    - Links navigate to the correct route and, when applicable, open the related entity or filter.
    - Deep links work when pasted in a fresh session (subject to auth), not only when clicked inside an existing session.
 
+5. **Story:** As a user, I can open a **“Previous”** area under “What needs your attention” to review **older queue items and deferred work** without crowding the primary “today” list.  
+   **Acceptance criteria**
+   - The main column shows **only today’s** attention queue (per product rules, e.g. cap + “today” scope); prior calendar days and items marked **“Do later”** do not displace that list by default.
+   - A single compact control (e.g. **Previous (N)**) appears when there is at least one such item; the control is **collapsed by default** so “today” reads first.
+   - Expanding the control lists items **grouped by day** (e.g. yesterday vs earlier) and, when applicable, a **deferred** group for “Do later” from the current day; rows open the same **drawer** and actions as the main attention list.
+   - Approving, dismissing, or otherwise resolving an item **removes it** from the appropriate list (and from counts) in line with the rest of Today behavior.
+   - Inline **Tomo** (or the orchestrator) receives **enough context** to acknowledge the backlog (e.g. count and grouped summary) so answers stay consistent with what is on the page.
+
 ---
 
 ## Relationships (`/relationships`)

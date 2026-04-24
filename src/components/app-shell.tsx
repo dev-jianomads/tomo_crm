@@ -73,6 +73,11 @@ type TodayContext = {
   commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
   /** Same structure as the Daily Brief modal — keep in sync for Tomo answers. */
   dailyBriefBlocks?: DailyBriefBlock[];
+  /** Collapsible “Previous” on Today: prior-day backlog + deferred; same data as the expanded list. */
+  previousAttention?: {
+    count: number;
+    items: { id: string; title: string; trigger: string; status: string; type: string; group: string }[];
+  };
 };
 
 type AppShellProps = {

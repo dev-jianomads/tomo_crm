@@ -1,4 +1,5 @@
 import type { ActionItem, Brief, Commitment } from "@/lib/mockData";
+import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
 
 export type DailyBriefLink =
   | { kind: "action"; id: string }
@@ -38,7 +39,8 @@ function commitmentBriefLine(c: Commitment): string {
 }
 
 function buildFollowUpsBlock(sortedActions: ActionItem[]): DailyBriefBlock {
-  const attention = sortedActions.slice(0, ATTENTION_CAP);
+  const todayPool = sortedActions.filter(isTodayAttentionSlot);
+  const attention = todayPool.slice(0, ATTENTION_CAP);
   const followItems: DailyBriefLine[] =
     attention.length > 0
       ? attention.map((a) => ({
@@ -48,8 +50,8 @@ function buildFollowUpsBlock(sortedActions: ActionItem[]): DailyBriefBlock {
       : [{ label: "Nothing flagged in What needs your attention right now." }];
 
   const followInsight =
-    sortedActions.length > attention.length
-      ? `Showing ${attention.length} of ${sortedActions.length} on Today.`
+    todayPool.length > attention.length
+      ? `Showing ${attention.length} of ${todayPool.length} on Today.`
       : "Same items as What needs your attention.";
 
   return {
@@ -87,8 +89,9 @@ function buildMeetingsBlock(sortedCommitments: Commitment[]): DailyBriefBlock {
 }
 
 function buildMomentumBlock(sortedActions: ActionItem[]): DailyBriefBlock {
-  const momentumAction = sortedActions.find((a) => a.type === "outreach");
-  const coolingActions = sortedActions.filter(
+  const todayPool = sortedActions.filter(isTodayAttentionSlot);
+  const momentumAction = todayPool.find((a) => a.type === "outreach");
+  const coolingActions = todayPool.filter(
     (a) =>
       /cooling/i.test(a.title) ||
       a.evidence.some((line) => /cooling|re-engag|dropped|lower open/i.test(line)),
@@ -127,6 +130,7 @@ function buildMomentumBlock(sortedActions: ActionItem[]): DailyBriefBlock {
 }
 
 function buildLoopsBlock(sortedActions: ActionItem[], allBriefs: Brief[]): DailyBriefBlock {
+  const todayPool = sortedActions.filter(isTodayAttentionSlot);
   const loopLines: DailyBriefLine[] = [];
   const seenLoopLabels = new Set<string>();
   const pushLoop = (line: DailyBriefLine) => {
@@ -136,7 +140,7 @@ function buildLoopsBlock(sortedActions: ActionItem[], allBriefs: Brief[]): Daily
     loopLines.push(line);
   };
 
-  for (const a of sortedActions) {
+  for (const a of todayPool) {
     if (a.status === "blocked") {
       pushLoop({ label: formatActionLineBrief(a), link: { kind: "action", id: a.id } });
     }
@@ -149,7 +153,7 @@ function buildLoopsBlock(sortedActions: ActionItem[], allBriefs: Brief[]): Daily
       });
     }
   }
-  for (const a of sortedActions) {
+  for (const a of todayPool) {
     if (a.status === "approval" && (a.type === "follow_up" || a.type === "scheduling")) {
       pushLoop({ label: formatActionLineBrief(a), link: { kind: "action", id: a.id } });
     }

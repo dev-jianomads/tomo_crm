@@ -84,6 +84,10 @@ export type OrchestratorContext = {
     commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
     /** Same payload as the Daily Brief modal (built from the same source on the client). */
     dailyBriefBlocks?: DailyBriefBlock[];
+    previousAttention?: {
+      count: number;
+      items: { id: string; title: string; trigger: string; status: string; type: string; group: string }[];
+    };
   };
 };
 
@@ -229,6 +233,19 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       ),
     );
 
+    if (tc.previousAttention?.count) {
+      lines.push(
+        ``,
+        `The Today page also has a collapsible "Previous" section (${tc.previousAttention.count} item${
+          tc.previousAttention.count === 1 ? "" : "s"
+        }) with older attention queue items and "Do later" cards, grouped by day. It may be collapsed; expand "Previous" on the left column to see every row. Summary:`,
+        ...tc.previousAttention.items.map(
+          (a) =>
+            `- [group: ${a.group}] ${a.title} (id: ${a.id}) — ${a.trigger} [${a.status}, ${a.type}]`,
+        ),
+      );
+    }
+
     if (tc.dailyBriefBlocks?.length) {
       lines.push(
         ``,
@@ -259,7 +276,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
 
     lines.push(
       ``,
-      `SCOPE: You only have the Today snapshot above (attention items, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Lists for broader lookup, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
+      `SCOPE: You only have the Today snapshot above (primary attention list, any "Previous" items listed, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Lists for broader lookup, to expand "Previous" on Today if items are in that backlog, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
     );
   }
 

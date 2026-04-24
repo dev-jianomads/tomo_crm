@@ -151,6 +151,66 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Approve & send", "Add allocator context", "Propose two call slots", "Explain this playbook"],
   },
 
+  // a7–a9: Prior-day backlog (collapsible “Previous” on Today — mock offsets)
+  a7: {
+    initialMessage: {
+      text: "Peakline — Jamie Chen. Carried from yesterday: deck was opened twice but no reply to your check-in before the Q2 read.",
+      blocks: [
+        {
+          kind: "draft",
+          content:
+            "Hi Jamie — quick note following up on the materials from last week. Let me know if you’d like a short call to walk the DDQ index or if anything is blocking on your side.\n\nBest regards,",
+          type: "email",
+        },
+        {
+          kind: "workflow_link",
+          playbookId: "pb-no-response-stall",
+          name: "Silence → Re-engage",
+          description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+        },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Shorten nudge", "Explain why this is Prior", "Explain this playbook"],
+  },
+  a8: {
+    initialMessage: {
+      text: "Lumen LP — consultant questions on the data room are still unanswered; combined reply is ready.",
+      blocks: [
+        {
+          kind: "draft",
+          content:
+            "Hi Priya — circling back on the open items from the consultant review. I’ve attached the clarifications; happy to find 20 minutes this week if helpful.\n\nBest regards,",
+          type: "email",
+        },
+        {
+          kind: "workflow_link",
+          playbookId: "pb-no-response-stall",
+          name: "Silence → Re-engage",
+          description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+        },
+      ],
+    },
+    suggestedPrompts: ["Approve & send", "Add attachment line", "Explain this playbook"],
+  },
+  a9: {
+    initialMessage: {
+      text: "Harborlight — optional one-pager after a Pass. Light touch for when they may re-open the file.",
+      blocks: [
+        {
+          kind: "snapshot",
+          text: "This item is an older-queue nudge; approve only if you want an optional performance snapshot on file.",
+        },
+        {
+          kind: "workflow_link",
+          playbookId: "pb-no-response-stall",
+          name: "Silence → Re-engage",
+          description: "When LP goes silent after 2 touches, flag as blocked, suggest CRM updates, set reminder.",
+        },
+      ],
+    },
+    suggestedPrompts: ["Draft one-pager", "Dismiss for now", "Explain this playbook"],
+  },
+
   // r5–r9: Scenario relationships (Today card LPs)
   r5: {
     initialMessage: {

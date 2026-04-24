@@ -194,6 +194,11 @@ export type ActionItem = {
   workflowPillOverride?: "Tomo";
   /** Source email thread — “Open email” on Today cards and in the action drawer */
   emailSourceUrl?: string;
+  /**
+   * Mock-only: how many calendar days before “today” this card entered the attention backlog.
+   * Omit or 0 = primary “today” column; 1 = yesterday, 2+ = earlier (shown under collapsible “Previous”).
+   */
+  attentionListDayOffset?: number;
 };
 
 /** `ready` = Tomo has drafted prep; `first_contact` = first live touch, distinct pill; `none` = no prep status pill. */
@@ -797,6 +802,89 @@ export const actions: ActionItem[] = [
     ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:camille.durand@amundi.com?subject=Check-in%20ahead%20of%20Q2",
+  },
+  {
+    id: "a7",
+    title: "Peakline — Q2 read: deck follow-up not acknowledged",
+    attentionListDayOffset: 1,
+    attentionCard: {
+      company: "Peakline Partners",
+      contactName: "Jamie Chen",
+      verb: "Approve",
+      workKind: "Follow-up",
+      workSubject: "DDQ index + risk deck (carried from yesterday)",
+    },
+    status: "approval",
+    trigger: "LP opened deck twice; no reply to your 3-day check-in",
+    evidence: [
+      "Jamie’s team re-opened the risk stack last week; still no response to the note you sent after the UBS call.",
+      "Q2 allocation read is 6 weeks out — a short nudge keeps you in the active set.",
+    ],
+    type: "follow_up",
+    draft:
+      "Hi Jamie — quick note following up on the materials from last week. Let me know if you’d like a short call to walk the DDQ index or if anything is blocking on your side.\n\nBest regards,",
+    dueDate: "2025-03-20",
+    activityLog: [
+      { id: "al-a7-1", ts: "2d ago", actor: "User", summary: "Sent Q2 read materials + check-in" },
+      { id: "al-a7-2", ts: "Yesterday 4:00 PM", actor: "TOMO", summary: "Surfaced for attention — no reply" },
+    ],
+    workflowPlaybookId: "pb-no-response-stall",
+    emailSourceUrl: "mailto:jamie.chen@example.com?subject=Re%3A%20Q2%20read%20materials",
+  },
+  {
+    id: "a8",
+    title: "Lumen LP — engagement cooling, doc request unfulfilled",
+    attentionListDayOffset: 1,
+    attentionCard: {
+      company: "Lumen LP",
+      contactName: "Priya Desai",
+      verb: "Approve",
+      workKind: "Nudge",
+      workSubject: "Data room + consultant questions",
+    },
+    status: "in_progress",
+    trigger: "Consultant thread stalled after you shared the index",
+    evidence: [
+      "Priya’s consultant asked for two clarifications; neither thread has a reply in 4 days.",
+      "TOMO drafted a combined reply and suggested one owner on your side.",
+    ],
+    type: "follow_up",
+    draft:
+      "Hi Priya — circling back on the open items from the consultant review. I’ve attached the clarifications; happy to find 20 minutes this week if helpful.\n\nBest regards,",
+    dueDate: "2025-03-24",
+    activityLog: [
+      { id: "al-a8-1", ts: "4d ago", actor: "User", summary: "Shared data room + index" },
+      { id: "al-a8-2", ts: "Yesterday 8:00 AM", actor: "TOMO", summary: "Flagged stall — combined reply ready" },
+    ],
+    workflowPlaybookId: "pb-no-response-stall",
+    emailSourceUrl: "mailto:priya.desai@example.com?subject=Re%3A%20Consultant%20follow-up",
+  },
+  {
+    id: "a9",
+    title: "Harborlight — re-engage after pass (optional lift)",
+    attentionListDayOffset: 2,
+    attentionCard: {
+      company: "Harborlight Advisors",
+      contactName: "Samir Patel",
+      verb: "Review",
+      workKind: "Outreach",
+      workSubject: "Q4 performance snapshot (older queue)",
+    },
+    status: "approval",
+    trigger: "Relationship marked Pass — optional light touch with performance snapshot",
+    evidence: [
+      "Their allocator desk indicated they may re-open the file if returns stabilize.",
+      "Low-risk one-pager; no commitment implied.",
+    ],
+    type: "outreach",
+    draft:
+      "Hi Samir — I’m sharing a short Q4 performance snapshot in case it’s useful for your files. No action needed; here if a conversation becomes timely.\n\nBest regards,",
+    dueDate: "2025-03-19",
+    activityLog: [
+      { id: "al-a9-1", ts: "1w ago", actor: "TOMO", summary: "Suggested re-engagement (optional)" },
+    ],
+    workflowPlaybookId: "pb-no-response-stall",
+    emailSourceUrl: "mailto:samir.patel@example.com?subject=Performance%20snapshot%20%28Q4%29",
   },
 ];
 

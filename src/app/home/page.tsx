@@ -39,6 +39,12 @@ import {
 } from "@/lib/dailyBriefFromToday";
 import { getStillInTodoActions } from "@/lib/todayEngagement";
 import { useTodayEngagement } from "@/hooks/useTodayEngagement";
+import {
+  buildPreviousAttentionGroups,
+  previousAttentionCount,
+  type PreviousAttentionGroup,
+} from "@/lib/todayPreviousAttention";
+import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
 import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem } from "@/lib/mockData";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
@@ -57,6 +63,47 @@ function workflowLabelForAction(action: ActionItem): string {
     ? tomoDefaultWorkflows.find((w) => w.id === action.workflowTomoDefaultId)?.name
     : undefined;
   return fromPlaybook ?? fromTomo ?? "—";
+}
+
+type TodayListItem = {
+  id: string;
+  title: string;
+  meta: string;
+  type: "action" | "commitment" | "brief";
+  extra?: string;
+  pills: string[];
+  workflowName?: string;
+  attentionCard?: ActionAttentionCard;
+  attentionWorkflowName?: string;
+  verbLabel?: string;
+  comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
+  commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" };
+  commitmentOverdue?: boolean;
+  calendarUrl?: string;
+  linkedInUrl?: string;
+  attentionEmailSourceUrl?: string;
+};
+
+/** Row shape for “What needs your attention” and Previous (action cards). */
+function mapActionToAttentionListItem(
+  a: ActionItem,
+  verbLabelForId: (id: string) => string
+): TodayListItem {
+  const attentionWorkflowName =
+    (a.workflowPlaybookId && suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
+    (a.workflowTomoDefaultId && tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
+    undefined;
+  return {
+    id: a.id,
+    title: a.title,
+    meta: a.trigger,
+    type: "action" as const,
+    pills: [] as string[],
+    attentionCard: a.attentionCard,
+    attentionWorkflowName,
+    verbLabel: verbLabelForId(a.id),
+    attentionEmailSourceUrl: a.emailSourceUrl,
+  };
 }
 
 /**
@@ -115,6 +162,8 @@ export default function HomePage() {
     false
   );
   const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
+  /** Collapsible “Previous” under What needs your attention (closed by default). */
+  const [previousAttentionExpanded, setPreviousAttentionExpanded] = useState(false);
 
   // Top/bottom split ratio (25–75%), persisted. Default 70% for chatbox (slider up).
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
@@ -273,10 +322,25 @@ export default function HomePage() {
     });
   }, [filteredActions]);
 
-  /** Top attention slots, excluding items completed (Approve / Do later) in this session */
+  const todaySlotSorted = useMemo(
+    () => sortedActionItems.filter(isTodayAttentionSlot),
+    [sortedActionItems],
+  );
+
+  /** Top attention slots (today’s queue only), excluding items completed in this session */
   const attentionActionsVisible = useMemo(
-    () => sortedActionItems.filter((a) => actionOutcomeById[a.id] == null).slice(0, 6),
-    [sortedActionItems, actionOutcomeById]
+    () => todaySlotSorted.filter((a) => actionOutcomeById[a.id] == null).slice(0, 6),
+    [todaySlotSorted, actionOutcomeById],
+  );
+
+  const previousAttentionItemCount = useMemo(
+    () => previousAttentionCount(sortedActionItems, actionOutcomeById),
+    [sortedActionItems, actionOutcomeById],
+  );
+
+  const previousAttentionGroups = useMemo(
+    () => buildPreviousAttentionGroups(sortedActionItems, actionOutcomeById, new Date()),
+    [sortedActionItems, actionOutcomeById],
   );
 
   const filteredCommitments = useMemo(() => {
@@ -345,6 +409,26 @@ export default function HomePage() {
     }
     return n;
   }, [onMyRadarBlocks]);
+
+  const previousAttentionForContext = useMemo(
+    () =>
+      previousAttentionItemCount === 0
+        ? undefined
+        : {
+            count: previousAttentionItemCount,
+            items: previousAttentionGroups.flatMap((g) =>
+              g.items.map((a) => ({
+                id: a.id,
+                title: a.title,
+                trigger: a.trigger,
+                status: a.status,
+                type: a.type,
+                group: g.heading,
+              })),
+            ),
+          },
+    [previousAttentionItemCount, previousAttentionGroups],
+  );
 
   const navigateBriefLine = useCallback((link: DailyBriefLink) => {
     if (link.kind === "action") setSelection({ type: "action", id: link.id });
@@ -521,34 +605,28 @@ export default function HomePage() {
           style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex min-h-0 flex-col overflow-hidden">
-              <TodayGroup
-                title="What needs your attention"
-                emptyHint="All caught up — nothing needs your attention right now."
-                items={attentionActionsVisible.map((a) => {
-                  const attentionWorkflowName =
-                    (a.workflowPlaybookId &&
-                      suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
-                    (a.workflowTomoDefaultId &&
-                      tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
-                    undefined;
-                  return {
-                    id: a.id,
-                    title: a.title,
-                    meta: a.trigger,
-                    extra: undefined,
-                    type: "action" as const,
-                    pills: [] as string[],
-                    attentionCard: a.attentionCard,
-                    attentionWorkflowName,
-                    verbLabel: verbPillForAction(a.id),
-                    attentionEmailSourceUrl: a.emailSourceUrl,
-                  };
-                })}
-                activeId={selection?.type === "action" ? selection.id : undefined}
-                onSelect={(id) => setSelection({ type: "action", id })}
-                scrollable
-              />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <TodayGroup
+                  title="What needs your attention"
+                  emptyHint="All caught up — nothing needs your attention right now."
+                  items={attentionActionsVisible.map((a) => mapActionToAttentionListItem(a, verbPillForAction))}
+                  activeId={selection?.type === "action" ? selection.id : undefined}
+                  onSelect={(id) => setSelection({ type: "action", id })}
+                  scrollable
+                />
+              </div>
+              {previousAttentionItemCount > 0 ? (
+                <PreviousAttentionCollapsible
+                  count={previousAttentionItemCount}
+                  expanded={previousAttentionExpanded}
+                  onToggle={() => setPreviousAttentionExpanded((v) => !v)}
+                  groups={previousAttentionGroups}
+                  mapActionToItem={(a) => mapActionToAttentionListItem(a, verbPillForAction)}
+                  activeId={selection?.type === "action" ? selection.id : undefined}
+                  onSelectAction={(id) => setSelection({ type: "action", id })}
+                />
+              ) : null}
             </div>
             <div className="flex min-h-0 flex-col overflow-hidden">
               <TodayGroup
@@ -623,6 +701,7 @@ export default function HomePage() {
             contactName: c.contactName,
           })),
           dailyBriefBlocks,
+          previousAttention: previousAttentionForContext,
         }}
       />
       <ContextDrawer
@@ -1022,6 +1101,196 @@ function BriefSectionIcon({ kind }: { kind: DailyBriefBlock["icon"] }) {
   );
 }
 
+function TodayListRows({
+  items,
+  onSelect,
+  activeId,
+}: {
+  items: TodayListItem[];
+  onSelect: (id: string) => void;
+  activeId?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          data-testid={`today-${item.type}-row-${item.id}`}
+          onClick={() => onSelect(item.id)}
+          className={`w-full rounded-md border px-3 py-2 text-left transition ${
+            activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
+          }`}
+        >
+          {item.attentionCard ? (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
+                  {item.attentionCard.company} : {item.attentionCard.contactName}
+                </p>
+                <span
+                  className={
+                    (item.verbLabel ?? item.attentionCard.verb) === "Approved"
+                      ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                      : (item.verbLabel ?? item.attentionCard.verb) === "Later"
+                        ? "inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900"
+                        : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
+                  }
+                >
+                  {item.verbLabel ?? item.attentionCard.verb}
+                </span>
+              </div>
+              <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">
+                {item.attentionCard.workKind} : {item.attentionCard.workSubject}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
+                {item.attentionWorkflowName ?? item.meta}
+              </p>
+              {item.attentionEmailSourceUrl ? (
+                <a
+                  href={item.attentionEmailSourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Open email
+                </a>
+              ) : null}
+            </>
+          ) : item.comingUpCard ? (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
+                  <span>
+                    {item.comingUpCard.company} : {item.comingUpCard.contactName}
+                  </span>
+                  {item.comingUpCard.meetingTitle ? (
+                    <span className="font-semibold text-gray-700"> · {item.comingUpCard.meetingTitle}</span>
+                  ) : null}
+                </p>
+                {item.commitmentStatusPill ? (
+                  <span
+                    className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
+                      item.commitmentStatusPill.tone === "green"
+                        ? "border-green-200 bg-green-50 text-green-800"
+                        : item.commitmentStatusPill.tone === "violet"
+                          ? "border-violet-200 bg-violet-50 text-violet-900"
+                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
+                    }`}
+                  >
+                    {item.commitmentStatusPill.label}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
+              {item.commitmentOverdue ? (
+                <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800">
+                  Commitment overdue
+                </p>
+              ) : null}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                {item.calendarUrl ? (
+                  <a
+                    href={item.calendarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    data-testid="today-commitment-open-calendar"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Open calendar
+                  </a>
+                ) : null}
+                {item.linkedInUrl ? (
+                  <a
+                    href={item.linkedInUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-medium text-[#0a66c2] underline underline-offset-2 hover:text-[#004182]"
+                    data-testid="today-commitment-open-linkedin"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    LinkedIn
+                  </a>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
+                {item.pills.length > 0 ? (
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                    {item.pills.map((pill) => (
+                      <UrgencyChip key={pill} kind={pill} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
+              {item.workflowName ? <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p> : null}
+            </>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PreviousAttentionCollapsible({
+  count,
+  expanded,
+  onToggle,
+  groups,
+  mapActionToItem,
+  activeId,
+  onSelectAction,
+}: {
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+  groups: PreviousAttentionGroup[];
+  mapActionToItem: (a: ActionItem) => TodayListItem;
+  activeId?: string;
+  onSelectAction: (id: string) => void;
+}) {
+  return (
+    <div className="mt-2 shrink-0 border-t border-gray-100 pt-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        data-testid="today-previous-toggle"
+        className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1.5 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        aria-expanded={expanded}
+      >
+        <span>
+          Previous <span className="font-normal text-gray-500">({count})</span>
+        </span>
+        {expanded ? (
+          <ChevronUpIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+        ) : (
+          <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+        )}
+      </button>
+      {expanded ? (
+        <div className="mt-1 max-h-[min(50vh,22rem)] space-y-3 overflow-y-auto pr-0.5" role="region" aria-label="Previous attention">
+          {groups.map((g) => (
+            <div key={g.id} className="space-y-1.5">
+              <p className="px-0.5 text-xs font-medium text-gray-500">{g.heading}</p>
+              <TodayListRows
+                items={g.items.map((a) => mapActionToItem(a))}
+                onSelect={onSelectAction}
+                activeId={activeId}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TodayGroup({
   title,
   items,
@@ -1033,28 +1302,7 @@ function TodayGroup({
   title: string;
   /** Shown when there are no rows (e.g. attention list after completions) */
   emptyHint?: string;
-  items: {
-    id: string;
-    title: string;
-    meta: string;
-    type: "action" | "commitment" | "brief";
-    extra?: string;
-    pills: string[];
-    workflowName?: string;
-    attentionCard?: ActionAttentionCard;
-    /** Resolved playbook / Tomo Default name for row 3; falls back to `meta` (trigger). */
-    attentionWorkflowName?: string;
-    /** Right pill; mirrors drawer after Approve / Do later */
-    verbLabel?: string;
-    /** Today “Coming up” — title row includes `meetingTitle` after contact name; time on row 2. */
-    comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
-    /** Right pill: Prep sent (green); Prep ready (peach); First Contact (violet). */
-    commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" };
-    commitmentOverdue?: boolean;
-    calendarUrl?: string;
-    linkedInUrl?: string;
-    attentionEmailSourceUrl?: string;
-  }[];
+  items: TodayListItem[];
   onSelect: (id: string) => void;
   activeId?: string;
   dense?: boolean;
@@ -1067,128 +1315,7 @@ function TodayGroup({
         {items.length === 0 && emptyHint ? (
           <p className="rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-4 text-center text-sm text-gray-500">{emptyHint}</p>
         ) : null}
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            data-testid={`today-${item.type}-row-${item.id}`}
-            onClick={() => onSelect(item.id)}
-            className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-            }`}
-          >
-            {item.attentionCard ? (
-              <>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
-                    {item.attentionCard.company} : {item.attentionCard.contactName}
-                  </p>
-                  <span
-                    className={
-                      (item.verbLabel ?? item.attentionCard.verb) === "Approved"
-                        ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                        : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-                    }
-                  >
-                    {item.verbLabel ?? item.attentionCard.verb}
-                  </span>
-                </div>
-                <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">
-                  {item.attentionCard.workKind} : {item.attentionCard.workSubject}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
-                  {item.attentionWorkflowName ?? item.meta}
-                </p>
-                {item.attentionEmailSourceUrl ? (
-                  <a
-                    href={item.attentionEmailSourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-0.5 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Open email
-                  </a>
-                ) : null}
-              </>
-            ) : item.comingUpCard ? (
-              <>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
-                    <span>
-                      {item.comingUpCard.company} : {item.comingUpCard.contactName}
-                    </span>
-                    {item.comingUpCard.meetingTitle ? (
-                      <span className="font-semibold text-gray-700"> · {item.comingUpCard.meetingTitle}</span>
-                    ) : null}
-                  </p>
-                  {item.commitmentStatusPill ? (
-                    <span
-                      className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
-                        item.commitmentStatusPill.tone === "green"
-                          ? "border-green-200 bg-green-50 text-green-800"
-                          : item.commitmentStatusPill.tone === "violet"
-                            ? "border-violet-200 bg-violet-50 text-violet-900"
-                            : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
-                      }`}
-                    >
-                      {item.commitmentStatusPill.label}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
-                {item.commitmentOverdue ? (
-                  <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                    Commitment overdue
-                  </p>
-                ) : null}
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                  {item.calendarUrl ? (
-                    <a
-                      href={item.calendarUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                      data-testid="today-commitment-open-calendar"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Open calendar
-                    </a>
-                  ) : null}
-                  {item.linkedInUrl ? (
-                    <a
-                      href={item.linkedInUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-medium text-[#0a66c2] underline underline-offset-2 hover:text-[#004182]"
-                      data-testid="today-commitment-open-linkedin"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      LinkedIn
-                    </a>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
-                  {item.pills.length > 0 ? (
-                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                      {item.pills.map((pill) => (
-                        <UrgencyChip key={pill} kind={pill} />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
-                {item.workflowName ? (
-                  <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p>
-                ) : null}
-              </>
-            )}
-          </button>
-        ))}
+        {items.length > 0 ? <TodayListRows items={items} onSelect={onSelect} activeId={activeId} /> : null}
       </div>
     </div>
   );
