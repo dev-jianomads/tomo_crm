@@ -16,6 +16,7 @@ export default function SettingsIntegrationsPage() {
     calendarConnected: false,
     contactsConnected: false,
     emailConnected: false,
+    emailHistoryScope: null,
     slackConnected: false,
     telegramConnected: false,
     affinityConnected: false,

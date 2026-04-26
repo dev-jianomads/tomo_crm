@@ -339,6 +339,34 @@ These four nested routes are the **subscription and workspace-admin** cluster. T
    - Required vs optional steps are explicit; users can finish minimal onboarding and access the app.
    - Skipped optional steps can be completed later from Settings or an equivalent entry point.
 
+2. **Story:** After I connect **email** during onboarding, I can allow TOMO to read about the **last 6 months** of mail for relationship enrichment, statuses, profile/summary, and tone-matched drafts, or choose **new mail only**, with a clear explanation that some features are **limited** until I allow history (e.g. in Settings).  
+   **Acceptance criteria**
+   - The choice appears as a **second screen on the same onboarding step** as email connect (not a new step number); **Back** from that screen returns to the connect-confirmation sub-step; header **Next** is disabled on the data-scope sub-step until a choice is made.
+   - **Allow last 6 months** and **new mail only** are both explicit, mutually exclusive options (no silent default that contradicts copy).
+   - The user’s choice is **persisted** with the integration/onboarding state, is **reversible** from Settings in production, and in production is enforced with **OAuth** scopes and policy (not client-only for mail content access).
+   - Skipping **email** connect entirely does not show the history sub-step; the user can still complete onboarding.
+   - Mock implementation reference: `emailHistoryScope` on `OnboardingState` in `src/lib/types.ts`, UI in `src/app/onboarding/page.tsx` (step 3).
+
+---
+
+## Relationship intelligence (email-derived) — *platform / not mock-specific*
+
+**Epic:** Relationship profile, activity/timeline, tone-of-voice, and other fields computed from **synced** mail (and related signals).
+
+1. **Story:** When I opt into historical mail, TOMO can asynchronously compute stored derived values (e.g. relationship summary, statuses, tone-of-voice model, activity-style views). I always see a clear processing state and placeholders where a value is not ready yet, not false precision.  
+   **Acceptance criteria**
+   - Surfaces that display email-derived data (e.g. activity log, relationship snapshot and summary, tone-dependent copy) have defined skeleton, empty, or “still calculating” states until the backend marks the relevant slice ready (per field or per relationship, as designed).
+   - If tone of voice (or an equivalent user writing profile) is not yet calculated, draft and similar features use a documented generic style and inline copy the user can understand (e.g. tone still calibrating), not a silent generic voice passed off as personalized.
+   - The system persists enough metadata (e.g. last successful recompute, model version) to reason about staleness; degraded or stale states follow the same visibility rules as sync (no silent old numbers presented as current).
+   - The initial 6-month (or consented) backfill is allowed to be long-running; the product may show stepwise or progress for major milestones without blocking app entry, aligned with the rest of onboarding and day-1 expectations.
+
+2. **Story:** As new mail is ingested after setup, the same derived values update on an agreed cadence so Today, Relationships, and drafts stay aligned with reality.  
+   **Acceptance criteria**
+   - **Incremental recompute:** when new mail (or deletions) lands through the normal sync path, the pipeline queues updates to affected relationships and tone/profile data (workers, queues, or equivalent—not only when the user refreshes the page).
+   - **Scheduled recompute:** a daily (or more frequent, if the product requires) batch recalculates aggregates, reconciles any missed or failed event-driven work, and refreshes cheaper global summaries; this is the safety net, not the only update mechanism.
+   - **Time-sensitive** signals (e.g. re-engagement) may use faster paths than the daily job where C.3 / product rules require same-day surfacing; the spec does not mandate a real-time stream for every field.
+   - Operational clarity: on-call and monitors can distinguish event-driven failures from schedule lag; user-visible sync or processing state reflects prolonged failure or stale data (see also **C.1** and **C.3** in `docs/Tomo MVP (April 24, 2026).md`).
+
 ---
 
 ## How to extend this doc

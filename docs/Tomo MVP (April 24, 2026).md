@@ -77,6 +77,11 @@ This document is organized in **four layers** so readers do not mix them up:
 - **Session:** **mock** patterns (e.g. `localStorage`) **do not** meet production “no secrets in the browser” posture.
 - **Team / RBAC:** plan choice in UI where present; **no** real **enforced** workspace RBAC in app logic (see **§3**).
 
+### 2.5 Onboarding (`/onboarding`, mock)
+
+- **Step 3 of 8** is **connect email** (the mock orders **calendar** and **contacts** before it). After a successful connect, a **second screen** on the **same** step asks whether TOMO may read roughly the **last 6 months** of mail for relationship enrichment, statuses, profile/summary, and tone-matched drafts, or **new mail only** (future sync; some of those features stay **limited** until the user enables history in **Settings**). The choice is stored client-side on `OnboardingState` as `emailHistoryScope` (`six_months` | `future_only`); production should align **OAuth** scopes, retention, and **server**-backed persistence.
+- **Production** follow-on (not reflected in the mock): **async** computation of those **derived** fields, **placeholder** / **fallback** UI for **activity** and **snapshot**-style surfaces, and **incremental** plus **scheduled** **recompute** after mail **sync** are specified in **Appendix C** (**C.1** async derivation, **C.3** ongoing updates) and in `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` under **Relationship intelligence (email-derived)**.
+
 ---
 
 ## 3. From mock to MVP3 ship (gaps)
@@ -218,17 +223,19 @@ The **operational** and **architectural** **depth** (sync **SLOs**, **onboarding
 
 ### C.1 Sync, historical context, and degraded-state handling
 
-MVP3 should make the sync boundary more explicit. During onboarding, a user may optionally grant Tomo access to up to **90 days** of historical email and calendar context so the system can compute real last-touch dates, generate initial meeting briefs, create more specific follow-up drafts, and surface Day 1 pipeline insight immediately after setup.
+MVP3 should make the sync boundary more explicit. During onboarding, a user who connects **email** is offered an explicit follow-on choice on the **same** step: allow reading roughly the **last 6 months** of mail (relationship enrichment, status, profile/summary, tone-aware drafts) or **new mail only**; calendar context may still be used per calendar connector policy. The user may also grant broader historical **calendar** context (where the product and provider support it) so the system can compute real last-touch dates, generate initial meeting briefs, create more specific follow-up drafts, and surface Day 1 pipeline insight soon after setup.
 
 For MVP3, the practical operating target is **near-real-time enough** for daily execution, not theoretical instant sync. The intended target is that new emails and calendar events are reflected quickly enough for **same-day** workflow use, with follow-up drafts and re-engagement logic not **waiting until the next morning** unless the user is offline. The implementation may use provider webhooks, polling, or a unified sync service; the user-facing expectation should be stated clearly.
 
 **Operational expectations to lock into MVP3:**
 
-- Initial historical sync can cover up to **90 days** where the user chooses to provide it.
+- Initial **email** backfill, where the user opts in, targets roughly the **last 6 months**; **calendar** (and other) historical windows should be stated in product copy and may differ by connector. Where the user chooses **new email only** for mail, backfill is **not** applied for the features that depend on history (see **§2.5** mock and **C.2**).
 - **Update latency** should support same-day execution, with higher urgency for inbound messages that may drive re-engagement handling.
 - **Out-of-office** replies should be detected and excluded from meaningful-touch and signal interpretation where appropriate.
 - **Thread linkage** should preserve conversation continuity so replies are treated as part of the same relationship thread.
 - If sync becomes stale beyond the acceptable operating window, the product should **degrade visibly** rather than silently. Pipeline and signal-dependent surfaces should show a clear **sync-delayed** or **signals may be out of date** state rather than presenting stale certainty.
+
+**Async derivation, placeholders, and tone (simple baseline):** Initial backfill and downstream derived fields (relationship summary and snapshot, activity views tied to mail, tone- or style models for drafting) are not instant. Compute is asynchronous; the product uses placeholders (skeleton UI, “still building,” or empty with explanation) and per-field or per-surface readiness so users do not see false precision or overconfident drafts before data exists. If tone of voice is not ready, draft flows use a generic default and explicit copy that personalization is still calibrating (or equivalent). Staleness and processing state stay observable, consistent with visible degradation in **C.1** and **C.3**.
 
 ### C.2 CSV-first import and onboarding sequence
 
@@ -236,7 +243,7 @@ MVP3 should make the onboarding path explicit rather than assuming data will alr
 
 **Intended onboarding sequence for MVP3:**
 
-- Connect email.
+- Connect email, then (same step) choose **6-month** mail access vs **new mail only** and persist consent with OAuth-aligned scopes.
 - Connect calendar.
 - Import LP pipeline via **CSV** or supported connector.
 - Review a **five-row field-mapping preview** before commit.
@@ -257,6 +264,8 @@ A reasonable MVP3 specification is:
 - The recompute sequence may include sync health, interaction metrics, signal observations, meaningful-touch calculations, **fat-middle** detection, pipeline flags, follow-up compliance checks, and summary counts used by Today or Pipeline surfaces.
 - This is an **implementation approach**, not a promise of a particular architecture. The product requirement is that these **derived** states stay **current** and **explainable**.
 - **Re-engagement** should be treated **separately** from the nightly job because it is **time-sensitive**. Where feasible, it should use an **event-driven** path so an LP re-engaging after silence can surface **the same day** rather than waiting for the next scheduled recompute.
+
+**Ongoing update of email-derived profile and aggregates (simple model):** After initial setup, new and changed mail from the sync layer should trigger incremental recompute of affected relationship- and user-level derived data (for example, last-touch cues, relationship summaries backed by mail evidence, rolling tone- or style-related features for drafting). A daily cron alone is not the primary mechanism for fresh inbound-driven signals: the default is event-driven or queue-based workers that run after sync confirms new messages. A daily (or similar) scheduled job remains the reconciliation and aggregate-repaint layer—catching missed work, cheaper rollups, and drift—so same-day surfaces are not held hostage to midnight, while periodic batch work still enforces consistency and keeps operations simple. See also the epic under **Relationship intelligence (email-derived)** in `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md`.
 
 ### C.4 Day 1 pipeline enrichment and the CRM–reality gap
 

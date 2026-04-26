@@ -126,6 +126,7 @@ export type TaskItem = {
  * 3. EMAIL (Gmail/Outlook):
  *    - Gmail API or Microsoft Graph API
  *    - Use for commitment extraction (Tomo AI)
+ *    - Optional historical scope: after connect, user chooses last ~6 months vs future-only
  *    - Consider privacy - only process metadata or with user consent
  * 
  * 4. SLACK:
@@ -152,10 +153,19 @@ export type TaskItem = {
  *    - Create sheet in user's Drive, store sheet ID
  *    - Two-way sync or export-only (TBD)
  */
+
+/** Shown on the post-connect email onboarding sub-step; future-only is “skip” historical backfill. */
+export type EmailHistoryScope = "six_months" | "future_only";
+
 export type OnboardingState = {
   calendarConnected: boolean;
   contactsConnected: boolean;
   emailConnected: boolean;
+  /**
+   * Set only after a successful email connect on onboarding step 3.
+   * Omitted or null if email was skipped or not yet chosen.
+   */
+  emailHistoryScope?: EmailHistoryScope | null;
   slackConnected: boolean;
   telegramConnected: boolean;
   telegramPhone?: string;

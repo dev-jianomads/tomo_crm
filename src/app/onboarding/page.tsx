@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
 import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
-import { OnboardingState } from "@/lib/types";
+import { EmailHistoryScope, OnboardingState } from "@/lib/types";
 import { usePersistentState } from "@/lib/usePersistentState";
 
 const defaultNotifications: OnboardingState["notifications"] = {
@@ -18,6 +18,7 @@ const initialState: OnboardingState = {
   calendarConnected: false,
   contactsConnected: false,
   emailConnected: false,
+  emailHistoryScope: null,
   slackConnected: false,
   telegramConnected: false,
   affinityConnected: false,
@@ -50,6 +51,8 @@ export default function OnboardingPage() {
   const [strategyFile, setStrategyFile] = useState<File | null>(null);
   const [strategyText, setStrategyText] = useState(state.fundStrategyText ?? "");
   const [strategyUploading, setStrategyUploading] = useState(false);
+  /** When true, step 3 shows the connect screen again (after user pressed Back on the data-scope screen). */
+  const [revisitEmailConnect, setRevisitEmailConnect] = useState(false);
 
   // Ensure newly added onboarding fields get defaulted when loading older local state
   useEffect(() => {
@@ -75,10 +78,59 @@ export default function OnboardingPage() {
   const totalSteps = 8;
   const isLastStep = currentStep === totalSteps;
 
-  const markConnected = (key: keyof Pick<OnboardingState, "calendarConnected" | "contactsConnected" | "emailConnected">) => {
+  const markConnected = (key: keyof Pick<OnboardingState, "calendarConnected" | "contactsConnected">) => {
     setState({ ...state, [key]: true });
     goNext();
   };
+
+  const handleEmailConnect = () => {
+    setRevisitEmailConnect(false);
+    setState({ ...state, emailConnected: true });
+  };
+
+  const handleEmailHistoryChoice = (scope: EmailHistoryScope) => {
+    setState((prev) => ({ ...prev, emailHistoryScope: scope }));
+    goNext();
+  };
+
+  const emailAwaitingScope = state.emailConnected && state.emailHistoryScope == null;
+  const showEmailDataScope = emailAwaitingScope && !revisitEmailConnect;
+
+  const onEmailStep3Back = () => {
+    if (currentStep === 3 && showEmailDataScope) {
+      setRevisitEmailConnect(true);
+      return;
+    }
+    goBack();
+  };
+
+  const step3HeaderNextDisabled =
+    currentStep === 3 && showEmailDataScope;
+
+  const handleOnboardingNext = () => {
+    if (currentStep === 3) {
+      if (!state.emailConnected) {
+        goNext();
+        return;
+      }
+      if (state.emailHistoryScope != null) {
+        goNext();
+        return;
+      }
+      if (revisitEmailConnect) {
+        setRevisitEmailConnect(false);
+        return;
+      }
+      if (showEmailDataScope) {
+        return;
+      }
+    }
+    handleNext();
+  };
+
+  useEffect(() => {
+    if (currentStep !== 3) setRevisitEmailConnect(false);
+  }, [currentStep]);
 
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
@@ -179,7 +231,7 @@ export default function OnboardingPage() {
           <div className="mt-3 flex items-center gap-3">
             <button
               className="button-secondary h-9 px-3 text-sm"
-              onClick={goBack}
+              onClick={onEmailStep3Back}
               disabled={currentStep === 1}
             >
               Back
@@ -200,7 +252,13 @@ export default function OnboardingPage() {
               })}
             </div>
             {!isLastStep ? (
-              <button type="button" className="button-primary h-9 px-3 text-sm" onClick={handleNext}>
+              <button
+                type="button"
+                className="button-primary h-9 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={handleOnboardingNext}
+                disabled={step3HeaderNextDisabled}
+                title={step3HeaderNextDisabled ? "Choose an option below" : undefined}
+              >
                 Next
               </button>
             ) : (
@@ -250,27 +308,92 @@ export default function OnboardingPage() {
             />
           )}
 
-          {currentStep === 3 && (
-            <StepCard
-              title="Connect your email (recommended)"
-              description="Enable follow-ups, recaps, and automated detection of commitments from your emails."
-              actions={
-                <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("emailConnected")}>
-                    <img src="/icons/gmail.svg" alt="Gmail" className="h-4 w-4" />
-                    Connect Gmail
-                  </button>
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("emailConnected")}>
-                    <img src="/icons/outlook.svg" alt="Outlook" className="h-4 w-4" />
-                    Connect Outlook
-                  </button>
-                  <button className="text-sm text-gray-600 underline" onClick={goNext}>
-                    Skip for now
-                  </button>
-                </div>
-              }
-              status={state.emailConnected}
-            />
+          {currentStep === 3 && !showEmailDataScope && (
+            <div className="space-y-6">
+              <StepCard
+                title="Connect your email (recommended)"
+                description="Enable follow-ups, recaps, and automated detection of commitments from your emails."
+                actions={
+                  <div className="flex flex-col gap-3">
+                    {!state.emailConnected ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={handleEmailConnect}>
+                          <img src="/icons/gmail.svg" alt="Gmail" className="h-4 w-4" />
+                          Connect Gmail
+                        </button>
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={handleEmailConnect}>
+                          <img src="/icons/outlook.svg" alt="Outlook" className="h-4 w-4" />
+                          Connect Outlook
+                        </button>
+                        <button className="text-sm text-gray-600 underline" type="button" onClick={goNext}>
+                          Skip for now
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {state.emailHistoryScope ? (
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium text-gray-900">Email connected.</span>{" "}
+                            {state.emailHistoryScope === "six_months"
+                              ? "TOMO may read the last 6 months to build your relationship profile, statuses, and tone-aware drafts."
+                              : "TOMO will analyze new email only. Some profile, status, and draft features stay limited until you allow history in Settings."}
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-green-800">
+                              <span className="font-medium">Account connected.</span> Continue to choose how TOMO uses your
+                              existing mail.
+                            </p>
+                            <button
+                              type="button"
+                              className="button-primary"
+                              onClick={() => setRevisitEmailConnect(false)}
+                            >
+                              Choose how TOMO uses your email
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                }
+                status={state.emailConnected}
+              />
+            </div>
+          )}
+
+          {currentStep === 3 && showEmailDataScope && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Finish mail setup</h2>
+                <p className="mt-1 text-sm text-gray-600">Same step — a quick choice about your existing inbox.</p>
+              </div>
+              <p className="text-sm text-gray-700">
+                Allow TOMO to read the <span className="font-medium">last 6 months</span> of email to enrich relationship
+                activity, calculate statuses, build a relationship profile and summary, and draft follow-ups in your tone of
+                voice.
+              </p>
+              <p className="text-sm text-gray-600">
+                If you choose <span className="font-medium">new email only</span>, TOMO will analyze future mail from here on;
+                the features above are limited until you opt in to history in Settings.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                <button
+                  type="button"
+                  className="button-primary min-h-[2.75rem] flex-1 rounded-md px-4 py-2.5 text-left text-sm font-medium sm:text-center"
+                  onClick={() => handleEmailHistoryChoice("six_months")}
+                >
+                  Allow last 6 months
+                </button>
+                <button
+                  type="button"
+                  className="button-secondary min-h-[2.75rem] flex-1 rounded-md border border-gray-300 px-4 py-2.5 text-left text-sm sm:text-center"
+                  onClick={() => handleEmailHistoryChoice("future_only")}
+                >
+                  New email only
+                </button>
+              </div>
+            </div>
           )}
 
           {currentStep === 4 && (
@@ -669,6 +792,16 @@ export default function OnboardingPage() {
                 <StatusLine label="Calendar connected" ok={state.calendarConnected} />
                 <StatusLine label="Contacts synced" ok={state.contactsConnected} />
                 <StatusLine label="Email connected" ok={state.emailConnected} />
+                {state.emailConnected && state.emailHistoryScope ? (
+                  <StatusLine
+                    label={
+                      state.emailHistoryScope === "six_months"
+                        ? "Email: last 6 months for relationship & tone (recommended)"
+                        : "Email: new mail only (history features limited until Settings)"
+                    }
+                    ok
+                  />
+                ) : null}
                 <StatusLine label="Slack" ok={state.slackConnected} />
                 <StatusLine label="Telegram" ok={state.telegramConnected} />
                 <StatusLine label="Affinity" ok={state.affinityConnected} />
