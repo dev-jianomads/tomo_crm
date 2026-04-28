@@ -7,6 +7,7 @@ import {
   Bars3Icon,
   ChevronDownIcon,
   ChevronUpIcon,
+  FunnelIcon,
   Squares2X2Icon,
   TableCellsIcon,
   ViewColumnsIcon,
@@ -41,6 +42,7 @@ import { RelationshipsFilterChat } from "@/components/relationships-filter-chat"
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { NewContactModal } from "@/components/new-contact-modal";
 import { ContactImportModal } from "@/components/contact-import-modal";
+import { RelationshipsAdvancedFiltersModal } from "@/components/relationships-advanced-filters-modal";
 import { summarizeMapping } from "@/lib/contactImportMock";
 import { buildMockRelationshipFromCsvImport } from "@/lib/buildManualRelationship";
 import { useRequireSession } from "@/lib/auth";
@@ -181,6 +183,8 @@ export default function RelationshipsPage() {
   const [createPipelineName, setCreatePipelineName] = useState("");
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [advancedFiltersSession, setAdvancedFiltersSession] = useState(0);
   const [kanbanStageConfirm, setKanbanStageConfirm] = useState<{
     relationshipId: string;
     targetStage: Stage;
@@ -273,6 +277,8 @@ export default function RelationshipsPage() {
   const clearFilters = () => {
     setFilterCriteria(EMPTY_CRITERIA);
   };
+
+  const activeFilterFieldCount = Object.keys(filterCriteria).length;
 
   const relationshipsWithOverrides = useMemo(
     () => mergeWithOverrides(relationships, relationshipOverrides),
@@ -558,6 +564,31 @@ export default function RelationshipsPage() {
             >
               <ArrowUpTrayIcon className="h-4 w-4 shrink-0" aria-hidden />
               Upload CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAdvancedFiltersSession((s) => s + 1);
+                setAdvancedFiltersOpen(true);
+              }}
+              className="relative inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={
+                activeFilterFieldCount > 0
+                  ? `Advanced filters, ${activeFilterFieldCount} active`
+                  : "Advanced filters"
+              }
+              title="Advanced filters"
+            >
+              <FunnelIcon className="h-4 w-4 shrink-0" aria-hidden />
+              Advanced filters
+              {activeFilterFieldCount > 0 ? (
+                <span
+                  className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold tabular-nums text-gray-900 shadow-sm ring-2 ring-white"
+                  aria-hidden
+                >
+                  {activeFilterFieldCount > 99 ? "99+" : activeFilterFieldCount}
+                </span>
+              ) : null}
             </button>
           </>
         }
@@ -860,6 +891,14 @@ export default function RelationshipsPage() {
           toast.success(`${r.name} added`);
         }}
       />
+      {advancedFiltersOpen ? (
+        <RelationshipsAdvancedFiltersModal
+          key={advancedFiltersSession}
+          initialCriteria={filterCriteria}
+          onClose={() => setAdvancedFiltersOpen(false)}
+          onConfirm={(criteria) => setFilterCriteria(criteria)}
+        />
+      ) : null}
       <ContactImportModal
         open={csvImportOpen}
         onClose={() => setCsvImportOpen(false)}
