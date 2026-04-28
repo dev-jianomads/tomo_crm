@@ -40,7 +40,8 @@ import {
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { NewContactModal } from "@/components/new-contact-modal";
-import { AttachDocumentModal } from "@/components/attach-document-modal";
+import { ContactImportModal } from "@/components/contact-import-modal";
+import { summarizeMapping } from "@/lib/contactImportMock";
 import { buildMockRelationshipFromCsvImport } from "@/lib/buildManualRelationship";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -859,18 +860,18 @@ export default function RelationshipsPage() {
           toast.success(`${r.name} added`);
         }}
       />
-      <AttachDocumentModal
+      <ContactImportModal
         open={csvImportOpen}
         onClose={() => setCsvImportOpen(false)}
-        title="Upload CSV"
-        description="Select a CSV file to import LP relationships. Demo only — the file is not sent to a server; one preview row is added from the filename."
-        accept=".csv,text/csv"
+        title="Upload contacts"
+        fileStepDescription="Select a CSV or Excel file of LPs. We auto-match columns from the header row; adjust on the next step. Demo only — parsing is mocked; one relationship is added per import from the filename."
         autoOpenFilePicker
-        onUploaded={(fileName) => {
-          const r = buildMockRelationshipFromCsvImport(fileName);
+        onConfirm={({ file, preview, mapping }) => {
+          const summary = summarizeMapping(preview.headers, mapping);
+          const r = buildMockRelationshipFromCsvImport(file.name, summary);
           addRelationship(r);
           setActiveId(r.id);
-          toast.success(`CSV processed — ${fileName} imported and added to CRM`);
+          toast.success(`Import queued — ${file.name} (${summary.slice(0, 120)}${summary.length > 120 ? "…" : ""})`);
         }}
       />
     </>

@@ -162,7 +162,7 @@ export type OnboardingState = {
   contactsConnected: boolean;
   emailConnected: boolean;
   /**
-   * Set only after a successful email connect on onboarding step 3.
+   * Set only after a successful email connect on onboarding (email step).
    * Omitted or null if email was skipped or not yet chosen.
    */
   emailHistoryScope?: EmailHistoryScope | null;
@@ -178,6 +178,8 @@ export type OnboardingState = {
   contactImportUploaded: boolean;
   contactImportFilename?: string;
   contactImportRowCount?: number;
+  /** Mock: human-readable column mapping summary after user confirms mapping. */
+  contactImportMappingSummary?: string;
   fundStrategyUploaded: boolean;
   fundStrategyFilename?: string;
   fundStrategyText?: string;

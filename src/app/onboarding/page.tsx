@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
-import { connectAffinity, createGoogleSheet, startGoogleAuth, uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
+import { ContactImportFieldMapping } from "@/components/contact-import-field-mapping";
+import { ContactImportFileZone } from "@/components/contact-import-file-zone";
+import { uploadContactsSeed, uploadFundStrategy } from "@/lib/integrations";
+import {
+  CONTACT_IMPORT_ACCEPT,
+  type ContactImportFieldId,
+  type ContactImportPreview,
+  buildInitialColumnMapping,
+  readContactImportPreview,
+  summarizeMapping,
+} from "@/lib/contactImportMock";
 import { EmailHistoryScope, OnboardingState } from "@/lib/types";
 import { usePersistentState } from "@/lib/usePersistentState";
 
@@ -36,22 +46,16 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [state, setState, ready] = usePersistentState<OnboardingState>("tomo-onboarding", initialState);
   const [currentStep, setCurrentStep] = useState(1);
-  const [telegramNumber, setTelegramNumber] = useState(state.telegramPhone ?? "");
   const [slackOpened, setSlackOpened] = useState(false);
-  const [affinityListId, setAffinityListId] = useState(state.affinityListId ?? "");
-  const [affinityTokenInput, setAffinityTokenInput] = useState("");
-  const [sheetsFilename, setSheetsFilename] = useState(
-    state.googleSheetsFilename ?? generatePresetSheetName()
-  );
-  const [affinitySaving, setAffinitySaving] = useState(false);
-  const [googleAuthing, setGoogleAuthing] = useState(false);
-  const [sheetCreating, setSheetCreating] = useState(false);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
+  const [contactsPreview, setContactsPreview] = useState<ContactImportPreview | null>(null);
+  const [contactsMapping, setContactsMapping] = useState<ContactImportFieldId[]>([]);
+  const [contactsParsing, setContactsParsing] = useState(false);
   const [contactsUploading, setContactsUploading] = useState(false);
   const [strategyFile, setStrategyFile] = useState<File | null>(null);
   const [strategyText, setStrategyText] = useState(state.fundStrategyText ?? "");
   const [strategyUploading, setStrategyUploading] = useState(false);
-  /** When true, step 3 shows the connect screen again (after user pressed Back on the data-scope screen). */
+  /** When true, email step shows the connect screen again (after user pressed Back on the data-scope screen). */
   const [revisitEmailConnect, setRevisitEmailConnect] = useState(false);
 
   // Ensure newly added onboarding fields get defaulted when loading older local state
@@ -75,12 +79,15 @@ export default function OnboardingPage() {
     if (!session) router.replace("/auth");
   }, [router]);
 
-  const totalSteps = 8;
+  const totalSteps = 6;
   const isLastStep = currentStep === totalSteps;
 
-  const markConnected = (key: keyof Pick<OnboardingState, "calendarConnected" | "contactsConnected">) => {
-    setState({ ...state, [key]: true });
-    goNext();
+  const markCalendarConnected = () => {
+    setState((prev) => ({ ...prev, calendarConnected: true }));
+  };
+
+  const markContactsConnected = () => {
+    setState((prev) => ({ ...prev, contactsConnected: true }));
   };
 
   const handleEmailConnect = () => {
@@ -96,19 +103,19 @@ export default function OnboardingPage() {
   const emailAwaitingScope = state.emailConnected && state.emailHistoryScope == null;
   const showEmailDataScope = emailAwaitingScope && !revisitEmailConnect;
 
-  const onEmailStep3Back = () => {
-    if (currentStep === 3 && showEmailDataScope) {
+  const onEmailStepBack = () => {
+    if (currentStep === 2 && showEmailDataScope) {
       setRevisitEmailConnect(true);
       return;
     }
     goBack();
   };
 
-  const step3HeaderNextDisabled =
-    currentStep === 3 && showEmailDataScope;
+  const stepEmailHeaderNextDisabled =
+    currentStep === 2 && showEmailDataScope;
 
   const handleOnboardingNext = () => {
-    if (currentStep === 3) {
+    if (currentStep === 2) {
       if (!state.emailConnected) {
         goNext();
         return;
@@ -129,7 +136,16 @@ export default function OnboardingPage() {
   };
 
   useEffect(() => {
-    if (currentStep !== 3) setRevisitEmailConnect(false);
+    if (currentStep !== 2) setRevisitEmailConnect(false);
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (currentStep !== 4) {
+      setContactsFile(null);
+      setContactsPreview(null);
+      setContactsMapping([]);
+      setContactsParsing(false);
+    }
   }, [currentStep]);
 
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
@@ -163,17 +179,52 @@ export default function OnboardingPage() {
     });
   };
 
+  const clearContactsImport = () => {
+    setContactsFile(null);
+    setContactsPreview(null);
+    setContactsMapping([]);
+    setState((prev) => ({
+      ...prev,
+      contactImportUploaded: false,
+      contactImportFilename: undefined,
+      contactImportRowCount: undefined,
+      contactImportMappingSummary: undefined,
+    }));
+  };
+
+  const handleContactsFileSelected = async (file: File) => {
+    setContactsFile(file);
+    setContactsParsing(true);
+    try {
+      const p = await readContactImportPreview(file);
+      setContactsPreview(p);
+      setContactsMapping(buildInitialColumnMapping(p.headers));
+    } finally {
+      setContactsParsing(false);
+    }
+  };
+
+  const setContactsMappingAt = (i: number, v: ContactImportFieldId) => {
+    setContactsMapping((prev) => {
+      const next = [...prev];
+      next[i] = v;
+      return next;
+    });
+  };
+
   const handleContactsUpload = async () => {
-    if (!contactsFile) return;
+    if (!contactsFile || !contactsPreview || contactsMapping.length !== contactsPreview.headers.length) return;
     setContactsUploading(true);
     try {
       const res = await uploadContactsSeed(contactsFile);
       if (res.ok) {
+        const mappingSummary = summarizeMapping(contactsPreview.headers, contactsMapping);
         setState((prev) => ({
           ...prev,
           contactImportUploaded: true,
           contactImportFilename: res.filename,
           contactImportRowCount: res.rowCount,
+          contactImportMappingSummary: mappingSummary,
         }));
         goNext();
       }
@@ -231,7 +282,7 @@ export default function OnboardingPage() {
           <div className="mt-3 flex items-center gap-3">
             <button
               className="button-secondary h-9 px-3 text-sm"
-              onClick={onEmailStep3Back}
+              onClick={onEmailStepBack}
               disabled={currentStep === 1}
             >
               Back
@@ -256,8 +307,8 @@ export default function OnboardingPage() {
                 type="button"
                 className="button-primary h-9 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={handleOnboardingNext}
-                disabled={step3HeaderNextDisabled}
-                title={step3HeaderNextDisabled ? "Choose an option below" : undefined}
+                disabled={stepEmailHeaderNextDisabled}
+                title={stepEmailHeaderNextDisabled ? "Choose an option below" : undefined}
               >
                 Next
               </button>
@@ -269,46 +320,63 @@ export default function OnboardingPage() {
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           {currentStep === 1 && (
-            <StepCard
-              title="Sync your calendar"
-              description="TOMO uses your calendar to prepare meeting briefs and reminders."
-              actions={
-                <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("calendarConnected")}>
-                    <img src="/icons/google-calendar.svg" alt="Google Calendar" className="h-4 w-4" />
-                    Connect Google Calendar
-                  </button>
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("calendarConnected")}>
-                    <img src="/icons/microsoft-calendar.svg" alt="Microsoft Calendar" className="h-4 w-4" />
-                    Connect Microsoft 365 Calendar
-                  </button>
-                </div>
-              }
-              status={state.calendarConnected}
-            />
+            <div className="space-y-8">
+              <StepCard
+                title="Calendar & contacts"
+                description="Connect your calendar for meeting briefs and reminders, and your contacts so TOMO can build your relationship graph."
+                actions={
+                  <div className="space-y-6">
+                    <div>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Calendar</p>
+                        {state.calendarConnected ? (
+                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={markCalendarConnected}>
+                          <img src="/icons/google-calendar.svg" alt="Google Calendar" className="h-4 w-4" />
+                          Connect Google Calendar
+                        </button>
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={markCalendarConnected}>
+                          <img src="/icons/microsoft-calendar.svg" alt="Microsoft Calendar" className="h-4 w-4" />
+                          Connect Microsoft 365 Calendar
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Contacts</p>
+                        {state.contactsConnected ? (
+                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={markContactsConnected}>
+                          <img src="/icons/google-contacts.svg" alt="Google Contacts" className="h-4 w-4" />
+                          Connect Google Contacts
+                        </button>
+                        <button className="button-secondary flex items-center gap-2" type="button" onClick={markContactsConnected}>
+                          <img src="/icons/microsoft-contacts.svg" alt="Microsoft Contacts" className="h-4 w-4" />
+                          Connect Microsoft 365 Contacts
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              />
+              <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+                <button className="text-sm text-gray-600 underline" type="button" onClick={goNext}>
+                  Skip for now
+                </button>
+                <button className="button-primary" type="button" onClick={goNext}>
+                  Continue
+                </button>
+              </div>
+            </div>
           )}
 
-          {currentStep === 2 && (
-            <StepCard
-              title="Sync your contacts"
-              description="TOMO builds your contact graph and relationship history from your contacts."
-              actions={
-                <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("contactsConnected")}>
-                    <img src="/icons/google-contacts.svg" alt="Google Contacts" className="h-4 w-4" />
-                    Connect Google Contacts
-                  </button>
-                  <button className="button-secondary flex items-center gap-2" onClick={() => markConnected("contactsConnected")}>
-                    <img src="/icons/microsoft-contacts.svg" alt="Microsoft Contacts" className="h-4 w-4" />
-                    Connect Microsoft 365 Contacts
-                  </button>
-                </div>
-              }
-              status={state.contactsConnected}
-            />
-          )}
-
-          {currentStep === 3 && !showEmailDataScope && (
+          {currentStep === 2 && !showEmailDataScope && (
             <div className="space-y-6">
               <StepCard
                 title="Connect your email (recommended)"
@@ -362,7 +430,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {currentStep === 3 && showEmailDataScope && (
+          {currentStep === 2 && showEmailDataScope && (
             <div className="space-y-5">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Finish mail setup</h2>
@@ -396,280 +464,75 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold accent-title">Connect messaging channels</h2>
+                  <h2 className="text-lg font-semibold accent-title">Connect Slack</h2>
                   <p className="text-sm text-gray-600">
-                    TOMO delivers recaps to your email by default. Connect Slack or Telegram to also receive recaps and let TOMO act on your suggestions directly there.
+                    TOMO delivers recaps to your email by default. Connect Slack to also receive recaps and let TOMO act on your suggestions there.
                   </p>
                 </div>
                 <div className="text-sm text-gray-500">Optional</div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <img src="/icons/slack.svg" alt="Slack" className="h-5 w-5" />
-                        <p className="text-base font-semibold text-gray-900">Slack</p>
-                      </div>
-                      <p className="text-sm text-gray-600">Install the Ask Tomo app to get recaps and take action.</p>
+              <div className="max-w-xl rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <img src="/icons/slack.svg" alt="Slack" className="h-5 w-5" />
+                      <p className="text-base font-semibold text-gray-900">Slack</p>
                     </div>
-                    {state.slackConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span>
-                    ) : null}
+                    <p className="text-sm text-gray-600">Install the Ask Tomo app to get recaps and take action.</p>
                   </div>
-                  <ul className="mt-3 space-y-2 text-sm text-gray-600">
-                    <li>Morning and evening recaps</li>
-                    <li>Meeting briefs and follow-up reminders</li>
-                    <li>Actionable command cards in Slack</li>
-                  </ul>
-                  <div className="mt-4 space-y-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                    <p>We'll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
-                    <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium">
-                      <span className="truncate">{slackInstallUrl}</span>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(slackInstallUrl)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        Copy link
-                      </button>
-                    </div>
-                    <button
-                      className="button-primary w-full"
-                      onClick={() => {
-                        setSlackOpened(true);
-                        window.open(slackInstallUrl, "_blank");
-                        setState({ ...state, slackConnected: true });
-                      }}
-                    >
-                      Open Slack
-                    </button>
-                    {slackOpened ? <p className="text-xs text-green-600">Slack tab opened. Complete install to finish.</p> : null}
-                  </div>
+                  {state.slackConnected ? (
+                    <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span>
+                  ) : null}
                 </div>
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <img src="/icons/telegram.svg" alt="Telegram" className="h-5 w-5" />
-                        <p className="text-base font-semibold text-gray-900">Telegram</p>
-                      </div>
-                      <p className="text-sm text-gray-600">Send recaps, briefs, and commands via Telegram.</p>
-                    </div>
-                    {state.telegramConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Onboarding link sent ?</span>
-                    ) : null}
-                  </div>
-                  <p className="mt-3 text-sm text-gray-600">
-                    Enter your Telegram phone number and TOMO will send you an onboarding link directly.
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <label className="text-xs uppercase tracking-wide text-gray-500">Telegram phone number</label>
-                    <input
-                      value={telegramNumber}
-                      onChange={(e) => setTelegramNumber(e.target.value)}
-                      placeholder="+1 555 123 4567"
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    />
+                <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                  <li>Morning and evening recaps</li>
+                  <li>Meeting briefs and follow-up reminders</li>
+                  <li>Actionable command cards in Slack</li>
+                </ul>
+                <div className="mt-4 space-y-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                  <p>We'll open Slack so you can grant TOMO permission to install the Ask Tomo app.</p>
+                  <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium">
+                    <span className="truncate">{slackInstallUrl}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(slackInstallUrl)}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Copy link
+                    </button>
                   </div>
                   <button
-                    className="button-primary mt-3 w-full"
+                    type="button"
+                    className="button-primary w-full"
                     onClick={() => {
-                      if (!telegramNumber.trim()) return;
-                      setState({ ...state, telegramConnected: true, telegramPhone: telegramNumber });
+                      setSlackOpened(true);
+                      window.open(slackInstallUrl, "_blank");
+                      setState({ ...state, slackConnected: true });
                     }}
                   >
-                    Send onboarding link
+                    Open Slack
                   </button>
-                  {state.telegramConnected ? (
-                    <p className="mt-2 text-xs text-green-700">
-                      We've sent you a message from TOMO's Telegram bot with your onboarding link.
-                    </p>
-                  ) : null}
+                  {slackOpened ? <p className="text-xs text-green-600">Slack tab opened. Complete install to finish.</p> : null}
                 </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between">
-                <button className="text-sm text-gray-600 underline" onClick={goNext}>
+                <button type="button" className="text-sm text-gray-600 underline" onClick={goNext}>
                   Skip for now
                 </button>
-                <button className="button-primary" onClick={goNext}>
+                <button type="button" className="button-primary" onClick={goNext}>
                   Continue
                 </button>
               </div>
             </div>
           )}
 
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold accent-title">Optional: Sync Tomo CRM to Affinity or Sheets</h2>
-                  <p className="text-sm text-gray-600">
-                    Bring in existing CRM data now or keep it ready for later. Credentials are saved securely server-side in production.
-                  </p>
-                </div>
-                <div className="text-sm text-gray-500">Optional</div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <img src="/icons/affinity.svg" alt="Affinity" className="h-5 w-5" />
-                      <p className="text-base font-semibold text-gray-900">Affinity CRM</p>
-                    </div>
-                    {state.affinityConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ?</span>
-                    ) : (
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Enter your Affinity List ID and API token. We'll sync people and companies into Tomo.
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <label className="text-xs uppercase tracking-wide text-gray-500">List ID</label>
-                    <input
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      placeholder="e.g. 12345"
-                      value={affinityListId}
-                      onChange={(e) => setAffinityListId(e.target.value)}
-                    />
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    <label className="text-xs uppercase tracking-wide text-gray-500">API token</label>
-                    <input
-                      type="password"
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      placeholder="Paste your token"
-                      value={affinityTokenInput}
-                      onChange={(e) => setAffinityTokenInput(e.target.value)}
-                    />
-                    <p className="text-xs text-gray-500">Saved securely in production; only stored locally in this mock.</p>
-                  </div>
-                  <button
-                    className="button-primary mt-4 w-full"
-                    disabled={affinitySaving || !affinityListId.trim() || !affinityTokenInput.trim()}
-                    onClick={async () => {
-                      if (!affinityListId.trim() || !affinityTokenInput.trim()) return;
-                      setAffinitySaving(true);
-                      try {
-                        const res = await connectAffinity({ listId: affinityListId.trim(), apiToken: affinityTokenInput.trim() });
-                        if (res.ok) {
-                          setState((prev) => ({
-                            ...prev,
-                            affinityConnected: true,
-                            affinityListId: res.listId,
-                            affinityTokenLast4: res.tokenLast4,
-                          }));
-                          setAffinityTokenInput("");
-                        }
-                      } finally {
-                        setAffinitySaving(false);
-                      }
-                    }}
-                  >
-                    {affinitySaving ? "Saving..." : state.affinityConnected ? "Update connection" : "Connect Affinity"}
-                  </button>
-                  {state.affinityConnected ? (
-                    <p className="mt-2 text-xs text-green-700">
-                      Affinity connected. List {state.affinityListId ?? affinityListId} — Token ending {state.affinityTokenLast4 ?? "????"}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <img src="/icons/google-sheets.svg" alt="Google Sheets" className="h-5 w-5" />
-                      <p className="text-base font-semibold text-gray-900">Google Sheets</p>
-                    </div>
-                    {state.googleSheetsConnected ? (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Ready ?</span>
-                    ) : (
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Authenticate with Google and create a starter sheet. You can rename it below before we create it.
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <label className="text-xs uppercase tracking-wide text-gray-500">Preset filename</label>
-                    <input
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      value={sheetsFilename}
-                      onChange={(e) => setSheetsFilename(e.target.value)}
-                    />
-                  <p className="text-xs text-gray-500">We'll create the file after you confirm the name.</p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      className="button-secondary"
-                      onClick={async () => {
-                        setGoogleAuthing(true);
-                        try {
-                          const res = await startGoogleAuth();
-                          if (res.ok && res.authUrl) {
-                            window.open(res.authUrl, "_blank");
-                            setState((prev) => ({ ...prev, googleSheetsAuthed: true }));
-                          }
-                        } finally {
-                          setGoogleAuthing(false);
-                        }
-                      }}
-                    >
-                      {googleAuthing ? "Opening Google..." : state.googleSheetsAuthed ? "Re-auth Google" : "Sign in with Google"}
-                    </button>
-                    <button
-                      className="button-primary"
-                      disabled={sheetCreating || !sheetsFilename.trim()}
-                      onClick={async () => {
-                        if (!sheetsFilename.trim()) return;
-                        setSheetCreating(true);
-                        try {
-                          const res = await createGoogleSheet(sheetsFilename.trim());
-                          if (res.ok) {
-                            setState((prev) => ({
-                              ...prev,
-                              googleSheetsConnected: true,
-                              googleSheetsFilename: res.filename,
-                              googleSheetsAuthed: true,
-                            }));
-                          }
-                        } finally {
-                          setSheetCreating(false);
-                        }
-                      }}
-                    >
-                      {sheetCreating ? "Creating..." : state.googleSheetsConnected ? "Update filename" : "Create sheet"}
-                    </button>
-                  </div>
-                  {state.googleSheetsConnected ? (
-                    <p className="mt-2 text-xs text-green-700">
-                      Google Sheets ready. Filename {state.googleSheetsFilename ?? sheetsFilename}.
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-center justify-between">
-                <button className="text-sm text-gray-600 underline" onClick={goNext}>
-                  Skip for now
-                </button>
-                <button className="button-primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 6 && (
+          {currentStep === 4 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -682,52 +545,94 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-4 rounded-lg border border-gray-200 p-4">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-wide text-gray-500">Contacts file</label>
-                  <input
-                    type="file"
-                    accept=".csv,.xls,.xlsx"
-                    onChange={(e) => setContactsFile(e.target.files?.[0] ?? null)}
-                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Supports CSV, XLS, or XLSX. Include headers like Name, Email, Company, Title, Phone.
-                  </p>
-                </div>
+                {state.contactImportUploaded && !contactsPreview ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-green-700">
+                      Uploaded {state.contactImportFilename ?? "your file"}. We&apos;ll queue parsing (~
+                      {state.contactImportRowCount ?? "tens of"} rows).{" "}
+                      {state.contactImportMappingSummary ? (
+                        <>
+                          Mapping: <span className="font-medium text-gray-800">{state.contactImportMappingSummary}</span>
+                        </>
+                      ) : null}
+                    </p>
+                    <button type="button" className="text-sm text-blue-700 underline underline-offset-2 hover:text-blue-900" onClick={clearContactsImport}>
+                      Replace file
+                    </button>
+                  </div>
+                ) : !contactsPreview ? (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-wide text-gray-500">Contacts file</label>
+                      <ContactImportFileZone
+                        accept={CONTACT_IMPORT_ACCEPT}
+                        disabled={contactsParsing}
+                        onFileSelected={(f) => void handleContactsFileSelected(f)}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Supports CSV, XLS, or XLSX. Include headers like Name, Email, Company, Title, Phone.
+                      </p>
+                      {contactsParsing ? (
+                        <p className="text-xs text-gray-500">Reading file…</p>
+                      ) : null}
+                    </div>
 
-                {state.contactImportUploaded ? (
-                  <p className="text-xs text-green-700">
-                    Uploaded {state.contactImportFilename ?? contactsFile?.name ?? "your file"}. We&apos;ll queue parsing
-                    (~{state.contactImportRowCount ?? "tens of"} rows) while you finish onboarding.
-                  </p>
-                ) : null}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    className="button-primary"
-                    disabled={!contactsFile || contactsUploading}
-                    onClick={handleContactsUpload}
-                  >
-                    {contactsUploading ? "Uploading..." : state.contactImportUploaded ? "Replace file" : "Upload file"}
-                  </button>
-                  <button
-                    className="button-secondary"
-                    onClick={() => {
-                      setContactsFile(null);
-                      goNext();
-                    }}
-                  >
-                    Skip for now
-                  </button>
-                  <span className="text-xs text-gray-500">
-                    In production, files are stored securely and processed asynchronously.
-                  </span>
-                </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button className="button-secondary" type="button" onClick={goNext}>
+                        Skip for now
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        Next step opens column matching after you choose a file.
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-500">
+                      <span className="font-medium text-gray-800">{contactsFile?.name}</span>
+                      {" · "}
+                      ~{contactsPreview.rowCountEstimate.toLocaleString()} row{contactsPreview.rowCountEstimate === 1 ? "" : "s"}{" "}
+                      (estimate)
+                    </p>
+                    <ContactImportFieldMapping
+                      headers={contactsPreview.headers}
+                      mapping={contactsMapping}
+                      onChange={setContactsMappingAt}
+                      sampleRow={contactsPreview.sampleRow}
+                      idPrefix="onboarding-import"
+                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        className="button-primary"
+                        disabled={contactsUploading || contactsParsing}
+                        onClick={() => void handleContactsUpload()}
+                      >
+                        {contactsUploading ? "Saving…" : "Confirm import"}
+                      </button>
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={() => {
+                          setContactsFile(null);
+                          setContactsPreview(null);
+                          setContactsMapping([]);
+                        }}
+                      >
+                        Change file
+                      </button>
+                      <button type="button" className="text-sm text-gray-600 underline" onClick={goNext}>
+                        Skip for now
+                      </button>
+                      <span className="text-xs text-gray-500">Mock: mapping is saved with your onboarding state.</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
 
-          {currentStep === 7 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -785,7 +690,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {currentStep === 8 && (
+          {currentStep === 6 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold accent-title">Your workspace is ready</h2>
               <div className="space-y-2 text-sm text-gray-700">
@@ -803,10 +708,12 @@ export default function OnboardingPage() {
                   />
                 ) : null}
                 <StatusLine label="Slack" ok={state.slackConnected} />
-                <StatusLine label="Telegram" ok={state.telegramConnected} />
-                <StatusLine label="Affinity" ok={state.affinityConnected} />
-                <StatusLine label="Google Sheets" ok={state.googleSheetsConnected} />
                 <StatusLine label="Contacts file uploaded" ok={state.contactImportUploaded} />
+                {state.contactImportUploaded && state.contactImportMappingSummary ? (
+                  <p className="border-l-2 border-gray-200 pl-3 text-xs text-gray-600">
+                    Column mapping saved: {state.contactImportMappingSummary}
+                  </p>
+                ) : null}
                 <StatusLine label="Fund strategy shared" ok={state.fundStrategyUploaded} />
               </div>
               <button type="button" className="button-primary" onClick={completeOnboarding}>
@@ -858,13 +765,6 @@ function StatusLine({ label, ok }: { label: string; ok?: boolean }) {
     </div>
   );
 }
-
-function generatePresetSheetName() {
-  const date = new Date();
-  const iso = date.toISOString().split("T")[0];
-  return `tomo_crm_sync_${iso}.xlsx`;
-}
-
 
 
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { DocumentArrowUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { ContactImportFileZone } from "@/components/contact-import-file-zone";
 
 type AttachDocumentModalProps = {
   open: boolean;
@@ -32,12 +33,10 @@ export function AttachDocumentModal({
   accept,
   autoOpenFilePicker = false,
 }: AttachDocumentModalProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [autoOpenToken, setAutoOpenToken] = useState(0);
 
   useEffect(() => {
-    if (!open || !autoOpenFilePicker) return;
-    const id = window.setTimeout(() => inputRef.current?.click(), 0);
-    return () => clearTimeout(id);
+    if (open && autoOpenFilePicker) setAutoOpenToken((t) => t + 1);
   }, [open, autoOpenFilePicker]);
 
   useEffect(() => {
@@ -81,27 +80,16 @@ export function AttachDocumentModal({
         </div>
         <div className="px-4 py-4">
           <p className="text-sm text-gray-600">{description}</p>
-          <input
-            ref={inputRef}
-            type="file"
-            className="sr-only"
-            tabIndex={-1}
-            accept={accept}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onUploaded(file.name);
-              e.target.value = "";
-              onClose();
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-sm font-medium text-gray-800 transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)]"
-          >
-            <DocumentArrowUpIcon className="h-6 w-6 text-gray-500" aria-hidden />
-            Choose file…
-          </button>
+          <div className="mt-4">
+            <ContactImportFileZone
+              accept={accept}
+              autoOpenToken={autoOpenFilePicker ? autoOpenToken : undefined}
+              onFileSelected={(file) => {
+                onUploaded(file.name);
+                onClose();
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

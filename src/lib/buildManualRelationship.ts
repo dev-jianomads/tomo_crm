@@ -122,7 +122,7 @@ export function buildRelationshipFromManualContact(
 }
 
 /** Demo CSV import: one LP row derived from the uploaded file name (no server parse). */
-export function buildMockRelationshipFromCsvImport(fileName: string): Relationship {
+export function buildMockRelationshipFromCsvImport(fileName: string, mappingNotes?: string): Relationship {
   const stem = fileName.replace(/\.[^/.]+$/, "").trim() || "import";
   const firm = stem.slice(0, 120);
   return buildRelationshipFromManualContact(
@@ -137,7 +137,7 @@ export function buildMockRelationshipFromCsvImport(fileName: string): Relationsh
       ...defaultStep2(),
       source: "Direct",
       lastFundHistory: "New prospect",
-      nextMove: "Review CSV import",
+      nextMove: mappingNotes ? `Review import (${mappingNotes.slice(0, 80)}${mappingNotes.length > 80 ? "…" : ""})` : "Review CSV import",
     }
   );
 }
