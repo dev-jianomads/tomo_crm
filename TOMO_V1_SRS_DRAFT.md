@@ -3433,26 +3433,734 @@ The V1 stack is locked. Substitutions require PM and engineering lead approval.
 
 ## 8. Use Cases / User Stories
 
-[STAGED — full set of stories to be added in stage 4. Structure follows `EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` per surface, extended to cover all V1 capability areas including:
+This section enumerates V1 user stories grouped by surface and capability area. The structure extends `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` to cover every V1 feature including the Section 8/9 signals and metrics, the meeting transcript and AI-recap lifecycle, and onboarding-time email backfill. Each story carries actor, narrative, and testable acceptance criteria.
 
-- Authentication flows (sign-up, sign-in, magic link for FC, OAuth re-auth, account deletion)
-- Onboarding (eight-screen flow with resumability and partial-state handling)
-- Email and calendar sync (initial backfill, ongoing incremental, OOO handling, sync-staleness UI)
-- CSV CRM import (mapping, dedupe, conflict review, ongoing re-import, provenance display)
-- Affinity bi-directional sync (conditional)
-- Signals on the LP card and pipeline list
-- Insights page (every metric with click-through behaviour)
-- Workflows (default playbooks, custom from template, F7 Three-Touch)
-- Meeting prep brief, transcript ingestion (Teams + Meet), AI recap fallback, post-meeting capture, follow-up draft
-- Daily Brief delivery (in-app, email, Slack)
-- Reminders (open loops, missed replies, commitments) with snooze
-- Settings sub-pages (profile, funds, integrations, messaging, notifications, billing, team)
-- Search
-- Tomo agent across surfaces
-- Activity log review
-- Multi-user workspace (invite, accept, simultaneous use)
+The default actor is the **GP** (general partner / fundraiser) unless otherwise noted. **Workspace teammate** stories highlight where multi-user behaviour differs. **TOMO operator** stories cover the Founding Circle support flow (manual in V1 per §3.1).
 
-Each story shall include: actor, narrative, acceptance criteria (testable outcomes), traceability to source docs.]
+Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to align with §3 / §4 / §5 conventions and are independently QA-verifiable.
+
+---
+
+### 8.1. Shell and global behaviour
+
+**Epic:** App chrome, navigation, and cross-cutting Tomo presence.
+
+**Story 8.1.1 — Primary navigation.**
+*As a GP, I can move between primary areas using the main navigation (Today, Relationships, Pipeline, Workflows) and reach Insights, Activity, and Settings from secondary navigation.*
+
+- AC — All primary destinations load without broken routes; the active nav item reflects the current section on every refresh.
+- AC — Insights and Settings are reachable from the avatar / overflow menu on desktop and from the bottom-nav overflow on mobile.
+- AC — Mobile bottom navigation surfaces five destinations (Today, Relationships, Pipeline, Workflows, Settings); Insights and Activity surface in an overflow tap.
+- AC — Legacy paths from the mock (`/today` → `/home`, `/contacts` → `/relationships`, `/workflow` → `/workflows`, `/briefs` → `/materials?tab=briefs`, `/tasks` → `/home`) return HTTP redirects to the canonical V1 routes.
+
+**Story 8.1.2 — Three-pane layout (desktop).**
+*As a GP on desktop, I can work in a list-and-detail layout that I can resize, with Tomo accessible everywhere.*
+
+- AC — Resizing the list/detail split persists across sessions via `user_preferences.pane_width_px`.
+- AC — Closing or collapsing a panel does not lose unsaved edits in the detail pane; an unsaved-changes prompt surfaces if I navigate away with edits.
+- AC — Tomo is reachable on every authenticated surface (inline on Today and Workflows; FAB → dock on others).
+
+**Story 8.1.3 — Mobile responsiveness.**
+*As a GP on iPhone or Android, I can do every primary task without horizontal scrolling.*
+
+- AC — Onboarding, Today, Relationships, Pipeline, Workflows, Insights, Settings render without horizontal scroll at 360px viewport width.
+- AC — Touch targets are ≥ 44×44 px throughout.
+- AC — Tomo opens as a bottom sheet (70–92vh) above the bottom nav.
+
+**Story 8.1.4 — Deep links.**
+*As a GP, I can paste a deep link into a fresh session and land on the right entity.*
+
+- AC — `/relationships/{lp_id}` opens the LP detail directly when the session is authenticated.
+- AC — Clicking a link in an email digest with no active session lands on sign-in then redirects to the original URL after auth.
+
+**Story 8.1.5 — Sync staleness banner.**
+*As a GP, I can see a banner on Today and Pipeline if my email or calendar sync is degraded, and I can reconnect from there.*
+
+- AC — Banner surfaces within 5 minutes of three consecutive failed delta polls.
+- AC — Banner shows last-success timestamp and a "Reconnect" affordance routing to Settings → Integrations.
+- AC — Banner clears within 1 minute of successful resumption.
+
+---
+
+### 8.2. Authentication
+
+**Epic:** Sign-up, sign-in, OAuth grants, password reset, account deletion.
+
+**Story 8.2.1 — Sign-up and workspace creation.**
+*As a new GP, I can sign up with email + password, Google, or Microsoft, and land in a freshly created workspace ready for onboarding.*
+
+- AC — Choosing email + password triggers Firebase Auth's email-verification flow before sign-in completes.
+- AC — Choosing Google or Microsoft completes via OAuth in a new tab and creates a `users` row plus a `workspaces` row with me as `owner_user_id`.
+- AC — On first successful sign-in I land on `/onboarding`.
+- AC — Concurrent sign-up attempts with the same email return a clear "account exists — sign in instead" message.
+
+**Story 8.2.2 — Sign-in.**
+*As a returning GP, I can sign in with the same provider I signed up with and land on Today.*
+
+- AC — Firebase ID token in `Authorization` header authenticates every API call without a separate session cookie.
+- AC — Cross-provider attempts (signed up with Google, attempting email + password with the same email) surface a "use Google to sign in" hint rather than create a duplicate account.
+
+**Story 8.2.3 — Per-user data-source OAuth.**
+*As a GP, I can authorise Microsoft Graph or Google Workspace separately from my Firebase sign-in to grant TOMO read/write access to my mailbox, calendar, contacts, and meeting transcripts.*
+
+- AC — The OAuth consent screen lists every scope TOMO requests (per §4.2).
+- AC — On grant, an `oauth_tokens` row is created with the token ciphertext and the granted scope array.
+- AC — Revoking the grant in Settings → Integrations or upstream at the provider sets `oauth_tokens.revoked_at`, flips `crm_sync_status.health='disconnected'`, and writes an `auth_events` row.
+
+**Story 8.2.4 — Workspace teammate invitation.**
+*As the workspace owner, I can invite up to two additional members and they can accept and start working immediately.*
+
+- AC — Invitation email arrives within 1 minute and contains a single-use token expiring in 7 days.
+- AC — A fourth invite attempt is blocked with a "workspace at capacity" error.
+- AC — Invitee accepting with a Firebase email different from the invitation address is rejected with a clear mismatch error.
+
+**Story 8.2.5 — Password reset.**
+*As a GP using email + password, I can reset my password via the standard Firebase reset flow.*
+
+- AC — Reset email arrives within 1 minute and the link, used within Firebase's expiry window, allows password change.
+- AC — Reset success writes a `password_reset_completed` row to `auth_events`.
+
+**Story 8.2.6 — Account deletion.**
+*As a GP, I can request deletion of my account from Settings → Profile, with a 30-day grace period.*
+
+- AC — Deletion request marks `users.deleted_at` and surfaces a banner with the 30-day expiry.
+- AC — During the grace period, the user can cancel deletion and resume access.
+- AC — On confirmation or at expiry, `users.email` is hashed and PII is scrubbed from non-audit tables; `lp_signal_log` and `tomo_action_log` rows are preserved with NULL user references.
+
+---
+
+### 8.3. Onboarding
+
+**Epic:** Eight-screen guided flow from sign-up to first value within 17–22 minutes (per Document B and §3.2).
+
+**Story 8.3.1 — Welcome screen.**
+*As a new GP, I see a calm welcome page that sets the contract for the next 20 minutes.*
+
+- AC — Personalised greeting renders from the FC agreement record when available; falls back to "Welcome to TOMO" otherwise.
+- AC — A single primary action ("Let's start") advances me; no skip path.
+
+**Story 8.3.2 — Connect systems.**
+*As a GP, I can connect email + calendar, my CRM, and meeting transcripts in three tiles, with continue enabled as soon as email and CRM are provided.*
+
+- AC — Microsoft / Google OAuth opens the consent screen in a new tab and returns me to Screen 2 with the tile in connected state.
+- AC — Backstop / Foliometrics / Sheets / Excel / generic users see a CSV upload affordance with a "Show me how" link to a 30-second video for Backstop.
+- AC — Affinity users see an API-key paste field that validates against `/v2/auth/whoami` before accepting.
+- AC — Meeting transcripts (Teams or Meet) connect automatically via the same Microsoft / Google OAuth grant when the transcript scopes are granted; no separate Granola connection.
+- AC — Continue enables on a soft check (email + CRM provided); remaining work happens during Screens 3–6.
+
+**Story 8.3.3 — Field mapping.**
+*As a GP whose CRM is CSV-based, I can confirm or correct ambiguous column mappings in 3–4 minutes.*
+
+- AC — Auto-mapped columns render with green checkmarks and are collapsed by default.
+- AC — Ambiguous mappings (typically 4–6 per Backstop export) are expanded with TOMO's best guess plus an explanation.
+- AC — Confirming all writes the policy to `csv_field_mappings` for re-use on subsequent imports.
+
+**Story 8.3.4 — Import review.**
+*As a GP, I can review duplicate matches and resolve any ambiguous matches before commit.*
+
+- AC — Exact-email matches auto-merge without surfacing.
+- AC — Name-plus-firm-domain matches surface in the review queue and write to `csv_dedupe_decisions` with `decision='pending'` until I act.
+- AC — On commit, rows are written to `lp_organizations` and `lp_contacts` with `source='crm_csv'` and `csv_import_id` set.
+
+**Story 8.3.5 — Tone calibration.**
+*As a GP, I see TOMO's read of my tone (greeting, formality, sign-off, sentence shape) within 90 seconds of arriving on Screen 5.*
+
+- AC — Tone calibration runs in the background starting on Screen 2; surfaces here when complete.
+- AC — A "refresh later" affordance allows me to skip if it isn't ready.
+- AC — `tone_profiles` row is written with `prompt_excerpt` containing the few-shot text used in subsequent draft generation.
+
+**Story 8.3.6 — Day 1 Gap reveal.**
+*As a GP, I see the Day 1 Gap headline and named cohorts within 2 minutes of starting Screen 2 — and a re-engagement draft for one Tier 1 LP in the gap.*
+
+- AC — Screen blocks until ingestion has computed the gap; renders a calm progress narrative ("Reading your last 90 days...") not a generic spinner.
+- AC — Gap count is written to `daily_pipeline_summary.day_1_gap_count` and to `day_1_gap_baseline` on the first row, anchoring Metric 2's trend annotation.
+- AC — One Tier 1 stale-contact LP gets a draft in the Action Drawer ready for me to send before continuing.
+
+**Story 8.3.7 — Daily rhythm setup.**
+*As a GP, I can choose my daily-brief delivery time, channels, and follow-up thresholds, and set my fund's raise target.*
+
+- AC — Default delivery time is 07:30 local; channels default to in-app + email; Slack is disabled until Slack is connected later.
+- AC — Setting `funds.raise_target` and currency populates the Insights top-half hero bar after onboarding.
+- AC — Tier-aware follow-up thresholds default to T1 = 48 hours and T2/T3/unset = 5 days; I can adjust before continuing.
+
+**Story 8.3.8 — Workspace ready.**
+*As a GP, I see a final confirmation that lists what's running in the background and a single "Open Today" affordance.*
+
+- AC — The screen lists 12-month full-content backfill, 13–36 month metadata backfill, and the partial Insights baseline as ongoing.
+- AC — Clicking "Open Today" lands on `/home` with a non-empty action queue (or a calm empty state when truly nothing is pressing).
+
+**Story 8.3.9 — Onboarding resumability.**
+*As a GP, I can close my browser between any two screens and resume from the last completed screen later.*
+
+- AC — Closing on Screen 4 and returning 30 minutes later resumes at Screen 5 with all prior state preserved.
+- AC — Background jobs continue running independent of the front-end (no perceived restart).
+
+**Story 8.3.10 — Email backfill three-tier model.**
+*As a GP, I see TOMO read 12 months of full email content and an additional 24 months of metadata-only history without me choosing — the model is fixed.*
+
+- AC — `lp_interactions` rows for the most recent 12 months carry `body_text` populated; rows for months 13–36 carry `body_text=NULL` and `metadata_only=true`; nothing exists beyond 36 months.
+- AC — Phase A (90-day full content) completes within 2 minutes; Phase B (4–12 months full content) within 30 minutes; Phase C (13–36 months metadata) within 2 hours.
+- AC — A daily retention job nulls `body_text` and removes archived HTML at the 12-month boundary going forward.
+
+---
+
+### 8.4. Today / Home
+
+**Epic:** Daily landing surface — attention queue, commitments, brief, inline Tomo.
+
+**Story 8.4.1 — Daily Brief auto-open.**
+*As a GP loading Today on the first visit of the local day, I see the Daily Brief modal auto-open.*
+
+- AC — The modal renders within 500ms of page load when it should auto-open.
+- AC — A subsequent reload on the same local day does not re-open the modal.
+- AC — Daily Brief blocks: today's meetings, urgent / approval-needed actions, follow-up compliance, key signal change.
+
+**Story 8.4.2 — Attention queue.**
+*As a GP, I see "What needs your attention" with today's most pressing items, sorted by priority.*
+
+- AC — Items are sourced from `tomo_action_log` (outcome IS NULL) and `reminders` (status='pending').
+- AC — Sort order: re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval.
+- AC — Items beyond today collapse into a "Previous (N)" control that's collapsed by default.
+
+**Story 8.4.3 — Coming up.**
+*As a GP, I see today's calendar events with LP attendees and commitments due today or tomorrow.*
+
+- AC — Calendar events render with LP context and a meeting-prep link.
+- AC — Commitments come from `commitments` rows with `status='open'` and `due_at <= tomorrow`.
+
+**Story 8.4.4 — On my radar.**
+*As a GP, I see small intelligence-line callouts highlighting positive directional signals.*
+
+- AC — Callouts are sourced from `lp_signal_log` rows in the last 24 hours where `is_directional=true`.
+- AC — Each callout cites a specific LP and observation (e.g. "Frank Ieraci's reply time halved this week — CPPIB is accelerating").
+
+**Story 8.4.5 — Inline Tomo on Today.**
+*As a GP, I can chat with Tomo on Today, with the agent receiving structured context for what's on the page.*
+
+- AC — Tomo receives `todayContext` (action counts, meeting list, brief blocks) and grounds answers in it.
+- AC — Mutations proposed by Tomo require explicit confirm; no auto-apply.
+- AC — Tomo's answers do not invent records that aren't in the workspace.
+
+---
+
+### 8.5. Relationships
+
+**Epic:** LP relationship workspace — list, board, detail, inline editing.
+
+**Story 8.5.1 — List view.**
+*As a GP, I can scan my LP list with stage, days-since-touch G/A/R, tier, mandate fit, days-in-stage, and expected commitment.*
+
+- AC — Default sort: pipeline_flag (red → amber → green), then `days_since_meaningful_touch DESC`.
+- AC — Reply-velocity arrow renders next to the days-since-touch badge.
+- AC — "Stuck Nd" badge surfaces when `stage_stagnation_flag` is amber/red.
+- AC — Re-up indicator dot shows on `prior_fund_investor=true` LPs.
+- AC — List loads within 1.5s for a 500-LP workspace.
+
+**Story 8.5.2 — Board view.**
+*As a GP, I can switch to a Kanban board with columns per pipeline stage, dragging LPs between stages.*
+
+- AC — Drag-and-drop writes a `lp_stage_transitions` row immediately.
+- AC — `lp_state.days_in_current_stage` recomputes within 5 seconds of the drop.
+- AC — Switching back to list view preserves any active filters.
+
+**Story 8.5.3 — LP detail card.**
+*As a GP, I see the full LP card with header strip, status, key changes, stage history, sizing, and a per-LP Tomo chat plus activity log.*
+
+- AC — Header strip shows tier badge, prior-fund badge, mandate-fit pill, and seniority.
+- AC — Status row shows the G/A/R dot and the plain-English `pipeline_flag_reason`.
+- AC — Key changes section surfaces signal callouts ("Reply time has slowed: last 4 days, typical 18 hours").
+- AC — Stage row shows current and prior-stage days ("In active diligence 22 days. Spent 47 days in second_meeting").
+- AC — Per-LP Tomo chat receives that LP as scope context and answers grounded in their record.
+
+**Story 8.5.4 — Inline editing via Tomo (Manual Update Principle).**
+*As a GP, I can update an LP field by typing in plain English and confirming Tomo's proposal.*
+
+- AC — Typing "Peter sized at $25M" in the LP-card chat surfaces a confirm dialog with `expected_commitment_amount=25000000`.
+- AC — Confirm writes the field and creates an `agent_tool_calls` row plus an `activity_log` row; cancel discards.
+- AC — Direct field-edits (chip selectors for stage, tier, mandate fit) write the same way and are auditable.
+
+**Story 8.5.5 — Provenance on hover.**
+*As a GP, I can hover any field on the LP card to see where the value came from.*
+
+- AC — Hover surfaces source ("Imported from Backstop CSV · 3 Apr") and any subsequent edits ("GP-edited tier on 14 Apr").
+
+**Story 8.5.6 — Workspace teammate concurrent edit.**
+*As a workspace teammate working alongside the GP, I can edit the same LP without conflicting writes.*
+
+- AC — Concurrent edits resolve last-write-wins with the loser's edit logged in `activity_log`.
+- AC — A divergence between GP and teammate edits is visible in the LP timeline.
+
+---
+
+### 8.6. Pipeline (Lists) and named filters
+
+**Epic:** Audience and list-building surface — saved lists, named filters, workflow seeding.
+
+**Story 8.6.1 — Named filters.**
+*As a GP, I can apply any of the V1 named filters from the filter rail.*
+
+- AC — Filters available: Drifting, Quiet — Fat Middle, Re-engaged, One-Way, Stuck in stage, Slow to advance from [stage], Confirmed mandate fit, Re-ups · Fund N, Close proximity detected, the framework's "single most valuable query" (Tier 1 + confirmed fit + drifting + not in diligence).
+- AC — Each filter renders the matching LPs within 600ms for a 500-LP workspace.
+- AC — The "single most valuable query" filter is pre-loaded as a saved list at workspace creation.
+
+**Story 8.6.2 — Filter combinator.**
+*As a GP, I can stack filters with AND logic and add a free-text query on top.*
+
+- AC — Stacking "Drifting" + "Tier 1" returns the intersection.
+- AC — A free-text query against name and firm narrows the result further.
+
+**Story 8.6.3 — Saved lists.**
+*As a GP, I can save a filter combination as a named list for quick re-use.*
+
+- AC — Saved lists persist on the user record and re-render on page load.
+- AC — A saved list is selectable as the seed for a workflow run.
+
+**Story 8.6.4 — Trigger workflow on a list.**
+*As a GP, I can trigger a workflow (e.g. F7 Three-Touch) on a filtered cohort.*
+
+- AC — Triggering F7 on a 29-LP Fat Middle cohort creates 29 `workflow_runs` rows.
+- AC — LPs already in another active workflow run are skipped with a notice.
+
+**Story 8.6.5 — Export to CSV.**
+*As a GP, I can export a filtered cohort to CSV for sharing or analysis.*
+
+- AC — Export contains LP name, firm, stage, tier, mandate fit, days-since-touch, expected commitment.
+- AC — Export honours RLS; no cross-workspace data leaks.
+
+---
+
+### 8.7. Workflows
+
+**Epic:** Guided multi-step playbooks — five default plus custom; F7 Three-Touch as the V1 non-negotiable default-on workflow.
+
+**Story 8.7.1 — Default playbooks at workspace creation.**
+*As a new GP, I see five default playbooks pre-loaded in `/workflows`.*
+
+- AC — Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification all present.
+- AC — Default playbooks cannot be deleted but can be deactivated.
+
+**Story 8.7.2 — Visual workflow editor.**
+*As a GP, I can view and edit workflow steps in a visual flow editor.*
+
+- AC — Steps render as a process flow with action / wait / gate node types.
+- AC — Inline edits to step config persist via `workflow_steps` updates.
+- AC — Reordering steps updates `step_index` atomically.
+
+**Story 8.7.3 — Edit workflow via Tomo chat.**
+*As a GP, I can ask Tomo to add a wait step or reorder steps, with confirmation before persistence.*
+
+- AC — Tomo's `update_workflow` tool returns a proposed change; confirm applies it; cancel discards.
+- AC — Streaming response begins within 1.5s of submit.
+
+**Story 8.7.4 — F7 Three-Touch on a Fat Middle cohort.**
+*As a GP, I can run the F7 sequence (insight → question → respectful close) on quiet relationships and capture an outcome.*
+
+- AC — Each touch surfaces in the Action Drawer awaiting GP approval.
+- AC — Outcome capture at run completion writes one of: warmer-than-expected / maintaining-non-committal / genuinely-dormant.
+- AC — F7 step sends are deduped against `outbound_safety_log` (14-day window).
+
+**Story 8.7.5 — Custom workflow from a template.**
+*As a GP, I can clone a default playbook into a custom workflow and modify it.*
+
+- AC — Cloned workflow appears in `/workflows` with `is_default=false`.
+- AC — Modifications do not affect the original default playbook.
+
+**Story 8.7.6 — Workflow run log.**
+*As a GP, I can review the run log for any workflow to see step-by-step status per LP.*
+
+- AC — Run log rows source from `workflow_runs` and `workflow_step_runs`.
+- AC — Click-through to a step shows the generated draft, send timestamp, and outcome classification.
+
+---
+
+### 8.8. Insights
+
+**Epic:** GP scoreboard — capital, gap, moveability, time recovered, execution health, pipeline intel, raise momentum, close list.
+
+**Story 8.8.1 — Capital vs Target hero.**
+*As a GP, I see my raise progress as a four-segment bar showing committed, soft commit, pipeline, and gap.*
+
+- AC — Bar renders sums computed from `lp_contacts.expected_commitment_amount` grouped by `pipeline_stage`.
+- AC — When a workspace has no `funds.raise_target` set, the hero shows a "set raise target" prompt instead.
+- AC — Refresh on stage transition or commitment-amount change.
+
+**Story 8.8.2 — Day 1 Gap with closing trend.**
+*As a GP, I see the count of LPs in the gap and a 30-day sparkline showing the trend.*
+
+- AC — Sparkline renders from `daily_pipeline_summary.day_1_gap_count` over the last 30 days.
+- AC — "Down N from M at onboarding" annotation reads from `day_1_gap_baseline`.
+- AC — Click-through opens Relationships filtered to the same N LPs.
+
+**Story 8.8.3 — Moveability count.**
+*As a GP, I see a single number for LPs genuinely moveable now, with a re-up / active-diligence breakdown.*
+
+- AC — Count matches the cohort that scores into Metric 10's 60-Day Close List.
+- AC — Dollar annotation sums `expected_commitment_amount` over the cohort.
+
+**Story 8.8.4 — Concentration risk alert.**
+*As a GP, I see a banner when one LP exceeds 20% of remaining target, with a click-through to that LP.*
+
+- AC — Banner hidden when no LP exceeds the threshold.
+- AC — Click-through opens Relationships filtered to the named LP.
+
+**Story 8.8.5 — Time Recovered.**
+*As a GP, I see hours saved this week and cumulative since connection.*
+
+- AC — Computation uses `tomo_action_log` outcomes × per-action benchmarks (8/12/10/15 minutes per O-2).
+- AC — A "How is this calculated?" link opens a help drawer with the methodology.
+- AC — In the first 24 hours after onboarding (no log rows yet), the metric reads "Just getting started — first signals overnight".
+
+**Story 8.8.6 — Execution Health row.**
+*As a GP, I see follow-up compliance, draft approval rate, and scheduling efficiency in a three-cell row.*
+
+- AC — Follow-up compliance shows current and pre-TOMO baseline.
+- AC — Draft approval rate trends rolling 30d vs 60d; below 50% triggers a recalibration nudge.
+- AC — Scheduling efficiency shows current and pre-TOMO baseline.
+
+**Story 8.8.7 — Pipeline Intelligence.**
+*As a GP, I see relationships with clear direction and the Fat Middle ratio with a CTA.*
+
+- AC — Direction count plus the mandate-fit qualifier subset render together.
+- AC — Fat Middle gauge renders zones 0–30 / 30–60 / 60+.
+- AC — "Run Three-Touch Qualification on N LPs" CTA opens the F7 workflow with the cohort pre-loaded.
+
+**Story 8.8.8 — Raise Momentum.**
+*As a GP, I see pipeline velocity with an 8-week sparkline and a cooling-caught count with a trace line.*
+
+- AC — Sparkline samples weekly from `daily_pipeline_summary.pipeline_velocity_avg_days`.
+- AC — Cooling-caught "resolved" count uses `lp_signal_log` `flag_transition` rows.
+
+**Story 8.8.9 — 60-Day Close List.**
+*As a GP, I see a ranked list of seven LPs most likely to close in the next 60 days with badges, evidence, and dollar metadata.*
+
+- AC — Ranking uses Section 9 §9.3 Metric 10 formula.
+- AC — Each row is decomposable on hover into its score components.
+- AC — Click-through opens the LP detail.
+
+---
+
+### 8.9. Activity
+
+**Epic:** Audit-grade event log filtered by fund, type, date, actor.
+
+**Story 8.9.1 — Activity timeline.**
+*As a GP, I can browse the activity timeline filtered by date, action type, and actor.*
+
+- AC — Filters cover: type (draft sent / signal flag changed / re-engagement detected / etc.), actor user, date range, and (when applicable) fund.
+- AC — Each row renders time, actor, action, target, before/after when applicable.
+
+**Story 8.9.2 — Click-through to entity.**
+*As a GP, I can click any activity row to jump to the affected entity.*
+
+- AC — A `lp_stage_changed` row click-through opens the LP card with the timeline anchored to the change.
+- AC — A `draft_sent` row click-through opens the email thread with the sent message highlighted.
+
+---
+
+### 8.10. Settings
+
+**Epic:** Account-level configuration across Profile, Funds, Integrations, Messaging, Notifications, Billing, Team.
+
+#### Profile
+
+**Story 8.10.1 — Profile preferences.**
+*As a GP, I can set my display name, photo, timezone, and language.*
+
+- AC — Timezone change re-renders date/time displays across the app.
+- AC — Language is fixed to English (US/UK) in V1; selector disabled with V2 hint.
+
+#### Funds
+
+**Story 8.10.2 — Fund details.**
+*As a GP, I can edit my fund's raise target, currency, target close date, and concentration threshold (read-only V1, V1.5 editable).*
+
+- AC — Raise-target edit triggers Insights Metric 1 recompute.
+- AC — Concentration threshold field is shown read-only at 20% in V1.
+
+#### Integrations
+
+**Story 8.10.3 — Per-source health.**
+*As a GP, I can see the health of each connected integration with last-success and reconnect affordance.*
+
+- AC — Status banner per provider sources from `crm_sync_status.health` and `last_success_at`.
+- AC — Granted scope list visible for audit.
+
+**Story 8.10.4 — Disconnect.**
+*As a GP, I can disconnect any integration and TOMO stops ingesting from it.*
+
+- AC — Disconnect calls upstream revoke when supported, sets `oauth_tokens.revoked_at`, flips `crm_sync_status.health='disconnected'`.
+- AC — A "Reconnect to resume sync" banner surfaces on Today within 30s.
+
+#### Messaging (Slack)
+
+**Story 8.10.5 — Slack OAuth installation.**
+*As the workspace owner, I can install the TOMO Slack app via OAuth and pick a default channel.*
+
+- AC — OAuth handshake creates a `slack_workspace_connections` row with bot-token ciphertext.
+- AC — Default channel selector loads available channels via `users:read`/`channels:read`.
+
+#### Notifications
+
+**Story 8.10.6 — Per-channel preferences.**
+*As a GP, I can choose which notifications go to in-app, email, or Slack, and set quiet hours.*
+
+- AC — Per-event-class matrix renders per `notification_channels` rows.
+- AC — Quiet hours suppress non-urgent notifications between configured local times.
+
+#### Billing
+
+**Story 8.10.7 — Stripe Customer Portal.**
+*As the workspace owner, I can manage my subscription via the Stripe portal (no in-app card entry).*
+
+- AC — "Manage billing" creates a Stripe Customer Portal session and redirects me there.
+- AC — Card details are never collected by TOMO.
+
+#### Team
+
+**Story 8.10.8 — Member list and invites.**
+*As the workspace owner, I can invite, view, and remove members up to the 3-member cap.*
+
+- AC — Invite returns a 7-day token; revoke surfaces as an option until accepted.
+- AC — A 4th invite is blocked with a clear cap error.
+
+**Story 8.10.9 — Workspace transfer (manual in V1).**
+*As the workspace owner, I can request workspace transfer to another member via support.*
+
+- AC — UI shows "Contact support to transfer workspace" with a templated email; no in-product transfer.
+- AC — TOMO operator running the manual transfer logs the action in `data_access_log` plus `auth_events`.
+
+---
+
+### 8.11. Search
+
+**Epic:** Global search across LPs, organisations, briefs, workflows, materials, notes.
+
+**Story 8.11.1 — Cmd/Ctrl+K opens global search.**
+*As a GP, I can press Cmd+K (or Ctrl+K) and search across my workspace from anywhere.*
+
+- AC — Shortcut works on every authenticated surface.
+- AC — Results group by entity type with entity-specific click-through.
+- AC — Latency P95 ≤ 400ms for a 500-LP workspace.
+
+**Story 8.11.2 — Fuzzy match.**
+*As a GP, I can mistype a name and still find the LP.*
+
+- AC — pg_trgm trigram fallback matches "CPPI" to "CPPIB".
+
+---
+
+### 8.12. Meeting lifecycle
+
+**Epic:** Prep brief, transcript ingestion, AI recap with fallback, post-meeting capture, follow-up draft.
+
+**Story 8.12.1 — Meeting prep brief.**
+*As a GP, I can open a prep brief 30 minutes ahead of a scheduled meeting that summarises unanswered questions, missed materials, relationship context, and a suggested focus.*
+
+- AC — Brief generation triggered 30 minutes pre-meeting; persists to `briefs` with `brief_phase='prep'`.
+- AC — Surfaces in the Action Drawer as `action_type='meeting_prep'` and writes a `tomo_action_log` outcome `viewed` on first open.
+
+**Story 8.12.2 — Teams transcript ingestion.**
+*As a GP using Microsoft Teams, I see the transcript ingested within 5 minutes of meeting end.*
+
+- AC — Polls `GET /me/onlineMeetings/{id}/transcripts` until available; writes `lp_meeting_transcripts`.
+- AC — Requires `OnlineMeetingTranscript.Read.All` scope; missing scope produces a clear "transcript unavailable for this meeting" surface, not a hard failure.
+
+**Story 8.12.3 — Google Meet transcript ingestion.**
+*As a GP using Google Meet, I see the transcript ingested within 10 minutes of meeting end (Drive sync delay tolerance).*
+
+- AC — Reads conference record via `meet.googleapis.com/v2`; resolves linked transcript Doc via `drive.meet.readonly`; writes `lp_meeting_transcripts`.
+- AC — Requires both `meetings.space.readonly` and `drive.meet.readonly` scopes.
+
+**Story 8.12.4 — AI recap path priority (Copilot → Gemini → TOMO LLM).**
+*As a GP, I see an AI recap of every transcripted meeting, regardless of whether my tenant has Microsoft 365 Copilot or Gemini for Workspace.*
+
+- AC — When `OnlineMeetingAiInsight.Read.All` granted and Copilot licence present: `recap_source='ms_copilot'` populated.
+- AC — When Gemini for Workspace "Take notes for me" doc present in Drive: `recap_source='google_gemini'` populated.
+- AC — Otherwise TOMO's Vertex Gemini fallback runs against the raw transcript: `recap_source='tomo_llm'` populated within 60 seconds for a 30-minute transcript.
+- AC — Recap row contains summary, key points, action items, decisions, and unanswered questions.
+
+**Story 8.12.5 — Post-meeting capture form.**
+*As a GP, I can complete a ~10-field post-meeting capture in under 60 seconds, with most fields pre-filled from the recap.*
+
+- AC — Form surfaces once per meeting (no nag) within minutes of meeting end.
+- AC — Fields: meeting outcome, mandate fit, pipeline-stage advance, expected sizing, commitments, open loops, free notes.
+- AC — Submitting writes `briefs` with `brief_phase='post_meeting'`, updates `lp_contacts.mandate_fit`, `pipeline_stage`, `expected_commitment_amount` per confirmed mutations, creates `commitments` and `open_loops`.
+- AC — Skipping writes `tomo_action_log.outcome='dismissed'` and surfaces a follow-up draft anyway within 30 minutes.
+
+**Story 8.12.6 — Follow-up draft.**
+*As a GP, I see a follow-up draft in the Action Drawer within 30 minutes of meeting end.*
+
+- AC — Draft uses recap, captured commitments, and tone profile.
+- AC — Quality bar: approval with fewer than five substantive edits in typical case.
+
+---
+
+### 8.13. Daily Brief delivery
+
+**Epic:** Daily Brief delivered in-app, via email, and via Slack at the user's chosen time.
+
+**Story 8.13.1 — Email delivery.**
+*As a GP with email enabled, I receive a Daily Brief email at 07:30 local time.*
+
+- AC — Email arrives within ±5 minutes of scheduled time.
+- AC — Same content blocks as the in-app modal: today's meetings, urgent / approval-needed, follow-up compliance, key signal change.
+- AC — Email writes a row to `email_delivery_log` with `template='daily_brief'`.
+
+**Story 8.13.2 — Slack delivery.**
+*As a GP with Slack connected and enabled, I receive a Daily Brief Slack message at 07:30 local time.*
+
+- AC — Single `chat.postMessage` to my DM (or workspace default channel) with section blocks.
+- AC — Threading optional for detail (V1.5 — single message in V1).
+- AC — Slack delivery is in addition to email when both are enabled (no de-duplication).
+
+**Story 8.13.3 — Skipped delivery on empty day.**
+*As a GP, on a day with truly nothing pressing, I see a brief that says so rather than empty bullets.*
+
+- AC — "Quiet day — open Pipeline to plan ahead" rendering instead of empty bulleted lists.
+
+---
+
+### 8.14. Reminders
+
+**Epic:** Open loops, missed replies, commitments — tier-aware and owner-routed.
+
+**Story 8.14.1 — Open loop detection.**
+*As a GP, I see TOMO catch outbound commitments I made and remind me when they're outstanding.*
+
+- AC — Outbound containing "I'll send the deck Monday" creates an `open_loops` row with high confidence.
+- AC — Unfulfilled at 7 days surfaces an Action Drawer card.
+
+**Story 8.14.2 — Missed reply (tier-aware).**
+*As a GP, I see TOMO catch missed replies on a tier-aware threshold.*
+
+- AC — Tier 1 LP unanswered at 48 business hours triggers a missed-reply reminder.
+- AC — Tier 2/3/unset LP unanswered at 5 calendar days triggers a missed-reply reminder.
+- AC — Routed to the LP's `relationship_owner_user_id`.
+
+**Story 8.14.3 — Commitment from meeting recap.**
+*As a GP, I see commitments extracted from meeting recaps surface as reminders with optional due dates.*
+
+- AC — High-confidence commitments auto-create `commitments` rows; medium/low surface in post-meeting capture for confirmation.
+- AC — Reminder fires 1 day before `due_at` when present.
+
+**Story 8.14.4 — Snooze.**
+*As a GP, I can snooze any reminder to 1 hour, 4 hours, tomorrow, next Monday, or a custom time.*
+
+- AC — Snoozed reminder re-surfaces at `snoozed_until`.
+
+**Story 8.14.5 — Manual resolve.**
+*As a GP, I can mark a reminder resolved with optional notes.*
+
+- AC — `resolved_at` and `resolution_evidence_jsonb` set; reminder removed from attention queue.
+
+---
+
+### 8.15. Tomo agent (cross-cutting)
+
+**Epic:** Surface-gated, streamed, audited, confirmation-gated.
+
+**Story 8.15.1 — Surface-gated tools.**
+*As a GP, the agent only offers tool calls appropriate to the page I'm on.*
+
+- AC — `update_workflow` is callable only on Workflows; calling it from Relationships returns 403 even if the model emits it.
+
+**Story 8.15.2 — Confirmation gate.**
+*As a GP, every mutation Tomo proposes requires my explicit confirm.*
+
+- AC — Mutation tool returns a "proposed change" payload; UI renders confirm/cancel; the mutation applies only on confirm.
+
+**Story 8.15.3 — Audit trail.**
+*As a workspace owner, I can see every Tomo tool call in the audit log within 1 second of completion.*
+
+- AC — `agent_tool_calls` row contains arguments, result, latency, model, surface, confirmation status.
+
+**Story 8.15.4 — Streaming with reconnection.**
+*As a GP, a momentary network interruption mid-stream does not lose my response.*
+
+- AC — SSE auto-reconnects within 2 seconds; partial response preserved.
+
+---
+
+### 8.16. Action Drawer (cross-cutting)
+
+**Epic:** The single surface for every TOMO-generated draft, capture, scheduling thread, and reminder card.
+
+**Story 8.16.1 — Card types and prioritisation.**
+*As a GP, I see drawer cards prioritised by urgency.*
+
+- AC — Sort: re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts.
+- AC — Cards collapse to a confirmation line after action is taken.
+
+**Story 8.16.2 — Draft approval flow.**
+*As a GP, I can approve, edit, dismiss, or snooze a draft.*
+
+- AC — Approve sends via the user's connected mailbox; writes `email_delivery_log`; updates `tomo_action_log.outcome` to `approved_unchanged` or `approved_with_edits` based on character-change percentage (30% threshold).
+- AC — Edit substantially (≥30% change) classifies as `edited_substantially` and does not count as approval for Metric 6b.
+- AC — Dismiss sets `outcome='dismissed'`; the draft is not sent.
+
+**Story 8.16.3 — Owner routing.**
+*As a workspace member, I see only my own cards by default with an opt-in "Show team" toggle.*
+
+- AC — Cards inherit `assigned_user_id` from the underlying reminder or LP `relationship_owner_user_id`.
+- AC — "Show team" surfaces cards assigned to other members.
+
+**Story 8.16.4 — Scheduling response with calendar context.**
+*As a GP, I see proposed times in a scheduling-response draft pulled from my actual calendar availability.*
+
+- AC — Times pulled from the connected calendar, respecting working hours.
+- AC — Approve creates the calendar invite via the connected provider on confirm.
+
+---
+
+### 8.17. TOMO operator (Founding Circle support)
+
+**Epic:** Manual operator support without an in-product impersonation feature in V1.
+
+**Story 8.17.1 — Onboarding pairing.**
+*As a TOMO operator, I can pair 1:1 with a Founding Circle GP for the 45-minute onboarding via Zoom screen-share, with the GP driving the UI.*
+
+- AC — No special TOMO product feature is required for screen-share; the GP shares their screen and drives.
+- AC — Any internal-tool or admin-SQL queries the operator runs against the GP's workspace are logged in `data_access_log` with purpose, tables, record ids.
+
+**Story 8.17.2 — Day 14 / 30 / 60 review.**
+*As a TOMO operator, I can review Insights and signal context with a customer GP on a follow-up call.*
+
+- AC — Review uses the GP's own session (screen-share), not impersonation.
+- AC — Any operator-side spot-check against the customer's data is logged in `data_access_log`.
+
+**Story 8.17.3 — Workspace transfer.**
+*As a TOMO operator running a manual workspace transfer on customer request, I can update the owner via an internal admin endpoint with audit trail.*
+
+- AC — Endpoint requires TOMO-staff session and ticket reference; updates `workspaces.owner_user_id` and adds the new owner to `workspace_members`.
+- AC — Action logged in `data_access_log` and `auth_events`.
+
+---
+
+### 8.18. Multi-user workspace
+
+**Epic:** Up to three users with identical permissions; per-user data-source OAuth.
+
+**Story 8.18.1 — Per-user OAuth grants.**
+*As a workspace teammate, I authorise my own Microsoft / Google account for my own mail and calendar; my data is filtered to me where the source is per-user.*
+
+- AC — Each member has their own `oauth_tokens` rows.
+- AC — `lp_interactions.source_user_id` carries the mailbox owner; ingestion respects per-user grants.
+
+**Story 8.18.2 — Shared workspace data.**
+*As a workspace teammate, I see the same LPs, signals, metrics, workflows, and action log as my colleagues.*
+
+- AC — Workspace-level data (LPs, briefs, signals, metrics, workflows) is shared.
+- AC — Cards and reminders are per-assignee; "Show team" toggle reveals others'.
+
+**Story 8.18.3 — Concurrent edit resolution.**
+*As a workspace teammate, my concurrent LP edits resolve cleanly without losing my colleague's changes silently.*
+
+- AC — Last-write-wins with the loser's edit logged in `activity_log`.
+- AC — UI surfaces a divergence indicator on the LP card when recent concurrent edits occurred.
+
+---
+
+**End of Section 8.**
 
 ---
 
@@ -3501,11 +4209,54 @@ V2 (Q4 2026) and V3 (2027) capability matrix is in Appendix C.
 
 ## 10. Appendices
 
-[STAGED — full appendix content to be added in stage 5.]
-
 ### A. Glossary
 
-[TODO — extended glossary beyond §1.3.]
+Extends §1.3. Alphabetical.
+
+| Term | Definition |
+|---|---|
+| **Action Drawer** | Right-hand panel (or modal on mobile) where TOMO surfaces drafts, captures, and approvals for GP review. §3.9. |
+| **Activity log** | Audit-grade event log per §3.15 / §6.2.9. |
+| **Affinity** | A relationship-intelligence CRM used by some FC GPs. V1 ships read-only API pull; bi-directional sync is V2. |
+| **Append-only** | Discipline rule applied to `lp_signal_log`, `lp_stage_transitions`, `tomo_action_log`, `daily_pipeline_summary`, `agent_tool_calls`, `activity_log`, `auth_events`, `data_access_log`, `email_delivery_log`, `outbound_safety_log`. Never overwritten, never truncated. Required for V3 dataset integrity. |
+| **Backstop** | A compliance / portfolio-monitoring CRM used by 3 FC GPs. V1 ships CSV import only; API integration deferred. |
+| **Backfill** | The historical email and calendar ingestion run at onboarding. Three-tier: 0–12 months full content, 13–36 months metadata, beyond 36 months no ingestion. |
+| **CASA** | Cloud Application Security Assessment. Google's third-party security review programme for OAuth apps that access sensitive scopes. CASA Tier 2 is the V1 commitment. |
+| **Concentration risk** | Insights Metric 4. Triggered when one LP's expected commitment exceeds 20% of remaining target. |
+| **Day 1 Gap** | Count of LPs whose CRM lists them as active but for whom TOMO finds no meaningful touch in 60+ days. The climax of onboarding (Document B Screen 6) and Insights Metric 2. |
+| **Daily Brief** | Per-day summary surface that auto-opens on first daily login; also delivered via email and Slack. §3.8. |
+| **Delta sync** | Incremental ingestion via Microsoft Graph delta links and Google History API / push notifications. |
+| **Drifting** | Named pipeline filter for LPs in amber/red flag with silence reason. |
+| **Fat Middle** | Cohort of warm-stage LPs with no directional signal in 30+ days. Insights Metric 8 plus the named filter. |
+| **F7** | Three-Touch Qualification — V1 NON-NEGOTIABLE default-on workflow per V1 Final Decision #2. |
+| **Foliometrics** | A CRM used by 2 FC GPs. V1 ships CSV import only; no API exists. |
+| **Founding Circle (FC)** | First 12 GP cohort using TOMO V1. |
+| **Geoffrey Surface** | The TOMO operator role for FC onboarding and Day 14/30/60 reviews. Manual operational support in V1 (no impersonation feature). |
+| **GP** | General Partner. Primary user. |
+| **HubSpot** | A CRM used by some FC GPs. V1 ships CSV import only; API integration deferred to V1.5. |
+| **LP** | Limited Partner. Investor or prospective investor. |
+| **Manual Update Principle** | GP edits CRM fields by talking to Tomo in plain language; Tomo proposes the change; GP confirms before persistence. From Tomo MVP3. |
+| **Meaningful Touch** | The unit of measurement for "have we recently connected with this LP." Defined in Section 8 §8.2. |
+| **Moveability count** | Insights Metric 3. Single number for LPs genuinely moveable now. |
+| **OAuth (data sources)** | Per-user grants for Microsoft Graph / Google Workspace / Slack / Affinity, separate from Firebase auth. |
+| **OOO** | Out of office. Detected and excluded from meaningful-touch. |
+| **One-Way** | Named pipeline filter for LPs whose last contact was a GP-initiated email with no reply. |
+| **Pipeline flag** | G/A/R state per LP from Section 8 §8.7 algorithm. |
+| **Pipeline stage** | Eight canonical LP stages from Section 8 §8.2. |
+| **Re-engagement** | Signal 2 — event-driven detection when an LP inbound arrives after 45+ days of silence. |
+| **RLS** | Row-Level Security. Postgres feature enforcing per-row access policies; used for workspace isolation. |
+| **SOC 2 Type 1** | Service Organization Control attestation; V1 commitment. |
+| **Stage stagnation** | Signal 6 — LP stuck in current pipeline stage longer than typical, with prior-stage history. |
+| **Sub-processor** | Third party that processes customer data on TOMO's behalf (Supabase, Firebase, Vercel, AWS, Vertex AI, Postmark/SES, Slack, Stripe, Sentry, PostHog, Affinity). |
+| **Three-Touch** | F7. Three-step sequence (insight → question → respectful close) for qualifying quiet LPs. |
+| **Tier (LP tier)** | GP-set priority on the LP record. T1 / T2 / T3 / unset. Drives missed-reply threshold among other things. |
+| **Tomo agent** | The in-app AI agent. Streamed via Vercel AI SDK, surface-gated tools, confirmation gate on mutations. §3.14. |
+| **Tone profile** | Per-user model derived from sent-mail history during onboarding. Used by every draft generation path. |
+| **TOMO operator** | Internal staff user (Geoffrey Surface). |
+| **V1.5 / V2 / V3** | Roadmap milestones. V1.5 = stabilisation; V2 = integration layer (Q4 2026); V3 = intelligence layer (2027). |
+| **Vertex AI** | Google Cloud's enterprise inference platform. V1 LLM provider via `@ai-sdk/google`. |
+| **Webhook** | Inbound HTTP delivery from a third party (Microsoft Graph subscription, Google Pub/Sub, Affinity, Slack, Stripe, Postmark / SES). All signature-verified. |
+| **Workspace** | Multi-tenant unit. Up to 3 users; identical permissions in V1. |
 
 ### B. Reference documents
 
@@ -3522,23 +4273,798 @@ V2 (Q4 2026) and V3 (2027) capability matrix is in Appendix C.
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
 
-[TODO — full V2/V3 matrix extracted from Geoff V1 doc Section 7.2 and Section 8 §8.10.]
+Lifted and condensed from Section 8 §8.10 and the V1 Final Geoff doc Section 7.2. This appendix enumerates what's deferred and the V1 capture obligations that prevent V2/V3 retrofit cost.
+
+#### V2 — Integration layer (target Q4 2026)
+
+V2 unlocks signals that require integrations not built in V1, plus surfaces V1-captured combined patterns once 90+ days of operational data validates them.
+
+| V2 capability | V1 capture obligation already met |
+|---|---|
+| **Document engagement (DocSend / DealRoom)** — opens, page dwell, return visits | `material_engagement` schema present in V1 migration (V2-placeholder, §6.2.7) |
+| **Sub-agreement / DDQ document access** — fires close_proximity | `lp_document_engagement` schema present in V1 migration (V2-placeholder, §6.2.7) |
+| **Newsletter engagement (Mailchimp / HubSpot Marketing)** — opens, clicks, forwards | `lp_marketing_engagement` schema present in V1 migration (V2-placeholder, §6.2.7) |
+| **Meeting composition shift** — CIO / legal counsel attendance fires close_proximity | `lp_calendar_event_attendees.seniority_inferred` already captured V1 (light role detection from signature parsing) |
+| **warm_ghost_flag named display** — surfaces as named flag on LP card; triggers Three-Touch Sequence prompt | `lp_state.warm_ghost_flag` already computed and persisted in V1 |
+| **close_proximity_flag named display** — surfaces as named flag on LP card | `lp_state.close_proximity_flag` already computed and persisted in V1 (used as silence override in V1) |
+| **CC expansion as first-class display element** — moves from behind-the-scenes attribute prompt to named filter | `lp_state.cc_expansion` already populated; UI affordance is V2 |
+| **IR aggregate dashboard (three-view)** | Per Framework v4.1 Section 7. Ships when 90 days of operational data make aggregate metrics trustworthy |
+| **Affinity bi-directional sync** — TOMO writes signals/flags/tier corrections back to Affinity custom fields | `affinity_field_mappings` schema present in V1 migration (V2-placeholder, §6.2.5) |
+| **HubSpot bi-directional API** — pattern matches Affinity | OAuth client provisioning in V1.5; full sync V2 |
+| **Salesforce read-only API** | Deferred until customer demand |
+| **Per-IR breakdown of execution health metrics** | Becomes useful when team ≥ 4; V1 covers single-GP and 2–3 person teams |
+| **Pipeline coverage ratio, raise trajectory, conversion rates by stage** | Need 30+ closes of operational history; V2/V3 |
+| **Anonymised cohort benchmarking** | Requires accumulated data across customers; V2+ |
+| **Per-fund concentration threshold configurability** | V1.5+ |
+| **In-product TOMO-staff support-impersonation** (request, approve, time-bound, audit, revoke) | `data_access_log` schema present in V1 (audit-only path); product feature V2 |
+| **Automated workspace transfer** | Manual support flow in V1; automated V2 |
+| **Scheduled email-attachment CSV ingestion** (Pattern B per Document A) | V1.5 |
+| **Full Phase 3 conflict resolution UI** for CSV pipeline | V1 ships text-only review; full UI V1.5 |
+| **CRM export generators** (Backstop, Foliometrics, HubSpot) | V1.5 |
+| **EU data residency** (eu-west-1) | V1.5 if customer demand |
+| **Localisation beyond English** | V2 — strings extracted to locale file in V1 (`locales/en-US.json`) so no UI churn |
+| **Telegram messaging-native model** | V2+ |
+| **Multi-party conversational scheduling** | Post-MVP |
+
+#### V3 — Intelligence layer (target 2027)
+
+V3 unlocks signals that require empirical validation against real close outcomes (30–40 verified closes minimum) plus the language-aware NLP layer.
+
+| V3 capability | V1 capture obligation already met |
+|---|---|
+| **Question type (NLP)** — exploratory vs structural classification; shift to structural fires close_proximity | Full email body retained 12 months in `lp_interactions.body_text`; classifier can run retroactively against the dataset |
+| **Commitment language (NLP)** — conditional vs active; active language fires highest-priority flag | Same body retention; meeting recap text retained per §6.4 |
+| **Objection recurrence** — recurring objections without logged resolution | Meeting notes and email bodies retained in queryable form |
+| **Composite momentum score** — single number on LP card derived empirically from close data; weights validated against actual outcomes | Every signal observation written to `lp_signal_log` from V1 day one — append-only V3 dataset (§6.4) |
+| **Data-validated stage cadence per workspace** | `stage_cadence_benchmarks` is global in V1; per-workspace override schema is the V2 step before V3 calibration |
+| **"This signal fired N days before close" claims** | Append-only signal log preserves the raw observation timeline |
+
+#### Permanent non-goals (not on any roadmap)
+
+- TOMO is not a CRM replacement. Compliance system of record stays in Affinity / Backstop / Foliometrics / HubSpot.
+- TOMO does not auto-send emails. Every outbound is human-in-the-loop.
+- TOMO does not auto-mutate CRM records. Tomo agent proposals always require user confirmation.
+- TOMO does not provide investment, legal, or financial advice.
+- TOMO does not implement bot-detection bypass, scraping of third-party LP data, or any access pattern that circumvents source-system terms of service.
+- TOMO does not collect facial-recognition or biometric data.
+- TOMO does not offer dedicated Momentum / Briefs surfaces (deprecated from MVP2; replaced by Insights and the meeting lifecycle).
+- TOMO does not implement Cmd+K omnibar in V1 (header search is the V1 pattern; Cmd+K is the global-search shortcut on top, but no command-palette behaviour beyond search).
+- TOMO does not run a meeting bot or transcript-first meeting capture; transcripts come from MS Teams / Google Meet APIs.
 
 ### D. Text-only ERD
 
-[TODO — entity-relationship listing of every table and the FKs that connect them.]
+Every workspace-scoped table carries `workspace_id → workspaces.id`; this is omitted below to reduce noise. Soft-delete and timestamps are also omitted. Append-only tables are marked `[A]`. V2-placeholder tables marked `[V2]`.
+
+```
+IDENTITY & TENANCY
+==================
+users (id pk, firebase_uid, email, default_workspace_id → workspaces.id, is_tomo_staff)
+workspaces (id pk, owner_user_id → users.id, plan, primary_timezone, primary_currency, region)
+workspace_members (id pk, user_id → users.id, role, invited_by_user_id → users.id, invitation_token)
+funds (id pk, raise_target, raise_target_currency, concentration_threshold_pct)
+oauth_tokens (id pk, user_id → users.id, provider, provider_account_email, scopes_granted,
+              access_token_encrypted, refresh_token_encrypted)
+tone_profiles (id pk, user_id → users.id, version, tone_signature_jsonb, prompt_excerpt)
+
+LP DOMAIN
+=========
+lp_organizations (id pk, name, domain, firm_type, region, source, source_external_id)
+lp_contacts (id pk, lp_organization_id → lp_organizations.id, fund_id → funds.id,
+             relationship_owner_user_id → users.id, primary_email,
+             pipeline_stage, tier, mandate_fit, prior_fund_investor, prior_fund_identifier,
+             prior_commitment_amount, expected_commitment_amount,
+             expected_commitment_currency, source, source_external_id, csv_import_id → csv_imports.id,
+             historical_data_only)
+lp_state (lp_contact_id pk → lp_contacts.id, last_meaningful_touch_at, days_since_meaningful_touch,
+          pipeline_flag, pipeline_flag_reason, re_engagement_flag, re_engagement_detected_at,
+          reply_velocity_trend, reply_length_trend, lp_initiation_count_last_5,
+          lp_initiation_ratio, days_in_current_stage, days_in_prior_stage, prior_stage_name,
+          stage_stagnation_flag, calendar_friction_trend, calendar_accept_latency_hrs_recent,
+          calendar_reschedule_count_last_3, cc_expansion, cc_expansion_new_contacts,
+          last_contact_was_one_way, last_outbound_no_reply_sent_at,
+          warm_ghost_flag, close_proximity_flag, last_batch_run_at)
+lp_stage_transitions [A] (id pk, lp_contact_id → lp_contacts.id, from_stage, to_stage,
+                          transitioned_at, actor_user_id → users.id, source)
+lp_tags (id pk, name, slug, is_system)
+lp_tag_assignments (id pk, lp_contact_id → lp_contacts.id, lp_tag_id → lp_tags.id,
+                    assigned_by_user_id → users.id)
+lp_notes (id pk, lp_contact_id → lp_contacts.id, author_user_id → users.id, body, pinned)
+
+INTERACTIONS
+============
+lp_email_threads (id pk, provider, provider_thread_id, subject, first_message_at,
+                  last_message_at, participant_emails, lp_organization_id → lp_organizations.id)
+lp_interactions (id pk, lp_contact_id → lp_contacts.id, lp_organization_id → lp_organizations.id,
+                 lp_email_thread_id → lp_email_threads.id, interaction_type, direction,
+                 interacted_at, body_text, body_html_archived_url, word_count,
+                 word_count_confidence, attachment_count, is_ooo, metadata_only,
+                 provider, provider_message_id, provider_internet_message_id,
+                 from_email, to_emails, cc_emails, bcc_emails,
+                 is_meaningful_touch, is_truly_lp_initiated, source_user_id → users.id)
+lp_calendar_events (id pk, provider, provider_event_id, lp_contact_id → lp_contacts.id,
+                    lp_organization_id → lp_organizations.id, subject, start_at, end_at,
+                    booked_duration_minutes, actual_duration_minutes,
+                    is_online_meeting, online_meeting_provider, online_meeting_join_url,
+                    status, invite_sent_at, accepted_at, declined_at, accept_latency_hrs,
+                    reschedule_count, organizer_email, is_lp_organized,
+                    source_user_id → users.id)
+lp_calendar_event_attendees (id pk, lp_calendar_event_id → lp_calendar_events.id, email,
+                             domain, is_organizer, response_status, seniority_inferred,
+                             lp_contact_id → lp_contacts.id)
+lp_meeting_transcripts (id pk, lp_calendar_event_id → lp_calendar_events.id, provider,
+                        provider_transcript_id, transcript_text, transcript_jsonb,
+                        duration_seconds, fetched_by_user_id → users.id)
+lp_meeting_recaps (id pk, lp_calendar_event_id → lp_calendar_events.id,
+                   lp_meeting_transcript_id → lp_meeting_transcripts.id, recap_source,
+                   summary_text, key_points, action_items_jsonb, decisions,
+                   unanswered_questions, follow_up_items_jsonb, confidence)
+
+SIGNALS & METRICS
+=================
+lp_signal_log [A] (id pk, lp_contact_id → lp_contacts.id, signal_type, signal_value_jsonb,
+                   flag_before, flag_after, reason, observed_at, batch_run_id, is_directional)
+stage_cadence_benchmarks (pipeline_stage pk, amber_threshold_days, red_threshold_days)  -- not workspace-scoped
+daily_pipeline_summary [A] (id pk, snapshot_date, day_1_gap_count, day_1_gap_baseline,
+                            pipeline_velocity_avg_days, total_committed, total_soft_commit,
+                            total_active_pipeline, cooling_currently_flagged,
+                            moveability_count, flag_resolutions_today, currency, snapshot_run_id)
+tomo_action_log [A] (id pk, lp_contact_id → lp_contacts.id, gp_user_id → users.id,
+                     action_type, outcome, character_change_pct, time_saved_minutes,
+                     metadata, generated_at, actioned_at, source_signal_log_id → lp_signal_log.id)
+reminders (id pk, lp_contact_id → lp_contacts.id, assigned_user_id → users.id,
+           reminder_type, due_at, status, snoozed_until, source_open_loop_id → open_loops.id,
+           source_commitment_id → commitments.id, source_interaction_id → lp_interactions.id)
+commitments (id pk, lp_contact_id → lp_contacts.id, committed_by, due_at, confidence,
+             source_type, source_recap_id → lp_meeting_recaps.id,
+             source_interaction_id → lp_interactions.id,
+             confirmed_by_user_id → users.id, status)
+open_loops (id pk, lp_contact_id → lp_contacts.id,
+            originating_interaction_id → lp_interactions.id, loop_text, confidence, status,
+            fulfilled_by_interaction_id → lp_interactions.id)
+
+CRM INTEGRATION
+===============
+csv_imports (id pk, uploaded_by_user_id → users.id, source_crm, original_filename, s3_key,
+             row_count_total, row_count_imported, mapping_id → csv_field_mappings.id, status,
+             is_initial_import)
+csv_field_mappings (id pk, source_crm, name, column_map, created_by_user_id → users.id, is_active)
+csv_dedupe_decisions (id pk, csv_import_id → csv_imports.id, csv_row_jsonb,
+                      match_lp_contact_id → lp_contacts.id, match_confidence, decision,
+                      decided_by_user_id → users.id)
+crm_sync_status (id pk, source, user_id → users.id, last_success_at, last_attempt_at,
+                 last_error, health, webhook_subscription_id, webhook_expires_at)
+affinity_field_mappings [V2] (id pk, tomo_field, affinity_field_id, affinity_field_type,
+                              last_pushed_at)
+
+WORKFLOWS
+=========
+workflows (id pk, name, slug, is_default, is_active, trigger_type, trigger_config_jsonb,
+           target_list_filter_jsonb, created_by_user_id → users.id)
+workflow_steps (id pk, workflow_id → workflows.id, step_index, step_type, name, config_jsonb,
+                wait_duration_hours, requires_approval)
+workflow_runs (id pk, workflow_id → workflows.id, lp_contact_id → lp_contacts.id,
+               started_by_user_id → users.id, status, current_step_index, started_at,
+               completed_at, outcome)
+workflow_step_runs (id pk, workflow_run_id → workflow_runs.id,
+                    workflow_step_id → workflow_steps.id, status,
+                    tomo_action_log_id → tomo_action_log.id, started_at, completed_at, output_jsonb)
+outbound_safety_log [A] (id pk, lp_contact_id → lp_contacts.id, trigger_signature, outbound_at,
+                         workflow_id → workflows.id, tomo_action_log_id → tomo_action_log.id)
+
+MATERIALS & BRIEFS
+==================
+materials (id pk, fund_id → funds.id, material_type, title, version, s3_key, external_url,
+           uploaded_by_user_id → users.id)
+briefs (id pk, lp_contact_id → lp_contacts.id, lp_calendar_event_id → lp_calendar_events.id,
+        brief_phase, title, body_text, body_jsonb, generated_by, viewed_at,
+        commitments_extracted_count, tomo_action_log_id → tomo_action_log.id)
+material_engagement [V2] (id pk, material_id → materials.id, lp_contact_id → lp_contacts.id,
+                          event_type, event_at, metadata_jsonb)
+lp_document_engagement [V2] (id pk, lp_contact_id → lp_contacts.id, document_type,
+                             event_type, event_at)
+lp_marketing_engagement [V2] (id pk, lp_contact_id → lp_contacts.id, campaign_external_id,
+                              event_type, event_at)
+
+SETTINGS & NOTIFICATIONS
+========================
+user_preferences (id pk, user_id → users.id, timezone, daily_brief_enabled,
+                  daily_brief_send_at_local, daily_brief_channels, theme,
+                  tomo_chat_default_open, pane_width_px)
+notification_channels (id pk, user_id → users.id, event_class, channel_in_app,
+                       channel_email, channel_slack, quiet_hours_start_local, quiet_hours_end_local)
+slack_workspace_connections (id pk, installed_by_user_id → users.id, slack_team_id,
+                             slack_team_name, bot_user_id, bot_access_token_encrypted,
+                             default_channel_id)
+email_delivery_log [A] (id pk, provider, provider_message_id, to_email, template, subject,
+                        sent_at, delivery_status, metadata_jsonb)
+
+AUDIT
+=====
+activity_log [A] (id pk, actor_user_id → users.id, action, target_table, target_id,
+                  before_jsonb, after_jsonb, metadata_jsonb)
+agent_tool_calls [A] (id pk, user_id → users.id, surface, tool_name, arguments_jsonb,
+                      result_jsonb, requires_confirmation, confirmation_status, error,
+                      latency_ms, model)
+auth_events [A] (id pk, user_id → users.id, workspace_id → workspaces.id, event_type, provider,
+                 ip_address, user_agent, metadata_jsonb)  -- workspace_id nullable
+data_access_log [A] (id pk, staff_user_id → users.id, workspace_id → workspaces.id,
+                     access_method, purpose, tables_accessed, record_ids_accessed,
+                     query_hash, customer_notified)  -- workspace_id nullable
+```
+
+**Key cardinality summary:**
+
+- workspaces 1 ── N workspace_members (capped at 3 active)
+- workspaces 1 ── N funds, lp_organizations, lp_contacts, …
+- lp_organizations 1 ── N lp_contacts
+- lp_contacts 1 ── 1 lp_state
+- lp_contacts 1 ── N lp_stage_transitions, lp_interactions, lp_signal_log, …
+- lp_calendar_events 1 ── 0..1 lp_meeting_transcripts ── 0..1 lp_meeting_recaps
+- workflow 1 ── N workflow_steps, workflow_runs
+- workflow_runs 1 ── N workflow_step_runs
+
+**RLS rule applied to every workspace-scoped table:** `workspace_id = current_setting('app.workspace_id', true)::uuid`
 
 ### E. API surface map
 
-[TODO — every internal route exposed by V1 and every external endpoint TOMO calls.]
+Cross-references §4.2 for full detail. This appendix is the at-a-glance index.
+
+**External APIs TOMO calls (per §4.2.1–4.2.8):**
+
+| Provider | Auth | Primary endpoints | Webhook target |
+|---|---|---|---|
+| Microsoft Graph (Outlook, Calendar, Teams, Drive) | Per-user OAuth via Firebase + Azure App Registration | `/me/messages`, `/me/events`, `/me/onlineMeetings/*`, `/subscriptions` | `/api/webhooks/microsoft-graph` |
+| Google Workspace (Gmail, Calendar, People, Meet, Drive) | Per-user OAuth via Firebase + GCP OAuth Client | `gmail.googleapis.com/v1`, `calendar.googleapis.com/v3`, `meet.googleapis.com/v2`, `people.googleapis.com/v1`, `drive.googleapis.com/v3` | `/api/webhooks/google-pubsub`, `/api/webhooks/google-calendar` |
+| Slack | Workspace OAuth (bot token) | `slack.com/api/chat.postMessage`, `oauth.v2.access`, `users.lookupByEmail` | (None in V1; V1.5 for interactivity) |
+| Stripe | Server-side API key | `/v1/customers`, `/v1/billing_portal/sessions` | `/api/webhooks/stripe` |
+| Affinity (read-only V1) | Per-workspace API key | `/v2/persons`, `/v2/companies`, `/v2/lists`, `/v1/webhooks` | `/api/webhooks/affinity` |
+| Vertex AI Gemini | GCP service account `roles/aiplatform.user` | `{region}-aiplatform.googleapis.com/v1/.../models/{model}:generateContent`, `:streamGenerateContent`, `:embedContent` | (None) |
+| Postmark / AWS SES | Provider API key | Provider-specific send endpoints | `/api/webhooks/email-delivery` |
+| Sentry, PostHog | Provider keys | SDK ingestion | (None inbound) |
+
+**Internal API routes (per §4.2.9):**
+
+- Auth & account: `/api/auth/session`, `/api/auth/account/delete`
+- Workspaces: `/api/workspaces`, `/api/workspaces/{id}`, `/api/workspaces/{id}/members`, `/api/workspaces/{id}/members/{userId}`, `/api/workspaces/{id}/transfer`
+- OAuth: `/api/oauth/{provider}/start`, `/api/oauth/{provider}/callback`, `/api/oauth/{provider}/disconnect`
+- Integrations: `/api/integrations/status`
+- CSV: `/api/csv-import`, `/api/csv-import/{id}/mapping`, `/api/csv-import/{id}/dedupe-decisions`, `/api/csv-import/{id}/commit`
+- LP: `/api/lp-contacts`, `/api/lp-contacts/{id}`, `/api/lp-contacts/{id}/notes`, `/api/lp-contacts/{id}/timeline`, `/api/lp-state/{id}`
+- Insights: `/api/insights/{capital,day-1-gap,moveability,concentration,time-recovered,execution-health,pipeline-intel,raise-momentum,close-list}`
+- Workflows: `/api/workflows`, `/api/workflows/{id}`, `/api/workflows/{id}/steps`, `/api/workflows/{id}/run`, `/api/workflow-runs/{id}`
+- Reminders: `/api/reminders`, `/api/reminders/{id}`
+- Meetings: `/api/meetings/{id}/prep`, `/api/meetings/{id}/recap`, `/api/meetings/{id}/post-meeting`
+- Logs: `/api/action-log`, `/api/activity-log`
+- Search: `/api/search`
+- Notifications: `/api/notifications/preferences`
+- Billing: `/api/billing/portal-session`
+- Tomo: `/api/tomo/orchestrate` (streaming; the unified entrypoint), plus aliases `/api/tomo/chat`, `/api/tomo/drawer-chat`, `/api/tomo/filter-relationships`
+- Cron: `/api/cron/daily-brief` (EventBridge / Vercel Cron trigger)
+- Version: `/api/version`
+- Webhooks: `/api/webhooks/{microsoft-graph,google-calendar,google-pubsub,affinity,stripe,email-delivery}`
+
+**Background workers (not Next.js routes):**
+
+- Signal nightly batch (cron 02:00 workspace-local)
+- Metrics nightly batch (cron 02:30 workspace-local)
+- Daily Brief delivery (cron user-local)
+- Email backfill workers (onboarding event + ongoing)
+- Token refresh (cron 5-minute)
+- Webhook resubscribe (cron 12-hour)
+- Soft-delete purge (cron daily 03:00 UTC)
+- Transcript ingestion (event: calendar event end)
+- Recap fallback TOMO LLM (timer: 10-minute after meeting end)
+- Re-engagement hot path (event: new inbound `lp_interactions` row)
+
+**Common request/response conventions (per §4.2.9):**
+
+- `Authorization: Bearer <firebase-id-token>` on every authenticated request.
+- `{data, meta}` success envelope; `{error: {code, message, details}}` on failure.
+- Cursor-based pagination via `?cursor=` and `?limit=` (max 100).
+- `Idempotency-Key` header accepted on mutation routes.
+- TLS 1.2+; HTTP redirects to HTTPS at the edge.
+
+**Migration note (per O-14):** the mock's `/api/crm/relationships` is renamed to `/api/lp-contacts` in V1. No legacy path retained.
 
 ### F. Stage threshold matrix and signal computation pseudocode
 
-[TODO — lifted verbatim from Section 8 §8.6 and §8.7 for engineering reference.]
+Lifted from Section 8 §8.3 / §8.6 / §8.7 / §8.9 — concise engineering reference. For full rationale and edge cases, see the source document.
+
+#### F.1. Stage threshold matrix (§8.6)
+
+| Stage | Amber (days) | Red (days) |
+|---|---|---|
+| sourced | 60 | 90 |
+| first_meeting | 21 | 35 |
+| second_meeting | 14 | 28 |
+| active_diligence | 10 | 21 |
+| soft_commit | 21 | 35 |
+| committed | 21 | 35 |
+| closed_lost | n/a | n/a |
+| on_hold | 90 | n/a |
+
+Seeded into `stage_cadence_benchmarks` at V1 migration. Per-workspace override deferred to V2.
+
+#### F.2. Foundational definitions (§8.2)
+
+**Meaningful Touch.** An interaction satisfying *at least one* of:
+
+- Inbound LP email containing 20+ words
+- Any LP-initiated email or LinkedIn message of any length
+- A meeting that took place as scheduled (not declined, not rescheduled by LP)
+- An LP reply containing a direct question (regardless of word count)
+
+Excluded explicitly:
+- LP reply <20 words with no question
+- Out-of-office reply
+- Calendar accept / decline / reschedule with no message
+- Newsletter open or campaign click
+- GP-initiated email with no LP reply
+
+**Direction of communication (for Signal 5).**
+
+```
+gp_initiated:  last meaningful exchange = outbound from GP team member, no LP reply within 7 days
+lp_initiated:  LP sent unprompted message, no preceding GP outbound to this LP within 14 days
+two_way:       both GP and LP contributed substantive content within last 14 days
+```
+
+#### F.3. Signal computation pseudocode (§8.3)
+
+**Signal 1 — Silence.**
+
+```
+last_touch = most recent lp_interactions row WHERE is_meaningful_touch = true
+days_since = floor((now - last_touch.interacted_at) / 86400)
+amber, red = stage_cadence_benchmarks[lp_contacts.pipeline_stage]
+if days_since > red:    flag = red
+elif days_since > amber: flag = amber
+else:                    flag = green
+if positive_directional_signal in last 14 days:
+  flag = green  // override (close-proximity principle)
+write lp_signal_log; update lp_state.days_since_meaningful_touch, last_meaningful_touch_at
+```
+
+**Signal 2 — Re-engagement after silence.** Event-driven; *not* nightly.
+
+```
+on each new inbound lp_interactions row WHERE is_meaningful_touch = true:
+  last_outbound = most recent outbound from any GP team member to this LP
+  days_since_last_gp_outbound = floor((this.interacted_at - last_outbound.interacted_at) / 86400)
+  if days_since_last_gp_outbound >= 45:
+    lp_state.re_engagement_flag = true
+    lp_state.re_engagement_detected_at = now
+    write lp_signal_log signal_type='re_engagement'
+    force pipeline_flag = red+URGENT for 24 hours
+    generate urgent draft → Action Drawer
+    notify relationship_owner_user_id
+```
+
+Latency target ≤ 1 hour from inbox arrival. Webhook-driven; 30-min polling fallback.
+
+**Signal 3 — Reply velocity.**
+
+```
+suppress if LP has fewer than 5 prior exchanges
+last_3 = last 3 LP replies that responded to a GP outbound (exclude LP-initiated; no latency)
+latency_series = [oldest, middle, newest]  // hours
+baseline_avg = avg latency for all replies older than the 3
+trend = "decelerating" if monotonically increasing
+        "accelerating" if monotonically decreasing
+        "flat" otherwise
+current_vs_baseline = "above" if newest > baseline*1.3
+                      "below" if newest < baseline*0.7
+                      "near"  otherwise
+```
+
+**Signal 4 — Reply length.**
+
+```
+suppress if LP has fewer than 3 prior replies
+last_3 = last 3 LP replies (any kind, including <20-word)
+for each: word_count = words in body (signatures + quotes stripped)
+  if word_count_confidence = 'low':  // per §8.9 clarification 9
+    skip this observation
+trend = "decelerating" if word_count_series monotonically declining
+        "accelerating" if monotonically increasing
+        "flat" otherwise
+trend_delta_pct = (newest - oldest) / oldest * 100
+```
+
+Flag-firing only when paired with another cooling signal (silence past amber, declining velocity, zero LP-initiation).
+
+**Signal 5 — Reply initiation.**
+
+```
+last_5 = last 5 lp_interactions excluding OOOs and automated emails
+for each: truly_lp_initiated =
+  direction = 'inbound' AND no preceding GP outbound to this LP within 14 days
+lp_initiated_count = count truly_lp_initiated
+lp_initiation_ratio = lp_initiated_count / 5
+last_lp_initiated_at = most recent timestamp where truly_lp_initiated
+```
+
+Strict definition (loose version produces false negatives — every "thanks" reply incorrectly counts).
+
+**Signal 6 — Stage stagnation.**
+
+```
+T = most recent lp_stage_transitions row for this LP
+days_in_current_stage = floor((now - T.transitioned_at) / 86400)
+prior = lp_stage_transitions row immediately before T
+if prior:
+  days_in_prior_stage = floor((T.transitioned_at - prior.transitioned_at) / 86400)
+  prior_stage_name = prior.to_stage
+amber, red = stage_cadence_benchmarks[lp_contacts.pipeline_stage]
+if days_in_current_stage > red:    stage_flag = red
+elif days_in_current_stage > amber: stage_flag = amber
+else:                               stage_flag = green
+```
+
+Prior-stage days drive the "Slow to advance from [stage]" filter — informational, doesn't fire a flag alone.
+
+**Signal 7 — Calendar friction.**
+
+```
+require >= 3 meetings with this LP firm
+last_3 = last 3 lp_calendar_events
+accept_latency_avg = avg of (accepted_at - invite_sent_at) for last_3
+prior_avg = avg accept_latency for all earlier
+reschedule_count = count where reschedule_count > 0
+duration_ratio = last.actual_duration_minutes / last.booked_duration_minutes
+                 (use booked when actual unavailable)
+trend = "worsening" if accept_latency_avg > prior_avg * 1.5
+                    OR reschedule_count >= 2
+                    OR duration_ratio < 0.6
+        else "stable" or "improving"
+```
+
+**Signal 8 — CC expansion.**
+
+```
+for each lp_organizations.domain (incl. additional_domains):
+  threads_14d = lp_email_threads WHERE last_message_at >= now - 14 days
+                AND any participant_emails matches firm domain
+  current_set = unique emails on firm domain across threads_14d
+  baseline_set = unique emails from firm seen in earlier threads
+  new_contacts = current_set - baseline_set
+  if new_contacts non-empty:
+    lp_state.cc_expansion = true
+    lp_state.cc_expansion_new_contacts = list
+    queue Action Drawer profile-update prompt
+```
+
+**Signal 9 — One-way contact.**
+
+```
+last = most recent lp_interactions of any type for this LP
+if last.interaction_type = 'email_outbound'
+   AND no email_inbound from this LP within 14 days after last.interacted_at:
+  lp_state.last_contact_was_one_way = true
+  lp_state.last_outbound_no_reply_sent_at = last.interacted_at
+else:
+  lp_state.last_contact_was_one_way = false
+```
+
+14-day window catches genuine non-response, not normal reply latency.
+
+**Combined captures (V1 capture, V2 surface) (§8.5).**
+
+```
+warm_ghost_flag = (lp_initiation_ratio = 0 over last 5)
+                  AND (reply_length_trend = 'decelerating')
+                  AND (no questions in last 3 LP replies — V1: pattern '?' detection)
+
+close_proximity_flag = cc_expansion in last 14 days
+                       OR (V2) sub_agreement_document_accessed last 14 days
+                       OR (V2) cio_or_legal_attendee at last meeting
+```
+
+#### F.4. Pipeline flag computation (§8.7) — locked algorithm
+
+Evaluated in order; first match wins.
+
+```
+RED — evaluated first
+  IF re_engagement_flag = true (set in last 24h, not yet cleared):
+    flag = red; reason = "LP reached out after silence"
+  ELIF days_since_meaningful_touch > red_threshold(stage)
+       AND (reply_velocity_trend = 'decelerating'
+            OR calendar_friction_trend = 'worsening'
+            OR (reply_length_trend = 'decelerating' AND length_drop > 50%)
+            OR lp_initiation_ratio = 0):
+    flag = red; reason = "Silent and cooling"
+  ELIF stage IN (soft_commit, committed)
+       AND days_since_meaningful_touch > 30:
+    flag = red; reason = "Soft commit gone silent"
+
+AMBER — evaluated second
+  ELIF days_since_meaningful_touch > amber_threshold(stage):
+    flag = amber; reason = "Silence threshold breached"
+  ELIF count_active_cooling_signals >= 2:
+    # cooling = reply_velocity decelerating
+    #         OR lp_initiation_ratio = 0
+    #         OR calendar_friction worsening
+    #         OR reply_length decelerating with >50% drop
+    flag = amber; reason = "Multiple cooling signals"
+  ELIF stage_stagnation_flag = red:
+    flag = amber; reason = "Stuck in stage"
+  ELIF stage IN warm_stages
+       AND no directional signal in lp_signal_log in last 30 days:
+    flag = amber; reason = "Fat middle: no movement either way"
+
+GREEN — default
+  ELSE: flag = green
+
+OVERRIDE — applied last
+  IF any positive directional signal in last 14 days:
+    # positive = reply_velocity accelerating
+    #          OR lp_initiation_ratio > 0.4
+    #          OR cc_expansion = true
+    #          OR active scheduling thread in progress
+    flag = green; reason = "Active engagement detected"
+```
+
+Every transition writes `lp_signal_log signal_type='flag_transition'` with `{from_flag, to_flag, reason}` — required for Metric 9b cooling-caught "resolved" count.
+
+#### F.5. Engineering clarifications (§8.9 — abridged)
+
+1. Stage capture mechanism: `sourced` default at LP creation; transitions write `lp_stage_transitions`. Mandatory; cannot be retrofitted.
+2. Re-engagement webhook latency ≤ 1 hour SLO; 30-min polling fallback if Graph subscription delivery exceeds.
+3. "Truly LP-initiated" = strict (no preceding GP outbound within 14 days); loose version produces false negatives.
+4. V1 stage thresholds per F.1 above; recalibrate per-client after FC Month 1.
+5. `reply_velocity_trend` suppressed below 5 prior exchanges; `reply_length_trend` suppressed below 3.
+6. `mandate_fit` captured as one-click chip in post-meeting capture; default `unknown`; updateable via AI input chat.
+7. `prior_fund_investor` captured at onboarding CSV import (column or post-import tagging); each prior fund needs identifier.
+8. Directional signal = acceleration / deceleration / LP-initiated event / close-proximity event. Flat or stable trends do NOT count.
+9. Reply length word count: confidence flag suppresses observation when extracted body is >3x estimated reply length (clearly contaminated by quoted content).
 
 ### G. Metric computation pseudocode
 
-[TODO — lifted verbatim from Section 9 §9.3 for engineering reference.]
+Lifted from Section 9 §9.3 — concise engineering reference. Each metric per Section 9 has rationale, refresh cadence, and engineering notes; this appendix carries the computation only.
+
+#### Metric 1 — Capital vs target progress bar
+
+```
+total_committed   = SUM(lp_contacts.expected_commitment_amount) WHERE pipeline_stage = 'committed'
+total_soft        = SUM(...) WHERE pipeline_stage = 'soft_commit'
+total_pipeline    = SUM(...) WHERE pipeline_stage IN ('first_meeting','second_meeting','active_diligence')
+target_gap        = funds.raise_target - total_committed - total_soft
+
+bar_segments = {
+  committed:  total_committed / raise_target,
+  soft:       total_soft      / raise_target,
+  pipeline:   total_pipeline  / raise_target,  // capped if total > target
+  gap:        remaining
+}
+```
+
+Refresh: nightly + on stage transition + on `expected_commitment_amount` change.
+
+#### Metric 2 — Day 1 Gap, closing
+
+```
+current_gap_count = COUNT(lp_contacts) WHERE
+  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  AND lp_state.days_since_meaningful_touch > 60
+
+trend_30d = SELECT day_1_gap_count, snapshot_date
+            FROM daily_pipeline_summary
+            WHERE snapshot_date >= now - 30 days
+            ORDER BY snapshot_date
+
+baseline = (first row's day_1_gap_baseline, captured at onboarding)
+reactivated = baseline - current_gap_count
+```
+
+Refresh: nightly. Click-through filters Relationships to the same N LPs.
+
+#### Metric 3 — Moveability count
+
+```
+moveability_count = COUNT(lp_contacts) WHERE
+  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  AND lp_state.pipeline_flag IN ('green','amber')   -- explicitly NOT red
+  AND EXISTS (lp_signal_log row of any directional warming type in last 30 days)
+  AND lp_state.days_since_meaningful_touch <= amber_threshold(pipeline_stage)
+
+reup_count             = same with AND prior_fund_investor = true
+active_diligence_count = same with AND pipeline_stage = 'active_diligence'
+
+moveability_value = SUM(expected_commitment_amount) over the cohort
+```
+
+Refresh: nightly.
+
+#### Metric 4 — LP concentration risk
+
+```
+remaining_target = funds.raise_target - SUM(expected_commitment_amount) WHERE pipeline_stage = 'committed'
+
+for each lp WHERE pipeline_stage IN ('soft_commit','active_diligence','committed'):
+  exposure_pct = lp.expected_commitment_amount / remaining_target
+  if exposure_pct > 0.20:
+    trigger_alert(lp, exposure_pct)
+
+# only the largest concentration triggers the banner; others appear in drill-in
+```
+
+Refresh: nightly + on `expected_commitment_amount` change.
+
+#### Metric 5 — Time Recovered
+
+Per-action benchmarks (V1 starting; recalibrate after FC Month 1 per O-2):
+
+| Action | Minutes saved |
+|---|---|
+| Draft approved (any edit level) | 8 |
+| Scheduling thread resolved | 12 |
+| Follow-up caught (open loop / missed reply) | 10 |
+| Meeting prep brief generated and viewed | 15 |
+
+```
+weekly_time_saved_minutes =
+    (drafts_approved_count × 8) +
+    (scheduling_threads_count × 12) +
+    (followups_caught_count × 10) +
+    (meeting_prep_views_count × 15)
+
+weekly_time_saved_hours = weekly_time_saved_minutes / 60
+```
+
+Source rows from `tomo_action_log` with appropriate `action_type` and `outcome`. Refresh: rolling 7d / 30d / cumulative; nightly.
+
+#### Metric 6a — Follow-up compliance rate
+
+```
+for each meeting in (lp_calendar_events with LP attendees, last N days, status='completed'):
+  meeting_followed_up = EXISTS (
+    lp_interactions row with direction='outbound' to any LP attendee
+    WHERE interacted_at BETWEEN meeting.end_at AND meeting.end_at + 24h
+  )
+
+compliance_rate = COUNT(followed_up) / COUNT(meetings)
+```
+
+Pre-TOMO baseline computed once at onboarding against 90-day pre-onboarding history; stored on workspace; never recomputed. Refresh: nightly.
+
+#### Metric 6b — Draft approval rate
+
+Edit-level threshold (per O-3): `<30%` = light edit (counts as approval); `>=30%` = substantial edit.
+
+```
+approval_rate_30d =
+  COUNT(action_type='draft' AND outcome IN ('approved_unchanged','approved_with_edits')) /
+  COUNT(action_type='draft' AND outcome IN ('approved_unchanged','approved_with_edits',
+                                             'edited_substantially','dismissed'))
+
+if approval_rate_30d < 0.50:
+  trigger_recalibration_nudge()  // inline tone-recalibration prompt
+```
+
+Source: `tomo_action_log`. Refresh: rolling 30d / 60d; nightly.
+
+#### Metric 6c — Scheduling efficiency
+
+```
+for each scheduling thread (inbound with detected scheduling intent, last 30 days):
+  resolution_days = (calendar_event.created_at - inbound_email.interacted_at) / 86400
+
+avg_efficiency_days = AVG(resolution_days)
+```
+
+Scheduling-intent detection in V1 is pattern-library based ("can we meet", "schedule a call", etc.); LLM classification deferred V2.
+Pre-TOMO baseline computed once at onboarding. Refresh: nightly.
+
+#### Metric 7 — Direction with mandate-fit qualifier
+
+```
+total_active = COUNT(lp_contacts) WHERE pipeline_stage NOT IN ('closed_lost')
+with_direction = COUNT(...) WHERE
+  pipeline_stage NOT IN ('closed_lost')
+  AND EXISTS (lp_signal_log row of any directional type in last 30 days)
+
+mandate_fit_subset = COUNT(...) WHERE
+  same as with_direction
+  AND mandate_fit = 'confirmed_fit'
+  AND pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+```
+
+Refresh: nightly.
+
+#### Metric 8 — Fat Middle ratio
+
+```
+warm_stage_lps = COUNT(lp_contacts) WHERE
+  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+
+three_plus_touches = COUNT(lp_contacts) WHERE
+  pipeline_stage IN warm_stages
+  AND COUNT(lp_interactions WHERE is_meaningful_touch AND last 6 months) >= 3
+
+fat_middle_ratio = three_plus_touches / warm_stage_lps
+
+fat_middle_cohort = warm_stage_lps WHERE three-plus-touches condition fails
+```
+
+Gauge zones (V1): 0–30 / 30–60 / 60–100. CTA: "Run Three-Touch Qualification on N LPs" → F7 workflow with cohort pre-loaded. Refresh: nightly.
+
+#### Metric 9a — Pipeline velocity
+
+```
+for each active lp:
+  velocities[lp] = AVG(days between consecutive meaningful touches in last 90 days)
+
+pipeline_velocity_avg = AVG(velocities)
+
+# Weekly snapshot stored to drive sparkline:
+INSERT INTO daily_pipeline_summary
+  (snapshot_date, pipeline_velocity_avg_days, ...)
+VALUES (today, pipeline_velocity_avg, ...);
+
+sparkline = SELECT pipeline_velocity_avg_days, snapshot_date
+            FROM daily_pipeline_summary
+            WHERE snapshot_date >= now - 8 weeks
+            AND DOW(snapshot_date) = 1  -- weekly samples
+```
+
+If a workspace has been on TOMO < 8 weeks, sparkline is shorter — display only the snapshots that exist. Connection-date baseline = first weekly snapshot stored.
+
+#### Metric 9b — Cooling caught
+
+```
+currently_flagged = COUNT(lp_contacts) WHERE pipeline_flag IN ('amber','red')
+
+resolved_30d = COUNT(lp_signal_log WHERE
+                      signal_type = 'flag_transition'
+                      AND metadata.from_flag IN ('amber','red')
+                      AND metadata.to_flag = 'green'
+                      AND observed_at >= now - 30 days)
+
+total_cooling_caught_30d = COUNT(unique LPs that were flagged amber/red at any point in last 30 days)
+```
+
+Refresh: nightly.
+
+#### Metric 10 — 60-Day Close List
+
+Top 7 of the Moveability cohort, ranked by close-probability score:
+
+```
+score(lp) = stage_weight + intent_weight + signal_weight - silence_penalty
+
+stage_weight:
+  soft_commit:       40
+  active_diligence:  30
+  second_meeting:    20
+  first_meeting:     10
+  sourced:            5
+
+intent_weight (additive):
+  prior_fund_investor = true:        +20
+  mandate_fit = 'confirmed_fit':     +15
+
+signal_weight:
+  any warming directional signal in last 30 days:  +10
+  any cooling signal in last 30 days:              -10
+
+silence_penalty:
+  if days_since_meaningful_touch > amber_threshold(stage):  -15
+
+return top 7 by score with full LP context
+```
+
+Refresh: nightly. Score is decomposable into components — every row hover shows the decomposition. Recalibration after 30+ closes is V3 territory.
+
+#### Schema dependencies (per §9.4)
+
+V1 metrics depend on three schema additions beyond Section 8:
+
+1. `funds.raise_target`, `funds.raise_target_currency`; `lp_contacts.expected_commitment_amount`, `expected_commitment_currency`, `expected_commitment_captured_at`, `prior_commitment_amount`, `prior_commitment_currency`. Drives Metrics 1, 3, 4, 10.
+2. `tomo_action_log` table (append-only). Drives Metrics 5, 6b. **Hard V1 dependency** — must be instrumented from day one of V1 ship.
+3. `daily_pipeline_summary` table (append-only). Drives Metrics 2 trend, 9a sparkline, 9b resolved count.
+
+All three are present in §6.2.
 
 ### H. Open issues and decisions to lock
 
@@ -3562,8 +5088,14 @@ V2 (Q4 2026) and V3 (2027) capability matrix is in Appendix C.
 
 ---
 
-**End of TOMO V1 SRS Draft v0.1 — Stage 1.**
-*Stage 2 (next): full Section 3 (Functional Requirements) and Section 4 (External Interfaces).*
-*Stage 3: full Section 5 (Non-Functional) and Section 6 (Data Model — every table, every field).*
-*Stage 4: Section 8 (User Stories) — extension of the surface template across all V1 capability areas.*
-*Stage 5: Appendices C, D, E, F, G.*
+**End of TOMO V1 SRS Draft v0.1.**
+
+All ten sections and eight appendices are populated. The document is the formal handoff from the `tomo_crm` mock to V1 production build.
+
+**Next steps for the team:**
+
+1. **PM + Eng lead review** — open issues in Appendix H need confirmation before SRS lock. O-2, O-3, O-4, O-5, O-6, O-7, O-8, O-9 remain open; O-1, O-10, O-13, O-14, O-15 closed by direction in this draft cycle.
+2. **Convert to .docx** — once content reviewed, export this Markdown to .docx via Pandoc with the corporate template for the formal handoff artefact.
+3. **Decompose into engineering tickets** — every BR-x.y.z business rule and AC-x.y.z acceptance criterion is a verifiable unit; user stories §8 map naturally to a backlog.
+4. **SOC 2 audit prep** — start mapping Appendix H O-11 sub-processor inventory and the §5.3 / §5.5 control families to evidence collection before audit kickoff.
+5. **CASA Tier 2 submission** — engage assessor; OAuth app submission to Google CASA programme; allow 6–10 week lead time.
