@@ -366,169 +366,1893 @@ Nightly signal batch, sync workers, webhook handlers, daily brief generators, ac
 
 ## 3. System Features / Functional Requirements
 
-[STAGED — full draft to be added in stage 2. Section structure shown in TOC. Each subsection follows the pattern: Description / Inputs / Processing / Outputs / Business rules / Acceptance criteria.]
+This section specifies the functional requirements for V1. Each subsection follows a consistent pattern:
+
+- **Description** — what the capability does and why it exists.
+- **Inputs / triggers** — data sources and activation events.
+- **Processing** — the rules and steps.
+- **Outputs** — what the system writes or surfaces.
+- **Business rules** — non-obvious constraints that engineering must respect.
+- **Acceptance criteria** — testable outcomes for QA.
+
+Where source documents (Section 8, Section 9, Document A, Document B) are normative, this SRS condenses and references rather than duplicating. Field references in `like_this` notation point to §6 schema.
+
+---
 
 ### 3.1. Authentication and account management
 
-[TODO: §3.1 — Firebase Auth providers, magic links for FC, workspace creation, team invites (max 3), per-user OAuth for MS Graph and Google Workspace, session lifecycle, sign-out, password reset, account deletion.]
+**Description.** TOMO uses Firebase Authentication for sign-up and sign-in to the TOMO web app. Microsoft and Google OAuth providers are configured in Firebase to allow GP single-sign-on with their work accounts. Once signed in, the user authorises one or more *data-source* OAuth grants (Microsoft Graph, Google Workspace, Slack, Affinity) — these are separate from the Firebase auth grant and target the GP's mailboxes, calendars, and meetings (per §1.5). Each user can be a member of multiple workspaces; one workspace is selected as default.
+
+**Inputs / triggers.**
+
+- New user signs up via the auth page.
+- Returning user signs in.
+- User accepts a workspace invitation.
+- User triggers a password reset.
+- User initiates account deletion.
+- Firebase ID token is presented in the `Authorization` header of every API request.
+
+**Processing.**
+
+1. Sign-up flow supports three Firebase providers in V1: email + password, Google, Microsoft. Magic-link sign-in is **not** in V1 — the original Founding Circle magic-link flow runs server-side and creates the Firebase user behind the scenes; the FC GP then completes a normal Firebase sign-in.
+2. On first successful sign-in, if the user has no `users` row, the application creates one (`firebase_uid`, `email`, `email_verified`).
+3. If the user has no workspace memberships and is not joining via invitation, the application creates a new `workspaces` row with the user as `owner_user_id` and a `workspace_members` row with `role='owner'`. This atomic creation happens before redirect to onboarding.
+4. Workspace invitations are emailed to a target address. The invitation row carries a single-use token (`workspace_members.invitation_token`) with 7-day expiry. Accepting an invitation requires the invitee to be signed into Firebase Auth with the matching email; mismatched emails are rejected with a clear error.
+5. The 3-member workspace cap is enforced at the database layer (trigger) and the API layer (pre-check before INSERT). A fourth invite attempt returns a documented error.
+6. Per-user OAuth grants for data sources are initiated from Settings → Integrations or during onboarding Screen 2. Each grant is a separate OAuth flow against Microsoft (Azure App Registration) or Google (Google Cloud OAuth Client) — Firebase auth is **not** reused for data scopes. Tokens land in `oauth_tokens` encrypted via Supabase Vault.
+7. Refresh tokens are used by a background worker to refresh access tokens before expiry. Failed refresh writes `last_refresh_error`; the integration health flips to `degraded` or `disconnected` per §3.16.
+8. Password reset uses Firebase's standard reset email flow; TOMO does not handle passwords directly.
+9. Account deletion is a soft-delete on `users` followed by a 30-day grace period; on confirmation (or after 30 days), the application hard-deletes and writes a final `auth_events` row. Per §6.4, append-only audit data is preserved; PII is scrubbed where not legally required.
+10. Workspace transfer in V1 is manual (per §9.1). The current owner emails support; support verifies, and a TOMO operator runs an admin tool to update `workspaces.owner_user_id` and add the new user to `workspace_members`. Audited in `data_access_log`.
+
+**Outputs.**
+
+- `users`, `workspaces`, `workspace_members`, `oauth_tokens` rows created/updated.
+- `auth_events` row per sign-in / sign-out / OAuth grant / refresh / revoke.
+- `activity_log` row for every workspace-member action visible to other workspace members.
+
+**Business rules.**
+
+- BR-3.1.1 — Three users per workspace is a hard cap in V1; trigger and API both enforce.
+- BR-3.1.2 — All workspace members have identical permissions in V1; `role='owner'` differs only in workspace transfer eligibility and billing visibility (cards, invoices).
+- BR-3.1.3 — Firebase Auth providers and data-source OAuth providers are independent grants. A user can sign in with Google and authorise Microsoft Graph for data; the inverse is also valid.
+- BR-3.1.4 — OAuth tokens are stored encrypted at rest. Plaintext tokens are never logged. Memory access is limited to short-lived worker processes.
+- BR-3.1.5 — Account deletion preserves append-only audit data and `lp_signal_log`. PII is scrubbed from `users` (email replaced with hashed identifier).
+- BR-3.1.6 — Sessions are managed by Firebase. TOMO does not maintain its own session cookie. Refresh tokens rotate per Firebase defaults.
+
+**Acceptance criteria.**
+
+- AC-3.1.1 — A new user signing up with email + password lands on the onboarding flow with a workspace already created.
+- AC-3.1.2 — Inviting a fourth user returns a clear "workspace at capacity" error and does not create a row.
+- AC-3.1.3 — Signing in with Google and then connecting Microsoft Graph (Outlook + Calendar + Teams) results in two `oauth_tokens` rows for the same user, with disjoint scope arrays.
+- AC-3.1.4 — Revoking a Microsoft Graph grant in Settings → Integrations sets `oauth_tokens.revoked_at`, marks `crm_sync_status.health='disconnected'`, and writes an `auth_events` row.
+- AC-3.1.5 — Account deletion confirmed within the 30-day window successfully purges PII and leaves `lp_signal_log` rows intact (with the user reference NULLed).
+- AC-3.1.6 — Workspace transfer via support tool changes `workspaces.owner_user_id`, adds the new owner to `workspace_members`, and logs to `data_access_log`.
+
+---
 
 ### 3.2. Onboarding flow
 
-[TODO: §3.2 — eight screens per Document B. Welcome → Connect → Field mapping → Import review → Tone calibration → Day 1 Gap reveal → Daily rhythm → Workspace ready. Includes blocking vs non-blocking work, partial-state resumability, time-target acceptance.]
+**Description.** Eight-screen guided flow that takes a new GP from sign-up to "first value" within 17–22 minutes. Document B is the normative source; this subsection condenses and adds engineering acceptance criteria. The flow is non-skippable (closing the browser preserves state and resumes from last completed screen) and ends in a partial-but-functional Today screen.
+
+**Inputs / triggers.**
+
+- A new user with `users.last_sign_in_at IS NULL` or a workspace with no completed onboarding.
+- Onboarding state is tracked on the `users` row (a `users.onboarding_state_jsonb` JSONB column added in V1 migration to mirror the mock's `OnboardingState` shape).
+
+**Processing — eight screens.**
+
+1. **Screen 1 — Welcome (90 seconds).** Static page. Single primary action ("Let's start"). No background work.
+2. **Screen 2 — Connect your systems (3 minutes).** Three tiles: Email + Calendar (required), CRM (required), Meeting notes (optional — see below). Email/Calendar OAuth flow opens the Microsoft or Google consent page in a new tab; on success, the app stores `oauth_tokens` and immediately schedules the 90-day full-content backfill plus the 12-month full-content background job. CRM tile presents: CSV upload (default for Backstop / Foliometrics / Sheets / Excel / generic / HubSpot CSV path) or Affinity API key paste (Affinity-tier users only). The "Meeting notes" tile in V1 is replaced by a single combined "Connect meeting transcripts (Teams + Meet)" affordance — connection is automatic if Microsoft Graph or Google Workspace is already connected with the appropriate scopes (no separate Granola integration). Continue button enables on a soft check (email connected + CRM source provided).
+3. **Screen 3 — Field mapping (3–4 minutes).** Auto-mapping of CSV columns to TOMO fields runs as soon as the upload completes. UI shows a three-column table; ambiguous mappings (typically 4–6 per Backstop export) are surfaced for GP confirmation. The mapping policy is saved to `csv_field_mappings` and re-applied automatically on subsequent imports.
+4. **Screen 4 — Import review (2–3 minutes).** Deduplication runs against existing TOMO contacts (none on first import). Ambiguous matches surface here for GP resolution and write to `csv_dedupe_decisions`. Conflict-resolution policy applies per §3.4.
+5. **Screen 5 — Tone calibration (2 minutes, mostly background).** Started in the background during Screen 2; surfaces here when complete. The tone profile is rendered in a card showing the inferred greeting style, formality, sentence length, and sign-off — the GP confirms or refreshes. Writes `tone_profiles`.
+6. **Screen 6 — Day 1 Gap reveal (3 minutes).** The climax screen. Computes `daily_pipeline_summary.day_1_gap_count` against the imported pipeline and the synced 90-day email/calendar history. Renders the headline number, two named cohorts (stale-contact LPs and one-way-contact LPs), and a re-engagement draft for one Tier 1 LP from the cohort. Stores the baseline at `daily_pipeline_summary.day_1_gap_baseline` for the trend metric (§3.6 Metric 2). **Blocks until ingestion has computed the gap** — Document B is explicit that this screen does not show until the gap is real.
+7. **Screen 7 — Daily rhythm (2 minutes).** GP picks daily-brief delivery time (default 07:30 local), preferred channels (in-app, email, Slack — Slack disabled until Slack is connected), follow-up threshold preferences (Tier 1 = 48 hours / Tier 2/3 = 5 days defaults; editable). Captures `funds.raise_target` (Section 9 §9.4 schema addition 1) and `funds.primary_currency`. Writes `user_preferences` and `notification_channels`.
+8. **Screen 8 — Workspace ready (1 minute).** Final confirmation. Lists what's running in the background (12-month backfill, 13–36 month metadata backfill, the partial Insights baseline). Single "Open Today" button.
+
+**Resumability.**
+
+- State after every screen completion is persisted to `users.onboarding_state_jsonb`.
+- Closing the browser between screens preserves state. Re-opening drops the user back at the last completed screen + 1.
+- Backend jobs that started during onboarding (sync, tone calibration, Day 1 Gap computation) continue running independent of the front-end flow.
+
+**Outputs.**
+
+- A populated workspace with: `lp_organizations`, `lp_contacts`, `lp_state` (post-batch), `lp_interactions` (90 days full-content), `lp_calendar_events`, `tone_profiles`, `daily_pipeline_summary` baseline row, `funds.raise_target`, `user_preferences`.
+- Background jobs scheduled: 12-month full-content backfill, 13–36 month metadata backfill, ongoing webhook subscriptions.
+- An `activity_log` entry for `csv_import_completed`, `integration_connected` (per provider), `oauth_token_refreshed`.
+
+**Business rules.**
+
+- BR-3.2.1 — Day 1 Gap computation must be complete before Screen 6 is shown. The screen renders a calm progress narrative (per Document B / Tomo MVP3 §C.2) while the user waits, never an empty state.
+- BR-3.2.2 — Onboarding cannot complete without at least one LP record successfully imported.
+- BR-3.2.3 — Tone calibration must have completed before Screen 5; if not, the GP can wait or fall back to a generic tone with a "refresh later" affordance.
+- BR-3.2.4 — Connecting Microsoft Graph or Google Workspace also covers Teams or Meet transcript ingestion respectively, when the user grants the additional scopes (per §3.13). The UI surfaces the additional scope request inside the same OAuth consent screen — no separate connection step.
+- BR-3.2.5 — The mock currently offers an `EmailHistoryScope` choice ("six_months" vs "future_only") in `src/lib/types.ts`. **V1 production replaces this with the locked three-tier ingestion model** (12mo full + 13–36mo metadata + >36mo none). The user no longer chooses; the model is fixed. The UI presents this transparently as "We read 12 months of history; nothing older."
+
+**Acceptance criteria.**
+
+- AC-3.2.1 — A GP completing the flow with 1,000 emails/month and 500 LPs sees Day 1 Gap on Screen 6 within 2 minutes of CSV upload + email connect (per §5.1 SLO).
+- AC-3.2.2 — Closing the browser between Screens 4 and 5 and re-opening 30 minutes later resumes at Screen 5 with all prior state intact and background jobs still running.
+- AC-3.2.3 — A GP whose Microsoft 365 tenant denies the `OnlineMeetingAiInsight.Read.All` scope sees a graceful skip (transcript-only path, per §3.13) without aborting onboarding.
+- AC-3.2.4 — Onboarding ends with a populated `daily_pipeline_summary` baseline row, a `tone_profiles` row, and at least one `lp_contact` per imported CSV record.
+- AC-3.2.5 — A GP without `funds.raise_target` set on Screen 7 sees a soft warning (Insights top-half is non-functional) but is not blocked from finishing.
+
+---
 
 ### 3.3. Email and calendar sync
 
-[TODO: §3.3 — three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none) per ingestion strategy. MS Graph webhook subscription patterns. Google Pub/Sub watch patterns. OOO detection. Thread linking. Attachment metadata. Re-engagement event-driven hot path with sub-1-hour SLO.]
+**Description.** Direct integration with Microsoft Graph and Google Workspace APIs (no third-party unifier). Three-tier ingestion (per `tomo_email_ingestion_strategy.md`): 0–12 months full content, 13–36 months metadata only, >36 months no ingestion. Initial backfill runs progressively at onboarding; ongoing sync uses Microsoft Graph subscriptions and Google Pub/Sub watches with a 30-minute delta-polling fallback (per O-9). OOO replies are detected and excluded from meaningful-touch calculations.
+
+**Inputs / triggers.**
+
+- OAuth grant from §3.1 with scopes per §4.2.
+- Webhook deliveries from Microsoft Graph subscriptions and Google Pub/Sub.
+- Scheduled backfill jobs at onboarding.
+- Subscription/watch resubscribe job (every 12 hours, before expiry).
+- Delta-polling fallback (every 30 minutes per integration when webhook health is degraded or failing).
+
+**Processing.**
+
+1. **Initial backfill — three phases.**
+   - Phase A (sub-2-minute): most recent 90 days, full content. Blocks Screen 6. Targets ≤ 2 minutes for a typical GP.
+   - Phase B (background, ≤ 30 minutes): months 4 through 12, full content.
+   - Phase C (background, ≤ 2 hours): months 13 through 36, metadata only — no `body_text`, no `body_html_archived_url`, `metadata_only=true`.
+   - All phases write to `lp_interactions` and `lp_calendar_events` with `source` set appropriately.
+2. **Ongoing sync.**
+   - **Microsoft Graph.** Per-user subscription on `/users/{id}/messages` and `/users/{id}/events`. Delta link maintained in `crm_sync_status.metadata.delta_link`. Subscription expiry max 3 days; resubscribe worker renews before expiry. Webhook signature verified per Microsoft Graph docs.
+   - **Google Workspace.** Gmail `users.watch` on the user's mailbox publishing to a Pub/Sub topic; Calendar push notifications via watch channels. History API used to drain delta after each notification.
+3. **OOO detection.** Computed at ingest. Patterns matched: subject prefixes (`Out of Office`, `Auto-reply`, `OOO`, `Annual leave`), body phrases (configurable list), Gmail `auto_reply` SMTP header, Microsoft `automaticReply` field. Detected → `lp_interactions.is_ooo=true` and excluded from meaningful-touch.
+4. **Meaningful-touch flag.** Computed at ingest per Section 8 §8.2 definition; written to `lp_interactions.is_meaningful_touch`. Recomputed if the body is later promoted to full-content (rare; not in V1 normal path).
+5. **Truly-LP-initiated flag.** For inbound interactions, computed at ingest using the strict 14-day window per Section 8 §8.3 Signal 5; written to `lp_interactions.is_truly_lp_initiated`.
+6. **Body cleansing.** Signatures, quote-blocks, tracking pixels stripped; cleaned text written to `body_text`. Word count computed per Section 8 §8.9 clarification 9 with a confidence flag (high / low / suppressed). HTML body archived to S3 (full-content tier only) with the key in `body_html_archived_url`.
+7. **Thread linking.** Each row's `lp_email_thread_id` resolved by `provider_thread_id` (Gmail) or `conversationId` (Microsoft). New thread → new `lp_email_threads` row.
+8. **LP resolution.** Sender / recipient emails matched in priority order: exact `lp_contacts.primary_email` → `lp_contacts.additional_emails` → `lp_organizations.domain` for firm-only resolution. Unresolved interactions are still ingested but with null `lp_contact_id`; backfill resolution runs when a new LP is added.
+9. **Re-engagement event-driven hot path.** New inbound `lp_interactions` row triggers the re-engagement check synchronously (per Section 8 §8.3 Signal 2): if `days_since_last_gp_outbound >= 45` and meaningful-touch criteria met, set `lp_state.re_engagement_flag=true`, write `lp_signal_log` with `signal_type='re_engagement'`, force pipeline_flag to red+URGENT for 24 hours, generate the urgent draft, surface in Action Drawer. Target latency ≤ 1 hour from inbox arrival to Action Drawer card (§5.1 SLO).
+10. **Sync staleness banner.** When `crm_sync_status.health` for a mail/cal source flips to `degraded` (one failed delta poll) or `failing` (three consecutive failures), a banner is surfaced on Today and Pipeline indicating "sync delayed" with the last-success timestamp (Tomo MVP3 §C.1 explicit requirement).
+11. **Calendar event status.** `lp_calendar_events.status` reflects the meeting's actual outcome. A meeting only counts toward Signal 7 / Metric 6a if `status='completed'` (i.e. it took place). Cancellations and reschedules are tracked but distinct.
+
+**Outputs.**
+
+- `lp_interactions` and `lp_calendar_events` rows created.
+- `lp_email_threads` rows created/updated.
+- `lp_calendar_event_attendees` rows.
+- `lp_signal_log` rows for the event-driven hot path.
+- `tomo_action_log` row when an urgent draft is generated.
+- `crm_sync_status` updates per integration.
+
+**Business rules.**
+
+- BR-3.3.1 — V1 does not ingest beyond 36 months. The user-selectable "six months / future-only" choice in the mock is removed.
+- BR-3.3.2 — Bodies are dropped at the 12-month boundary by a daily retention job (`UPDATE lp_interactions SET body_text=NULL, body_html_archived_url=NULL, metadata_only=true WHERE interacted_at < now() - interval '12 months' AND body_text IS NOT NULL`).
+- BR-3.3.3 — Webhook delivery latency target ≤ 1 hour for re-engagement events. If the chosen webhook subscription cannot meet this in production, the 30-minute delta-polling fallback covers the gap.
+- BR-3.3.4 — Inbound emails to a shared mailbox or alias still ingest if the configured mailbox owner's OAuth grant covers it; per Risk #2 in the V1 Final doc, edge cases (aliases, shared inboxes, BCC) are validated against real GP accounts before signal-engine wiring.
+- BR-3.3.5 — Attachments are not stored in V1 (only `attachment_count` is captured). Document engagement is V2.
+- BR-3.3.6 — Body-cleansing word-count confidence below the threshold (per §8.9 clarification 9) → suppress the observation rather than compute on dirty data.
+
+**Acceptance criteria.**
+
+- AC-3.3.1 — A 90-day backfill for a mailbox of ~1,000 emails/month completes within 2 minutes for the Day 1 Gap moment.
+- AC-3.3.2 — A 36-month backfill for the same mailbox completes within 2 hours and produces metadata-only rows for months 13–36 with `body_text IS NULL` and `metadata_only=true`.
+- AC-3.3.3 — An LP inbound email after 60 days of GP silence triggers an Action Drawer card within 1 hour of inbox arrival.
+- AC-3.3.4 — Microsoft Graph subscription expiry within 24 hours triggers automatic resubscription with no perceived gap to the user.
+- AC-3.3.5 — Sync degradation surfaces a banner on Today and Pipeline within 5 minutes of the third consecutive failed delta poll.
+- AC-3.3.6 — An OOO reply ("I'm out of office until July 8") does not advance `last_meaningful_touch_at` for that LP.
+- AC-3.3.7 — A heavily-quoted reply ("Thanks." with 800 words of quoted prior thread) records `word_count_confidence='suppressed'` and does not contribute a reply-length observation to Signal 4.
+
+---
 
 ### 3.4. CRM integration (CSV + Affinity read-only pull)
 
-[TODO: §3.4 — generic CSV pipeline (5 phases: column mapping, dedup, conflict resolution, ongoing sync, provenance). Per-CRM schema dictionaries (Affinity, Backstop, Foliometrics, HubSpot, Excel/Sheets). Affinity API integration scope in V1 = read-only one-way pull (Persons, Organizations, Lists, Interactions; webhook-driven incremental updates). Affinity push-back / bi-directional sync deferred to V2.]
+**Description.** TOMO ingests the GP's existing CRM via two paths in V1: (a) a generic CSV pipeline that handles Affinity, Backstop, Foliometrics, HubSpot, Salesforce export, Sheets, Excel, and any column-mappable CSV; (b) an Affinity API read-only one-way pull for the FC Affinity user. Bi-directional Affinity sync is V2 (per the user's decision recorded in Appendix H O-1). Document A is normative for everything below.
+
+**Inputs / triggers.**
+
+- CSV upload at onboarding (Screen 2).
+- CSV re-upload via Settings → Integrations or Today review queue.
+- Affinity API key entered at onboarding (Affinity user only).
+- Affinity v1 webhook deliveries on person/organization events (V1 read path).
+
+**Processing — generic CSV pipeline (5 phases per Document A).**
+
+1. **Phase 1 — Column mapping.** Parse headers; auto-map against TOMO's known dictionary using fuzzy match (Levenshtein + token-set ratio) against per-CRM dictionaries (Affinity / Backstop / Foliometrics / HubSpot CSV / generic). Surface ambiguous mappings (typically 4–6 per Backstop export) for GP confirmation. Persist mapping policy to `csv_field_mappings` and tag with `source_crm`.
+2. **Phase 2 — Deduplication.** Match incoming rows to existing `lp_contacts` using priority ladder: exact `primary_email` → `name + lp_organizations.domain` → fuzzy name + firm match. Ambiguous matches surface in a small review queue (rows in `csv_dedupe_decisions` with `decision='pending'`).
+3. **Phase 3 — Field-level conflict resolution (V1 light).** Per-field policy: factual fields (firm, address, phone) → CRM source wins; TOMO-derived fields (signals, behavioural attributes) → TOMO wins; ambiguous fields (tier, stage, mandate fit) → GP decides via review UI. V1 ships text-only review; full Phase 3 conflict-resolution UI is V1.5.
+4. **Phase 4 — Ongoing sync.** Re-runs Phases 1–3 with the saved mapping applied automatically. Volumes are smaller (typically 5–20 changed records). GP-initiated re-upload only in V1; scheduled email-attachment ingestion (Pattern B in Document A) is V1.5.
+5. **Phase 5 — Provenance display.** Every field write records `source` and `source_external_id`. LP card surfaces provenance on hover (CRM-imported / GP-edited / TOMO-derived / TOMO-computed).
+
+**Processing — Affinity read-only pull.**
+
+1. GP pastes Affinity API key (bearer token) at onboarding Screen 2 or Settings → Integrations. Token validated by hitting `GET /v2/auth/whoami`. Stored in `oauth_tokens` with `provider='affinity'`.
+2. Initial pull: paginated GET against Affinity `Persons`, `Organizations`, `Lists`, `List Entries`, `Interactions` v2 endpoints. Mapped to `lp_organizations`, `lp_contacts`, `lp_interactions`, `lp_email_threads` with `source='affinity_api'` and `source_external_id` set.
+3. Webhook subscription: 1 of Affinity's 3 max webhook slots used. Subscribe to `person.updated` and `organization.updated` v1 events. Webhook handler diffs and applies updates with last-write-wins rules.
+4. Custom-field provisioning: **not in V1** (would only matter for write-back). The six TOMO fields (`tomo_signal_flag`, `tomo_signal_evidence`, etc.) are not created on the Affinity workspace until V2.
+5. Smart fields are read-only in Affinity by design. TOMO can read them and store as additional context on `lp_contacts.notes` or in a JSONB, but does not surface them as TOMO fields in V1.
+
+**Outputs.**
+
+- `lp_organizations`, `lp_contacts`, `lp_interactions`, `lp_calendar_events` rows from CSV import or Affinity pull.
+- `csv_imports`, `csv_field_mappings`, `csv_dedupe_decisions` rows for CSV path.
+- `crm_sync_status` updates per source.
+- `activity_log` row for `csv_import_completed` and per-record `crm_record_created`/`crm_record_updated`.
+
+**Business rules.**
+
+- BR-3.4.1 — Auto-mapping policy persists per-source-CRM per-workspace; re-imports apply silently with a confirmation banner ("Using same mapping as last time").
+- BR-3.4.2 — TOMO is not a CRM replacement (per Document A "Strategic positioning"); the source CRM remains the system of record for compliance fields. TOMO does not enforce field-format parity.
+- BR-3.4.3 — Affinity write-back is **not** in V1. The schema (`affinity_field_mappings`) exists in V1 migration as a V2 placeholder.
+- BR-3.4.4 — `prior_fund_investor` and `prior_fund_identifier` are captured during CSV import via either a column-mapping for prior-fund tagging (if the GP's CSV has this column) or a post-import tagging step (if not). Re-up cohort filterability from day one is non-negotiable per Section 8 §8.4.
+- BR-3.4.5 — `expected_commitment_amount` is not auto-imported from CSV (the data is rarely present). It is captured via the post-meeting capture flow or LP card chat.
+
+**Acceptance criteria.**
+
+- AC-3.4.1 — A Backstop export of 300 LPs maps cleanly with ≤ 6 ambiguous columns surfaced for GP review and imports within 2 minutes.
+- AC-3.4.2 — Re-uploading the same Backstop export 30 days later applies the saved mapping automatically and surfaces only the 5–20 changed records.
+- AC-3.4.3 — An Affinity GP entering an API key at onboarding sees their full pipeline (Persons + Organizations + Lists + Interactions) populated within 5 minutes.
+- AC-3.4.4 — An Affinity webhook delivery for `person.updated` reflects the change in TOMO within 60 seconds of receipt.
+- AC-3.4.5 — A duplicate row in a CSV (matching an existing TOMO contact by email) surfaces in `csv_dedupe_decisions` for GP review and does not auto-merge.
+- AC-3.4.6 — An LP card displays provenance on hover ("Imported from Backstop CSV · 3 Apr · GP-edited tier on 14 Apr").
+
+---
 
 ### 3.5. Signals engine
 
-[TODO: §3.5 — locked from Section 8. Foundational definitions (Meaningful Touch, Pipeline stage, Direction). Nine surfaced signals (silence, re-engagement, reply velocity, reply length, reply initiation, stage stagnation, calendar friction, CC expansion, one-way contact). Three captured attributes (mandate fit, prior fund investor, days in prior stage). Two combined signals captured but not surfaced (warm_ghost, close_proximity). Stage threshold matrix. Pipeline flag computation algorithm. Append-only signal log.]
+**Description.** Computes the nine V1 surfaced signals plus three captured attributes plus two combined captures (warm_ghost, close_proximity) per Section 8. Section 8 is **normative** for definitions, computation, thresholds, and the pipeline-flag algorithm. This subsection specifies the V1 engineering scope and references Section 8 paragraphs.
+
+**Inputs / triggers.**
+
+- Nightly batch run at 02:00 workspace-local time. Runs in dependency order: foundational definitions → silence → reply velocity → reply length → reply initiation → stage stagnation → calendar friction → CC expansion → one-way → warm_ghost capture → close_proximity capture → flag computation → flag-transition log → daily snapshot.
+- Event-driven hot path on every new inbound `lp_interactions` row for the re-engagement signal (Signal 2) only.
+- Stage transition event (`lp_stage_transitions` row inserted) recomputes `lp_state.days_in_current_stage` and `days_in_prior_stage` immediately.
+
+**Processing.**
+
+1. **Foundational definitions** — Meaningful Touch, Pipeline stage, Direction. Section 8 §8.2 normative.
+2. **Signal 1 — Silence.** Section 8 §8.3 normative. Writes `lp_state.last_meaningful_touch_at`, `days_since_meaningful_touch`. Reads `stage_cadence_benchmarks` per stage.
+3. **Signal 2 — Re-engagement after silence.** Event-driven, **not nightly**. On every new inbound `lp_interactions` row: if days since last GP outbound to this LP ≥ 45 and meaningful-touch criteria met → set `lp_state.re_engagement_flag=true`, append `lp_signal_log` row with `signal_type='re_engagement'`, force pipeline flag to red+URGENT for 24 hours, generate urgent draft via the action-drawer pipeline.
+4. **Signal 3 — Reply velocity trend.** Nightly batch. Suppress when LP has fewer than 5 prior exchanges. Writes `lp_state.reply_velocity_trend`, `reply_velocity_latency_hrs_recent`, `reply_velocity_baseline_hrs`. Section 8 §8.3 normative.
+5. **Signal 4 — Reply length trend.** Nightly batch. Suppress when fewer than 3 prior replies or word-count confidence is low. Writes `lp_state.reply_length_trend`, `reply_length_words_recent`, `reply_length_baseline_words`, `reply_length_drop_pct`.
+6. **Signal 5 — Reply initiation.** Nightly batch. Strict definition (LP sends with no preceding GP outbound to this LP within 14 days). Writes `lp_state.lp_initiation_count_last_5`, `lp_initiation_ratio`, `last_lp_initiated_at`.
+7. **Signal 6 — Stage stagnation.** Nightly batch. Reads `lp_stage_transitions` window function. Writes `lp_state.days_in_current_stage`, `days_in_prior_stage`, `prior_stage_name`, `stage_stagnation_flag`.
+8. **Signal 7 — Calendar friction.** Nightly batch. Reads `lp_calendar_events`. Writes `lp_state.calendar_friction_trend`, `calendar_accept_latency_hrs_recent`, `calendar_reschedule_count_last_3`.
+9. **Signal 8 — CC expansion.** Nightly batch. Reads `lp_email_threads.participant_emails`. Writes `lp_state.cc_expansion`, `cc_expansion_detected_at`, `cc_expansion_new_contacts`. Triggers GP profile-update prompt in Action Drawer.
+10. **Signal 9 — One-way contact.** Nightly batch. Writes `lp_state.last_contact_was_one_way`, `last_outbound_no_reply_sent_at`. 14-day window per §8.3.
+11. **Captured attributes.** `mandate_fit` (post-meeting capture chip), `prior_fund_investor` (CSV import / GP-tagged), `days_in_prior_stage` (derived in Signal 6).
+12. **Combined captures.** `warm_ghost_flag`, `close_proximity_flag` written to `lp_state` per §8.5. Not surfaced in V1; used as silence override and Section 8 §8.7 algorithm input.
+13. **Pipeline flag.** Computed per the locked algorithm in Section 8 §8.7. Result written to `lp_state.pipeline_flag` and `pipeline_flag_reason`. Every transition writes a `lp_signal_log` row with `signal_type='flag_transition'` and metadata `{from_flag, to_flag, reason}`. Required for Metric 9b (cooling caught).
+14. **Daily snapshot.** After all signals computed and flags assigned, append a row to `daily_pipeline_summary`. Required for Metrics 2, 9a, 9b sparkline / trend.
+15. **Append-only discipline.** Every signal observation writes a new `lp_signal_log` row. Never overwrite, never truncate (per §8.10 V3 dataset principle).
+
+**Outputs.**
+
+- `lp_state` row updated for every active LP.
+- `lp_signal_log` rows appended (often 5–10 per LP per night, plus event-driven re-engagement and flag transitions).
+- `daily_pipeline_summary` row appended once per workspace per day.
+- Action Drawer items generated for amber/red flag breaches and re-engagement events.
+
+**Business rules.**
+
+- BR-3.5.1 — Section 8 is the normative source. Where this SRS appears to differ, Section 8 wins until this SRS is updated.
+- BR-3.5.2 — Append-only on `lp_signal_log`, `lp_stage_transitions`, `daily_pipeline_summary`. No overwrites, no truncations, ever.
+- BR-3.5.3 — Re-engagement (Signal 2) cannot be batched (per §8.9 clarification 2). If webhook latency exceeds 1 hour, the 30-min polling fallback (§3.3) compensates.
+- BR-3.5.4 — Trend signals (3, 4) suppress below their respective sample-size thresholds (5 / 3) rather than computing on noise (§8.9 clarification 5).
+- BR-3.5.5 — Reply-length confidence flag suppresses observation when body-cleansing produces dirty content (§8.9 clarification 9).
+- BR-3.5.6 — `mandate_fit` is captured GP-confirmed only — TOMO never imputes from email content in V1.
+- BR-3.5.7 — Stage thresholds use the `stage_cadence_benchmarks` table; per-fund overrides are V2.
+
+**Acceptance criteria.**
+
+- AC-3.5.1 — Nightly batch for a workspace with 500 active LPs completes within 5 minutes.
+- AC-3.5.2 — A re-engagement event (LP inbound after 60 days silence) results in an Action Drawer card and a forced-red pipeline flag within 1 hour of email arrival.
+- AC-3.5.3 — Every pipeline_flag change writes both an updated `lp_state` row and a new `lp_signal_log` row with `signal_type='flag_transition'`.
+- AC-3.5.4 — An LP whose `reply_length_words_recent` dropped from 187 to 31 over three replies (per §8.3 Signal 4 example) shows the relevant LP card narrative line.
+- AC-3.5.5 — An LP with `cc_expansion=true` triggers a profile-update prompt in the Action Drawer with the new contact email pre-filled.
+- AC-3.5.6 — An LP whose recent activity satisfies any positive-direction signal in the last 14 days has `lp_state.pipeline_flag='green'` regardless of `days_since_meaningful_touch` (Section 8 §8.7 override).
+- AC-3.5.7 — `lp_signal_log` entries for the workspace persist indefinitely; a query for signals from 18 months ago returns rows.
+
+---
 
 ### 3.6. Metrics engine and Insights page
 
-[TODO: §3.6 — locked from Section 9. Ten metrics (capital vs target, Day 1 Gap, moveability count, concentration alert, time recovered, follow-up compliance, draft approval rate, scheduling efficiency, direction with mandate qualifier, fat middle ratio, pipeline velocity + sparkline, cooling caught, 60-day close list). Three new schema items (expected_commitment_amount, tomo_action_log, daily_pipeline_summary). Per-metric refresh cadences.]
+**Description.** Computes the ten V1 metrics per Section 9 and renders them on the Insights page. Section 9 is **normative** for definitions, computation, refresh cadences, and schema requirements. Three new schema items (`expected_commitment_amount`, `tomo_action_log`, `daily_pipeline_summary`) are present in §6 and feed this section.
+
+**Inputs / triggers.**
+
+- Nightly batch run, after the signals engine completes (§3.5). Computes Metrics 1–10 in dependency order.
+- Event-driven recomputation for: pipeline-stage transitions (Metrics 1, 3, 7), `expected_commitment_amount` changes (Metrics 1, 3, 4, 10), `tomo_action_log` outcome updates (Metrics 5, 6b).
+
+**Processing.** Per Section 9 §9.3, each metric:
+
+| # | Metric | Cadence | Schema dependency |
+|---|---|---|---|
+| 1 | Capital vs target progress bar | Nightly + on stage transition + on `expected_commitment_amount` change | `funds.raise_target`, `lp_contacts.expected_commitment_amount` |
+| 2 | Day 1 Gap, closing | Nightly | `daily_pipeline_summary.day_1_gap_count`, baseline at onboarding |
+| 3 | Moveability count | Nightly | §3.5 outputs + `expected_commitment_amount` |
+| 4 | LP concentration risk alert | Nightly + on `expected_commitment_amount` change | `funds.raise_target`, `lp_contacts.expected_commitment_amount` |
+| 5 | Time Recovered | Nightly (rolling 7d / 30d / cumulative) | `tomo_action_log` |
+| 6a | Follow-up compliance rate | Nightly + onboarding baseline | calendar + email sync |
+| 6b | Draft approval rate | Nightly (rolling 30d / 60d) | `tomo_action_log` |
+| 6c | Scheduling efficiency | Nightly + onboarding baseline | scheduling-intent pattern library |
+| 7 | Direction with mandate qualifier | Nightly | `lp_signal_log` directional + `mandate_fit` |
+| 8 | Fat Middle ratio | Nightly | `lp_interactions` meaningful-touch (6 month lookback) |
+| 9a | Pipeline velocity + sparkline | Nightly + weekly snapshot | `daily_pipeline_summary` weekly samples |
+| 9b | Cooling caught | Nightly | `lp_signal_log` flag_transition entries |
+| 10 | 60-Day Close List | Nightly | Section 9 ranking formula §9.3 Metric 10 |
+
+**Insights page rendering.**
+
+- **Top half — Where your raise stands.** Capital vs Target hero bar, Day 1 Gap two-up left (with 30-day sparkline), Moveability count two-up right, optional Concentration banner above the two-up.
+- **Bottom half — What TOMO has done.** Time Recovered hero block, Execution Health three-cell row (6a/6b/6c), Pipeline Intelligence two-block (Direction + qualifier; Fat Middle gauge with Three-Touch CTA), Raise Momentum two-block (Pipeline velocity + sparkline; Cooling caught with trace line), 60-Day Close List anchor.
+- "How is this calculated?" inline link below each metric opens a help drawer with the formula in plain language.
+- "Last updated: today at 2:04am · Next update tonight at 2:00am" header banner.
+
+**Outputs.**
+
+- `daily_pipeline_summary` row appended (driven by §3.5 daily snapshot).
+- API responses to `GET /api/insights/{capital,day1gap,moveability,concentration,time-recovered,exec-health,pipeline-intel,raise-momentum,close-list}` rendering the Insights page.
+
+**Business rules.**
+
+- BR-3.6.1 — `tomo_action_log` instrumentation is a **hard V1 dependency** (Section 9 §9.4 schema addition 2). All actions in the Action Drawer, scheduling threads, follow-up reminders, and meeting prep must write to the log from day one of V1 ship.
+- BR-3.6.2 — Pre-TOMO baselines for Metrics 6a, 6c, 9a are computed once at onboarding completion against the 90-day pre-onboarding email + calendar history. Stored on the workspace record. Never recomputed.
+- BR-3.6.3 — Day 1 Gap baseline is captured once at onboarding completion. The "down N from M at onboarding" annotation reads from the baseline; `current_gap_count` is the live nightly snapshot.
+- BR-3.6.4 — `daily_pipeline_summary` is append-only. No row is ever updated or deleted.
+- BR-3.6.5 — Concentration threshold hardcoded at 20% in V1; per-fund configurable in V1.5.
+- BR-3.6.6 — Per-action time benchmarks (drafts 8m / scheduling 12m / follow-ups 10m / meeting prep 15m) per Appendix H O-2; recalibrate after FC Month 1.
+- BR-3.6.7 — Draft edit-level threshold 30% character change (per O-3); below = `approved_with_edits`, at-or-above = `edited_substantially`.
+- BR-3.6.8 — Recalibration nudge fires when `draft_approval_rate_30d < 0.50`.
+- BR-3.6.9 — Fat Middle gauge zones hardcoded 0–30 / 30–60 / 60–100 in V1.
+
+**Acceptance criteria.**
+
+- AC-3.6.1 — Insights page loads within 2 seconds for a workspace with 500 LPs (per §5.1 SLO).
+- AC-3.6.2 — A workspace with no `funds.raise_target` set sees the top-half rendered with a "set raise target" prompt instead of the hero bar.
+- AC-3.6.3 — A workspace with no `tomo_action_log` rows yet (first 24 hours after onboarding) shows Time Recovered as "Just getting started — first signals overnight" rather than 0 hours.
+- AC-3.6.4 — A workspace running for 8+ weeks shows a complete pipeline-velocity sparkline; a workspace running for 3 weeks shows only the 3 weekly samples it has.
+- AC-3.6.5 — A draft edited at 22% character change is classified `approved_with_edits` and counts toward Metric 6b approval rate.
+- AC-3.6.6 — Concentration alert fires for a workspace where one LP's `expected_commitment_amount` is 25% of `(raise_target - committed_sum)` and is hidden when the largest concentration is below 20%.
+- AC-3.6.7 — A click-through on Day 1 Gap opens the Relationships page filtered to the same N LPs that compose the count.
+
+---
 
 ### 3.7. Reminders engine
 
-[TODO: §3.7 — open loops (commitment language detection), missed replies (tier-aware: T1 = 48 business hours, T2/T3/unset = 5 days, owner-routed), commitments (transcript and email scan). Snooze. Action Drawer routing. Mark-resolved.]
+**Description.** Three reminder classes per Section 7.3 N-series and §3.7: open loops, missed replies, and commitments. Each writes to the unified `reminders` table and surfaces in the Action Drawer or attention queue. Tier-aware thresholds for missed replies (T1 = 48 business hours; T2/T3/unset = 5 days; per N-series R2). Snooze and resolve flows. Owner-routed.
+
+**Inputs / triggers.**
+
+- Outbound `lp_interactions` rows scanned for commitment language (R1 detection).
+- Inbound `lp_interactions` rows that are not subsequently replied to within tier threshold (R2 detection).
+- Meeting recaps (`lp_meeting_recaps.action_items_jsonb`) and email scans for commitment language (R3 detection).
+- Reminder due-time clock fires hourly.
+
+**Processing.**
+
+1. **R1 — Open Loops.**
+   - Detection: outbound emails to LP scanned at ingest using a commitment-language pattern library V1 (LLM classification deferred to V2). Patterns: "I'll send / I'll share / I'll get back to you / I'll introduce / I'll follow up / let me get / let me check / let me find out".
+   - On match: `open_loops` row inserted with `confidence` (high/medium/low) per pattern strength.
+   - Fulfilment: subsequent outbound to same LP within 14 days containing reference to committed item (per N-series R1) marks the open loop fulfilled. Reference-detection in V1 uses the same pattern library plus simple keyword overlap; LLM classification on outbound to mark fulfilled is V2.
+   - At 7 days unfulfilled: insert `reminders` row with `reminder_type='open_loop'`, `assigned_user_id=lp_contacts.relationship_owner_user_id`, due in 24 hours.
+2. **R2 — Missed Replies.**
+   - Detection: every inbound `lp_interactions` from an LP starts a reply clock.
+   - Tier-aware threshold lookup from `lp_contacts.tier`: T1 = 48 hours business hours (9am–6pm local weekdays); T2/T3/unset = 5 calendar days.
+   - On threshold breach without an outbound from any GP team member: insert `reminders` row with `reminder_type='missed_reply'`, route to `lp_contacts.relationship_owner_user_id`. If `relationship_owner_user_id` is null, route to `workspaces.owner_user_id`.
+3. **R3 — Commitments.**
+   - Source: meeting recaps (`lp_meeting_recaps.action_items_jsonb`) and email scans (using the same pattern library as R1 but classifying the *target* commitment).
+   - Conservative V1 bar (per N-series R3): only high-confidence commitments auto-create `commitments` rows. Medium / low surface in the post-meeting capture flow for GP confirmation.
+   - On confirmation: `commitments.status='open'`, due-date set if specified or null. Reminder fires 1 day before `due_at` (when present).
+4. **Snooze.** GP can snooze a reminder to a specific time; `reminders.snoozed_until` set, status flips to `snoozed`. At `snoozed_until`, status flips back to `pending` and re-surfaces.
+5. **Auto-resolve.** Open loops auto-resolve when fulfilling outbound is detected. Missed replies auto-resolve when an outbound to the LP is sent. Commitments auto-resolve when fulfilling outbound is detected.
+6. **Mark-resolved manually.** GP can mark any reminder resolved with optional notes; writes `resolved_at`, `resolution_evidence_jsonb`.
+7. **Owner routing.** Each reminder is assigned to a single workspace member (`assigned_user_id`). UI filters by assignee on Today and Settings → Notifications respect assignee.
+
+**Outputs.**
+
+- `reminders` rows per detection.
+- `commitments` and `open_loops` source rows.
+- `tomo_action_log` rows when reminders surface as Action Drawer cards (`action_type='open_loop'` or `'missed_reply'`).
+- Notifications via configured channels (§3.18).
+
+**Business rules.**
+
+- BR-3.7.1 — V1 commitment-language detection is pattern-library based, not LLM-based. False positives accepted; LLM classification is V2.
+- BR-3.7.2 — Tier defaults: T1 if `lp_contacts.tier='tier_1'`, otherwise the unset/T2/T3 threshold applies.
+- BR-3.7.3 — Business hours for T1 missed-reply threshold use the LP's primary contact timezone if known, otherwise the workspace primary timezone.
+- BR-3.7.4 — Snooze options: 1 hour, 4 hours, tomorrow, next Monday, custom datetime.
+- BR-3.7.5 — A reminder for an LP whose `pipeline_stage='closed_lost'` is auto-dismissed.
+
+**Acceptance criteria.**
+
+- AC-3.7.1 — An outbound containing "I'll send the deck Monday" creates an `open_loops` row with `confidence='high'`.
+- AC-3.7.2 — A T1 LP whose inbound at 10:00 Monday remains unanswered at 10:00 Wednesday (48 business hours) shows a missed-reply reminder routed to the relationship owner.
+- AC-3.7.3 — A T2 LP whose inbound on Monday remains unanswered at the following Saturday (5 days later) shows a missed-reply reminder.
+- AC-3.7.4 — An open loop unfulfilled after 7 days surfaces an Action Drawer card.
+- AC-3.7.5 — Manually marking a reminder resolved writes `resolved_at` and removes it from the attention queue without auto-resurfacing.
+
+---
 
 ### 3.8. Today / Daily Brief
 
-[TODO: §3.8 — Today page sections (greeting, Tomo inline chat, what needs your attention, coming up, on my radar, daily brief modal). Daily Brief auto-open on first daily login (local-day-based). Brief content blocks (today's meetings, urgent/approval-needed, follow-up compliance, key signal change). Email and Slack push delivery at user-selected time.]
+**Description.** Today (`/home`) is the GP's daily landing surface. Greeting, inline Tomo chat, "What needs your attention" (action queue), "Coming up" (commitments + meetings), "On my radar" (signal callouts), and the Daily Brief modal that auto-opens on first daily login. Daily Brief is also delivered via email and Slack at the user's configured time.
+
+**Inputs / triggers.**
+
+- User loads `/home`.
+- Daily-brief delivery scheduler fires at `user_preferences.daily_brief_send_at_local`.
+- First load of the day triggers the auto-open modal logic (compared against `user_preferences.last_daily_brief_seen_local_date`).
+
+**Processing.**
+
+1. **Today page sections.**
+   - Greeting: time-of-day-aware, personalised ("Good morning, Geoffrey").
+   - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
+   - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
+   - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow.
+   - **On my radar**: small intelligence-line callouts ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.").
+2. **Daily Brief modal.**
+   - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
+   - Content blocks (per Tomo MVP3 §C.13):
+     - Today's meetings (with LP context line and prep brief link).
+     - Urgent / approval-needed actions (count + top three).
+     - Follow-up compliance status (current / week-over-week).
+     - Key signal change since yesterday (top three).
+   - User can dismiss; dismissal does not affect tomorrow's auto-open.
+3. **Daily Brief delivery (email + Slack).**
+   - At `user_preferences.daily_brief_send_at_local`, the worker assembles the brief and delivers via configured channels (`user_preferences.daily_brief_channels`).
+   - Email: HTML body via Postmark/SES with the same content blocks.
+   - Slack: a single `chat.postMessage` to the workspace's `slack_workspace_connections.default_channel_id` (or the user's DM if Slack scope permits user-DM); blocks layout with section headers and one thread reply per section for detail.
+
+**Outputs.**
+
+- `tomo_action_log` rows updated when the GP acts in the action queue.
+- `email_delivery_log` row per email send.
+- Slack message id captured in `email_delivery_log.metadata_jsonb` for debugging (Slack delivery is not logged in `email_delivery_log` directly; a parallel slack_delivery_log could be added in V1.5 if needed — for V1, Slack delivery telemetry lives in `activity_log`).
+- `activity_log` row for `daily_brief_sent` per channel.
+
+**Business rules.**
+
+- BR-3.8.1 — Auto-open is local-day-based, not session-based; once seen on a local day, does not re-open even if the user logs out and back in.
+- BR-3.8.2 — Slack delivery requires a connected workspace (`slack_workspace_connections` row not revoked) and a user opt-in (`user_preferences.daily_brief_channels` includes 'slack').
+- BR-3.8.3 — If both email and Slack are enabled, both are delivered; no de-duplication.
+- BR-3.8.4 — Empty-state attention queue surfaces a "Nothing pressing today" state with a link to Pipeline.
+
+**Acceptance criteria.**
+
+- AC-3.8.1 — A GP loading Today for the first time today sees the Daily Brief modal auto-open within 500ms.
+- AC-3.8.2 — The same GP reloading Today later in the same local day does not see the modal auto-open.
+- AC-3.8.3 — A GP with Slack connected and `daily_brief_channels=['in_app','email','slack']` receives the brief in their Slack DM at 07:30 local.
+- AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded.
+- AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, brief) and returns answers consistent with what's rendered on the page.
+
+---
 
 ### 3.9. Action Drawer and draft approvals
 
-[TODO: §3.9 — drafts (re-engagement, follow-up, scheduling), capture prompts (post-meeting, mandate fit), success states, owner routing, tone calibration usage. Approval flow with edit-level classification (<30% = light edit; ≥30% = substantial edit).]
+**Description.** The right-hand panel (or modal on mobile) where TOMO surfaces drafts, capture prompts, scheduling threads, follow-up reminders, and meeting-prep briefs for GP review and action. Human-in-the-loop on every outbound. Edit-level classification per O-3 drives Metric 6b.
+
+**Inputs / triggers.**
+
+- New row in `tomo_action_log` with `outcome IS NULL` (a generated action awaiting GP).
+- Per-LP context (last 5 interactions, last meeting recap, signal state, active reminders) loaded when the drawer opens for a specific LP.
+
+**Processing.**
+
+1. **Drawer cards.** Each card represents one `tomo_action_log` row. Card types:
+   - `draft` — a generated email draft (re-engagement, follow-up, scheduling response).
+   - `scheduling_thread` — a multi-turn scheduling negotiation context.
+   - `open_loop` — a fulfilment prompt for a tracked open loop.
+   - `missed_reply` — a draft reply for a missed-reply reminder.
+   - `meeting_prep` — a prep brief generated ahead of a meeting (§3.13).
+   - `tier_correction` — a prompt to correct LP tier based on observed behaviour.
+   - `mandate_fit_capture` — the post-meeting mandate-fit chip selection.
+   - `post_meeting_note` — the post-meeting capture form (§3.13).
+   - `three_touch_send` — a step in an active F7 workflow.
+2. **Draft approval flow.**
+   - Draft rendered editable in the drawer.
+   - GP can: approve unchanged, approve with edits, edit substantially, dismiss, or snooze.
+   - On approve: TOMO sends the email via the user's connected mailbox (Microsoft Graph `sendMail` / Gmail API `users.messages.send`), writes `email_delivery_log`, updates `tomo_action_log.outcome` and `actioned_at`, computes `character_change_pct` against the original draft.
+   - Edit-level classification: `< 30%` → `approved_with_edits`; `>= 30%` → `edited_substantially`.
+3. **Tone calibration usage.** Every draft uses the GP's `tone_profiles.prompt_excerpt` as a few-shot prompt prefix.
+4. **Scheduling thread context.** When the action is a scheduling response, the drawer surfaces the thread, the GP's available calendar slots (read from connected calendar), and the proposed times in the draft.
+5. **Owner routing.** Cards inherit `assigned_user_id` from the underlying reminder or LP `relationship_owner_user_id`. A workspace member sees only their own cards by default; "Show team" toggle shows everyone's.
+6. **Success state.** After approve+send, the card collapses into a single confirmation line ("Sent to Frank · 2 min ago"), counted in Time Recovered (Metric 5).
+7. **Confirmation gate.** Every mutation (send draft, update CRM, mark resolved) requires explicit GP confirmation. No auto-send, ever (per §1.2).
+
+**Outputs.**
+
+- `tomo_action_log.outcome`, `actioned_at`, `character_change_pct` set on action.
+- Outbound email sent via provider API; `lp_interactions` row eventually re-ingested via webhook with `direction='outbound'` (de-duped via `provider_internet_message_id`).
+- `email_delivery_log` row.
+- `activity_log` row for draft lifecycle event.
+
+**Business rules.**
+
+- BR-3.9.1 — Drafts never auto-send. The send button is the only path.
+- BR-3.9.2 — A draft is composed by Tomo using the most recent LP context up to send time, including prior emails (full content tier when available; metadata fallback otherwise).
+- BR-3.9.3 — Drafts to LPs in `historical_data_only=true` state include a cautious-tone hint in the prompt (per ingestion strategy).
+- BR-3.9.4 — Edit-level classification uses Levenshtein-derived character ratio against the originally-generated draft text. Comparison is body-only (subject and signature excluded).
+- BR-3.9.5 — Snoozing a draft sets the action `outcome='snoozed'` and re-queues it for the snooze time.
+- BR-3.9.6 — A draft addressed to multiple LPs (e.g. fund update batch) is treated as N separate `tomo_action_log` rows.
+
+**Acceptance criteria.**
+
+- AC-3.9.1 — Approving a draft unchanged sends within 2 seconds and shows the success line.
+- AC-3.9.2 — A draft edited from 248 characters to 274 characters (~10% change) is classified `approved_with_edits` and contributes to Metric 6b.
+- AC-3.9.3 — A draft edited from 248 characters to 580 characters (~134% change) is classified `edited_substantially` and does not count as approval for Metric 6b.
+- AC-3.9.4 — An approved scheduling reply with proposed times creates a calendar invite via the connected calendar API (when the GP confirms the time).
+- AC-3.9.5 — Drafts to LPs are sent from the GP's authenticated mailbox (visible in their Sent folder), never from a TOMO-managed mailbox.
+
+---
 
 ### 3.10. Relationships / LP record
 
-[TODO: §3.10 — full LP card (header strip, mandate fit, tier, prior fund badge, signals row, evidence line, narrative). Three views: list, board, detail. Inline editing via Tomo chat (Manual Update Principle). LP timeline with email, calendar, signal, action events.]
+**Description.** The Relationships surface (`/relationships`) is the GP's working CRM view. List, board, and detail layouts. The LP card shows the full Section 8 §8.4 schema (header strip with tier and prior-fund badge, mandate fit, signals row, evidence line, narrative). Inline editing happens via Tomo chat (Manual Update Principle from Tomo MVP3) — the GP types in plain language ("Peter sized at $25M"), Tomo proposes the field change with confirmation gate.
+
+**Inputs / triggers.**
+
+- User loads `/relationships`.
+- User selects an LP — opens detail panel (right pane on desktop, full screen on mobile).
+- User types in the inline Tomo chat dock or FAB sheet to update fields.
+
+**Processing.**
+
+1. **List view.**
+   - Columns: name + firm, stage, days-since-touch with G/A/R dot, tier, mandate fit, days-in-stage, expected commitment.
+   - Sortable per column. Default sort: pipeline_flag (red → amber → green) then days_since_meaningful_touch desc.
+   - Reply-velocity arrow icon next to days-since-touch (Section 8 §8.3 Signal 3 surface).
+   - "Stuck Nd" badge when stage_stagnation_flag is amber/red.
+   - Re-up indicator dot (subtle, not flag-coloured) when `prior_fund_investor=true`.
+2. **Board view.**
+   - Kanban columns per pipeline stage. Drag-and-drop to change stage (writes `lp_stage_transitions`).
+3. **Detail view (LP card).**
+   - **Header strip:** name, role, firm, tier badge, prior-fund badge ("Prior: Fund II"), mandate-fit pill ("confirmed · captured 12 Mar").
+   - **Status bar:** G/A/R dot + plain-English `pipeline_flag_reason`.
+   - **Open emails:** unread / awaiting-reply summary.
+   - **Key changes:** signal callouts ("Reply time has slowed: last 4 days, typical 18 hours.").
+   - **Stage:** current stage + days-in-stage + days-in-prior-stage line ("In active diligence 22 days. Spent 47 days in second_meeting.").
+   - **Sizing line:** `expected_commitment_amount` and `expected_commitment_captured_at`.
+   - **Three sections (per APP_SUMMARY mock baseline):**
+     - Section 1 — Snapshot (signals, status, open emails, key changes).
+     - Section 2 — Tomo chat scoped to this LP.
+     - Section 3 — Activity log scoped to this LP.
+4. **Inline editing via Tomo chat (Manual Update Principle).**
+   - GP types: "Peter sized at $25M" → Tomo proposes `lp_contacts.expected_commitment_amount=25000000` → confirmation gate → write + `activity_log` row.
+   - Direct field editing in the LP card is also available for power users (chip selectors for stage, tier, mandate fit; numeric input for sizing).
+   - Free-text notes go to `lp_notes`.
+5. **Filters.**
+   - Same named filters as Pipeline (§3.11), plus full-text search on name and firm.
+6. **Engineering note.** The mock has `src/components/relationship-drawer-snapshot.tsx`, `relationship-drawer-tomo-row.tsx`, `relationship-crm-form.tsx`, `relationships-kanban-board.tsx` — V1 production reuses these components and wires real data via `/api/crm/relationships`.
+
+**Outputs.**
+
+- `lp_contacts`, `lp_state` updates from edits.
+- `lp_stage_transitions` rows on stage changes.
+- `lp_notes` rows on free-text notes.
+- `agent_tool_calls` rows for chat-driven updates (`tool_name='update_crm'`).
+- `activity_log` rows per change.
+
+**Business rules.**
+
+- BR-3.10.1 — Every LP-record mutation requires GP confirmation (Manual Update Principle). Tomo never silently updates a field even when its proposal is correct.
+- BR-3.10.2 — Stage changes on the Kanban board write to `lp_stage_transitions` immediately. The trigger ensures `lp_state.days_in_current_stage` is recomputed within seconds.
+- BR-3.10.3 — Provenance: every field write records `source` (CRM-imported / GP-edited / TOMO-derived / TOMO-computed) and is rendered on hover.
+- BR-3.10.4 — Workspace teammates see and edit the same LPs; concurrent edits use last-write-wins with conflict surfaces in `activity_log`.
+
+**Acceptance criteria.**
+
+- AC-3.10.1 — Loading the Relationships list with 500 LPs renders in ≤ 1.5 seconds.
+- AC-3.10.2 — Dragging an LP from `first_meeting` to `second_meeting` on the board writes a `lp_stage_transitions` row and updates `lp_state.days_in_current_stage` within 5 seconds.
+- AC-3.10.3 — Typing "Peter sized at $25M" in the LP-card chat surfaces a confirm dialog with the proposed `expected_commitment_amount=25000000`, and writing applies on confirm.
+- AC-3.10.4 — The LP card surfaces every Section 8 §8.3–§8.4 surface element listed in §8.8.
+
+---
 
 ### 3.11. Pipeline (Lists) and named filters
 
-[TODO: §3.11 — list page with stage swimlanes, named filters (Drifting, Quiet — Fat Middle, Re-engaged, One-Way, Stuck in stage, Slow to advance from [stage], Confirmed mandate fit, Re-ups · Fund N, Close proximity detected). Saved lists. Filter combinator.]
+**Description.** Pipeline (`/pipeline`) is the audience and list-building surface. Same underlying data as `/relationships` but optimised for cohort work — saved lists, named filters, bulk-action seed for workflows.
+
+**Inputs / triggers.**
+
+- User loads `/pipeline`.
+- User creates / edits a filter combination.
+- User saves a filter as a list.
+- User triggers a workflow run from a list.
+
+**Processing.**
+
+1. **Named filters (V1 set).**
+   - **Drifting** — `lp_state.pipeline_flag IN ('amber','red')` AND `pipeline_flag_reason LIKE '%silen%'`.
+   - **Quiet — Fat Middle** — warm-stage LPs with no directional signal in last 30 days.
+   - **Re-engaged** — `lp_state.re_engagement_flag=true`.
+   - **One-Way** — `lp_state.last_contact_was_one_way=true`.
+   - **Stuck in stage** — `lp_state.stage_stagnation_flag IN ('amber','red')`.
+   - **Slow to advance from [stage]** — `lp_state.days_in_prior_stage > stage benchmark` for the named prior stage.
+   - **Confirmed mandate fit** — `lp_contacts.mandate_fit='confirmed_fit'`.
+   - **Re-ups · Fund N** — `lp_contacts.prior_fund_investor=true AND prior_fund_identifier=N`.
+   - **Close proximity detected** — `lp_state.cc_expansion=true OR lp_state.close_proximity_flag=true`.
+   - **The single most valuable query** (Section 8 §8.4) — Tier 1 + confirmed mandate fit + drifting + not in active diligence or later. **Saved-list-able from day one.**
+2. **Filter combinator.** AND logic across selected filters. Free-text query added on top.
+3. **Saved lists.** GP saves a filter combination as a named list (`workflows.target_list_filter_jsonb` when the list is being prepared for a workflow; otherwise an `lp_lists` table — but in V1 saved lists live alongside workflows since the primary purpose is workflow seeding). For V1, saved lists are stored as named JSONB filters on `user_preferences.saved_filter_jsonb` (an array of `{name, filter_json}`); a dedicated `lp_lists` table is V1.5.
+4. **Bulk actions.** From a list, the GP can: trigger a workflow on the cohort (creates one `workflow_runs` per LP), export to CSV, or open a Tomo chat scoped to the cohort.
+
+**Outputs.**
+
+- Filter results returned via `/api/crm/relationships?filter=...`.
+- `workflow_runs` rows when a workflow is triggered on a list.
+- `agent_tool_calls` rows when Tomo edits a filter via the `filter_relationships` tool.
+
+**Business rules.**
+
+- BR-3.11.1 — All filters are computed against current `lp_state` and `lp_contacts`. No stale snapshots.
+- BR-3.11.2 — A workflow triggered on a list de-dupes against `outbound_safety_log` (§3.12) — an LP currently in another active workflow run is skipped with a notice.
+- BR-3.11.3 — The "single most valuable query" filter is pre-loaded as a saved list at workspace creation.
+
+**Acceptance criteria.**
+
+- AC-3.11.1 — Selecting "Re-engaged" filter on a workspace with 500 LPs returns the result in ≤ 600ms.
+- AC-3.11.2 — Triggering the F7 Three-Touch workflow on a "Quiet — Fat Middle" cohort of 29 LPs creates 29 `workflow_runs` rows, minus any LPs already in another active workflow run.
+- AC-3.11.3 — The "Tier 1 + confirmed fit + drifting + not in diligence" saved list is present at first sign-in to a fresh workspace.
+
+---
 
 ### 3.12. Workflows (playbooks)
 
-[TODO: §3.12 — five default playbooks (Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification). Custom workflow creation from templates. Outbound deduplication. Workflow editor (visual flow + Tomo chat editing). Workflow run log.]
+**Description.** Workflows are guided multi-step playbooks. Five default playbooks ship with V1 (per the V1 Final Geoff doc): Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification. Custom workflows can be created from templates. Tomo agent edits workflows via the `update_workflow` tool. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
+
+**Inputs / triggers.**
+
+- User loads `/workflows`.
+- User triggers a workflow on an LP or a list.
+- A signal trigger fires (e.g. F7 auto-suggests when the Fat Middle filter contains > 0 LPs).
+- User edits a workflow via the visual editor or Tomo chat.
+
+**Processing.**
+
+1. **Workflow definition.** Stored in `workflows` + `workflow_steps`. `trigger_type` ∈ (manual / signal / event / scheduled). `target_list_filter_jsonb` carries the filter applied at run time.
+2. **Default playbooks.** Seeded at workspace creation:
+   - **Warm Intro Tracker** — detects warm-intro emails (where the GP is included alongside other parties), creates/suggests LP record, prepares draft reply for approval.
+   - **Post-Meeting Execution** — triggered on meeting end (`lp_calendar_events.status='completed'`); generates prep brief in advance, post-meeting capture form within minutes after, follow-up draft within 30 minutes.
+   - **Update → Follow-Up** — triggered on outbound fund-update send; tracks LP engagement (V1 light: replies); generates personalised follow-up after 7 days for non-replies.
+   - **DDQ Response Engine** — triggered on inbound DDQ email; assembles draft response from prior DDQ database (V1 light: GP-curated; V2 full RAG).
+   - **F7 Three-Touch Qualification** — three-step sequence (insight → question → respectful close) for quiet LPs.
+3. **Workflow runs.**
+   - One `workflow_runs` row per LP per workflow execution.
+   - Steps execute in order. `step_type='wait'` introduces a delay (`wait_duration_hours`); `step_type='action_draft'` generates a draft and surfaces in Action Drawer with `requires_approval=true` (default V1 — human-in-the-loop on every outbound).
+   - GP approves/edits/dismisses per §3.9. Approval advances the run.
+4. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
+5. **Visual editor.** Located at `/workflows`. Renders steps as a process flow (mock has `workflow-process-flow.tsx`). Step nodes are editable inline.
+6. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder steps. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
+7. **F7 outcome capture.** At workflow run completion, the GP picks one of: warmer than expected / maintaining but non-committal / genuinely dormant. Stored in `workflow_runs.outcome`. Drives the Three-Touch Qualification analytics.
+
+**Outputs.**
+
+- `workflows` and `workflow_steps` rows.
+- `workflow_runs` and `workflow_step_runs` rows per execution.
+- `tomo_action_log` rows per step that surfaces a draft or capture.
+- `outbound_safety_log` rows per outbound.
+- `agent_tool_calls` rows for Tomo workflow edits.
+
+**Business rules.**
+
+- BR-3.12.1 — Default playbooks are seeded once per workspace at creation; cannot be deleted but can be deactivated (`workflows.is_active=false`).
+- BR-3.12.2 — `requires_approval=true` is the default and cannot be disabled in V1 (no auto-send).
+- BR-3.12.3 — Outbound dedup window is 14 days globally for V1; per-workflow override is V1.5.
+- BR-3.12.4 — F7 Three-Touch is the **default-on workflow** per V1 Final Decision #2 — the framework's V1 NON-NEGOTIABLE.
+
+**Acceptance criteria.**
+
+- AC-3.12.1 — A new workspace has 5 default playbooks seeded at first sign-in.
+- AC-3.12.2 — F7 triggered on a 29-LP Fat Middle cohort creates 29 `workflow_runs`, each with steps queued.
+- AC-3.12.3 — A step that would send a duplicate outbound (same LP + signature within 14 days) skips and records the skip.
+- AC-3.12.4 — Tomo chat editing a workflow ("Add a wait step of 3 days after step 2") updates `workflow_steps` after GP confirmation and writes an `agent_tool_calls` row.
+
+---
 
 ### 3.13. Meeting lifecycle (prep, transcripts, post-meeting capture)
 
-[TODO: §3.13 — prep brief (unanswered questions, missed/promised materials, relationship context, suggested focus, recent docs). Transcript ingestion via MS Graph (Teams `OnlineMeetingTranscript.Read.All`) and Google Meet (`meetings.space.readonly` + `drive.meet.readonly`). AI recap ingestion path with licence-gated upstream and TOMO LLM fallback. Post-meeting capture (~10 fields, <60 seconds, single prompt). Follow-up draft <30 minutes after meeting end.]
+**Description.** End-to-end lifecycle around an LP meeting: prep brief generated ahead, transcript and AI recap ingested after, post-meeting capture form within 60 seconds, follow-up draft within 30 minutes. Microsoft Teams transcripts via Microsoft Graph; Google Meet transcripts via the Meet REST API and Drive. AI recaps from Microsoft 365 Copilot or Gemini for Workspace where licensed; otherwise TOMO LLM fallback against the raw transcript.
+
+**Inputs / triggers.**
+
+- A new `lp_calendar_events` row created for an LP-attended meeting.
+- 30 minutes before meeting → prep brief generation kicks off.
+- Meeting end (`status='completed'`) → transcript poll + recap fetch + post-meeting capture surface + follow-up draft generation.
+- GP completes post-meeting capture form.
+
+**Processing — prep brief.**
+
+1. 30 min before meeting: read recent context (`lp_meeting_recaps` from prior meetings, last 5 `lp_interactions`, `lp_state`, open `commitments`, `open_loops`).
+2. Generate prep brief using LLM with structured prompt: unanswered questions, missed/promised materials, relationship context, suggested focus, recent documents exchanged.
+3. Write `briefs` row with `brief_phase='prep'`, `generated_by='tomo_llm'`.
+4. Surface in Action Drawer as `action_type='meeting_prep'`. GP viewing the brief sets `briefs.viewed_at` and writes `tomo_action_log` outcome `viewed`.
+
+**Processing — transcript ingestion.**
+
+1. **Microsoft Teams.** Per minute after meeting end, poll `GET /me/onlineMeetings/{id}/transcripts` (requires `OnlineMeetingTranscript.Read.All`). When available, fetch the transcript content (`GET /me/onlineMeetings/{id}/transcripts/{transcriptId}/content?$format=text/vtt` for raw or `application/vnd.openxmlformats-officedocument.wordprocessingml.document` for Word). Parse into structured speaker turns. Write `lp_meeting_transcripts`.
+2. **Google Meet.** Read the Meet conference record via `meet.googleapis.com/v2/conferenceRecords` (requires `meetings.space.readonly`). Find the linked transcript Doc in Drive (requires `drive.meet.readonly`). Fetch and parse. Write `lp_meeting_transcripts`.
+
+**Processing — AI recap ingestion.**
+
+1. **Path A — Microsoft 365 Copilot.** When `OnlineMeetingAiInsight.Read.All` is granted and the user has a Copilot licence: `GET /me/onlineMeetings/{id}/aiInsights` (beta endpoint). Parse summary, action items, decisions. Write `lp_meeting_recaps` with `recap_source='ms_copilot'`.
+2. **Path B — Gemini for Workspace.** When the GP uses Gemini's "Take notes for me" feature, the notes are saved as a Doc in Drive linked to the Meet conference record. Fetch via `drive.meet.readonly`. Write `lp_meeting_recaps` with `recap_source='google_gemini'`.
+3. **Path C — TOMO fallback.** When neither Path A nor Path B yields a recap (no licence or feature not used), TOMO runs its own LLM against `lp_meeting_transcripts.transcript_text`. Generates summary, key points, action items, decisions, unanswered questions. Write `lp_meeting_recaps` with `recap_source='tomo_llm'`.
+4. Recap path priority: A → B → C. The first available wins per meeting; if A succeeds, C does not run.
+
+**Processing — post-meeting capture form.**
+
+1. Within minutes of meeting end, surface a single Action Drawer card (`action_type='post_meeting_note'`) pre-filled from the recap.
+2. Form is ~10 fields per V1 Final F8. Targets <60 seconds completion. Single-prompt rule (one card per meeting; no nagging).
+3. Fields (V1 set):
+   - Meeting outcome (one-line).
+   - Mandate fit chip (confirmed_fit / potential_fit / mandate_mismatch / unknown) — only surfaced when stage is appropriate (post-`first_meeting`).
+   - Pipeline-stage chip (allow stage advance / hold / decline).
+   - Expected sizing chip (numeric, optional).
+   - Commitments captured (pre-filled from recap.action_items_jsonb; GP confirms).
+   - Open loops created from this meeting (auto-detected; GP confirms).
+   - Free-text notes (optional).
+4. On submit: writes `briefs` (`brief_phase='post_meeting'`), updates `lp_contacts.mandate_fit`, `pipeline_stage`, `expected_commitment_amount` as appropriate (each as a separate confirmed mutation per Manual Update Principle), creates `commitments` and `open_loops` rows.
+5. Skip option allowed; logs `tomo_action_log.outcome='dismissed'` for the post-meeting capture; the `activity_log` records `post_meeting_capture_skipped`.
+
+**Processing — follow-up draft.**
+
+1. Triggered on post-meeting capture submit (or auto, 30 minutes after meeting end if capture skipped).
+2. LLM draft using: recap, captured commitments, tone profile.
+3. Surface in Action Drawer as `action_type='draft'` with `metadata.template='follow_up'`.
+4. Quality bar (per V1 Final F3): aim for approval with fewer than five substantive edits.
+
+**Outputs.**
+
+- `lp_meeting_transcripts`, `lp_meeting_recaps`, `briefs` rows.
+- `commitments`, `open_loops` rows.
+- `tomo_action_log` rows for prep, capture, follow-up.
+- Updates to `lp_contacts.mandate_fit`, `pipeline_stage`, `expected_commitment_amount` per GP confirmation.
+
+**Business rules.**
+
+- BR-3.13.1 — Transcript ingestion requires the user's per-user OAuth grant covering the relevant meeting. Workspace-level service-account access is **not** used.
+- BR-3.13.2 — Path-C TOMO fallback is the default for any meeting where Path A or B doesn't yield a recap within 10 minutes of meeting end.
+- BR-3.13.3 — Post-meeting capture is one prompt per meeting (no re-nag).
+- BR-3.13.4 — Follow-up draft generation depends on tone calibration completion. If `tone_profiles` is missing or stale, generation proceeds with a generic-tone hint surfaced to the GP.
+- BR-3.13.5 — Transcript text retention follows the same 12-month full-content rule as email bodies (per §6.4); after 12 months the `transcript_text` field is nulled but `transcript_jsonb` summary turns are retained.
+- BR-3.13.6 — Recap ingestion respects user privacy: TOMO does not log raw transcript content to application logs; only durations, speaker counts, and id references.
+
+**Acceptance criteria.**
+
+- AC-3.13.1 — A Teams meeting ending at 14:00 produces a transcript row by 14:05 (for tenants with transcript enabled).
+- AC-3.13.2 — A Meet meeting ending at 14:00 produces a transcript row by 14:10 (Drive sync delay tolerance).
+- AC-3.13.3 — A meeting where neither M365 Copilot nor Gemini for Workspace is licensed produces a TOMO-LLM recap with summary, key points, action items, and decisions populated within 10 minutes of meeting end.
+- AC-3.13.4 — A post-meeting capture form completed in <60 seconds writes the brief, updates the LP fields confirmed, and creates the commitments confirmed.
+- AC-3.13.5 — A skipped post-meeting capture still produces a follow-up draft in the Action Drawer within 30 minutes of meeting end (using whatever recap is available).
+- AC-3.13.6 — Three substantive edits to a generated follow-up draft remain inside the V1 Final F3 quality bar.
+
+---
 
 ### 3.14. Tomo agent orchestration
 
-[TODO: §3.14 — surface-gated tools (filter_relationships, update_workflow, update_crm, draft_reply, create_user_workflow). Streaming via Vercel AI SDK. Audit trail per tool call. Confirmation gate on every mutation.]
+**Description.** Tomo is the in-app AI agent. Streamed responses via the Vercel AI SDK. Surface-gated tools; not every tool is callable on every page. Mutations require GP confirmation. Audit-grade logging of every tool invocation.
+
+**Inputs / triggers.**
+
+- User types or speaks (text-only V1) into Tomo (inline chat on Today and Workflows; FAB → dock/sheet on other pages).
+- Tomo receives the user's message plus surface context (current page, selected LP, today's actions, etc.).
+- Tomo decides whether to call a tool and emits the call for execution.
+
+**Processing.**
+
+1. **Endpoint.** `POST /api/tomo/orchestrate` is the unified endpoint. Streaming via Vercel AI SDK. Surface parameter `(home | workflows | drawer | relationships | pipeline | targets | activity | materials | search | settings | insights | today)` gates the tool set.
+2. **Tools (canonical names from mock).**
+   - `filter_relationships` — read-only; returns a filter spec the UI applies.
+   - `update_workflow` — mutation; surface=workflows; requires confirmation.
+   - `update_crm` — mutation; surfaces=drawer/relationships/today; requires confirmation.
+   - `draft_reply` — generative; mutation on send; requires GP send.
+   - `create_user_workflow` — mutation; surface=workflows; requires confirmation.
+   - `capture_post_meeting` — mutation; surface=drawer; requires confirmation per field.
+   - `compose_meeting_prep` — generative; produces a brief; non-mutating beyond inserting a `briefs` row.
+3. **Tool gating.** A surface that doesn't list a tool in its allow-list cannot invoke it. This is enforced server-side regardless of what the model emits.
+4. **Confirmation gate.** Every mutation tool returns a "proposed change" payload. The UI renders a confirm/cancel choice. On confirm, the same `agent_tool_calls` row's `confirmation_status` flips to `confirmed` and the change is applied.
+5. **Audit.** Every tool call writes a row to `agent_tool_calls` with arguments, result, latency, model, surface, and confirmation status. Errors land in `error`.
+6. **Streaming UX.** Token-by-token rendering. First-token latency target ≤ 1.5s (P75) per §5.1.
+7. **Privacy.** LLM provider configured for zero retention. No training on customer data. Per §5.4.
+
+**Outputs.**
+
+- Streamed response text rendered in chat.
+- `agent_tool_calls` rows.
+- Downstream effects per tool (CRM update, workflow change, draft).
+
+**Business rules.**
+
+- BR-3.14.1 — A surface that does not allowlist a tool must reject the tool call with HTTP 403 even if the model emits it.
+- BR-3.14.2 — Every mutation tool requires confirmation; auto-execution is disabled in V1.
+- BR-3.14.3 — Tool arguments and results are stored in `agent_tool_calls.arguments_jsonb` / `result_jsonb`. Sensitive content (e.g. draft text) is logged as the model emits it; PII is not stripped, but access is limited to workspace members and to TOMO staff only via `data_access_log`-tracked queries.
+- BR-3.14.4 — A streaming connection that drops mid-response should still produce a final state (confirmed or cancelled) — the UI prompts the user on reconnect.
+- BR-3.14.5 — Tomo never volunteers proposals to send emails. The user has to ask.
+
+**Acceptance criteria.**
+
+- AC-3.14.1 — Tomo on Today receives `todayContext` and answers a question grounded in the rendered actions.
+- AC-3.14.2 — A `filter_relationships` tool call returns a filter that, applied client-side, matches the same set of LPs the GP would see by clicking the named filter manually.
+- AC-3.14.3 — An `update_crm` proposal showing "Set Peter's mandate_fit to confirmed_fit?" requires explicit confirm before the field is written.
+- AC-3.14.4 — Calling `update_workflow` from `surface=relationships` returns a 403 because Workflows is the only surface that allows it.
+- AC-3.14.5 — Every Tomo response leaves an `agent_tool_calls` row visible in the audit log within 1 second of completion.
+
+---
 
 ### 3.15. Activity log
 
-[TODO: §3.15 — event coverage (draft generated/approved/sent/edited, signal flag raised/changed, re-engagement detected, sequence step lifecycle, post-meeting capture). Filters by fund, type, date. Audit-grade retention.]
+**Description.** Audit-grade activity event log per Tomo MVP3 §C.12. Filterable by fund, type, date, actor. Backed by the `activity_log` append-only table. Surfaces at `/activity`.
+
+**Inputs / triggers.**
+
+- Postgres triggers on audited tables (`lp_contacts`, `lp_organizations`, `lp_state` (specific columns), `funds`, `workspaces`, `workspace_members`, `oauth_tokens`).
+- Application-level inserts for non-table-mutation events (draft sent, signal flag changed, re-engagement detected, workflow step lifecycle, post-meeting capture completed/skipped).
+
+**Processing.**
+
+1. Triggers and application code insert rows into `activity_log` per §6.2.9.
+2. UI at `/activity` paginates with filters by fund (when LP is fund-scoped), action type, date range, actor user.
+3. Each row renders: time, actor, action, target description, before/after diff (when applicable), and a click-through to the target entity.
+
+**Outputs.**
+
+- `activity_log` rows; UI rendering only.
+
+**Business rules.**
+
+- BR-3.15.1 — `activity_log` is append-only; no edits, no deletes (except via account-deletion procedure with documented justification).
+- BR-3.15.2 — Sensitive content in `before_jsonb` / `after_jsonb` (e.g. note bodies) is preserved verbatim — this is an audit log, not a privacy log; access is RLS-scoped to workspace members.
+- BR-3.15.3 — Retention is indefinite per §6.4 V3 dataset principle.
+
+**Acceptance criteria.**
+
+- AC-3.15.1 — An LP stage change writes a row visible in `/activity` within 5 seconds.
+- AC-3.15.2 — Filtering by `action='draft_sent'` for the last 7 days returns the count matching `tomo_action_log` for the same period and outcome.
+
+---
 
 ### 3.16. Settings (profile, funds, integrations, notifications, billing, team)
 
-[TODO: §3.16 — sub-pages: profile, funds, integrations (status + reconnect), messaging (Slack), notifications (per-channel preferences), billing (Stripe portal), team (invite up to 3, identical permissions).]
+**Description.** Settings (`/settings`) groups account-level configuration. Sub-pages: Profile, Funds, Integrations, Messaging (Slack), Notifications, Billing, Team.
+
+**Sub-page processing.**
+
+1. **Profile.** Display name, photo, timezone, language. Writes `users` and `user_preferences`.
+2. **Funds.** Per-workspace funds; raise target, target close, currency, concentration threshold (read-only V1, hardcoded 20%; editable V1.5).
+3. **Integrations.** Status banner per provider (`microsoft`, `google`, `slack`, `affinity`). Connect / Reconnect / Disconnect buttons. Health and last-success timestamp from `crm_sync_status`. Granted scopes listed (audit visibility).
+4. **Messaging (Slack).** Slack workspace connection via OAuth. Default channel selector. Per-event channel override.
+5. **Notifications.** Per-user, per-event-class channel preferences (per `notification_channels` table). Quiet hours.
+6. **Billing.** Stripe customer portal link (managed by Stripe; no in-app card entry). Plan tier visible to all members; payment details visible to owner only.
+7. **Team.** Member list, invite (max 3 active), revoke, transfer (manual via support in V1). All members have identical permissions in V1.
+
+**Outputs.**
+
+- Updates to `users`, `user_preferences`, `notification_channels`, `funds`, `slack_workspace_connections`, `oauth_tokens`, `workspace_members`.
+- `activity_log` rows for sensitive changes (integration_connected/disconnected, member invited/joined/removed, fund_target_changed).
+
+**Business rules.**
+
+- BR-3.16.1 — Disconnecting an integration revokes the OAuth grant upstream when possible, marks `oauth_tokens.revoked_at`, sets `crm_sync_status.health='disconnected'`, and pauses dependent workers.
+- BR-3.16.2 — Stripe payment information is never entered in TOMO; the customer portal is the only payment surface.
+- BR-3.16.3 — Workspace transfer is unavailable in the in-product UI; users see a "Contact support" affordance with a templated email.
+
+**Acceptance criteria.**
+
+- AC-3.16.1 — Disconnecting Microsoft Graph in Integrations triggers the upstream revoke and surfaces a "Reconnect to resume sync" banner on Today within 30 seconds.
+- AC-3.16.2 — Inviting a fourth member shows the cap error inline.
+- AC-3.16.3 — A workspace owner sees billing details; a non-owner member sees plan tier but not card information.
+
+---
 
 ### 3.17. Search
 
-[TODO: §3.17 — global search across LPs, meetings, tasks, materials. Full-text on Postgres (V1) with optional Postgres trigram extension; Algolia / Pinecone deferred to V2.]
+**Description.** Global search at `/search` and via Cmd/Ctrl+K shortcut. Searches LPs, organizations, meetings, briefs, workflows, materials, and notes. Postgres full-text search + pg_trgm in V1; Algolia / Pinecone deferred to V2.
+
+**Processing.**
+
+1. Postgres `tsvector` columns added to searchable tables (`lp_contacts`, `lp_organizations`, `briefs`, `workflows`, `materials`, `lp_notes`) populated by triggers.
+2. Search query: `tsquery` against `tsvector` with rank ordering; pg_trgm for fuzzy match on names.
+3. Results grouped by entity type with click-through to the entity page.
+4. RLS ensures cross-workspace results are impossible.
+
+**Acceptance criteria.**
+
+- AC-3.17.1 — Searching for "CPPIB" returns matching LPs and organizations with click-through to detail pages.
+- AC-3.17.2 — A 1-character typo ("CPPI") still matches "CPPIB" via trigram fallback.
+- AC-3.17.3 — Search latency P95 ≤ 400ms for a workspace with 500 LPs.
+
+---
 
 ### 3.18. Notifications (Email, Slack)
 
-[TODO: §3.18 — daily brief delivery, re-engagement urgent push, missed-reply push (per tier), open-loop reminder push. Per-channel preferences in Settings. Slack OAuth and `chat.postMessage` patterns. Email transactional via Postmark or SES.]
+**Description.** Outbound notifications across channels. Daily Brief (§3.8); urgent re-engagement push; missed-reply push (per tier); open-loop reminder push; commitment due push; cooling-caught push; workflow-step-approval-needed push. Per-channel preferences in `notification_channels`.
+
+**Processing.**
+
+1. Notification worker subscribes to internal events (`reminders` due, `lp_signal_log` re_engagement, etc.).
+2. For each event, looks up the recipient user, resolves their `notification_channels` preferences for the event class, and dispatches per channel.
+3. **Email.** Postmark or AWS SES. Templated HTML. `email_delivery_log` row per send.
+4. **Slack.** `chat.postMessage` to the user's default Slack DM (when Slack is connected and user has opted in). Block layout. Threading for detail.
+5. **In-app.** A notifications drawer accessible from the avatar menu shows recent notifications with read/unread state.
+6. Quiet hours respected per `notification_channels.quiet_hours_*`.
+
+**Outputs.**
+
+- `email_delivery_log` rows for email.
+- `activity_log` rows for Slack and in-app delivery.
+
+**Business rules.**
+
+- BR-3.18.1 — Daily Brief delivery cadence and time per `user_preferences`. All other notifications are event-driven.
+- BR-3.18.2 — A re-engagement urgent push always fires regardless of quiet hours (institutional-acceptable; scoped to a small number per week).
+- BR-3.18.3 — A missed-reply push for a tier 1 LP fires once at threshold breach; no nag thereafter.
+
+**Acceptance criteria.**
+
+- AC-3.18.1 — A re-engagement detected at 21:00 local time delivers an in-app notification immediately and a Slack DM if Slack is enabled.
+- AC-3.18.2 — A missed-reply push for a T1 LP is sent exactly once.
+- AC-3.18.3 — Quiet hours from 22:00–07:00 suppress non-urgent notifications during the window.
 
 ---
 
 ## 4. External Interface Requirements
 
-[STAGED — full draft to be added in stage 2.]
+This section specifies the contracts between TOMO V1 and the systems and humans it interacts with. §4.1 covers user-facing UI expectations. §4.2 enumerates every external API TOMO calls (Microsoft, Google, Slack, Stripe, Affinity, LLM, email transactional, observability) and every internal route TOMO exposes. §4.3 confirms hardware non-dependence. §4.4 covers the protocol layer.
+
+---
 
 ### 4.1. User interfaces (UX expectations)
 
-[TODO — desktop 3-pane layout (nav rail + list + detail) and mobile stacked layout per APP_SUMMARY. Tomo dock panel (520px desktop) and bottom sheet (mobile). Resizable panels. Empty states. Loading states. Error states. Accessibility baseline (WCAG 2.1 AA).]
+**Description.** V1 ships a responsive web application. Desktop-first design with full mobile-responsive support. UI patterns are inherited from the mock app (`tomo_crm`) and refined per the V1 Final non-negotiables. No native mobile apps in V1.
+
+**Layout — desktop (≥ 768px viewport).**
+
+- **Three-pane shell:** left nav rail (fixed, icons only, ~64px) → middle list pane (resizable) → right detail pane (resizable). User-resizable split persisted in `user_preferences.pane_width_px`.
+- **Header:** TOMO wordmark, fund selector (when workspace contains > 1 fund), avatar menu (Profile / Settings / Sign out).
+- **Tomo presence:**
+  - **Inline chat** on Today (`/home`) and Workflows (`/workflows`) — embedded in the main content column.
+  - **FAB → dock** on Relationships, Pipeline, Insights, Activity, Search, Settings, Materials. FAB is bottom-right; dock is fixed 520px wide; `max-w-[90vw]` on smaller desktops.
+  - **No Tomo** on Auth and Onboarding (pre-onboarding).
+
+**Layout — mobile (< 768px viewport).**
+
+- **Stacked single-column layout.** List above detail; navigation through bottom-bar tabs.
+- **Bottom navigation:** five primary destinations — Today, Relationships, Pipeline, Workflows, Settings. Insights and Activity reachable via the avatar / overflow menu.
+- **Tomo presence:** FAB at `bottom-16 right-4` (above bottom nav). Tap opens a bottom sheet (70–92vh).
+- **Touch targets:** 44×44 px minimum per iOS HIG and Material guidelines.
+
+**State surfaces.**
+
+- **Empty states.** Every list and surface has an explicit empty state with a one-line "what to do next" affordance. Never a blank page.
+- **Loading states.** Skeletons for list views; spinners only for sub-second waits. Long-running ingestions (onboarding screens 5/6) show a *progress narrative* — text describing what's happening — not a generic spinner. (Per Tomo MVP3 §C.2 and V1 Final risk #1.)
+- **Error states.** Inline banner with action (Retry / Reconnect / Contact support). Error toasts for transient failures. No silent failures.
+- **Sync staleness banner.** Per §3.3: surfaces on Today and Pipeline when `crm_sync_status.health` is `degraded` or `failing`. Includes last-success timestamp and Reconnect action.
+
+**Visual system.**
+
+- **Typography.** Newsreader serif for greeting and decorative; system sans for body and UI. Numeric data uses JetBrains Mono (per mock baseline).
+- **Color palette.** Navy `#0F1F3D`, teal `#0D7377`, slate `#4A5568`, formula-grey `#6B7280` (per Insights spec). G/A/R flags use semantic green/amber/red — not the brand colours.
+- **Density.** Comfortable density default; compact density toggle in Settings → Profile (V1.5).
+
+**Interaction patterns.**
+
+- **Manual Update Principle.** GP edits CRM fields by talking to Tomo in plain language ("Peter sized at $25M") OR by direct field-edit on the LP card. Tomo's proposal always renders a confirm/cancel before write. Per Tomo MVP3 / Section 8 §3.10 / §3.14.
+- **Single-prompt rule.** Post-meeting capture surfaces once per meeting. No re-nag.
+- **Confirmation gates.** Every mutation requires explicit user click. No auto-send, no auto-mutate.
+- **Keyboard shortcuts.** Cmd/Ctrl+K opens global search. ⌘/⌃+Enter sends a Tomo message. ⎋ closes drawers.
+- **Drag-and-drop.** Pipeline board (Kanban) supports drag to change LP stage; uses `@dnd-kit` (mock baseline).
+
+**Accessibility — WCAG 2.1 AA baseline.**
+
+- All interactive elements keyboard-reachable; visible focus rings.
+- ARIA landmarks (`<main>`, `<nav>`, `<aside>`, `<dialog>`).
+- Form inputs labelled and described.
+- Colour contrast ≥ 4.5:1 for normal text; ≥ 3:1 for large text and UI elements.
+- Status messages announced via ARIA live regions where relevant.
+- Reader testing with VoiceOver (Safari) and NVDA (Firefox/Edge) before GA.
+- Respects `prefers-reduced-motion`; suppresses non-essential animations.
+- Touch targets ≥ 44×44 px on mobile.
+
+**Browser support.**
+
+- Chrome, Edge, Safari, Firefox — latest two major versions.
+- macOS, Windows, iOS, Android — latest two major OS versions.
+- JavaScript required. No no-JS fallback path.
+
+**Performance / responsiveness targets** (§5.1 SLOs apply; UI-specific):
+
+- LCP ≤ 2.5s (P75).
+- INP ≤ 200ms (P75).
+- CLS ≤ 0.1.
+- Tomo agent first-token latency ≤ 1.5s (P75).
+
+**Acceptance criteria.**
+
+- AC-4.1.1 — A new user signing in on iPhone Safari completes onboarding without horizontal scrolling at any step.
+- AC-4.1.2 — All primary surfaces are keyboard-navigable from sign-in to draft approval without a mouse.
+- AC-4.1.3 — Disabling Slack in Settings → Notifications hides the Slack channel option in Daily Brief delivery without page reload.
+- AC-4.1.4 — Sync degradation surfaces the staleness banner within 5 minutes of detection.
+- AC-4.1.5 — VoiceOver reads the Pipeline list G/A/R flag dot as "Red flag, threshold breached" (not just "red dot").
+
+---
 
 ### 4.2. Software / API interfaces
 
-[TODO — full table of every external endpoint TOMO calls and every endpoint TOMO exposes. Microsoft Graph scopes and endpoints. Google Workspace scopes and endpoints. Stripe webhooks. Slack incoming webhooks. Affinity v1/v2 endpoints. Internal API routes (`/api/tomo/*`, `/api/crm/*`, `/api/email/*`, `/api/onboarding/*`, `/api/cron/*`, `/api/version`, plus the new V1 routes).]
+This subsection enumerates every external API TOMO calls and every internal API route TOMO exposes in V1.
+
+#### 4.2.1. Microsoft Graph (Outlook, Calendar, Teams, Drive)
+
+- **Tenant model.** Single multi-tenant Azure App Registration. Each GP authorises in their own Microsoft 365 tenant. Application client id and client secret (or certificate) stored in AWS Secrets Manager.
+- **Auth.** OAuth 2.0 authorization code with PKCE; delegated permissions only (no application-only access).
+- **Token lifetime.** Access tokens 60–90 minutes; refresh tokens long-lived (90 days). Background refresh worker runs at `token_expires_at - 10 minutes`.
+- **Scopes (delegated):**
+
+| Scope | Used for |
+|---|---|
+| `User.Read` | Sign-in profile lookup |
+| `offline_access` | Refresh tokens |
+| `Mail.ReadWrite` | Read mailbox messages; create drafts |
+| `Mail.Send` | Send approved drafts on user's behalf |
+| `Calendars.ReadWrite` | Read events; create scheduling holds; create invites on user confirmation |
+| `Contacts.Read` | Optional contact import during onboarding |
+| `OnlineMeetings.Read` | List user's organised online meetings |
+| `OnlineMeetingTranscript.Read.All` | Fetch Teams meeting transcripts |
+| `OnlineMeetingArtifact.Read.All` | Recordings and meeting artefacts (needed to enumerate transcripts) |
+| `OnlineMeetingAiInsight.Read.All` *(beta)* | Microsoft 365 Copilot AI recap, action items, decisions. Optional — degrades to TOMO LLM fallback when absent. |
+| `Files.Read` | Read shared files referenced in emails (V1.5 light) |
+| `Subscriptions.Read.All` *(implicit when using subscriptions)* | Manage Graph webhook subscriptions |
+
+- **Endpoints (v1.0 unless beta noted):**
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/me` | GET | Profile |
+| `/me/messages` | GET, POST | List/draft messages |
+| `/me/messages/delta` | GET | Incremental sync |
+| `/me/sendMail` | POST | Send approved draft |
+| `/me/events` | GET, POST | Read/create calendar events |
+| `/me/events/delta` | GET | Incremental calendar sync |
+| `/me/contacts` | GET | Onboarding contact import |
+| `/me/onlineMeetings/{id}` | GET | Meeting metadata |
+| `/me/onlineMeetings/{id}/transcripts` | GET | Transcript list |
+| `/me/onlineMeetings/{id}/transcripts/{tid}/content` | GET | Transcript content (Word or VTT) |
+| `/me/onlineMeetings/{id}/aiInsights` *(beta)* | GET | Copilot AI recap |
+| `/subscriptions` | POST, PATCH, DELETE | Manage webhook subscriptions on `/me/messages` and `/me/events` |
+
+- **Rate limits.** Per-tenant and per-app limits enforced by Microsoft. Implementation uses exponential backoff with jitter on `429 Too Many Requests`. Outbound write traffic (sendMail) is well below limits at FC scale.
+- **Webhooks.** Subscription resource validates with a token sent in `validationToken` query param on creation. Notifications POST to `https://{tomo}/api/webhooks/microsoft-graph` with `clientState` set; signature verified via the `clientState` plus optional certificate-based proof. Subscription expiry max 3 days; resubscribe worker renews ahead of expiry.
+
+#### 4.2.2. Google Workspace (Gmail, Calendar, People, Meet, Drive)
+
+- **OAuth client.** Single OAuth 2.0 Web Server client in a Google Cloud project. CASA Tier 2 verification required for production scopes (per §5.5).
+- **Auth.** OAuth 2.0 authorization code with PKCE. Refresh tokens long-lived (don't expire as long as user stays active).
+- **Scopes:**
+
+| Scope | Used for |
+|---|---|
+| `openid` | Sign-in |
+| `https://www.googleapis.com/auth/userinfo.email` | Identify user |
+| `https://www.googleapis.com/auth/userinfo.profile` | Profile metadata |
+| `https://www.googleapis.com/auth/gmail.readonly` | Read mail (preferred over `gmail.modify` where possible) |
+| `https://www.googleapis.com/auth/gmail.send` | Send approved drafts |
+| `https://www.googleapis.com/auth/gmail.modify` | Required if drafts are stored as Gmail drafts before send |
+| `https://www.googleapis.com/auth/calendar` | Read/write calendar events |
+| `https://www.googleapis.com/auth/contacts.readonly` | Contact import |
+| `https://www.googleapis.com/auth/meetings.space.readonly` | Read Meet conference records and transcripts |
+| `https://www.googleapis.com/auth/drive.meet.readonly` | Read Meet recordings/transcripts in Drive (narrow scope, preferred over `drive.readonly`) |
+
+- **Endpoints:**
+
+| Endpoint | Purpose |
+|---|---|
+| `gmail.googleapis.com/gmail/v1/users/me/messages` | List, get |
+| `gmail.googleapis.com/gmail/v1/users/me/history` | Incremental sync via History API |
+| `gmail.googleapis.com/gmail/v1/users/me/messages/send` | Send draft |
+| `gmail.googleapis.com/gmail/v1/users/me/watch` | Pub/Sub watch subscription |
+| `calendar.googleapis.com/calendar/v3/calendars/primary/events` | Read/write events |
+| `calendar.googleapis.com/calendar/v3/calendars/primary/events/watch` | Push notifications |
+| `people.googleapis.com/v1/people/me/connections` | Contacts |
+| `meet.googleapis.com/v2/conferenceRecords` | Meet conferences |
+| `meet.googleapis.com/v2/conferenceRecords/{name}/transcripts` | Transcripts |
+| `meet.googleapis.com/v2/conferenceRecords/{name}/transcripts/{tid}/entries` | Speaker turns |
+| `meet.googleapis.com/v2/conferenceRecords/{name}/recordings` | Recordings (V1.5+) |
+| `www.googleapis.com/drive/v3/files/{id}` | Fetch Gemini "Take notes for me" Doc when present |
+
+- **Rate limits.** Per-user / per-project. Backoff and retry on `429`/`403 rateLimitExceeded`. Daily caps unlikely to bind at FC scale.
+- **Push notifications.** Gmail push via Pub/Sub topic that the TOMO project subscribes to. Calendar push via webhook channels POSTed to `https://{tomo}/api/webhooks/google-calendar` with `X-Goog-Channel-Token` header for verification. Channel expiry up to 30 days; resubscribe worker renews ahead.
+
+#### 4.2.3. Slack
+
+- **App model.** Single Slack App distributed via OAuth. Workspace-level installation by an admin user.
+- **Scopes (bot):** `chat:write`, `chat:write.public`, `users:read`, `users:read.email`, `team:read`, `channels:read`, `im:write`, `im:history` (for read-back, V1.5).
+- **Endpoints:**
+
+| Endpoint | Purpose |
+|---|---|
+| `slack.com/api/oauth.v2.access` | OAuth exchange |
+| `slack.com/api/chat.postMessage` | Daily brief and notifications |
+| `slack.com/api/users.lookupByEmail` | Resolve workspace member to Slack user |
+| `slack.com/api/auth.revoke` | Disconnect |
+
+- **No Slack-native operating model** in V1 (Tomo MVP3 §C.13 — Slack V1 is push-only).
+
+#### 4.2.4. Stripe
+
+- **Use.** Subscription billing for `individual` and `team` plans. Stripe Customer Portal for payment method management.
+- **No card data handled by TOMO.** Customer Portal is the only payment surface (per §5.3).
+- **Endpoints / events:**
+
+| Resource | Purpose |
+|---|---|
+| `POST /v1/customers` | Create Stripe customer at sign-up |
+| `POST /v1/billing_portal/sessions` | Generate portal session URL |
+| `customer.subscription.created/updated/deleted` webhook | Sync subscription status to `workspaces.subscription_status` |
+| `invoice.payment_failed` webhook | Mark `past_due` and notify owner |
+
+- Webhook endpoint: `https://{tomo}/api/webhooks/stripe`. Signature verified via `Stripe-Signature` header.
+
+#### 4.2.5. Affinity (V1 read-only one-way pull)
+
+- **Auth.** API key (bearer token) per workspace. Stored in `oauth_tokens` with `provider='affinity'`, encrypted via Supabase Vault.
+- **Endpoints (V1 reads only):**
+
+| Endpoint | Version | Purpose |
+|---|---|---|
+| `/v2/auth/whoami` | v2 | Validate key |
+| `/v2/persons` | v2 | LP contacts |
+| `/v2/companies` | v2 | LP organisations (Affinity calls them "companies") |
+| `/v2/lists` | v2 | Saved lists |
+| `/v2/lists/{id}/list-entries` | v2 | List members |
+| `/v2/opportunities` | v2 | Deal records when used |
+| `/v1/webhooks` | v1 | Subscribe to person/organization events (v1 only) |
+| `/v1/persons/{id}/interactions` | v1 | Historical interactions where v2 unavailable |
+
+- **Webhooks.** `person.updated`, `organization.updated`, `list-entry.created/updated/deleted`. Max 3 webhook subscriptions per Affinity instance — TOMO uses 1 slot.
+- **No write endpoints called in V1.** `affinity_field_mappings` schema present in V1 migration (per §6.2.5) but unused; bi-directional sync is V2.
+- **Rate limits.** 900 requests per user per minute. Sufficient for FC scale.
+
+#### 4.2.6. LLM provider (Google Gemini via Vertex AI)
+
+> **Migration note:** the mock app uses OpenAI via Vercel AI SDK (`@ai-sdk/openai`). **V1 production switches to Google Gemini via Vertex AI** (`@ai-sdk/google` with the Vertex provider). The Vercel AI SDK abstraction lets the call sites stay essentially unchanged — only the provider initialisation changes. Rationale: TOMO already operates a Google Cloud project for the Google Workspace OAuth client and CASA Tier 2 review (per §1.5, §2.4); using Vertex AI in the same GCP project gives enterprise data governance, zero-retention by default, customer-managed encryption keys, and consolidates vendor footprint. Gemini for Workspace is also the same vendor as the upstream Google Meet AI recap path, which simplifies the meeting lifecycle.
+
+- **Provider.** Google Gemini accessed via **Vertex AI** in TOMO's GCP project (not Google AI Studio). Vercel AI SDK Google provider (`@ai-sdk/google` with `createVertex()` configuration).
+- **Region.** `us-central1` primary; `europe-west4` available for V1.5 EU-residency customers.
+- **Model selection per use case:**
+
+| Use case | Model | Notes |
+|---|---|---|
+| Tomo agent orchestration (streaming + tool use) | `gemini-2.5-pro` | Strong tool-use; surface-gated tools per §3.14 |
+| Draft composition (re-engagement, follow-up, scheduling) | `gemini-2.5-pro` | Quality bar matters more than latency |
+| Meeting recap fallback (Path C — TOMO LLM) | `gemini-2.5-pro` | Long context for full transcript |
+| Meeting prep brief generation | `gemini-2.5-pro` | |
+| Overnight batch classification — scheduling-intent detection (V1 pattern library + LLM tie-break) | `gemini-2.5-flash` | High-volume, low-cost |
+| Overnight batch classification — commitment-language detection (V2; V1 is pattern-only) | `gemini-2.5-flash` | (V2; placeholder for V1) |
+| Tier-suggestion (lightweight) | `gemini-2.5-flash` | |
+| Embeddings (tone-profile similarity, V1.5 RAG) | `text-embedding-005` (Vertex) | Native to Vertex |
+
+- **Privacy configuration.** Per Vertex AI Generative AI service terms:
+  - **Zero retention by default.** Vertex AI does not log prompts/responses to Google logs; data is processed in-memory and discarded.
+  - **No training on customer data.** Customer data is not used to improve Google's foundation models (per Vertex AI data governance docs).
+  - **Customer-managed encryption keys (CMEK)** configurable on the GCP project; V1 uses Google-managed keys (default), CMEK in V1.5 if any FC customer requests.
+  - **Data residency** controlled by region selection (us-central1 primary).
+- **Authentication.** Service account in TOMO's GCP project with `roles/aiplatform.user`. Service-account key (or workload-identity federation when running on AWS) stored in AWS Secrets Manager.
+- **Endpoints (Vertex AI Generative AI API v1):**
+
+| Endpoint | Purpose |
+|---|---|
+| `POST {region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:generateContent` | One-shot generation |
+| `POST .../models/{model}:streamGenerateContent` | Streaming generation (Tomo agent) |
+| `POST .../models/{embedding}:embedContent` | Embeddings |
+
+- **Rate limits.** Per-project requests-per-minute and tokens-per-minute caps. Application uses per-workspace rate limiting to stay below project caps; quota raises requested as workspace count grows.
+- **Failure modes.** On `429 RESOURCE_EXHAUSTED`: retry with exponential backoff. On `5xx`: retry up to 3 times. Persistent failure surfaces "Tomo is busy" inline error and falls back to non-LLM behaviour where defined (e.g. pattern-library-only scheduling-intent detection).
+- **Tone-profile prompts.** Tone calibration writes the few-shot prompt-excerpt to `tone_profiles.prompt_excerpt`; the excerpt is vendor-agnostic plain text and works identically against either provider, so a future provider switch costs only the SDK initialiser change.
+
+**Acceptance criteria specific to provider:**
+
+- AC-4.2.6.1 — Vertex AI calls succeed against the configured GCP project with the service account scoped to `roles/aiplatform.user` only.
+- AC-4.2.6.2 — Streaming Tomo agent responses begin token emission within 1.5s P75 against `gemini-2.5-pro`.
+- AC-4.2.6.3 — A meeting recap fallback (Path C) for a 30-minute transcript completes within 60s.
+- AC-4.2.6.4 — No prompt or response is observed in Google Cloud audit logs beyond the API call envelope (zero-retention verified during pen test).
+
+#### 4.2.7. Email (transactional)
+
+- **Provider.** Postmark (primary) or AWS SES (fallback / EU residency in V1.5).
+- **Use.** Daily Brief, invitations, password reset, account notifications, reminder digests.
+- **Verification.** `Return-Path`, SPF, DKIM, DMARC configured per the chosen provider's docs. Bounce and complaint webhooks ingested to `email_delivery_log`.
+- **Templates.** HTML + text alternative per template; rendered server-side from JSX/MJML.
+- **Webhook endpoint.** `https://{tomo}/api/webhooks/email-delivery`. Signature verified via provider-specific signing.
+
+#### 4.2.8. Observability and infrastructure
+
+- **Sentry** — error capture from web client and serverless functions; PII-strip middleware applied client-side.
+- **PostHog or Vercel Analytics** — product analytics with PII-stripping; events are workspace-id-scoped.
+- **CloudWatch** — AWS infrastructure metrics, queue depth, worker latency.
+- **Datadog or Grafana Cloud (TBD)** — composite dashboards (V1.5 if Vercel + CloudWatch insufficient).
+
+#### 4.2.9. Internal API surface
+
+All routes are Next.js Route Handlers (App Router) on Vercel except where noted as background workers. Authentication: every request carries a Firebase ID token in `Authorization: Bearer <token>`; the route handler resolves the user, sets `app.workspace_id` for RLS, then queries.
+
+**Existing routes (mock + V1):**
+
+> **Migration note:** the mock exposes `/api/crm/relationships` for LP CRUD. **V1 production renames this to `/api/lp-contacts`** to align with the canonical schema entity name (`lp_contacts`). The mock's frontend imports referencing `/api/crm/relationships` must be updated as part of V1 production wiring. The legacy path is not retained — there is no V1 customer using it. (Tracked in Appendix H.)
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/version` | GET | Returns `{version, buildId}` for deploy detection |
+| `/api/tomo/orchestrate` | POST (streaming) | Unified Tomo agent endpoint with surface-gated tools |
+| `/api/tomo/chat` | POST | Legacy chat endpoint (deprecate in V1.5; alias to orchestrate) |
+| `/api/tomo/drawer-chat` | POST | Drawer-surface variant (alias to orchestrate with `surface=drawer`) |
+| `/api/tomo/filter-relationships` | POST | Tool-call entry for filter_relationships (kept for direct call path) |
+| ~~`/api/crm/relationships`~~ → `/api/lp-contacts` | GET, POST, PATCH | LP CRUD, filter-aware list (renamed from mock) |
+| `/api/email` | POST | Outbound send via connected provider |
+| `/api/onboarding/complete` | POST | Mark onboarding completion |
+| `/api/cron/daily-brief` | POST | Vercel Cron / EventBridge trigger for daily brief delivery |
+
+**New routes for V1:**
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/auth/session` | GET | Resolve current Firebase session to TOMO user + workspace |
+| `/api/auth/account/delete` | POST | Initiate account-deletion flow |
+| `/api/workspaces` | POST, GET | Create / list workspaces |
+| `/api/workspaces/{id}` | GET, PATCH | Workspace details |
+| `/api/workspaces/{id}/members` | GET, POST | List / invite member |
+| `/api/workspaces/{id}/members/{userId}` | PATCH, DELETE | Update / remove member |
+| `/api/workspaces/{id}/transfer` | POST | Manual workspace transfer (TOMO-staff-only endpoint, audited) |
+| `/api/oauth/{provider}/start` | GET | Initiate per-user OAuth flow (microsoft, google, slack, affinity) |
+| `/api/oauth/{provider}/callback` | GET | OAuth redirect handler |
+| `/api/oauth/{provider}/disconnect` | POST | Revoke and remove |
+| `/api/integrations/status` | GET | Per-source `crm_sync_status` for the workspace |
+| `/api/csv-import` | POST (multipart) | Upload CSV |
+| `/api/csv-import/{id}/mapping` | GET, PATCH | Get / confirm column mapping |
+| `/api/csv-import/{id}/dedupe-decisions` | GET, POST | Review queue |
+| `/api/csv-import/{id}/commit` | POST | Finalise import |
+| `/api/lp-contacts/{id}` | GET, PATCH | LP detail |
+| `/api/lp-contacts/{id}/notes` | GET, POST | Notes |
+| `/api/lp-contacts/{id}/timeline` | GET | Activity timeline |
+| `/api/lp-state/{id}` | GET | Per-LP signal state |
+| `/api/insights/capital` | GET | Metric 1 |
+| `/api/insights/day-1-gap` | GET | Metric 2 with trend |
+| `/api/insights/moveability` | GET | Metric 3 |
+| `/api/insights/concentration` | GET | Metric 4 |
+| `/api/insights/time-recovered` | GET | Metric 5 |
+| `/api/insights/execution-health` | GET | Metric 6 a/b/c |
+| `/api/insights/pipeline-intel` | GET | Metric 7, 8 |
+| `/api/insights/raise-momentum` | GET | Metric 9 a/b |
+| `/api/insights/close-list` | GET | Metric 10 |
+| `/api/workflows` | GET, POST | List, create workflow |
+| `/api/workflows/{id}` | GET, PATCH | Workflow detail |
+| `/api/workflows/{id}/steps` | GET, POST, PATCH | Step CRUD |
+| `/api/workflows/{id}/run` | POST | Trigger run on a list |
+| `/api/workflow-runs/{id}` | GET | Run detail |
+| `/api/reminders` | GET | List reminders for current user |
+| `/api/reminders/{id}` | PATCH | Snooze / resolve / dismiss |
+| `/api/meetings/{id}/prep` | GET | Meeting prep brief |
+| `/api/meetings/{id}/recap` | GET | Recap (latest path-priority result) |
+| `/api/meetings/{id}/post-meeting` | POST | Submit post-meeting capture form |
+| `/api/action-log` | GET | Filter / search action log entries |
+| `/api/activity-log` | GET | Filter / search activity log entries |
+| `/api/search` | GET | Global search across LP / org / brief / workflow / material / note |
+| `/api/notifications/preferences` | GET, PATCH | User preferences for notifications |
+| `/api/billing/portal-session` | POST | Stripe Customer Portal URL |
+| `/api/webhooks/microsoft-graph` | POST | Inbound webhook from Graph subscriptions |
+| `/api/webhooks/google-calendar` | POST | Inbound webhook from Calendar push |
+| `/api/webhooks/google-pubsub` | POST | Inbound from Gmail watch (Pub/Sub) |
+| `/api/webhooks/affinity` | POST | Inbound from Affinity v1 webhooks |
+| `/api/webhooks/slack` | POST | Slack interactivity (V1.5; not used in V1) |
+| `/api/webhooks/stripe` | POST | Stripe events |
+| `/api/webhooks/email-delivery` | POST | Postmark / SES delivery events |
+
+**Background workers (not Next.js routes):**
+
+| Worker | Trigger | Purpose |
+|---|---|---|
+| Signal nightly batch | EventBridge cron 02:00 workspace-local | §3.5 |
+| Metrics nightly batch | EventBridge cron 02:30 workspace-local | §3.6 |
+| Daily brief delivery | EventBridge cron user-local | §3.8 |
+| Email backfill workers | Onboarding event + ongoing | §3.3 |
+| Token refresh | EventBridge cron 5-minute | §3.1 |
+| Webhook resubscribe | EventBridge cron 12-hour | §3.3 |
+| Soft-delete purge | EventBridge cron daily | §6.4 |
+| Transcript ingestion | Calendar event end | §3.13 |
+| Recap fallback (TOMO LLM) | 10-minute timeout after meeting end | §3.13 |
+| Re-engagement hot path | New inbound `lp_interactions` row | §3.5 |
+
+**Common request/response conventions.**
+
+- All requests: `Authorization: Bearer <firebase-id-token>`, `Content-Type: application/json`.
+- All responses: JSON with `{data, meta}` envelope; errors: `{error: {code, message, details}}` with stable error codes.
+- HTTP status codes used per RFC: `2xx` success, `4xx` client errors, `5xx` server errors.
+- Pagination: cursor-based via `?cursor=<opaque>` and `?limit=N` (max 100).
+- Idempotency: mutation routes accept optional `Idempotency-Key` header; webhook handlers de-dupe on provider message id.
+- Rate limiting: per-user, per-route. Returns `429` with `Retry-After` when limits exceeded.
+
+**Acceptance criteria.**
+
+- AC-4.2.1 — Every external API call is rate-limited and retried with exponential backoff on `429` and `5xx`.
+- AC-4.2.2 — Every webhook handler verifies the inbound signature before processing.
+- AC-4.2.3 — Every internal route enforces Firebase auth + RLS workspace scoping.
+- AC-4.2.4 — Disconnecting a Microsoft Graph integration in Settings revokes the subscription on Microsoft's side within 30 seconds.
+- AC-4.2.5 — A Stripe `customer.subscription.deleted` webhook updates `workspaces.subscription_status='canceled'` and pauses ingestion workers within 1 minute.
+
+---
 
 ### 4.3. Hardware interfaces
 
-[TODO — none beyond browser hardware. Mobile camera/microphone not used in V1.]
+**Description.** V1 has no direct hardware dependencies beyond a standard browser-capable client device (laptop, desktop, tablet, smartphone). Specifically:
+
+- **Camera, microphone:** not used. Meeting transcripts come from MS Teams / Google Meet via API; TOMO does not record audio or video itself.
+- **GPS / location:** not used.
+- **Biometric sensors:** not used. Sign-in uses Firebase Auth; passkeys are deferred (V1.5).
+- **Printers:** not used. PDF export of selected views (Insights, briefs) is V1.5.
+- **Storage media:** browser local storage is used only for non-sensitive UI state (pane width, last-seen daily brief date) — never for tokens, never for LP data.
+
+**Acceptance criteria.**
+
+- AC-4.3.1 — A new install requires no native client component and no permission prompt for camera, microphone, or location.
+
+---
 
 ### 4.4. Communications interfaces
 
-[TODO — HTTPS only. TLS 1.2+. WebSocket for streaming Tomo agent. Webhooks (Microsoft Graph subscriptions, Google Pub/Sub, Affinity, Slack, Stripe). Inbound webhook signature verification.]
+**Description.** V1 communicates exclusively over HTTPS / TLS. Streaming uses Server-Sent Events (preferred over WebSockets where Vercel AI SDK already abstracts it). Webhook deliveries are signed by the provider and verified by TOMO.
+
+**Protocols.**
+
+- **HTTP/1.1 and HTTP/2 over TLS 1.2+.** TLS 1.3 preferred where the client supports it. Plain HTTP redirects to HTTPS at the edge (Vercel default).
+- **Streaming.** Vercel AI SDK uses `text/event-stream` (Server-Sent Events) for Tomo agent streaming. WebSockets are not used in V1.
+- **Webhook signature verification.**
+  - Microsoft Graph: `clientState` token comparison plus optional certificate-based proof per Microsoft's docs.
+  - Google Calendar push: `X-Goog-Channel-Token` and `X-Goog-Resource-State` validation.
+  - Google Pub/Sub: JWT signature verification on the message envelope.
+  - Affinity: shared-secret HMAC of the request body (per Affinity webhook docs).
+  - Stripe: `Stripe-Signature` header HMAC verification with the webhook secret.
+  - Slack: `X-Slack-Signature` HMAC verification.
+  - Postmark / SES: provider-specific signing.
+- **CORS.** API routes restrict CORS to the production domain plus preview deploys. No wildcard origins.
+- **CSRF.** State-changing routes that don't already require an `Authorization` header (none in V1) would require a CSRF token; since all routes require Bearer auth, CSRF is not a vector.
+- **Email envelope.** SPF / DKIM / DMARC configured for the sending domain. DMARC `p=quarantine` minimum, `p=reject` after 90 days of clean monitoring.
+
+**Network policy.**
+
+- Outbound calls from Vercel functions and AWS workers go to the documented external endpoints listed in §4.2. No other outbound destinations.
+- Inbound connections accepted only via Vercel edge (web + API) and AWS API Gateway / Lambda function URLs (workers). All other ports closed.
+
+**Acceptance criteria.**
+
+- AC-4.4.1 — TLS handshake against `https://{tomo}` rejects TLS 1.0 and TLS 1.1.
+- AC-4.4.2 — Every inbound webhook with an invalid or missing signature returns `401` and is not processed.
+- AC-4.4.3 — A Tomo streaming response continues to render after a network interruption of < 2 seconds (SSE auto-reconnect).
 
 ---
 
 ## 5. Non-Functional Requirements
 
-[STAGED — full draft to be added in stage 2. Consolidated below; details to follow.]
+This section specifies the non-functional commitments for V1: performance, reliability, security, privacy, compliance, scalability, usability/accessibility, observability, retention, and internationalisation. Every NFR has a target, an implementation approach, and acceptance criteria. The section is consciously MVP-grade — institutional-acceptable, not over-engineered. Per the V1 Final risk register, over-engineering is a real V1 risk; the targets below reflect the *minimum* posture that clears institutional security diligence and gives FC GPs confidence, not the maximum any cloud platform can offer.
+
+---
 
 ### 5.1. Performance
 
-Headline V1 SLOs (consolidated from source documents and standard practice):
+**Description.** V1 performance targets are split into three categories: (a) interactive UX (page loads, agent latency, API responses); (b) ingestion and computation (sync, batch jobs); (c) event-driven hot paths (re-engagement, daily brief delivery).
+
+**Targets — interactive UX (per session, P75 unless stated):**
+
+| SLO | Target | Source / rationale |
+|---|---|---|
+| Page TTFB | ≤ 600 ms | Standard |
+| Page LCP (Largest Contentful Paint) | ≤ 2.5 s | Web Vitals |
+| Page INP (Interaction to Next Paint) | ≤ 200 ms | Web Vitals |
+| Page CLS (Cumulative Layout Shift) | ≤ 0.1 | Web Vitals |
+| Insights page load (500 LPs) | ≤ 2 s | §3.6 |
+| Relationships list load (500 LPs) | ≤ 1.5 s | §3.10 |
+| Pipeline list filter response | ≤ 600 ms | §3.11 |
+| Search latency (P95) | ≤ 400 ms | §3.17 |
+| Tomo agent first-token latency | ≤ 1.5 s | Streaming LLM standard |
+| Tomo agent response stream rate | ≥ 30 tokens/s P50 | UX read pace |
+| API route latency P95 (excluding LLM and ingestion routes) | ≤ 800 ms | Standard |
+| API route latency P99 | ≤ 2 s | Standard |
+| Draft generation (single LP, full context) | ≤ 8 s end-to-end | §3.9 |
+| Daily Brief modal open | ≤ 500 ms after login | §3.8 |
+
+**Targets — ingestion and computation:**
 
 | SLO | Target | Source |
 |---|---|---|
-| Onboarding to first value (Day 1 Gap visible) | ≤ 2 minutes from CSV upload + email connect | Document B Screen 6 / Tomo email ingestion strategy |
-| 12-month full-content email backfill | ≤ 30 minutes background | Email ingestion strategy |
-| 13–36 month metadata backfill | ≤ 2 hours background | Email ingestion strategy |
-| Re-engagement event detection (LP inbound after 45+ days silence) | ≤ 1 hour from email arrival to Action Drawer card | Section 8 §8.3 Signal 2 |
-| Follow-up draft availability post-meeting | ≤ 30 minutes after meeting end | Section 7.3 Geoff V1 / F3 |
-| Page TTFB (P75) | ≤ 600 ms | Standard |
-| Page LCP (P75) | ≤ 2.5 s | Web Vitals |
-| Tomo agent first-token latency (P75) | ≤ 1.5 s | Standard for streaming LLM |
-| Insights page load with 500 LPs | ≤ 2 s | Standard |
-| API route latency (P95) | ≤ 800 ms | Standard |
+| Onboarding Phase A — 90-day full-content sync | ≤ 2 minutes from CSV upload + email connect | Document B Screen 6 |
+| Onboarding Phase B — months 4–12 full-content sync | ≤ 30 min background | Email ingestion strategy |
+| Onboarding Phase C — months 13–36 metadata sync | ≤ 2 h background | Email ingestion strategy |
+| Tone calibration | ≤ 90 s during Phase B | Document B Screen 5 |
+| Day 1 Gap computation (after Phase A complete) | ≤ 30 s | Document B Screen 6 |
+| Follow-up draft generation post-meeting | ≤ 30 min after meeting end | Section 7.3 F3 |
+| Meeting recap fallback (TOMO LLM) for 30-min transcript | ≤ 60 s | §3.13 |
+| Signal nightly batch (500 LPs) | ≤ 5 min | §3.5 |
+| Metrics nightly batch (500 LPs) | ≤ 2 min | §3.6 |
+| Daily snapshot append | ≤ 30 s | §3.6 |
+| Daily Brief assembly + delivery (per workspace) | ≤ 60 s after scheduled trigger | §3.8 |
 
-[TODO — flesh out remaining performance budget, signal batch run window, metric snapshot run window, queue depth tolerances.]
+**Targets — event-driven hot paths:**
+
+| SLO | Target | Source |
+|---|---|---|
+| Re-engagement event detection (LP inbound after 45+ days) | ≤ 1 h from email arrival to Action Drawer card | Section 8 §8.3 Signal 2 |
+| Webhook delivery → row written | ≤ 30 s P95 | Standard |
+| Polling fallback cadence (when webhook degraded) | 30 min | Per O-9 |
+
+**Implementation notes.**
+
+- **Critical path budget.** The Insights page combines ten metrics; serve from `daily_pipeline_summary` plus aggregations cached in materialised views (Postgres) where the join cost would otherwise breach 2s. Materialised views refreshed at end of nightly batch.
+- **N+1 hygiene.** All list endpoints use `IN`-batched fetches and explicit JSON aggregation. Every endpoint that touches more than one table runs through a query reviewer in PR.
+- **LLM latency.** Vertex AI Gemini cold-start is sub-second; first-token latency dominated by prompt size. Drafts trim historical context to last 5 interactions plus tone-profile excerpt to keep prompts under ~6k tokens.
+- **Streaming.** Tomo agent uses Server-Sent Events (Vercel AI SDK) — first-token sets the perception of latency.
+- **Background work isolation.** The signal batch, metric batch, and ingestion workers run on AWS infrastructure separate from the Vercel-hosted web/API. No batch job competes with interactive request capacity.
+- **Queue tolerance.** SQS queue depth alarms at >1,000 deferred tasks per workspace (re-engagement, recap fallback, batch fan-out); ECS autoscale triggers before the alarm.
+
+**Acceptance criteria.**
+
+- AC-5.1.1 — Synthetic monitoring (Pingdom or equivalent) confirms LCP P75 ≤ 2.5s on Today, Relationships, Insights for a representative test workspace.
+- AC-5.1.2 — Re-engagement event in a synthetic test (mock inbound after 50 days silence) surfaces an Action Drawer card within 1 hour P95.
+- AC-5.1.3 — Signal nightly batch completes within 5 minutes for a 500-LP workspace, observed across 7 consecutive nightly runs.
+- AC-5.1.4 — Tomo agent streaming first-token latency P75 ≤ 1.5s observed over 24 hours of production traffic.
+
+---
 
 ### 5.2. Reliability and availability
 
-[TODO — uptime SLO 99.5% V1 (institutional-acceptable; not 99.99%). RTO 4h, RPO 1h. Daily Postgres backups + PITR 7 days. Background worker idempotency. Webhook replay tolerance. Sync staleness banner.]
+**Description.** V1 targets institutional-acceptable reliability — sufficient for a fundraising team's daily workflow, with documented degradation paths when subsystems fail. V1 does not target five-nines uptime; that's V2+.
+
+**Targets.**
+
+| Target | Value | Notes |
+|---|---|---|
+| Uptime SLO (web + API) | 99.5% / month | ~3.6 hours downtime/month allowed |
+| Uptime SLO (background ingestion) | 99.0% / month | Tolerated as long as catch-up runs successfully |
+| RTO (recovery time objective) | ≤ 4 hours | From total Supabase or Vercel outage |
+| RPO (recovery point objective) | ≤ 1 hour | Worst-case data loss from failure |
+| Database backup retention | Daily snapshot 30 days; PITR 7 days | Supabase Pro default |
+| Worker idempotency | All workers idempotent | Required by retry semantics |
+| Webhook replay tolerance | Exact-once via provider message id de-dup | Per §6.2.3 unique constraints |
+| Sync staleness threshold | Banner after 3 consecutive failed delta polls | §3.3 |
+| Multi-AZ posture | Supabase managed multi-AZ; AWS workers in two AZs minimum | V1 region: us-east-1 |
+| Disaster recovery exercise cadence | Quarterly tabletop, annual restore drill | SOC 2 evidence |
+
+**Implementation notes.**
+
+- **Stateless workers.** All AWS workers are stateless; scale-up restores capacity without coordination. Failed jobs go to a dead-letter queue inspected daily.
+- **Database.** Supabase Pro provides daily snapshot + 7-day PITR. Annual full-restore drill verifies recovery at scale; quarterly tabletop walks the runbook without touching production.
+- **Vercel.** Production hosting on Vercel Pro; preview deploys per branch. Vercel handles edge availability and CDN.
+- **Worker idempotency.** Every worker reads its target row's current state, computes the change, and applies with optimistic concurrency (`UPDATE ... WHERE updated_at = $known_value`). Failed updates trigger retry.
+- **Webhook deduplication.** Inbound webhooks de-dupe on `provider_internet_message_id` (email), `provider_event_id` (calendar), `subscription_id` + delivery id. Duplicates are ignored without error.
+- **Degradation paths.**
+  - Email/cal sync down → Today + Pipeline show staleness banner; signals continue to compute against last-known data.
+  - LLM provider down → Tomo agent shows "Tomo is busy"; drafts surfaceable from cached pre-generated where applicable; non-blocking for browse/read paths.
+  - Slack down → Daily Brief delivers via email + in-app; failed Slack send queued for retry.
+  - Stripe webhook delayed → subscription state catches up on next webhook; no immediate impact on access (grace period).
+- **Status page.** Public status page (`status.tomo.com` or equivalent) with subsystem-level health, automated from internal observability.
+
+**Acceptance criteria.**
+
+- AC-5.2.1 — Quarterly DR tabletop produces a signed-off runbook update.
+- AC-5.2.2 — Annual full restore from PITR completes within 4 hours, verified end-to-end.
+- AC-5.2.3 — Inbound webhook duplicate (same `provider_internet_message_id` twice) does not produce a duplicate `lp_interactions` row.
+- AC-5.2.4 — A simulated Vertex AI outage (API returning 503 for 5 minutes) surfaces "Tomo is busy" inline and does not break Today, Relationships, Pipeline, or Insights.
+
+---
 
 ### 5.3. Security
 
-[TODO — encryption at rest (Supabase default + Firebase + S3 SSE-KMS); encryption in transit (TLS 1.2+ everywhere); secrets management (AWS Secrets Manager / Vercel encrypted env vars; no secrets in browser); per-user OAuth tokens encrypted at rest with envelope encryption; row-level security in Supabase; rate limiting on public routes; CSRF tokens; input validation via Zod; audit logging (auth, integrations, CRM mutations, agent tool calls); pen test pre-GA.]
+**Description.** V1 security posture is sufficient for SOC 2 Type 1 and CASA Tier 2 (per §5.5). Layered controls across encryption, secrets management, authentication, authorisation, input validation, rate limiting, audit logging, and pen-test verification.
+
+**Encryption.**
+
+- **At rest.**
+  - Supabase Postgres: AES-256 at rest on managed disks (default).
+  - Supabase Storage (S3-backed): SSE-KMS via Supabase-managed key.
+  - AWS S3 (HTML body archives, CSV originals): SSE-KMS with TOMO-owned KMS key.
+  - Firebase Authentication: Google-managed encryption (default).
+  - **Sensitive fields with envelope encryption** via Supabase Vault (KMS-backed): `oauth_tokens.access_token_encrypted`, `oauth_tokens.refresh_token_encrypted`, `slack_workspace_connections.bot_access_token_encrypted`. Plaintext never touches application logs.
+- **In transit.** TLS 1.2+ on every external surface (per §4.4). HTTP redirects to HTTPS at the edge.
+- **Backups.** Encrypted at rest; backup integrity verified during quarterly restore drill.
+
+**Secrets management.**
+
+- **Production secrets** (database connection strings, third-party API keys, OAuth client secrets, KMS key ids) stored in **AWS Secrets Manager** for AWS workers; in **Vercel encrypted environment variables** for the web/API tier. Rotated per provider guidance (Stripe annual; Slack signing secret on rotation events; Microsoft/Google OAuth client secrets every 12 months).
+- **No secrets in the browser.** Every API call to a provider goes through TOMO's API tier or a worker; the browser holds only the Firebase ID token and short-lived signed URLs to S3 where required.
+- **No secrets in logs.** Structured logging strips known secret-like keys (token, secret, key, password, bearer). Pre-commit hook scans for accidental secret commits.
+
+**Authentication and session.**
+
+- **Firebase Authentication** for sign-in. Three providers in V1: email + password, Google, Microsoft. MFA via Firebase TOTP enabled for any user with `users.is_tomo_staff=true`; encouraged but not enforced for customer users in V1 (V1.5 will require for `team` plan).
+- **Session.** Firebase ID tokens; short-lived (1 hour) with refresh. No TOMO-managed session cookie.
+- **OAuth (data sources).** Per-user OAuth grants for Microsoft Graph / Google Workspace / Slack / Affinity. Tokens encrypted at rest. Refreshed before expiry by background worker. Revocable from Settings → Integrations and from upstream provider — both paths trigger TOMO's disconnect handler.
+
+**Authorisation.**
+
+- **Workspace isolation.** Every workspace-scoped table protected by Supabase Row-Level Security with `workspace_id = current_setting('app.workspace_id')::uuid`. The application layer sets the setting on every request after resolving Firebase auth. Cross-workspace reads are impossible at the database layer regardless of API bugs.
+- **Workspace membership.** Hard-capped at 3 active members in V1 (per §3.1). All members have identical permissions in V1 (per §1.2). Owner is privileged for billing + workspace transfer only.
+- **TOMO staff access.** No in-product impersonation in V1 (per §1.2 and Appendix H O-13). Staff data access via internal ops dashboard or admin SQL is logged in `data_access_log` with purpose, tables, and record ids.
+
+**Input validation.**
+
+- **Zod schemas** on every API request body and query param. Rejects on invalid input with `400 Bad Request` and stable error code.
+- **No raw SQL from user input.** All Postgres queries via parameterised `pg` client or Supabase client (which handles parameterisation).
+- **File uploads** (CSV imports, materials) limited by size (≤ 25 MB CSV, ≤ 100 MB materials) and content-type, scanned with magic-byte verification.
+
+**Rate limiting.**
+
+- Per-user per-route rate limits enforced at the API tier (Redis-backed token bucket, or Vercel's edge rate limiting). Limits scaled to typical workflow patterns (e.g. Tomo agent: 30 messages/min/user; CSV import: 5/hour/workspace).
+- LLM call rate limits per workspace to prevent cost runaway (configurable; default 1,000 generations/day/workspace).
+
+**Audit logging.**
+
+- `auth_events` for all sign-in, sign-out, OAuth grant/refresh/revoke, MFA challenges (per §6.2.9).
+- `activity_log` for all CRM mutations, workspace member changes, integration connect/disconnect, fund target changes (per §3.15).
+- `agent_tool_calls` for every Tomo tool invocation (per §3.14).
+- `data_access_log` for every TOMO-staff customer-data read.
+- All audit tables are append-only with retention indefinitely (V3 dataset).
+
+**Application security headers.**
+
+- **HSTS:** `max-age=31536000; includeSubDomains; preload`.
+- **CSP:** strict policy with allowlisted Vercel Analytics, Sentry, Vertex AI streaming endpoint, Stripe.js, Slack OAuth, Postmark/SES tracking pixels (where used).
+- **X-Content-Type-Options:** `nosniff`.
+- **X-Frame-Options:** `DENY`.
+- **Referrer-Policy:** `strict-origin-when-cross-origin`.
+- **Permissions-Policy:** disable camera, microphone, geolocation, payment.
+- **CSRF.** Bearer-auth on all mutation routes makes CSRF moot; cookie-based sessions are not used.
+
+**Vulnerability management.**
+
+- **Dependency scanning.** GitHub Dependabot + npm audit weekly; high/critical advisories addressed within 7 days.
+- **Container scanning.** AWS ECR image scanning on every push.
+- **Static analysis.** Semgrep + ESLint security rules in CI.
+- **Penetration test.** External pen test against staging by an accredited firm before first paying customer outside FC. Findings tracked to closure. CASA Tier 2 third-party pen test runs on the same staging build (per §5.5).
+- **Vulnerability disclosure policy.** Public `/.well-known/security.txt` and `security@tomo.com` mailbox monitored 24/5.
+
+**Acceptance criteria.**
+
+- AC-5.3.1 — A row inserted into `lp_contacts` with workspace A is invisible to a user in workspace B even when the API attempts the read with a forged `workspace_id`.
+- AC-5.3.2 — `oauth_tokens.access_token_encrypted` is unreadable as plaintext via direct Postgres select; decryption only succeeds via the Vault helper with the application service role.
+- AC-5.3.3 — A request to `/api/lp-contacts` with no `Authorization` header returns `401`.
+- AC-5.3.4 — A CSV upload with disguised executable content (correct extension, wrong magic bytes) is rejected with a clear error.
+- AC-5.3.5 — Pen test report shows zero High or Critical findings open at GA.
+- AC-5.3.6 — Static analysis CI gate blocks merges with new High or Critical findings.
+
+---
 
 ### 5.4. Privacy and data handling
 
-[TODO — no-training-on-data commitment; LLM provider (OpenAI via Vercel AI SDK) configured with zero-retention; PII inventory; subject access request flow; deletion flow (account deletion → 30-day soft delete → hard delete); consent capture during onboarding; OOO detection; user-initiated re-sync.]
+**Description.** TOMO ingests and processes large amounts of personal data (LP contact details, email content, calendar attendees, meeting transcripts). Privacy posture is consequential — the institutional buyer will diligence it. V1 commitments: no training on customer data, zero LLM retention, transparent sub-processor list, deletion on request, OOO and consent handling.
+
+**No-training-on-data commitment.**
+
+- Vertex AI Gemini (V1 LLM provider per §4.2.6) does not use customer prompts/responses to train Google's models. This is contractual under Vertex AI's Generative AI service terms.
+- TOMO does not internally train models on customer data in V1. Any V3 model training (per Section 8 §8.10) requires explicit consent and a separate DPA addendum.
+- This commitment is published on the public website and in the customer-facing DPA template.
+
+**Zero retention at LLM provider.**
+
+- Vertex AI default behaviour: prompt and response content is processed in-memory and not retained in Google Cloud logs (per Vertex AI data governance).
+- Verified during the pen test: synthetic test prompts containing unique strings should not appear in any Google Cloud audit log retrievable by TOMO operators.
+
+**PII inventory.**
+
+- The application maintains a documented PII inventory mapping each personal-data field to:
+  - Source (where it came from — CSV, sync, GP entry).
+  - Purpose (which V1 capability uses it).
+  - Retention rule (per §6.4).
+  - Sub-processor exposure (which third parties see it).
+- Inventory is part of the SOC 2 evidence pack and the GDPR Article 30 record of processing activities.
+
+**Data subject rights.**
+
+- **Right of access.** A workspace member can export their workspace data via Settings → Account → Export. The export contains JSON of all workspace-scoped tables they have permission to read, plus signed download URLs for material files. Generation runs as a background job; user notified by email when ready (within 24 hours).
+- **Right of rectification.** GP-edited fields are mutable through the standard UI; corrections flow naturally.
+- **Right of erasure.** Account deletion (per §3.1) initiates a 30-day soft-delete; on confirmation or expiry, hard-delete runs. Append-only audit data preserves event records but scrubs PII (email replaced with hash).
+- **Right of portability.** The export fulfils portability; format is documented JSON, easily ingestible by other tools.
+- **Right to object.** Any user can disconnect any data-source integration in Settings → Integrations; future ingestion stops; historical data is retained until account deletion or explicit purge request.
+
+**Sub-processor list.**
+
+V1 sub-processors disclosed in the DPA and on a public sub-processor page:
+
+| Sub-processor | Purpose | Data exposed |
+|---|---|---|
+| Supabase | Database, storage, auth-adjacent | All workspace data |
+| Google Cloud (Firebase Auth) | Sign-in | Email, sign-in metadata |
+| Google Cloud (Vertex AI) | LLM inference | Prompts and responses (zero retention) |
+| Google Cloud (Gmail/Calendar/Meet APIs) | Data source | The user's mail/cal/meet data — already Google-resident |
+| Microsoft (Graph API) | Data source | The user's mail/cal/Teams data — already Microsoft-resident |
+| Vercel | Hosting | Request/response transit (TLS) |
+| AWS | Background workers, storage, secrets | All workspace data |
+| Postmark or AWS SES | Transactional email delivery | Recipient email + brief content |
+| Slack | Daily brief delivery | Brief content (when Slack channel used) |
+| Stripe | Billing | Customer email, billing address |
+| OpenAI | (V1 mock only — not used in V1 production) | n/a |
+| Sentry | Error monitoring | Stack traces (PII-stripped) |
+| PostHog or Vercel Analytics | Product analytics | Anonymised event data, workspace ids |
+| Affinity | Optional CRM data source | Affinity-resident data per GP grant |
+
+Customer notified 30 days in advance of any sub-processor addition.
+
+**Consent capture.**
+
+- Onboarding screens 1 and 2 include the legal-acceptance affordance for Terms and Privacy Policy. Acceptance recorded in `auth_events`.
+- OAuth consent for data sources is granted via the upstream provider's standard consent screen; TOMO never brokers the consent itself.
+- Per-user notification preferences are explicit opt-in; daily brief defaults to in-app + email but Slack defaults off.
+
+**OOO handling.**
+
+- Out-of-office replies detected and excluded from meaningful-touch (per §3.3 BR-3.3.4). Detected OOO is not used to train any TOMO model and is not surfaced in signals.
+
+**User-initiated re-sync.**
+
+- Settings → Integrations exposes a "Force re-sync" affordance per data source. Triggers a fresh delta poll plus, optionally, a backfill from the user-selected start date (within the 36-month window).
+
+**Acceptance criteria.**
+
+- AC-5.4.1 — A workspace member triggering Account Export receives a download link by email within 24 hours containing the documented JSON shape.
+- AC-5.4.2 — Account deletion confirmed within the 30-day window scrubs PII from `users` while leaving `lp_signal_log` and `tomo_action_log` rows with NULLed user references.
+- AC-5.4.3 — The public sub-processor page lists every entity in the table above with descriptions matching the DPA.
+- AC-5.4.4 — A pen-test prompt with unique signature does not appear in TOMO's Google Cloud audit logs (zero retention verified).
+- AC-5.4.5 — Disconnecting Microsoft Graph stops new ingestion within 30 seconds and surfaces a banner; existing data remains until explicit purge or account deletion.
+
+---
 
 ### 5.5. Compliance
 
-V1 ships with two compliance commitments:
+**Description.** V1 ships with two attestation commitments — SOC 2 Type 1 and CASA Tier 2 — plus baseline GDPR / CCPA controls. These are non-negotiable per the V1 Final pillar 9. Higher-tier attestations (SOC 2 Type 2, ISO 27001, HIPAA, FedRAMP) are not in V1.
 
-- **SOC 2 Type 1** — completed before first paying customer outside FC. Controls covering security, availability, confidentiality. Evidence: policies, runbooks, access reviews, change management, incident response, encryption controls. External auditor.
-- **CASA Tier 2** — Google's Cloud Application Security Assessment Tier 2 (third-party penetration test against the OWASP MASVS / ASVS Level 2 controls). Required for Google OAuth scopes that carry sensitive or restricted classification (`gmail.modify`, `meetings.space.readonly`, `drive.meet.readonly`).
+**SOC 2 Type 1.**
 
-GDPR and CCPA are also in scope at MVP-baseline (DPA template, sub-processor list, data residency disclosure, deletion request flow). Full HIPAA / FedRAMP not in scope V1.
+- **Trust services criteria covered:** Security, Availability, Confidentiality.
+- **Privacy and Processing Integrity** are added in V1.5 / SOC 2 Type 2.
+- **Auditor.** External CPA firm (e.g. Vanta-partnered auditor or comparable). Selected before V1 ship.
+- **Evidence pack.** Policies (information security, access management, change management, incident response, business continuity, vendor management, data classification, encryption, secure SDLC). Runbooks. Access reviews (quarterly). Change-management records (every PR with security relevance). Incident drill records. Backup-and-restore drill records. Vulnerability scan reports. Pen-test report.
+- **Timeline target.** SOC 2 Type 1 attestation report available before first paying customer outside Founding Circle.
 
-[TODO — controls inventory, evidence list, audit timeline, mapping of SRS sections to control families.]
+**CASA Tier 2.**
+
+- **Required for:** Google OAuth scopes that carry sensitive or restricted classification — `gmail.modify`, `gmail.send`, `meetings.space.readonly`, `drive.meet.readonly`, `calendar`. Without CASA Tier 2 verification, Google rate-limits or revokes access at the OAuth-app level.
+- **Process.** Submit OAuth app to Google CASA program; engage an accredited Tier 2 assessor; assessor performs technical review against the CASA Tier 2 controls (a subset of OWASP MASVS / ASVS Level 2, plus Google-specific data-handling controls); remediation; final letter of validation (LOV).
+- **Timeline target.** Verification and LOV in hand before V1 GA.
+- **Re-verification.** Annual re-attestation required by Google.
+
+**GDPR (EU/UK).**
+
+- Lawful basis for processing: legitimate interests (LP relationship management) + contract performance (delivering the TOMO service) — articulated in the privacy policy.
+- DPA template signed by every paying customer before ingestion begins.
+- Data Protection Officer designated (V1: external DPO via service; V1.5: in-house when team ≥ 10).
+- Data residency: V1 hosts in us-east-1; EU residency available in V1.5 via eu-west-1.
+- DPIA (Data Protection Impact Assessment) drafted for the LP-relationship-management processing.
+- Subject rights handled per §5.4.
+
+**CCPA / CPRA (California).**
+
+- Privacy notice on the public website.
+- "Do Not Sell or Share" link (vacuous given TOMO does not sell data; included for compliance).
+- Subject access and deletion handled per §5.4.
+
+**Out of scope for V1.**
+
+- SOC 2 Type 2 — V1.5 (requires 6 months of operating evidence after Type 1).
+- ISO 27001 — V2.
+- HIPAA — not on roadmap.
+- FedRAMP — not on roadmap.
+- PCI-DSS — N/A (no card data handled by TOMO; Stripe Customer Portal isolates).
+
+**Mapping of SRS sections to control families** (illustrative; full mapping in the audit prep doc):
+
+| Control family | SRS sections |
+|---|---|
+| Access management | §3.1, §3.16, §5.3 (auth, authorisation), §6.2.1 |
+| Change management | §7.1 (stack), §5.3 (CI gates) |
+| Encryption | §5.3, §4.4, §6.2 (oauth_tokens, slack tokens) |
+| Audit logging | §3.15, §6.2.9, §3.14 |
+| Vendor management | §5.4 (sub-processors), §1.2 (out-of-scope) |
+| Backup and restore | §5.2, §6.4 |
+| Incident response | §5.2 (degradation paths), §5.8 (alerting) |
+| Vulnerability management | §5.3 (dependency scanning, pen test) |
+
+**Acceptance criteria.**
+
+- AC-5.5.1 — SOC 2 Type 1 attestation report from accredited auditor obtained before first GA customer.
+- AC-5.5.2 — CASA Tier 2 LOV obtained before V1 GA; documented in the Google OAuth app.
+- AC-5.5.3 — DPA template available for customer signature; signed-DPA storage in the contract management tool.
+- AC-5.5.4 — Sub-processor page published and DPA-linked.
+- AC-5.5.5 — Quarterly access review documented and signed off.
+
+---
 
 ### 5.6. Scalability
 
-[TODO — V1 target 100 workspaces × 3 users × 500 LPs = 150,000 LP records and ~2M email/calendar events ingested per month. Supabase Pro covers this comfortably. Worker scaling via SQS queue depth + ECS autoscaling. Plan upgrade path to Supabase Team / dedicated cluster at 1,000 workspaces.]
+**Description.** V1 scales for the Founding Circle plus early GA traffic. Capacity targets reflect realistic growth, not aspirational.
+
+**Targets.**
+
+| Dimension | V1 capacity | V1.5 expansion path |
+|---|---|---|
+| Workspaces | 100 active | 1,000 |
+| Users per workspace | 3 (hard cap) | Same hard cap V1; V2 raises |
+| LPs per workspace | 500 typical, 2,000 ceiling | Same |
+| Ingested email/cal events per workspace per month | ~20,000 | ~50,000 |
+| Background job throughput | 50 concurrent ECS tasks | 500 |
+| Postgres connections | Supabase Pro pool (60–200) | Supabase Team |
+| LLM calls per workspace per day | 1,000 (rate-limited) | Configurable |
+
+**Implementation notes.**
+
+- **Database.** Supabase Pro covers V1 capacity. Known scaling levers: read replicas (V1.5), connection pooling already on PgBouncer, materialised views for hot aggregations.
+- **Workers.** AWS ECS Fargate with SQS queues. Autoscale on queue depth. Cold-start tolerance: long-running batch jobs are not latency-sensitive.
+- **Vercel.** Edge functions handle geographically-distributed request load; server functions auto-scale.
+- **LLM.** Vertex AI per-project quotas raisable via support ticket; V1 starts with default quota and raises as workspace count grows.
+- **Bottleneck monitoring.** Per §5.8 dashboards track (a) Postgres connection saturation, (b) SQS queue depth per workload, (c) Vertex AI quota utilisation, (d) Webhook delivery lag.
+
+**Plan beyond V1.**
+
+- V1.5 (~Q4 2026): horizontal Postgres read replicas; per-workload SQS dedicated queues; CDN expansion to two regions.
+- V2 (~Q4 2026 to early 2027): per-tenant database sharding option for institutional customers requiring physical isolation; eu-west-1 region.
+
+**Acceptance criteria.**
+
+- AC-5.6.1 — A 100-workspace load test (synthetic; nightly batch + ingestion + interactive traffic) sustains for 24 hours without queue back-pressure or P99 latency breaches.
+- AC-5.6.2 — A workspace with 2,000 LPs loads its Insights page within the 2s SLO.
+- AC-5.6.3 — Webhook-receive throughput sustains 1,000 messages/minute without queue lag exceeding 5 minutes.
+
+---
 
 ### 5.7. Usability and accessibility
 
-[TODO — WCAG 2.1 AA baseline (keyboard navigation, focus rings, semantic landmarks, alt text, colour contrast); responsive design at the 768px breakpoint; touch target sizing 44×44 minimum; no critical interaction below this size; reader testing with VoiceOver and NVDA pre-GA.]
+**Description.** V1 is responsive web with desktop-first design, mobile-functional. Accessibility baseline WCAG 2.1 Level AA. Usability is treated as a quality bar, not a checklist; the V1 Final risk #4 (drafts not sounding like the GP) is a usability risk addressed in §3.9 + §3.13 plus tone calibration.
+
+**Targets — usability.**
+
+- Onboarding completion time 17–22 minutes (per Document B). FC GP first session monitored against this.
+- Daily Brief comprehension within 10 seconds of opening (qualitative — Founding Circle review feedback).
+- Post-meeting capture under 60 seconds (per V1 Final F8).
+- Draft approval rate ≥ 50% target (recalibration nudge below — per §3.6 Metric 6b).
+- Tomo agent response satisfaction (qualitative) — tracked via thumbs-up/down in the chat UI.
+
+**Targets — accessibility (WCAG 2.1 AA).**
+
+- All interactive elements keyboard-reachable; visible focus rings.
+- ARIA landmarks (main, nav, aside, dialog).
+- Form inputs labelled; error messages programmatically associated.
+- Colour contrast ≥ 4.5:1 for normal text; ≥ 3:1 for large text and UI elements.
+- ARIA live regions for status messages.
+- Touch targets ≥ 44×44 px on mobile.
+- Respects `prefers-reduced-motion`.
+- No information conveyed by colour alone (e.g. G/A/R flags also have a textual label and shape variation).
+
+**Implementation notes.**
+
+- **Component library.** Built on the mock's component set (`src/components/ui/*`), audited for AA compliance during V1 build.
+- **Accessibility testing.**
+  - Automated: axe-core in CI on every PR; lint blocks on Critical violations.
+  - Manual: VoiceOver (Safari) and NVDA (Firefox) testing of the eight primary surfaces before GA.
+  - User testing: at least 2 FC GPs invited to do a 30-minute usability walkthrough; findings logged.
+- **Internationalisation readiness.** All UI strings extracted to a single locale file (`en-US.json`); even though V1 is English-only, this enables V2 localisation without UI churn.
+- **Empty-state quality.** Every empty state explains *what to do next*; empty Today reads "Nothing pressing today — open Pipeline to plan your week," not "No items."
+
+**Acceptance criteria.**
+
+- AC-5.7.1 — Axe-core CI gate passes with zero Critical or Serious violations.
+- AC-5.7.2 — VoiceOver narration of the Pipeline list reads each LP with name, firm, stage, flag-with-reason, days-since-touch — verified manually pre-GA.
+- AC-5.7.3 — Tab key reaches every interactive element on Today, Relationships, Pipeline, Workflows, Insights, Settings — no keyboard traps.
+- AC-5.7.4 — Onboarding completes for a screen-reader user using only keyboard input.
+
+---
 
 ### 5.8. Observability
 
-[TODO — structured logging (request id, workspace id, user id); error tracking (Sentry); product analytics (PostHog or Vercel Analytics with PII-stripping); metric dashboards (background worker queue depth, sync lag, signal batch duration, daily brief success rate); alerting on SLO breach.]
+**Description.** Production observability covers errors, performance, business metrics, and security events. V1 is opinionated about a few tools rather than a full LGTM stack — minimum to operate confidently.
+
+**Layers.**
+
+- **Errors.** Sentry. Browser SDK and server-side SDK. PII-stripping middleware before send. Source maps uploaded on every deploy.
+- **Product analytics.** PostHog (preferred) or Vercel Analytics. Events tagged with `workspace_id` (so usage cohorts queryable) but PII-stripped from event properties. Event names follow a documented taxonomy (`signal_flag_changed`, `draft_approved`, `daily_brief_opened`, etc.).
+- **Infrastructure metrics.** AWS CloudWatch for ECS workers, SQS queues, Lambda functions; Vercel Analytics for web/API; Supabase metrics dashboard for Postgres.
+- **Composite dashboards.** A single page (Grafana Cloud or similar) per major workload — sync, signals, metrics, daily brief, agent — showing latency, error rate, throughput, queue depth.
+- **Logs.** Structured JSON logs everywhere. Standard fields: `request_id`, `workspace_id`, `user_id`, `route`, `latency_ms`, `status`. Aggregated to CloudWatch Logs (workers) and Vercel Logs (web/API). Retention 30 days.
+- **Tracing.** OpenTelemetry instrumentation on critical paths (sync ingest, signal batch, agent orchestrate). Aggregated to Honeycomb or Jaeger.
+
+**Alerts.**
+
+- **Pagerable** (24/5 on-call, paging only for severity 1):
+  - Web/API uptime breach (3 consecutive 1-min checks failing).
+  - Re-engagement detection failing (queue stalled > 1 hour).
+  - Signal nightly batch failed.
+  - LLM provider sustained 5xx > 10 minutes.
+  - Database CPU > 80% sustained 15 minutes.
+- **Email-notification** (severity 2/3):
+  - Webhook subscription failing for one workspace > 30 minutes.
+  - Daily brief delivery failure rate > 5%.
+  - Per-workspace LLM rate limit hit.
+
+**Audit / business observability (per §5.3 + §6.2.9).**
+
+- `auth_events`, `activity_log`, `agent_tool_calls`, `data_access_log` are queryable for support and security investigations.
+- Daily-brief delivery success rate computed from `email_delivery_log`.
+
+**On-call rotation.**
+
+- V1 (small team): 24/5 on-call, primary + secondary, week-long rotations.
+- V1.5 (post-GA): 24/7 on-call as paying customer count justifies.
+
+**Acceptance criteria.**
+
+- AC-5.8.1 — A simulated 5xx storm on `/api/lp-contacts` triggers a Sentry alert and an on-call page within 5 minutes.
+- AC-5.8.2 — Every PR's deploy uploads source maps; Sentry stack traces resolve to source.
+- AC-5.8.3 — A daily-brief delivery failure surfaces in the workload dashboard within 5 minutes of occurrence.
+- AC-5.8.4 — Audit query "every Tomo `update_crm` tool call by user X in the last 30 days" returns within 1 second from `agent_tool_calls`.
+
+---
 
 ### 5.9. Data retention and lifecycle
 
-[TODO — three-tier email retention per ingestion strategy. Signal log append-only forever (V3 dataset). Action log append-only forever. Daily pipeline summary retained 24 months minimum. Workspace deletion → 30-day soft delete → hard delete with audit-log preservation per SOC 2 obligations.]
+**Description.** Retention rules are split between (a) the three-tier email model per §6.4, (b) append-only V3 dataset tables that retain forever, (c) workspace-scoped operational data subject to soft-delete + hard-delete on account closure. This subsection consolidates the rules and their lifecycle controls.
+
+**Retention table** (master reference; details in §6.4):
+
+| Data class | Tables | Retention rule |
+|---|---|---|
+| Hot — full email/transcript bodies | `lp_interactions.body_text`, `lp_meeting_transcripts.transcript_text`, archived HTML in S3 | 12 months from `interacted_at`/`created_at`, then null/purged |
+| Warm — metadata only | `lp_interactions` rows where `metadata_only=true` | 13–36 months from `interacted_at`, then row deleted |
+| Cold — never ingested | n/a | n/a |
+| Append-only V3 dataset | `lp_signal_log`, `lp_stage_transitions`, `tomo_action_log`, `daily_pipeline_summary`, `agent_tool_calls`, `activity_log`, `auth_events`, `data_access_log`, `email_delivery_log`, `outbound_safety_log` | Indefinite while account active; PII NULLed on deletion |
+| Operational data (LPs, briefs, workflows, etc.) | All workspace-scoped soft-delete tables | Retained while account active; soft-delete 30-day grace, then hard-delete |
+| OAuth tokens | `oauth_tokens`, `slack_workspace_connections` | Revoked on disconnect; row retained for audit, ciphertext zeroised |
+| CSV originals | S3 (referenced in `csv_imports.s3_key`) | 90 days from import, then auto-purged |
+| Materials | S3 (referenced in `materials.s3_key`) | Lifetime of workspace |
+| Backups | Supabase managed | Daily snapshot 30 days; PITR 7 days |
+
+**Lifecycle controls.**
+
+- **Daily retention job.** Runs at 03:00 UTC. Nulls hot bodies past 12 months. Deletes metadata-only rows past 36 months. Deletes soft-deleted rows past 30-day grace. Auto-purges CSV originals past 90 days. Logs every action to `activity_log`.
+- **Account closure.** Per §3.1: 30-day soft-delete window; after confirmation or expiry, hard-delete; PII scrubbed from append-only tables.
+- **Workspace closure.** Same as account closure but workspace-scoped.
+- **Right-to-erasure.** GDPR / CCPA requests handled within statutory deadlines (30 days for GDPR access; 45 days for CCPA deletion). Tracked in support workflow.
+- **Backup expiry.** Supabase backups expire per their managed schedule; no manual intervention required.
+
+**Acceptance criteria.**
+
+- AC-5.9.1 — A row in `lp_interactions` 13 months old has `body_text=NULL` and `metadata_only=true` after the daily retention job runs.
+- AC-5.9.2 — A row in `lp_interactions` 37 months old does not exist after the daily retention job runs.
+- AC-5.9.3 — A soft-deleted `lp_contacts` row is hard-deleted 30 days after `deleted_at`.
+- AC-5.9.4 — Account closure scrubs `users.email` (replaced with hash) and leaves `lp_signal_log` rows accessible for V3 dataset purposes (with NULL user reference).
+
+---
 
 ### 5.10. Internationalisation and localisation
 
-[TODO — V1 ships in English (US/UK) only. Currency configurable per fund (ISO 4217). Date display per user locale. Timezone per user. Multi-language UI deferred V2.]
+**Description.** V1 ships in English (US/UK) only. Currency configurable per fund. Date and number formatting per user locale. Timezone per user. The application is i18n-ready (strings extracted to a locale file) so V2 localisation does not require UI changes.
+
+**V1 commitments.**
+
+- **UI language.** English only. Locale strings live in `locales/en-US.json`. The application code never inlines user-facing copy.
+- **Currency.** Per `funds.primary_currency` (ISO 4217). Insights renders the fund's currency; user-set raise target uses fund currency by default; per-LP `expected_commitment_currency` defaults to the fund's currency.
+- **Date display.** Browser locale via `Intl.DateTimeFormat`. Defaults to en-US for ambiguous locales. Times shown in the user's `user_preferences.timezone`.
+- **Number formatting.** `Intl.NumberFormat` with locale-aware decimals and thousand separators.
+- **Timezone.** Stored UTC; rendered in user timezone. `user_preferences.timezone` editable in Settings → Profile.
+
+**Out of scope V1.**
+
+- Non-English UI translations.
+- Right-to-left language support.
+- Alternative calendar systems (Hijri, Buddhist, etc.).
+
+**V2 localisation candidates.**
+
+- French, Spanish, German, Mandarin (priority based on FC + early GA customer geographies).
+- Per-language tone-calibration support (current tone calibration is language-agnostic in mechanism but English-tuned in heuristics).
+
+**Acceptance criteria.**
+
+- AC-5.10.1 — Every user-facing string in the app is sourced from `locales/en-US.json`; CI lint blocks merges that introduce inline copy.
+- AC-5.10.2 — A workspace with `funds.primary_currency='GBP'` renders Insights with £ symbols and GBP-locale formatting.
+- AC-5.10.3 — A user with `timezone='Asia/Singapore'` sees today's meetings in SGT and the daily brief delivers at the SGT-equivalent of `daily_brief_send_at_local`.
 
 ---
 
@@ -1676,7 +3400,7 @@ The V1 stack is locked. Substitutions require PM and engineering lead approval.
 | Slack integration | Slack Web API + OAuth | Standard |
 | Billing | Stripe | Mock baseline |
 | Observability | Sentry (errors); PostHog or Vercel Analytics (product); CloudWatch (infra) | Standard |
-| LLM provider | OpenAI via Vercel AI SDK with zero-retention configuration | Standard |
+| LLM provider | Google Gemini via Vertex AI (in TOMO's GCP project), accessed through Vercel AI SDK `@ai-sdk/google`. Mock uses OpenAI; V1 production switches to Vertex AI for enterprise data governance and zero-retention by default | Per O-15 |
 | Search (V1) | Postgres full-text + trigram | Defer Algolia/Pinecone to V2 |
 | QA | Playwright (existing in repo) + Vitest / Jest for units | Mock baseline |
 
@@ -1831,6 +3555,8 @@ V2 (Q4 2026) and V3 (2027) capability matrix is in Appendix C.
 | O-9 | Re-engagement webhook latency SLO: ≤ 1 hour confirmed. If MS Graph subscription delivery exceeds, supplemental polling job at 30-minute cadence. | Eng lead | Adopt SLO; provision polling fallback. |
 | O-10 | ~~Workspace transfer on owner departure (e.g. GP leaves the firm).~~ **DECIDED:** Manual support flow in V1; automated transfer in V2. | PM + Legal | Closed. |
 | O-13 | ~~In-product support-impersonation flow for TOMO staff.~~ **DECIDED:** No impersonation feature in V1. Manual operator support only, with all TOMO-staff data access logged per SOC 2 access-management policy. Specced product feature deferred to V2. | PM + Security | Closed. |
+| O-14 | **API path rename** from mock's `/api/crm/relationships` to V1 canonical `/api/lp-contacts`. Frontend imports in the mock's components and hooks must be updated as part of V1 production wiring. No legacy path retained. | Eng lead | Tracked. |
+| O-15 | **LLM provider switch** from mock's OpenAI (`@ai-sdk/openai`) to V1 Google Gemini via Vertex AI (`@ai-sdk/google` with Vertex provider) for all surfaces — agent orchestration, draft composition, recap generation, batch classification, scheduling-intent detection. Tone-profile prompt stays vendor-agnostic. Vertex AI in TOMO's GCP project for enterprise data governance and zero retention. | Eng lead + Security | Tracked. |
 | O-11 | Sub-processor list for SOC 2 (Supabase, Firebase, Vercel, AWS, OpenAI, Postmark/SES, Stripe, Slack, Sentry, PostHog). Confirm inventory and DPAs. | Legal | Lock before SOC 2 audit kickoff. |
 | O-12 | Data residency disclosure: us-east-1 primary; EU customers in V1.5. | PM | Disclose in DPA. |
 
