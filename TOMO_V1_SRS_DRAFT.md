@@ -469,7 +469,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 - BR-3.2.2 — Onboarding cannot complete without at least one LP record successfully imported.
 - BR-3.2.3 — Tone calibration must have completed before Screen 5; if not, the GP can wait or fall back to a generic tone with a "refresh later" affordance.
 - BR-3.2.4 — Connecting Microsoft Graph or Google Workspace also covers Teams or Meet transcript ingestion respectively, when the user grants the additional scopes (per §3.13). The UI surfaces the additional scope request inside the same OAuth consent screen — no separate connection step.
-- BR-3.2.5 — The mock currently offers an `EmailHistoryScope` choice ("six_months" vs "future_only") in `src/lib/types.ts`. **V1 production replaces this with the locked three-tier ingestion model** (12mo full + 13–36mo metadata + >36mo none). The user no longer chooses; the model is fixed. The UI presents this transparently as "We read 12 months of history; nothing older."
+- BR-3.2.5 — The mock onboarding **Step 3** exposes an **optional** checkbox for the SRS **three-tier** model (12mo full + 13–36mo metadata + >36mo none). Production may default this on for FC users while keeping the same technical ingestion contract. The deprecated `EmailHistoryScope` (`six_months` / `future_only`) type has been **removed** from `src/lib/types.ts` in favour of `optInHistoricalEmailIngestion` and related fields on `OnboardingState`.
 
 **Acceptance criteria.**
 

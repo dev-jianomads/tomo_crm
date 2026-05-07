@@ -154,37 +154,76 @@ export type TaskItem = {
  *    - Two-way sync or export-only (TBD)
  */
 
-/** Shown on the post-connect email onboarding sub-step; future-only is “skip” historical backfill. */
-export type EmailHistoryScope = "six_months" | "future_only";
+/** Google or Microsoft — one OAuth bundle covers mail, calendar, and contacts (V1 SRS §3.2). */
+export type WorkspaceProvider = "google" | "microsoft";
+
+/** How CRM data is supplied during onboarding. */
+export type CrmImportMethod = "csv" | "affinity";
 
 export type OnboardingState = {
+  /** Single-provider bundle: Gmail/Calendar/Contacts or Outlook/Calendar/Contacts (mock: one action). */
+  workspaceProvider: WorkspaceProvider | null;
+  workspaceBundleConnected: boolean;
+  /**
+   * Optional — SRS §3.3 three-tier model: first 12 months full content, months 13–36 metadata-only.
+   * If false in mock, represent forward / minimal scope until user enables in Settings.
+   */
+  optInHistoricalEmailIngestion: boolean;
+  /** Optional — Microsoft Teams or Google Meet transcripts, meeting notes, and extracted actions (SRS §3.13). */
+  optInMeetingTranscripts: boolean;
+  crmImportMethod: CrmImportMethod | null;
   calendarConnected: boolean;
   contactsConnected: boolean;
   emailConnected: boolean;
-  /**
-   * Set only after a successful email connect on onboarding (email step).
-   * Omitted or null if email was skipped or not yet chosen.
-   */
-  emailHistoryScope?: EmailHistoryScope | null;
   slackConnected: boolean;
+  /** When Slack is connected, also push “What’s on my Radar” to Slack. */
+  slackWhatsOnRadarPush: boolean;
   telegramConnected: boolean;
   telegramPhone?: string;
   affinityConnected: boolean;
   affinityListId?: string;
-  affinityTokenLast4?: string;  // Only store last 4 chars for display; full token server-side
+  affinityTokenLast4?: string;
   googleSheetsConnected: boolean;
   googleSheetsFilename?: string;
   googleSheetsAuthed?: boolean;
   contactImportUploaded: boolean;
   contactImportFilename?: string;
   contactImportRowCount?: number;
-  /** Mock: human-readable column mapping summary after user confirms mapping. */
   contactImportMappingSummary?: string;
   fundStrategyUploaded: boolean;
   fundStrategyFilename?: string;
   fundStrategyText?: string;
   notifications: Record<string, { email?: boolean; slack?: boolean; telegram?: boolean; inApp?: boolean }>;
   completed: boolean;
+};
+
+const defaultOnboardingNotifications: OnboardingState["notifications"] = {
+  "Morning Recaps": { email: true, slack: false, telegram: false, inApp: true },
+  "Meeting Briefs": { email: true, slack: false, telegram: false, inApp: true },
+  FollowUps: { email: false, slack: false, telegram: false, inApp: true },
+  Escalations: { email: true, slack: false, telegram: false, inApp: true },
+};
+
+/** Default onboarding slice for `tomo-onboarding` persistence and Settings pages. */
+export const defaultOnboardingState: OnboardingState = {
+  workspaceProvider: null,
+  workspaceBundleConnected: false,
+  optInHistoricalEmailIngestion: false,
+  optInMeetingTranscripts: false,
+  crmImportMethod: null,
+  calendarConnected: false,
+  contactsConnected: false,
+  emailConnected: false,
+  slackConnected: false,
+  slackWhatsOnRadarPush: false,
+  telegramConnected: false,
+  affinityConnected: false,
+  googleSheetsConnected: false,
+  googleSheetsAuthed: false,
+  contactImportUploaded: false,
+  fundStrategyUploaded: false,
+  notifications: defaultOnboardingNotifications,
+  completed: false,
 };
 
 /**

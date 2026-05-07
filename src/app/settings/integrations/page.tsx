@@ -9,24 +9,10 @@ import {
 } from "@/components/settings/settings-widgets";
 import { LinkSlashIcon } from "@heroicons/react/24/outline";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { OnboardingState } from "@/lib/types";
+import { defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsIntegrationsPage() {
-  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", {
-    calendarConnected: false,
-    contactsConnected: false,
-    emailConnected: false,
-    emailHistoryScope: null,
-    slackConnected: false,
-    telegramConnected: false,
-    affinityConnected: false,
-    googleSheetsConnected: false,
-    googleSheetsAuthed: false,
-    contactImportUploaded: false,
-    fundStrategyUploaded: false,
-    notifications: {},
-    completed: false,
-  });
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", defaultOnboardingState);
 
   const [affinityListId, setAffinityListId] = useState(integrations.affinityListId ?? "");
   const [affinityToken, setAffinityToken] = useState("");

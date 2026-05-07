@@ -2,24 +2,10 @@
 
 import { IntegrationRow } from "@/components/settings/settings-widgets";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { OnboardingState } from "@/lib/types";
+import { defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsMessagingPage() {
-  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", {
-    calendarConnected: false,
-    contactsConnected: false,
-    emailConnected: false,
-    emailHistoryScope: null,
-    slackConnected: false,
-    telegramConnected: false,
-    affinityConnected: false,
-    googleSheetsConnected: false,
-    googleSheetsAuthed: false,
-    contactImportUploaded: false,
-    fundStrategyUploaded: false,
-    notifications: {},
-    completed: false,
-  });
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", defaultOnboardingState);
 
   return (
     <div className="space-y-3">
