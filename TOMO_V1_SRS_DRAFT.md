@@ -157,9 +157,9 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 | **Metric** | An aggregate number rendered on the Insights page. Ten metrics in V1. |
 | **Reminder** | An item the GP must act on (open loop, missed reply, commitment). Distinct from a signal. |
 | **Action Drawer** | The right-hand panel where TOMO surfaces drafts, captures, and approvals for GP review. |
-| **Day 1 Gap** | The count of LPs the GP's CRM lists as active but for whom TOMO finds no meaningful touch in 60+ days. The climax of onboarding (see §3.2). |
+| **Day 1 Gap** | The count of LPs the GP's CRM lists as active but for whom TOMO finds no meaningful touch in 60+ days. Surfaced after initial sync (Home / Insights; not a Document B wizard screen — see §3.2, §3.6). |
 | **Tomo** | The product name and the in-app AI agent. The agent appears as inline chat (Today, Workflows) or as a floating dock / mobile sheet (other surfaces). |
-| **Tone calibration** | The per-user model TOMO trains on the user's sent-mail history during onboarding to make drafts sound like the user. |
+| **Tone calibration** | The per-user model TOMO trains on the user's sent-mail history after the workspace bundle is connected (typically post–Step 2) to make drafts sound like the user. |
 | **Three-Touch Qualification** | A guided three-step sequence (relevant insight → direction question → respectful close) for qualifying quiet LPs. Default-on workflow in V1. |
 | **MS Graph** | Microsoft Graph REST API. The single endpoint surface for Microsoft 365 mail, calendar, contacts, Teams, and Drive. |
 | **OAuth** | OAuth 2.0 with OpenID Connect. Used for both Firebase social sign-in and per-user Microsoft / Google data-source authorisation. |
@@ -401,7 +401,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 3. If the user has no workspace memberships and is not joining via invitation, the application creates a new `workspaces` row with the user as `owner_user_id` and a `workspace_members` row with `role='owner'`. This atomic creation happens before redirect to onboarding.
 4. Workspace invitations are emailed to a target address. The invitation row carries a single-use token (`workspace_members.invitation_token`) with 7-day expiry. Accepting an invitation requires the invitee to be signed into Firebase Auth with the matching email; mismatched emails are rejected with a clear error.
 5. Workspace membership has no artificial member-count limit; invite acceptance creates `workspace_members` rows subject only to duplicate-membership checks and eligibility rules (not a numeric cap).
-6. Per-user OAuth grants for data sources are initiated from Settings → Integrations or during onboarding Screen 2. Each grant is a separate OAuth flow against Microsoft (Azure App Registration) or Google (Google Cloud OAuth Client) — Firebase auth is **not** reused for data scopes. Tokens land in `oauth_tokens` encrypted via Supabase Vault.
+6. Per-user OAuth grants for data sources are initiated from Settings → Integrations or during onboarding (**Step 2** workspace bundle; **Step 4** native CRM connector when applicable). Each grant is a separate OAuth flow against Microsoft (Azure App Registration) or Google (Google Cloud OAuth Client) — Firebase auth is **not** reused for data scopes. Tokens land in `oauth_tokens` encrypted via Supabase Vault.
 7. Refresh tokens are used by a background worker to refresh access tokens before expiry. Failed refresh writes `last_refresh_error`; the integration health flips to `degraded` or `disconnected` per §3.16.
 8. Password reset uses Firebase's standard reset email flow; TOMO does not handle passwords directly.
 9. Account deletion is a soft-delete on `users` followed by a 30-day grace period; on confirmation (or after 30 days), the application hard-deletes and writes a final `auth_events` row. Per §6.4, append-only audit data is preserved; PII is scrubbed where not legally required.
@@ -435,51 +435,60 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 ### 3.2. Onboarding flow
 
-**Description.** Eight-screen guided flow that takes a new GP from sign-up to "first value" within 17–22 minutes. Document B is the normative source; this subsection condenses and adds engineering acceptance criteria. The flow is non-skippable (closing the browser preserves state and resumes from last completed screen) and ends in a partial-but-functional Today screen.
+**Description.** **Six-step** post-auth wizard (`Next` / `Back`) from sign-up through **Go to Home** (`/home`). **Document B** (`Document_B_Onboarding_Flow_Specification.md`) is normative for screen copy, gating, and step order; this subsection adds persistence, data-model, and acceptance criteria. The wizard does **not** include pipeline-import milestone narratives, deep duplicate-review queues beyond CSV confirm, **Day 1 Gap reveal**, **tone calibration**, **daily-rhythm / notification setup**, or **first-morning Today depth** — those are product milestones **outside** the wizard (Document B *What this document deliberately omits*; behaviour in §3.3–§3.6, Home, Settings). **Next** cannot skip ahead of incomplete **Step 2** (workspace connect) or **Step 4** (CRM path). **Steps 3** and **5** are optional; **Next** is always available on Step 3 when both opt-ins are off.
+
+Closing the browser preserves state and resumes after the last completed step. Mock implementations persist client-side (`tomo-onboarding` / `OnboardingState` in `src/lib/types.ts`); production mirrors the same shape in `users.onboarding_state_jsonb`.
 
 **Inputs / triggers.**
 
-- A new user with `users.last_sign_in_at IS NULL` or a workspace with no completed onboarding.
-- Onboarding state is tracked on the `users` row (a `users.onboarding_state_jsonb` JSONB column added in V1 migration to mirror the mock's `OnboardingState` shape).
+- A new user who has not finished onboarding (workspace created per §3.1; redirect into the wizard after auth).
+- Onboarding state is tracked on the `users` row (`users.onboarding_state_jsonb`, V1 migration — mirrors mock `OnboardingState`: `workspaceBundleConnected`, `optInHistoricalEmailIngestion`, `optInMeetingTranscripts`, `crmImportMethod`, `slackWhatsOnRadarPush`, `onboardingComplete`, etc.).
 
-**Processing — eight screens.**
+**Processing — six steps (aligned with Document B).**
 
-1. **Screen 1 — Welcome (90 seconds).** Static page. Single primary action ("Let's start"). No background work.
-2. **Screen 2 — Connect your systems (3 minutes).** Three tiles: Email + Calendar (required), CRM (required), Meeting notes (optional — see below). Email/Calendar OAuth flow opens the Microsoft or Google consent page in a new tab; on success, the app stores `oauth_tokens` and immediately schedules the 90-day full-content backfill plus the 12-month full-content background job. CRM tile presents: CSV upload (default for all CRMs) **or**, when the workspace's CRM supports a shipped native read connector, **Affinity API key paste** and/or **Backstop API connect** (only the connector(s) live in production — Affinity and Backstop are sequenced **whichever ships first**, then fast-follow for the other per §3.4). The "Meeting notes" tile in V1 is replaced by a single combined "Connect meeting transcripts (Teams + Meet)" affordance — connection is automatic if Microsoft Graph or Google Workspace is already connected with the appropriate scopes (no separate Granola integration). Continue button enables on a soft check (email connected + CRM source provided).
-3. **Screen 3 — Field mapping (3–4 minutes).** Auto-mapping of CSV columns to TOMO fields runs as soon as the upload completes. UI shows a three-column table; ambiguous mappings (typically 4–6 per Backstop export) are surfaced for GP confirmation. The mapping policy is saved to `csv_field_mappings` and re-applied automatically on subsequent imports.
-4. **Screen 4 — Import review (2–3 minutes).** Deduplication runs against existing TOMO contacts (none on first import). Ambiguous matches surface here for GP resolution and write to `csv_dedupe_decisions`. Conflict-resolution policy applies per §3.4.
-5. **Screen 5 — Tone calibration (2 minutes, mostly background).** Started in the background during Screen 2; surfaces here when complete. The tone profile is rendered in a card showing the inferred greeting style, formality, sentence length, and sign-off — the GP confirms or refreshes. Writes `tone_profiles`.
-6. **Screen 6 — Day 1 Gap reveal (3 minutes).** The climax screen. Computes `daily_pipeline_summary.day_1_gap_count` against the imported pipeline and the synced 90-day email/calendar history. Renders the headline number, two named cohorts (stale-contact LPs and one-way-contact LPs), and a re-engagement draft for one Tier 1 LP from the cohort. Stores the baseline at `daily_pipeline_summary.day_1_gap_baseline` for the trend metric (§3.6 Metric 2). **Blocks until ingestion has computed the gap** — Document B is explicit that this screen does not show until the gap is real.
-7. **Screen 7 — Daily rhythm (2 minutes).** GP picks daily-brief delivery time (default 07:30 local), preferred channels (in-app, email, Slack — Slack disabled until Slack is connected), follow-up threshold preferences (Tier 1 = 48 hours / Tier 2/3 = 5 days defaults; editable). Captures `funds.raise_target` (Section 9 §9.4 schema addition 1) and `funds.primary_currency`. Writes `user_preferences` and `notification_channels`.
-8. **Screen 8 — Workspace ready (1 minute).** Final confirmation. Lists what's running in the background (12-month backfill, 13–36 month metadata backfill, the partial Insights baseline). Single "Open Today" button.
+1. **Step 1 — Welcome (~90 seconds).** Personalised greeting (*Welcome, {FirstName}.* — first name from profile when available, else derived from email local-part; fallback *Welcome to TOMO.*). Body copy sets expectations (connect systems, load CRM relationships; nothing sent outside the flow until the user acts later in product). Primary action **Next** (equivalent to classic *Let's start*). No integrations.
+
+2. **Step 2 — Connect workspace (required).** Single decision: **Google Workspace** or **Microsoft 365**. One **Connect** per provider. Copy states that **email, calendar, and contacts** are authorised together in **one OAuth consent** in production (scopes per §4.2). **Next** is disabled until a successful workspace bundle connect; **Back** allowed. **Next** unlock triggers initial ingestion scheduling per §3.3 (Phase A 90-day full content first; Phases B/C per three-tier when Step 3 historical opt-in applies).
+
+3. **Step 3 — Data access (optional).** Two **independent** opt-ins (checkboxes): (a) **Historical email ingestion** — SRS three-tier when checked (months 0–12 full content, 13–36 metadata-only, nothing beyond 36 months; §3.3); when unchecked, a lighter / forward-focused posture until changed in Settings. (b) **Meeting transcripts, notes, and actions** — Microsoft 365 Teams + related content (§3.13); Google Workspace Meet transcripts and linked notes where available. Meeting-transcript controls stay disabled until Step 2 completes so copy matches the chosen provider. **Next** always enabled.
+
+4. **Step 4 — CRM data (required).** One of: **Upload CRM export (CSV / Excel)** — file drop, **field mapping** table (`ContactImportFieldMapping`: column → TOMO field, sample values), **Confirm import** queues parse/sync (per §3.4 / Document A); or **Connect native read** when shipped — **Affinity** (list ID + API key; no column-mapping UI in-wizard; server-side schema mapping in production) and/or **Backstop** per §3.4 **whichever connector ships first**. **Next** disabled until import is confirmed (CSV path) or native connector reports connected. Auto-mapping, ambiguous columns, and first-import dedupe follow §3.4; heavy review queues are not wizard-blocking beyond **Confirm import**.
+
+5. **Step 5 — Slack (optional).** Optional Slack install. Checkbox: push **What's on my Radar** to Slack when connected. **Next** without Slack allowed.
+
+6. **Step 6 — Completion.** Short summary: workspace provider, Step 3 opt-ins, CRM path, Slack / radar flags. Primary CTA **Go to Home**; session flag `onboardingComplete` set. No animated pipeline milestones, duplicate merge queue, Day 1 Gap list, morning-brief schedule, or first-morning Today preview on this screen.
+
+**Cross-step dependencies (summary):** Step 1 — auth session; Step 2 — auth + OAuth app configuration; Step 3 — Step 2 for meaningful meeting-transcript copy; Step 4 — Step 2 recommended (signals use mail/calendar + CRM); Step 5 — optional; Step 6 — Steps 2 and 4 satisfied.
 
 **Resumability.**
 
-- State after every screen completion is persisted to `users.onboarding_state_jsonb`.
-- Closing the browser between screens preserves state. Re-opening drops the user back at the last completed screen + 1.
-- Backend jobs that started during onboarding (sync, tone calibration, Day 1 Gap computation) continue running independent of the front-end flow.
+- State after every step completion is persisted to `users.onboarding_state_jsonb` (or mock localStorage key `tomo-onboarding`).
+- Closing the browser between steps preserves state; reopen continues at the first incomplete step.
+- Backend jobs started during the wizard (email/calendar sync, CRM import, tone calibration if running in background) continue independent of the front-end.
 
 **Outputs.**
 
-- A populated workspace with: `lp_organizations`, `lp_contacts`, `lp_state` (post-batch), `lp_interactions` (90 days full-content), `lp_calendar_events`, `tone_profiles`, `daily_pipeline_summary` baseline row, `funds.raise_target`, `user_preferences`.
-- Background jobs scheduled: 12-month full-content backfill, 13–36 month metadata backfill, ongoing webhook subscriptions.
-- An `activity_log` entry for `csv_import_completed`, `integration_connected` (per provider), `oauth_token_refreshed`.
+- `oauth_tokens` for workspace bundle (and native CRM / Slack grants when applicable).
+- CRM import initiated: `lp_organizations`, `lp_contacts` (and related) from CSV confirm or API pull per §3.4; `csv_field_mappings` / `csv_imports` as applicable.
+- User preference flags from Step 3–5 persisted on user/workspace rows (historical ingestion opt-in, transcript opt-in, Slack radar push).
+- `activity_log` entries for `csv_import_completed`, `integration_connected` (per provider), OAuth events per §3.1.
+- **Not required to complete the wizard:** `tone_profiles`, `daily_pipeline_summary` / Day 1 Gap baseline, `user_preferences` for daily brief — those populate after Home entry via §3.3–§3.6 and Settings (unless engineering chooses to start background jobs earlier).
 
 **Business rules.**
 
-- BR-3.2.1 — Day 1 Gap computation must be complete before Screen 6 is shown. The screen renders a calm progress narrative (per Document B / Tomo MVP3 §C.2) while the user waits, never an empty state.
-- BR-3.2.2 — Onboarding cannot complete without at least one LP record successfully imported.
-- BR-3.2.3 — Tone calibration must have completed before Screen 5; if not, the GP can wait or fall back to a generic tone with a "refresh later" affordance.
-- BR-3.2.4 — Connecting Microsoft Graph or Google Workspace also covers Teams or Meet transcript ingestion respectively, when the user grants the additional scopes (per §3.13). The UI surfaces the additional scope request inside the same OAuth consent screen — no separate connection step.
-- BR-3.2.5 — The mock onboarding **Step 3** exposes an **optional** checkbox for the SRS **three-tier** model (12mo full + 13–36mo metadata + >36mo none). Production may default this on for FC users while keeping the same technical ingestion contract. The deprecated `EmailHistoryScope` (`six_months` / `future_only`) type has been **removed** from `src/lib/types.ts` in favour of `optInHistoricalEmailIngestion` and related fields on `OnboardingState`.
+- BR-3.2.1 — **Next** on Step 2 remains disabled until workspace bundle OAuth succeeds.
+- BR-3.2.2 — **Next** on Step 4 remains disabled until the GP completes exactly one CRM path (CSV **Confirm import** or native connector connected).
+- BR-3.2.3 — Onboarding wizard completion (**Go to Home**) does not require Slack, historical email opt-in, or meeting-transcript opt-in.
+- BR-3.2.4 — Connecting Microsoft Graph or Google Workspace for the bundle also enables Teams or Meet transcript ingestion when the user grants transcript-related scopes (per §3.13); additional scopes are requested in the **same** consent where product design allows — no separate "connect transcripts" OAuth step in the wizard beyond Step 3's opt-in.
+- BR-3.2.5 — Step 3 **Historical email ingestion** checkbox reflects the SRS **three-tier** contract when checked (§3.3). Production may default this **on** for FC users. The deprecated `EmailHistoryScope` (`six_months` / `future_only`) is removed from `OnboardingState` in favour of `optInHistoricalEmailIngestion` and related fields.
 
 **Acceptance criteria.**
 
-- AC-3.2.1 — A GP completing the flow with 1,000 emails/month and 500 LPs sees Day 1 Gap on Screen 6 within 2 minutes of CSV upload + email connect (per §5.1 SLO).
-- AC-3.2.2 — Closing the browser between Screens 4 and 5 and re-opening 30 minutes later resumes at Screen 5 with all prior state intact and background jobs still running.
-- AC-3.2.3 — A GP whose Microsoft 365 tenant denies the `OnlineMeetingAiInsight.Read.All` scope sees a graceful skip (transcript-only path, per §3.13) without aborting onboarding.
-- AC-3.2.4 — Onboarding ends with a populated `daily_pipeline_summary` baseline row, a `tone_profiles` row, and at least one `lp_contact` per imported CSV record.
-- AC-3.2.5 — A GP without `funds.raise_target` set on Screen 7 sees a soft warning (Insights top-half is non-functional) but is not blocked from finishing.
+- AC-3.2.1 — A GP can complete all six steps and land on `/home` with Step 2 and Step 4 satisfied; optional steps can be skipped.
+- AC-3.2.2 — Closing the browser between Step 4 and Step 6 and reopening later resumes with Step 4–6 state intact and background sync/import continuing.
+- AC-3.2.3 — A GP whose Microsoft 365 tenant denies transcript-related scopes completes Step 2 and Step 3 without abort; transcript features degrade gracefully per §3.13.
+- AC-3.2.4 — CSV path: after **Confirm import**, at least one `lp_contact` exists for each non-rejected imported row (subject to §3.4 dedupe rules); Affinity/Backstop path: connector validation matches §3.4 ACs.
+- AC-3.2.5 — A GP who never connects Slack still completes Step 6; radar push remains off until Slack is connected later in Settings.
 
 ---
 
@@ -498,7 +507,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 **Processing.**
 
 1. **Initial backfill — three phases.**
-   - Phase A (sub-2-minute): most recent 90 days, full content. Blocks Screen 6. Targets ≤ 2 minutes for a typical GP.
+   - Phase A (sub-2-minute): most recent 90 days, full content. Gates **Day 1 Gap** and other first-session Insights baselines until complete (§3.6); not a wizard-blocking milestones screen (Document B §3.2). Targets ≤ 2 minutes for a typical GP.
    - Phase B (background, ≤ 30 minutes): months 4 through 12, full content.
    - Phase C (background, ≤ 2 hours): months 13 through 36, metadata only — no `body_text`, no `body_html_archived_url`, `metadata_only=true`.
    - All phases write to `lp_interactions` and `lp_calendar_events` with `source` set appropriately.
@@ -551,7 +560,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 **Inputs / triggers.**
 
-- CSV upload at onboarding (Screen 2).
+- CSV upload at onboarding (Step 4).
 - CSV re-upload via Settings → Integrations or Today review queue.
 - **Affinity:** API key at onboarding or Settings → Integrations when Affinity is the integrated path.
 - **Backstop:** licensed API credentials (paste and/or OAuth — per integration design doc) when Backstop is the integrated path.
@@ -572,7 +581,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 **Affinity path (when Affinity is the first native connector shipped):**
 
-1. GP pastes Affinity API key (bearer token) at onboarding Screen 2 or Settings → Integrations. Token validated by hitting `GET /v2/auth/whoami`. Stored in `oauth_tokens` with `provider='affinity'`.
+1. GP pastes Affinity API key (bearer token) at onboarding Step 4 or Settings → Integrations. Token validated by hitting `GET /v2/auth/whoami`. Stored in `oauth_tokens` with `provider='affinity'`.
 2. Initial pull: paginated GET against Affinity `Persons`, `Organizations`, `Lists`, `List Entries`, `Interactions` v2 endpoints. Mapped to `lp_organizations`, `lp_contacts`, `lp_interactions`, `lp_email_threads` with `source='affinity_api'` and `source_external_id` set.
 3. Webhook subscription: 1 of Affinity's 3 max webhook slots used. Subscribe to `person.updated` and `organization.updated` v1 events. Webhook handler diffs and applies updates with last-write-wins rules.
 4. Custom-field provisioning: **not in V1** (would only matter for write-back). The six TOMO fields (`tomo_signal_flag`, `tomo_signal_evidence`, etc.) are not created on the Affinity workspace until V2.
@@ -580,7 +589,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 **Backstop path (when Backstop is the first native connector shipped):**
 
-1. GP completes Backstop credential capture at onboarding Screen 2 or Settings → Integrations. Validated via a **stable read-only health check** per Backstop's licensed API (exact route in integration design doc). Stored in `oauth_tokens` with `provider='backstop'`.
+1. GP completes Backstop credential capture at onboarding Step 4 or Settings → Integrations. Validated via a **stable read-only health check** per Backstop's licensed API (exact route in integration design doc). Stored in `oauth_tokens` with `provider='backstop'`.
 2. Initial pull: paginated read against the Backstop entity set that maps to `lp_organizations`, `lp_contacts`, pipeline fields, and interactions, with `source='backstop_api'`.
 3. Incremental strategy: webhooks, change feeds, and/or polling per Backstop — specified in the integration design doc; engineering target is parity with the Affinity read path (fresh LP state without SoR writes from TOMO).
 4. **No write-back in V1.** Any Backstop field-mapping table for future write-back ships as an empty migration placeholder only if/when product locks Backstop bi-directional (V1.5+), analogous to `affinity_field_mappings`.
@@ -1790,11 +1799,11 @@ This section specifies the non-functional commitments for V1: performance, relia
 
 | SLO | Target | Source |
 |---|---|---|
-| Onboarding Phase A — 90-day full-content sync | ≤ 2 minutes from CSV upload + email connect | Document B Screen 6 |
+| Onboarding Phase A — 90-day full-content sync | ≤ 2 minutes from workspace connect + CRM path complete | §3.3 (first value / Day 1 Gap readiness) |
 | Onboarding Phase B — months 4–12 full-content sync | ≤ 30 min background | Email ingestion strategy |
 | Onboarding Phase C — months 13–36 metadata sync | ≤ 2 h background | Email ingestion strategy |
-| Tone calibration | ≤ 90 s during Phase B | Document B Screen 5 |
-| Day 1 Gap computation (after Phase A complete) | ≤ 30 s | Document B Screen 6 |
+| Tone calibration | ≤ 90 s during Phase B | Post–Step 2 background; §3.9 / Settings (not Document B wizard) |
+| Day 1 Gap computation (after Phase A complete) | ≤ 30 s | Home / Insights; §3.6 (not Document B wizard) |
 | Follow-up draft generation post-meeting | ≤ 30 min after meeting end | Section 7.3 F3 |
 | Meeting recap fallback (TOMO LLM) for 30-min transcript | ≤ 60 s | §3.13 |
 | Signal nightly batch (500 LPs) | ≤ 5 min | §3.5 |
@@ -3390,7 +3399,7 @@ The data dictionary is the per-field reference for fields that participate in si
 
 1. CSV upload → `csv_imports` row → row-by-row parse to `csv_dedupe_decisions`.
 2. Auto-mapping → `csv_field_mappings` candidate.
-3. GP confirms ambiguous rows (Screen 3).
+3. GP confirms ambiguous column mappings (onboarding Step 4 CSV path).
 4. On commit: rows written to `lp_organizations` and `lp_contacts` with `source='crm_csv'`.
 5. Email sync (90 days full-content) starts; `lp_interactions` rows written.
 6. Calendar sync (forward + 12 month back) starts; `lp_calendar_events` rows written.
@@ -3564,73 +3573,78 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 **Epic:** Six-step post-auth onboarding wizard (Document B) through completion and Home entry; first-value milestones that are **not** wizard screens are specified in §3.2–§3.6 and Home / Settings (see Document B *What this document deliberately omits*).
 
-**Story 8.3.1 — Welcome screen.**
+**Story 8.3.1 — Welcome (Step 1).**
 *As a new GP, I see a calm welcome page that sets the contract for connecting systems and loading CRM data.*
 
-- AC — Personalised greeting renders from the FC agreement record when available; falls back to "Welcome to TOMO" otherwise.
-- AC — A single primary action ("Let's start") advances me; no skip path.
+- AC — Personalised greeting uses FC / profile first name when available; else derives from email local-part per Document B; fallback "Welcome to TOMO."
+- AC — A single primary action (**Next** / *Let's start*) advances me; no skip path.
 
-**Story 8.3.2 — Connect systems.**
-*As a GP, I can connect email + calendar, my CRM, and meeting transcripts in three tiles, with continue enabled as soon as email and CRM are provided.*
+**Story 8.3.2 — Connect workspace (Step 2).**
+*As a GP, I choose Google Workspace or Microsoft 365 and connect mail, calendar, and contacts in one OAuth consent.*
 
-- AC — Microsoft / Google OAuth opens the consent screen in a new tab and returns me to Screen 2 with the tile in connected state.
-- AC — Backstop / Foliometrics / Sheets / Excel / generic users see a CSV upload affordance with a "Show me how" link to a 30-second video for Backstop.
-- AC — Affinity users see an API-key paste field that validates against `/v2/auth/whoami` before accepting (when Affinity native read is shipped).
-- AC — Backstop users see credential capture for the licensed Backstop read API that validates via the integration health-check call defined in §3.4 / §4.2.5 (when Backstop native read is shipped).
-- AC — Meeting transcripts (Teams or Meet) connect automatically via the same Microsoft / Google OAuth grant when the transcript scopes are granted; no separate Granola connection.
-- AC — Continue enables on a soft check (email + CRM provided); remaining work happens during Screens 3–6.
+- AC — Microsoft / Google OAuth opens the consent flow and, on success, stores `oauth_tokens` and marks the workspace bundle connected; **Next** stays disabled until then.
+- AC — Copy states one consent covers email, calendar, and contacts (scopes per §4.2).
+- AC — **Back** returns to Step 1 without completing connect.
 
-**Story 8.3.3 — Field mapping.**
-*As a GP whose CRM is CSV-based, I can confirm or correct ambiguous column mappings in 3–4 minutes.*
+**Story 8.3.3 — Data access opt-ins (Step 3).**
+*As a GP, I can optionally opt in to historical email ingestion (SRS three-tier) and to meeting transcripts / notes, independently.*
 
-- AC — Auto-mapped columns render with green checkmarks and are collapsed by default.
-- AC — Ambiguous mappings (typically 4–6 per Backstop export) are expanded with TOMO's best guess plus an explanation.
-- AC — Confirming all writes the policy to `csv_field_mappings` for re-use on subsequent imports.
+- AC — Historical email checkbox maps to `optInHistoricalEmailIngestion` (or equivalent); when off, ingestion stays forward-focused until changed in Settings.
+- AC — Meeting-transcript checkbox is disabled until Step 2 completes; when on, behaviour matches provider (§3.13).
+- AC — **Next** is always enabled on this step (both may be off).
 
-**Story 8.3.4 — Import review.**
-*As a GP, I can review duplicate matches and resolve any ambiguous matches before commit.*
+**Story 8.3.4 — CRM data (Step 4).**
+*As a GP, I complete exactly one CRM path: CSV / Excel with field mapping and confirm import, or native Affinity / Backstop read when shipped.*
 
-- AC — Exact-email matches auto-merge without surfacing.
-- AC — Name-plus-firm-domain matches surface in the review queue and write to `csv_dedupe_decisions` with `decision='pending'` until I act.
-- AC — On commit, rows are written to `lp_organizations` and `lp_contacts` with `source='crm_csv'` and `csv_import_id` set.
+- AC — CSV path: upload, auto-mapping with ambiguous columns surfaced, **Confirm import** queues work per §3.4; **Next** disabled until confirm (or equivalent success).
+- AC — Backstop / Foliometrics / Sheets / Excel / generic users have CSV path with optional "Show me how" for export guidance.
+- AC — Affinity path: list ID + API key (mock) validates via `/v2/auth/whoami` when native read is shipped; **Next** disabled until connected.
+- AC — Backstop native path: credential capture validates via §3.4 health check when shipped; **Next** disabled until connected.
+- AC — Exact-email dedupe auto-merges; name+firm ambiguous matches may surface per §3.4 without blocking **Confirm import** beyond the wizard contract in §3.2.
 
-**Story 8.3.5 — Tone calibration.**
-*As a GP, I see TOMO's read of my tone (greeting, formality, sign-off, sentence shape) within 90 seconds of arriving on Screen 5.*
+**Story 8.3.5 — Slack (Step 5).**
+*As a GP, I can optionally connect Slack and opt in to What's on my Radar push.*
 
-- AC — Tone calibration runs in the background starting on Screen 2; surfaces here when complete.
-- AC — A "refresh later" affordance allows me to skip if it isn't ready.
-- AC — `tone_profiles` row is written with `prompt_excerpt` containing the few-shot text used in subsequent draft generation.
+- AC — I can **Next** without installing Slack.
+- AC — When Slack is connected, the radar-push checkbox persists intent for later delivery config.
 
-**Story 8.3.6 — Day 1 Gap reveal.**
-*As a GP, I see the Day 1 Gap headline and named cohorts within 2 minutes of starting Screen 2 — and a re-engagement draft for one Tier 1 LP in the gap.*
+**Story 8.3.6 — Completion (Step 6).**
+*As a GP, I see a short summary of my choices and open the product.*
 
-- AC — Screen blocks until ingestion has computed the gap; renders a calm progress narrative ("Reading your last 90 days...") not a generic spinner.
-- AC — Gap count is written to `daily_pipeline_summary.day_1_gap_count` and to `day_1_gap_baseline` on the first row, anchoring Metric 2's trend annotation.
-- AC — One Tier 1 stale-contact LP gets a draft in the Action Drawer ready for me to send before continuing.
+- AC — Summary lists workspace provider, Step 3 opt-ins, CRM path, Slack / radar flags per Document B — not pipeline milestone animations, duplicate queue, Day 1 Gap, or daily-rhythm setup.
+- AC — Primary CTA **Go to Home** sets `onboardingComplete` and lands on `/home`.
 
-**Story 8.3.7 — Daily rhythm setup.**
-*As a GP, I can choose my daily-brief delivery time, channels, and follow-up thresholds, and set my fund's raise target.*
+**Story 8.3.7 — Tone calibration (post-wizard).**
+*After my mailbox is connected, TOMO infers my writing tone for drafts (not a Document B wizard screen).*
 
-- AC — Default delivery time is 07:30 local; channels default to in-app + email; Slack is disabled until Slack is connected later.
-- AC — Setting `funds.raise_target` and currency populates the Insights top-half hero bar after onboarding.
-- AC — Tier-aware follow-up thresholds default to T1 = 48 hours and T2/T3/unset = 5 days; I can adjust before continuing.
+- AC — Job may start after Step 2; surfaced in Home / Settings / draft UX per §3.9 — not as a gated wizard step.
+- AC — A "refresh later" or generic tone fallback exists if the profile is not ready.
+- AC — `tone_profiles` row is written with `prompt_excerpt` used in draft generation.
 
-**Story 8.3.8 — Workspace ready.**
-*As a GP, I see a final confirmation that lists what's running in the background and a single "Open Today" affordance.*
+**Story 8.3.8 — Day 1 Gap reveal (post-wizard).**
+*After Phase A ingestion and CRM data are available, I see the Day 1 Gap headline and cohorts (not a Document B wizard screen).*
 
-- AC — The screen lists 12-month full-content backfill, 13–36 month metadata backfill, and the partial Insights baseline as ongoing.
-- AC — Clicking "Open Today" lands on `/home` with a non-empty action queue (or a calm empty state when truly nothing is pressing).
+- AC — UI blocks or shows calm progress until Phase A enables the computation (§3.3 / §3.6).
+- AC — Gap count is written to `daily_pipeline_summary.day_1_gap_count` and `day_1_gap_baseline` on first computation, anchoring Metric 2.
+- AC — A re-engagement draft for a Tier 1 LP may appear in the Action Drawer when product surfaces the gap (Home / Insights).
 
-**Story 8.3.9 — Onboarding resumability.**
-*As a GP, I can close my browser between any two screens and resume from the last completed screen later.*
+**Story 8.3.9 — Daily rhythm and fund preferences (post-wizard).**
+*As a GP, I configure daily-brief time, channels, follow-up thresholds, and fund raise target in Settings (not a Document B wizard screen).*
 
-- AC — Closing on Screen 4 and returning 30 minutes later resumes at Screen 5 with all prior state preserved.
-- AC — Background jobs continue running independent of the front-end (no perceived restart).
+- AC — Default delivery time 07:30 local; channels default in-app + email; Slack gated until connected.
+- AC — `funds.raise_target` and currency populate Insights when set; soft warning if unset — not a blocker for **Go to Home**.
+- AC — Tier-aware follow-up thresholds default T1 = 48 hours, T2/T3/unset = 5 days; editable in Settings.
 
-**Story 8.3.10 — Email backfill three-tier model.**
-*As a GP, I see TOMO read 12 months of full email content and an additional 24 months of metadata-only history without me choosing — the model is fixed.*
+**Story 8.3.10 — Onboarding resumability.**
+*As a GP, I can close my browser between any two steps and resume from the last completed step.*
 
-- AC — `lp_interactions` rows for the most recent 12 months carry `body_text` populated; rows for months 13–36 carry `body_text=NULL` and `metadata_only=true`; nothing exists beyond 36 months.
+- AC — Example: closing after Step 4 and returning resumes at Step 5 (or first incomplete step) with prior state intact.
+- AC — Background jobs (sync, import, tone) continue independent of the front-end.
+
+**Story 8.3.11 — Email backfill three-tier model.**
+*When historical email opt-in applies (Step 3 and/or FC default-on), TOMO follows the locked three-tier model (§3.3).*
+
+- AC — With historical opt-in active, `lp_interactions` for the most recent 12 months carry `body_text` populated; months 13–36 carry `body_text=NULL` and `metadata_only=true`; nothing beyond 36 months.
 - AC — Phase A (90-day full content) completes within 2 minutes; Phase B (4–12 months full content) within 30 minutes; Phase C (13–36 months metadata) within 2 hours.
 - AC — A daily retention job nulls `body_text` and removes archived HTML at the 12-month boundary going forward.
 
@@ -4255,7 +4269,7 @@ Extends §1.3. Alphabetical.
 | **Backfill** | The historical email and calendar ingestion run at onboarding. Three-tier: 0–12 months full content, 13–36 months metadata, beyond 36 months no ingestion. |
 | **CASA** | Cloud Application Security Assessment. Google's third-party security review programme for OAuth apps that access sensitive scopes. CASA Tier 2 is the V1 commitment. |
 | **Concentration risk** | Insights Metric 4. Triggered when one LP's expected commitment exceeds 20% of remaining target. |
-| **Day 1 Gap** | Count of LPs whose CRM lists them as active but for whom TOMO finds no meaningful touch in 60+ days. The climax of onboarding (Document B Screen 6) and Insights Metric 2. |
+| **Day 1 Gap** | Count of LPs whose CRM lists them as active but for whom TOMO finds no meaningful touch in 60+ days. Insights Metric 2; revealed after initial sync (not a Document B onboarding step — §3.2). |
 | **Daily Brief** | Per-day summary surface that auto-opens on first daily login; also delivered via email and Slack. §3.8. |
 | **Delta sync** | Incremental ingestion via Microsoft Graph delta links and Google History API / push notifications. |
 | **Drifting** | Named filter on Lists for LPs in amber/red flag with silence reason. |
