@@ -53,6 +53,8 @@ In practice, most institutions will **not** allow TOMO (or any vendor) to **muta
 | **B — Sandbox write-back** | On (same ingest choices as A, typically already proven) | On, but credentials + base URL target **vendor sandbox / UAT / test workspace** only. Same code paths as production write-back; different tenant. | Until COO / Ops signs off on audit samples and reports. |
 | **C — Production write-back** | On | On against **live** SoR. Requires explicit admin toggle + client sign-off + **post-update reporting** (*Post-update reporting — write-back runs* in this document). | Steady state. |
 
+If the client’s system of record has **no** suitable API for automated write-back (including licensed API not in procurement scope), **discuss with the client** how write-back—or an agreed substitute such as file-based handoff, manual SoR updates, or remaining in parallel mode—**would work** before committing to Mode **B** / **C** scope and timelines.
+
 **Consistency rule:** **Mode A** = parallel run with **no SoR writes from TOMO.** The **default** snapshot mechanism is **manual CSV** for all CRMs. **Affinity** may additionally use **API read + webhooks** (optional automation) while staying in Mode A. **B** and **C** are unchanged: **B** = validate writes in sandbox; **C** = writes to production SoR. Typical path: **A** (CSV, plus optional Affinity API read) → **B** → **C**.
 
 **Planning changes vs a “flip write-back on immediately” roadmap:**
