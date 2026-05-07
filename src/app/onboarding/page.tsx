@@ -72,12 +72,11 @@ export default function OnboardingPage() {
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   const goBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
-  const crmReady =
-    (state.crmImportMethod === "csv" && state.contactImportUploaded) ||
-    (state.crmImportMethod === "affinity" && state.affinityConnected);
+  /** Step 4: CSV / Excel may be skipped without Confirm import; Affinity requires a successful connect. */
+  const crmStepAllowsNext = state.crmImportMethod !== "affinity" || state.affinityConnected;
 
   const headerNextDisabled =
-    (currentStep === 2 && !state.workspaceBundleConnected) || (currentStep === 4 && !crmReady);
+    (currentStep === 2 && !state.workspaceBundleConnected) || (currentStep === 4 && !crmStepAllowsNext);
 
   const handleHeaderNext = () => {
     if (headerNextDisabled) return;
@@ -400,7 +399,10 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <p className="text-sm text-gray-600">
                 Bring in your LP and relationship data from a CRM export or directly from Affinity. Column mapping applies to
-                file import; Affinity uses your workspace schema automatically (mock).
+                file import; Affinity uses your workspace schema automatically (mock).{" "}
+                <span className="font-medium text-gray-700">
+                  File import is optional — use Next to skip and add contacts later from Settings.
+                </span>
               </p>
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -557,7 +559,12 @@ export default function OnboardingPage() {
               )}
 
               <div className="flex justify-end border-t border-gray-100 pt-4">
-                <button type="button" className="button-primary disabled:opacity-50" onClick={goNext} disabled={!crmReady}>
+                <button
+                  type="button"
+                  className="button-primary disabled:opacity-50"
+                  onClick={goNext}
+                  disabled={!crmStepAllowsNext}
+                >
                   Next
                 </button>
               </div>
@@ -644,10 +651,18 @@ export default function OnboardingPage() {
                     state.crmImportMethod === "affinity"
                       ? "CRM: Affinity API"
                       : state.crmImportMethod === "csv"
-                        ? "CRM: file import"
+                        ? state.contactImportUploaded
+                          ? "CRM: file import"
+                          : "CRM: file import (skipped)"
                         : "CRM"
                   }
-                  ok={crmReady}
+                  ok={
+                    state.crmImportMethod === "affinity"
+                      ? state.affinityConnected
+                      : state.crmImportMethod === "csv"
+                        ? state.contactImportUploaded
+                        : false
+                  }
                 />
                 <StatusLine label="Slack connected" ok={state.slackConnected} />
                 {state.slackConnected ? (

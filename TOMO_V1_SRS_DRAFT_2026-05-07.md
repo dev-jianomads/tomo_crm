@@ -270,7 +270,7 @@ External actors and systems that TOMO V1 interacts with are listed in §4.2 with
 V1 delivers twelve product capability areas. Each is a top-level grouping of functional requirements in §3 and a top-level grouping of user stories in §8.
 
 1. **Authentication and account management** — Firebase Auth (email + Google + Microsoft); per-user OAuth for data-source connections; workspace creation; team invites (multiple members per workspace); plan billing via Stripe.
-2. **Onboarding** — six-step post-auth wizard per **Document B**: welcome → connect workspace (Google Workspace or Microsoft 365 bundle OAuth) → optional data-access opt-ins (three-tier historical email, meeting transcripts) → CRM data (CSV / Excel with field mapping, or native CRM read connect **when shipped** — Affinity or Backstop API, whichever is available first) → optional Slack (*What's on my Radar* push) → completion summary and **Go to Home**. Tone calibration, Day 1 Gap reveal, daily-rhythm setup, deep import review, and first-morning Today depth are **outside** this wizard; see Document B *What this document deliberately omits* and §3.2 / Home / Settings.
+2. **Onboarding** — six-step post-auth wizard per **Document B**: welcome → connect workspace (Google Workspace or Microsoft 365 bundle OAuth) → optional data-access opt-ins (three-tier historical email, meeting transcripts) → CRM data (optional CSV / Excel with field mapping and confirm import, or native CRM read connect **when shipped** — Affinity or Backstop API, whichever is available first, required to connect if that path is chosen) → optional Slack (*What's on my Radar* push) → completion summary and **Go to Home**. Tone calibration, Day 1 Gap reveal, daily-rhythm setup, deep import review, and first-morning Today depth are **outside** this wizard; see Document B *What this document deliberately omits* and §3.2 / Home / Settings.
 3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection.
 4. **CRM integration** — generic CSV pipeline with auto-mapping, deduplication, and conflict resolution; **read-only** native CRM API pull for **Affinity or Backstop — whichever connector ships first** (bi-directional / SoR write-back not in V1).
 5. **Signals engine** — nine surfaced signals plus three captured attributes; nightly batch and event-driven computation; append-only signal log; pipeline flag computation.
@@ -435,7 +435,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 ### 3.2. Onboarding flow
 
-**Description.** **Six-step** post-auth wizard (`Next` / `Back`) from sign-up through **Go to Home** (`/home`). **Document B** (`Document_B_Onboarding_Flow_Specification.md`) is normative for screen copy, gating, and step order; this subsection adds persistence, data-model, and acceptance criteria. The wizard does **not** include pipeline-import milestone narratives, deep duplicate-review queues beyond CSV confirm, **Day 1 Gap reveal**, **tone calibration**, **daily-rhythm / notification setup**, or **first-morning Today depth** — those are product milestones **outside** the wizard (Document B *What this document deliberately omits*; behaviour in §3.3–§3.6, Home, Settings). **Next** cannot skip ahead of incomplete **Step 2** (workspace connect) or **Step 4** (CRM path). **Steps 3** and **5** are optional; **Next** is always available on Step 3 when both opt-ins are off.
+**Description.** **Six-step** post-auth wizard (`Next` / `Back`) from sign-up through **Go to Home** (`/home`). **Document B** (`Document_B_Onboarding_Flow_Specification.md`) is normative for screen copy, gating, and step order; this subsection adds persistence, data-model, and acceptance criteria. The wizard does **not** include pipeline-import milestone narratives, deep duplicate-review queues beyond CSV confirm, **Day 1 Gap reveal**, **tone calibration**, **daily-rhythm / notification setup**, or **first-morning Today depth** — those are product milestones **outside** the wizard (Document B *What this document deliberately omits*; behaviour in §3.3–§3.6, Home, Settings). **Next** cannot skip ahead of incomplete **Step 2** (workspace connect). On **Step 4**, the **CSV / Excel** path may be skipped without **Confirm import**; **Next** remains blocked for a **native CRM connector** (e.g. Affinity / Backstop) until that connector reports connected. **Steps 3** and **5** are optional; **Next** is always available on Step 3 when both opt-ins are off.
 
 Closing the browser preserves state and resumes after the last completed step. Mock implementations persist client-side (`tomo-onboarding` / `OnboardingState` in `src/lib/types.ts`); production mirrors the same shape in `users.onboarding_state_jsonb`.
 
@@ -452,13 +452,13 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 3. **Step 3 — Data access (optional).** Two **independent** opt-ins (checkboxes): (a) **Historical email ingestion** — SRS three-tier when checked (months 0–12 full content, 13–36 metadata-only, nothing beyond 36 months; §3.3); when unchecked, a lighter / forward-focused posture until changed in Settings. (b) **Meeting transcripts, notes, and actions** — Microsoft 365 Teams + related content (§3.13); Google Workspace Meet transcripts and linked notes where available. Meeting-transcript controls stay disabled until Step 2 completes so copy matches the chosen provider. **Next** always enabled.
 
-4. **Step 4 — CRM data (required).** One of: **Upload CRM export (CSV / Excel)** — file drop, **field mapping** table (`ContactImportFieldMapping`: column → TOMO field, sample values), **Confirm import** queues parse/sync (per §3.4 / Document A); or **Connect native read** when shipped — **Affinity** (list ID + API key; no column-mapping UI in-wizard; server-side schema mapping in production) and/or **Backstop** per §3.4 **whichever connector ships first**. **Next** disabled until import is confirmed (CSV path) or native connector reports connected. Auto-mapping, ambiguous columns, and first-import dedupe follow §3.4; heavy review queues are not wizard-blocking beyond **Confirm import**.
+4. **Step 4 — CRM data (CSV optional; native connector required when selected).** **Upload CRM export (CSV / Excel)** — file drop, **field mapping** table (`ContactImportFieldMapping`: column → TOMO field, sample values), **Confirm import** queues parse/sync (per §3.4 / Document A). The GP may use **Next** to **skip** file import before confirming. **Connect native read** when shipped — **Affinity** (list ID + API key; no column-mapping UI in-wizard; server-side schema mapping in production) and/or **Backstop** per §3.4 **whichever connector ships first** — **Next** disabled until that native connector reports connected. Auto-mapping, ambiguous columns, and first-import dedupe follow §3.4; heavy review queues are not wizard-blocking beyond **Confirm import**.
 
 5. **Step 5 — Slack (optional).** Optional Slack install. Checkbox: push **What's on my Radar** to Slack when connected. **Next** without Slack allowed.
 
 6. **Step 6 — Completion.** Short summary: workspace provider, Step 3 opt-ins, CRM path, Slack / radar flags. Primary CTA **Go to Home**; session flag `onboardingComplete` set. No animated pipeline milestones, duplicate merge queue, Day 1 Gap list, morning-brief schedule, or first-morning Today preview on this screen.
 
-**Cross-step dependencies (summary):** Step 1 — auth session; Step 2 — auth + OAuth app configuration; Step 3 — Step 2 for meaningful meeting-transcript copy; Step 4 — Step 2 recommended (signals use mail/calendar + CRM); Step 5 — optional; Step 6 — Steps 2 and 4 satisfied.
+**Cross-step dependencies (summary):** Step 1 — auth session; Step 2 — auth + OAuth app configuration; Step 3 — Step 2 for meaningful meeting-transcript copy; Step 4 — Step 2 recommended (signals use mail/calendar + CRM); Step 5 — optional; Step 6 — Step 2 satisfied; wizard reaches completion after Step 4 is passed (CSV may have been skipped; native connector path must be connected before advancing when selected).
 
 **Resumability.**
 
@@ -477,14 +477,14 @@ Closing the browser preserves state and resumes after the last completed step. M
 **Business rules.**
 
 - BR-3.2.1 — **Next** on Step 2 remains disabled until workspace bundle OAuth succeeds.
-- BR-3.2.2 — **Next** on Step 4 remains disabled until the GP completes exactly one CRM path (CSV **Confirm import** or native connector connected).
+- BR-3.2.2 — **Next** on Step 4: always available when the **CSV / Excel** path is selected (import optional). When a **native CRM connector** path is selected (Affinity / Backstop when shipped), **Next** stays disabled until that connector reports connected.
 - BR-3.2.3 — Onboarding wizard completion (**Go to Home**) does not require Slack, historical email opt-in, or meeting-transcript opt-in.
 - BR-3.2.4 — Connecting Microsoft Graph or Google Workspace for the bundle also enables Teams or Meet transcript ingestion when the user grants transcript-related scopes (per §3.13); additional scopes are requested in the **same** consent where product design allows — no separate "connect transcripts" OAuth step in the wizard beyond Step 3's opt-in.
 - BR-3.2.5 — Step 3 **Historical email ingestion** checkbox reflects the SRS **three-tier** contract when checked (§3.3). Production may default this **on** for FC users. The deprecated `EmailHistoryScope` (`six_months` / `future_only`) is removed from `OnboardingState` in favour of `optInHistoricalEmailIngestion` and related fields.
 
 **Acceptance criteria.**
 
-- AC-3.2.1 — A GP can complete all six steps and land on `/home` with Step 2 and Step 4 satisfied; optional steps can be skipped.
+- AC-3.2.1 — A GP can complete all six steps and land on `/home` with Step 2 (workspace) satisfied and Step 4 passed (CSV import may be skipped; optional steps 3 and 5 can be skipped).
 - AC-3.2.2 — Closing the browser between Step 4 and Step 6 and reopening later resumes with Step 4–6 state intact and background sync/import continuing.
 - AC-3.2.3 — A GP whose Microsoft 365 tenant denies transcript-related scopes completes Step 2 and Step 3 without abort; transcript features degrade gracefully per §3.13.
 - AC-3.2.4 — CSV path: after **Confirm import**, at least one `lp_contact` exists for each non-rejected imported row (subject to §3.4 dedupe rules); Affinity/Backstop path: connector validation matches §3.4 ACs.
@@ -3594,9 +3594,9 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — **Next** is always enabled on this step (both may be off).
 
 **Story 8.3.4 — CRM data (Step 4).**
-*As a GP, I complete exactly one CRM path: CSV / Excel with field mapping and confirm import, or native Affinity / Backstop read when shipped.*
+*As a GP, I can bring in CRM data via optional CSV / Excel (field mapping and **Confirm import**) or via native Affinity / Backstop read when shipped — choosing a native path requires completing that connect.*
 
-- AC — CSV path: upload, auto-mapping with ambiguous columns surfaced, **Confirm import** queues work per §3.4; **Next** disabled until confirm (or equivalent success).
+- AC — CSV path: upload, auto-mapping with ambiguous columns surfaced, **Confirm import** queues work per §3.4; **Next** may be used to skip import without confirming (add contacts later from Settings).
 - AC — Backstop / Foliometrics / Sheets / Excel / generic users have CSV path with optional "Show me how" for export guidance.
 - AC — Affinity path: list ID + API key (mock) validates via `/v2/auth/whoami` when native read is shipped; **Next** disabled until connected.
 - AC — Backstop native path: credential capture validates via §3.4 health check when shipped; **Next** disabled until connected.

@@ -12,7 +12,7 @@
 
 Onboarding introduces TOMO as the **operational AI layer** next to the GP’s CRM: connect one work identity, optionally deepen historical access, load CRM relationships, and open the product. It does **not** (in this spec) include pipeline import progress narratives, duplicate review queues, Day 1 Gap reveal, daily rhythm configuration, or first-morning preview — those remain **product milestones beyond this wizard** and are specified in the SRS and pillar docs where relevant.
 
-Linear flow: **six steps**, `Next` / `Back`, progress persisted in the client mock as `tomo-onboarding` (`OnboardingState` in `src/lib/types.ts`). No free navigation ahead of completed requirements on steps 2 and 4.
+Linear flow: **six steps**, `Next` / `Back`, progress persisted in the client mock as `tomo-onboarding` (`OnboardingState` in `src/lib/types.ts`). **Next** is gated on step 2 until the workspace bundle connects. On step 4, **Next** is always available for the **CSV / Excel** path (import is optional — skip with **Next**); **Next** stays disabled on the **Affinity (API)** path until the mock reports connected.
 
 ---
 
@@ -63,21 +63,21 @@ Two **independent** opt-ins (checkboxes):
 
 ---
 
-### Step 4 — CRM data (required)
+### Step 4 — CRM data (CSV optional; Affinity required when selected)
 
 **What the GP sees**
 
 - Choose one path:
-  - **Upload CRM export (CSV / Excel)** — file drop, then **field mapping** table (`ContactImportFieldMapping`: your column → TOMO field, sample values). **Confirm import** saves mapping and row estimate (mock `uploadContactsSeed`).
+  - **Upload CRM export (CSV / Excel)** — file drop, then **field mapping** table (`ContactImportFieldMapping`: your column → TOMO field, sample values). **Confirm import** saves mapping and row estimate (mock `uploadContactsSeed`). **Next** does not require a confirmed import — the GP may skip file upload and proceed.
   - **Connect Affinity (API)** — list ID + API key; mock `connectAffinity`. No column-mapping UI (schema mapping is server-side in production).
 
 **What the GP does**
 
-- Complete **one** path. **Next** is disabled until either import is confirmed or Affinity reports connected.
+- Either skip CSV with **Next**, confirm a CSV import, or connect Affinity. **Next** is disabled on the Affinity path until the mock reports connected.
 
 **What happens behind the scenes (production)**
 
-- CSV: parse, policy storage for column mappings, queue sync (SRS / Document A).  
+- CSV: parse, policy storage for column mappings, queue sync (SRS / Document A) when the user confirms import; skipped CSV implies no onboarding import job until CRM data is added in Settings or a later flow.  
 - Affinity: validate token, read-only pull per V1 SRS.
 
 ---
@@ -114,7 +114,7 @@ Two **independent** opt-ins (checkboxes):
 | 3 | Step 2 for meaningful meeting-transcript copy |
 | 4 | Step 2 recommended (signals use mail/calendar + CRM) |
 | 5 | Optional |
-| 6 | Steps 2 and 4 satisfied |
+| 6 | Step 2 satisfied; step 4 completed (CSV may have been skipped; Affinity path requires connect) |
 
 ---
 
