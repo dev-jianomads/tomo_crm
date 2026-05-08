@@ -215,15 +215,15 @@ export default function OnboardingPage() {
               : "You’re ready";
 
   return (
-    <div className="min-h-screen bg-white px-4 py-4 md:py-8">
+    <div className="min-h-screen bg-[color:var(--background)] px-4 py-4 md:py-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-5 md:gap-6">
-        <div className="sticky top-0 z-20 bg-white pb-3 pt-1 md:pt-2">
+        <div className="sticky top-0 z-20 border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] pb-3 pt-1 backdrop-blur-sm md:pt-2 dark:bg-[color:color-mix(in_srgb,var(--background)_88%,transparent)]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500">Onboarding</p>
-              <h1 className="text-2xl font-semibold text-gray-900">{stepTitle}</h1>
+              <p className="tomo-eyebrow">Onboarding</p>
+              <h1 className="mt-1 text-2xl font-semibold text-[color:var(--foreground)]">{stepTitle}</h1>
             </div>
-            <div className="hidden text-sm text-gray-500 md:block">
+            <div className="hidden text-sm text-[color:var(--tomo-mute)] md:block">
               Step {currentStep} of {totalSteps}
             </div>
           </div>
@@ -239,7 +239,13 @@ export default function OnboardingPage() {
                 return (
                   <div
                     key={step}
-                    className={`h-3 w-3 rounded-full transition ${isActive ? "scale-105 bg-blue-600" : isDone ? "bg-blue-200" : "bg-gray-200"}`}
+                    className={`h-3 w-3 rounded-full transition ${
+                      isActive
+                        ? "scale-110 bg-[color:var(--tomo-teal)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--tomo-teal)_24%,transparent)]"
+                        : isDone
+                          ? "bg-[color:var(--tomo-teal-muted)]"
+                          : "bg-[color:var(--tomo-rule)]"
+                    }`}
                   />
                 );
               })}
@@ -260,16 +266,18 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="tomo-card rounded-[var(--tomo-radius-md)] border-[color:var(--tomo-rule)] p-6 shadow-[var(--tomo-shadow-1)]">
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h2 className="font-serif text-2xl font-medium text-gray-900 md:text-3xl">{welcomeGreeting}</h2>
-              <p className="max-w-2xl text-base leading-relaxed text-gray-700">
+              <h2 className="font-display text-2xl font-medium tracking-tight text-[color:var(--foreground)] md:text-3xl">
+                {welcomeGreeting}
+              </h2>
+              <p className="max-w-2xl text-base leading-relaxed text-[color:var(--tomo-body)]">
                 You&apos;re a Founding Member of TOMO. Over the next few minutes, we&apos;ll connect TOMO to your existing
                 systems and pull in your CRM relationships. You&apos;ll see real intelligence on your real LPs as the product
                 comes online. Nothing is sent or surfaced anywhere outside this flow until you tell it to.
               </p>
-              <div className="flex justify-end border-t border-gray-100 pt-4">
+              <div className="flex justify-end border-t border-[color:var(--tomo-rule-soft)] pt-4">
                 <button type="button" className="button-primary" onClick={goNext}>
                   Next
                 </button>
@@ -279,20 +287,25 @@ export default function OnboardingPage() {
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              <p className="text-sm text-gray-600">
-                Connect <span className="font-medium text-gray-800">email, calendar, and contacts</span> in one step. Choose
-                your workspace provider — production opens a single OAuth consent with the combined scopes (V1 SRS §3.2).
+              <p className="text-sm text-[color:var(--tomo-body)]">
+                Connect <span className="font-medium text-[color:var(--foreground)]">email, calendar, and contacts</span> in
+                one step. Choose your workspace provider — production opens a single OAuth consent with the combined scopes (V1 SRS
+                §3.2).
               </p>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div
-                  className={`rounded-lg border p-4 ${state.workspaceProvider === "google" ? "border-blue-400 bg-blue-50/30" : "border-gray-200"}`}
+                  className={`rounded-[var(--tomo-radius-md)] border p-4 transition ${
+                    state.workspaceProvider === "google"
+                      ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] shadow-[var(--tomo-shadow-1)]"
+                      : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <img src="/icons/gmail.svg" alt="" className="h-5 w-5" />
-                    <p className="font-semibold text-gray-900">Google Workspace</p>
+                    <p className="font-semibold text-[color:var(--foreground)]">Google Workspace</p>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600">Gmail, Google Calendar, and Google Contacts together.</p>
+                  <p className="mt-2 text-sm text-[color:var(--tomo-body)]">Gmail, Google Calendar, and Google Contacts together.</p>
                   <button
                     type="button"
                     className="button-primary mt-4 w-full"
@@ -302,13 +315,19 @@ export default function OnboardingPage() {
                   </button>
                 </div>
                 <div
-                  className={`rounded-lg border p-4 ${state.workspaceProvider === "microsoft" ? "border-blue-400 bg-blue-50/30" : "border-gray-200"}`}
+                  className={`rounded-[var(--tomo-radius-md)] border p-4 transition ${
+                    state.workspaceProvider === "microsoft"
+                      ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] shadow-[var(--tomo-shadow-1)]"
+                      : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <img src="/icons/outlook.svg" alt="" className="h-5 w-5" />
-                    <p className="font-semibold text-gray-900">Microsoft 365</p>
+                    <p className="font-semibold text-[color:var(--foreground)]">Microsoft 365</p>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600">Outlook mail, calendar, and Microsoft 365 contacts together.</p>
+                  <p className="mt-2 text-sm text-[color:var(--tomo-body)]">
+                    Outlook mail, calendar, and Microsoft 365 contacts together.
+                  </p>
                   <button
                     type="button"
                     className="button-primary mt-4 w-full"
@@ -320,15 +339,15 @@ export default function OnboardingPage() {
               </div>
 
               {state.workspaceBundleConnected ? (
-                <p className="text-sm text-green-800">
+                <p className="text-sm text-[color:var(--tomo-status-green)]">
                   <span className="font-medium">Connected</span> — {state.workspaceProvider === "google" ? "Google" : "Microsoft"}{" "}
                   workspace (mock). Use <span className="font-medium">Next</span> to continue.
                 </p>
               ) : (
-                <p className="text-xs text-gray-500">You must connect one provider before continuing.</p>
+                <p className="text-xs text-[color:var(--tomo-mute)]">You must connect one provider before continuing.</p>
               )}
 
-              <div className="flex justify-end border-t border-gray-100 pt-4">
+              <div className="flex justify-end border-t border-[color:var(--tomo-rule-soft)] pt-4">
                 <button type="button" className="button-primary disabled:opacity-50" onClick={goNext} disabled={!state.workspaceBundleConnected}>
                   Next
                 </button>
@@ -338,21 +357,21 @@ export default function OnboardingPage() {
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--tomo-body)]">
                 Optional grants on top of your mailbox connection. Aligned with V1 SRS §3.3 (three-tier email ingestion) and §3.13
                 (meeting transcripts).
               </p>
 
-              <label className="flex cursor-pointer gap-3 rounded-lg border border-gray-200 p-4">
+              <label className="flex cursor-pointer gap-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_35%,var(--tomo-rule))]">
                 <input
                   type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                  className="mt-1 h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--tomo-teal)] focus:ring-[color:var(--tomo-teal)]"
                   checked={state.optInHistoricalEmailIngestion}
                   onChange={(e) => setState((prev) => ({ ...prev, optInHistoricalEmailIngestion: e.target.checked }))}
                 />
                 <span>
-                  <span className="font-medium text-gray-900">Read historical email (recommended for signals)</span>
-                  <span className="mt-1 block text-sm text-gray-600">
+                  <span className="font-medium text-[color:var(--foreground)]">Read historical email (recommended for signals)</span>
+                  <span className="mt-1 block text-sm text-[color:var(--tomo-body)]">
                     Allow TOMO to ingest roughly the <span className="font-medium">first 12 months</span> of mail and calendar
                     with full content, and <span className="font-medium">months 13–36</span> as metadata-only (no bodies). Nothing
                     older than 36 months. Uncheck to limit to forward-looking sync until you change this in Settings.
@@ -360,16 +379,18 @@ export default function OnboardingPage() {
                 </span>
               </label>
 
-              <label className="flex cursor-pointer gap-3 rounded-lg border border-gray-200 p-4">
+              <label
+                className={`flex cursor-pointer gap-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_35%,var(--tomo-rule))] ${!state.workspaceBundleConnected ? "opacity-60" : ""}`}
+              >
                 <input
                   type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                  className="mt-1 h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--tomo-teal)] focus:ring-[color:var(--tomo-teal)] disabled:opacity-50"
                   checked={state.optInMeetingTranscripts}
                   onChange={(e) => setState((prev) => ({ ...prev, optInMeetingTranscripts: e.target.checked }))}
                   disabled={!state.workspaceBundleConnected}
                 />
                 <span>
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-[color:var(--foreground)]">
                     {state.workspaceProvider === "microsoft"
                       ? "Microsoft Teams meetings"
                       : state.workspaceProvider === "google"
@@ -377,7 +398,7 @@ export default function OnboardingPage() {
                         : "Meeting"}{" "}
                     — transcripts, notes, and actions
                   </span>
-                  <span className="mt-1 block text-sm text-gray-600">
+                  <span className="mt-1 block text-sm text-[color:var(--tomo-body)]">
                     {state.workspaceProvider === "microsoft"
                       ? "Allow TOMO to read Teams meeting transcripts and related notes so briefs and follow-ups reflect what was actually said."
                       : state.workspaceProvider === "google"
@@ -387,7 +408,7 @@ export default function OnboardingPage() {
                 </span>
               </label>
 
-              <div className="flex justify-end border-t border-gray-100 pt-4">
+              <div className="flex justify-end border-t border-[color:var(--tomo-rule-soft)] pt-4">
                 <button type="button" className="button-primary" onClick={goNext}>
                   Next
                 </button>
@@ -397,16 +418,16 @@ export default function OnboardingPage() {
 
           {currentStep === 4 && (
             <div className="space-y-6">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--tomo-body)]">
                 Bring in your LP and relationship data from a CRM export or directly from Affinity. Column mapping applies to
                 file import; Affinity uses your workspace schema automatically (mock).{" "}
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-[color:var(--foreground)]">
                   File import is optional — use Next to skip and add contacts later from Settings.
                 </span>
               </p>
 
               <div className="flex flex-col gap-3 sm:flex-row">
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--foreground)]">
                   <input
                     type="radio"
                     name="crm-mode"
@@ -425,7 +446,7 @@ export default function OnboardingPage() {
                   />
                   Upload CRM export (CSV / Excel)
                 </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--foreground)]">
                   <input
                     type="radio"
                     name="crm-mode"
@@ -447,10 +468,10 @@ export default function OnboardingPage() {
               </div>
 
               {state.crmImportMethod === "csv" && (
-                <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                <div className="space-y-4 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4 dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_85%,var(--tomo-navy-soft))]">
                   {state.contactImportUploaded && !contactsPreview ? (
                     <div className="space-y-3">
-                      <p className="text-sm text-green-800">
+                      <p className="text-sm text-[color:var(--tomo-status-green)]">
                         Imported {state.contactImportFilename ?? "file"} (~{state.contactImportRowCount ?? "many"} rows).
                         {state.contactImportMappingSummary ? (
                           <>
@@ -461,7 +482,7 @@ export default function OnboardingPage() {
                       </p>
                       <button
                         type="button"
-                        className="text-sm text-blue-700 underline"
+                        className="text-sm text-[color:var(--tomo-teal-muted)] underline-offset-2 hover:text-[color:var(--tomo-teal)] hover:underline"
                         onClick={() => {
                           clearContactsImport();
                           setState((prev) => ({ ...prev, crmImportMethod: "csv" }));
@@ -477,13 +498,13 @@ export default function OnboardingPage() {
                         disabled={contactsParsing}
                         onFileSelected={(f) => void handleContactsFileSelected(f)}
                       />
-                      <p className="text-xs text-gray-500">CSV, XLS, or XLSX with a header row.</p>
-                      {contactsParsing ? <p className="text-xs text-gray-500">Reading file…</p> : null}
+                      <p className="text-xs text-[color:var(--tomo-mute)]">CSV, XLS, or XLSX with a header row.</p>
+                      {contactsParsing ? <p className="text-xs text-[color:var(--tomo-mute)]">Reading file…</p> : null}
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium text-gray-800">{contactsFile?.name}</span> · ~
+                      <p className="text-xs text-[color:var(--tomo-mute)]">
+                        <span className="font-medium text-[color:var(--foreground)]">{contactsFile?.name}</span> · ~
                         {contactsPreview.rowCountEstimate.toLocaleString()} rows (estimate)
                       </p>
                       <ContactImportFieldMapping
@@ -520,32 +541,34 @@ export default function OnboardingPage() {
               )}
 
               {state.crmImportMethod === "affinity" && (
-                <div className="space-y-4 rounded-lg border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600">
+                <div className="space-y-4 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4 dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_85%,var(--tomo-navy-soft))]">
+                  <p className="text-sm text-[color:var(--tomo-body)]">
                     Paste your Affinity API key and list ID. Production validates against Affinity and stores credentials
                     server-side.
                   </p>
                   <div>
-                    <label className="text-xs uppercase tracking-wide text-gray-500">List ID</label>
+                    <label className="tomo-field-label">List ID</label>
                     <input
-                      className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                      className="tomo-input mt-1 text-sm"
                       value={affinityListId}
                       onChange={(e) => setAffinityListId(e.target.value)}
                       placeholder="e.g. 12345"
                     />
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-wide text-gray-500">API key</label>
+                    <label className="tomo-field-label">API key</label>
                     <input
                       type="password"
-                      className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                      className="tomo-input mt-1 text-sm"
                       value={affinityToken}
                       onChange={(e) => setAffinityToken(e.target.value)}
                       placeholder="From Affinity → Settings → API"
                     />
                   </div>
                   {state.affinityConnected ? (
-                    <p className="text-sm text-green-800">Affinity connected (mock). Token …{state.affinityTokenLast4}</p>
+                    <p className="text-sm text-[color:var(--tomo-status-green)]">
+                      Affinity connected (mock). Token …{state.affinityTokenLast4}
+                    </p>
                   ) : null}
                   <button
                     type="button"
@@ -558,7 +581,7 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <div className="flex justify-end border-t border-gray-100 pt-4">
+              <div className="flex justify-end border-t border-[color:var(--tomo-rule-soft)] pt-4">
                 <button
                   type="button"
                   className="button-primary disabled:opacity-50"
@@ -573,35 +596,37 @@ export default function OnboardingPage() {
 
           {currentStep === 5 && (
             <div className="space-y-6">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--tomo-body)]">
                 Slack is optional. If you connect, you can also receive{" "}
-                <span className="font-medium text-gray-800">What&apos;s on my Radar</span> pushes in Slack.
+                <span className="font-medium text-[color:var(--foreground)]">What&apos;s on my Radar</span> pushes in Slack.
               </p>
 
-              <div className="max-w-xl rounded-lg border border-gray-200 p-4">
+              <div className="max-w-xl rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-shadow-1)]">
                 <div className="flex items-center gap-2">
                   <img src="/icons/slack.svg" alt="" className="h-5 w-5" />
-                  <p className="font-semibold text-gray-900">Slack</p>
+                  <p className="font-semibold text-[color:var(--foreground)]">Slack</p>
                 </div>
                 <label className="mt-4 flex cursor-pointer gap-3">
                   <input
                     type="checkbox"
-                    className="mt-1 h-4 w-4"
+                    className="mt-1 h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--tomo-teal)] focus:ring-[color:var(--tomo-teal)]"
                     checked={state.slackWhatsOnRadarPush}
                     onChange={(e) => setState((prev) => ({ ...prev, slackWhatsOnRadarPush: e.target.checked }))}
                   />
-                  <span className="text-sm text-gray-700">Push &quot;What&apos;s on my Radar&quot; updates to Slack when I&apos;m connected</span>
+                  <span className="text-sm text-[color:var(--tomo-body)]">
+                    Push &quot;What&apos;s on my Radar&quot; updates to Slack when I&apos;m connected
+                  </span>
                 </label>
-                <ul className="mt-3 list-inside list-disc text-sm text-gray-600">
+                <ul className="mt-3 list-inside list-disc text-sm text-[color:var(--tomo-body)]">
                   <li>Install the Ask TOMO app in your workspace (mock link).</li>
                   <li>Radar summaries mirror the in-app prioritised LP view.</li>
                 </ul>
-                <div className="mt-4 rounded-md bg-gray-50 p-3 text-xs text-gray-700">
+                <div className="mt-4 rounded-[var(--tomo-radius-md)] bg-[color:var(--tomo-navy-soft)] p-3 text-xs text-[color:var(--tomo-body)]">
                   <div className="flex items-center gap-2">
                     <span className="truncate">{slackInstallUrl}</span>
                     <button
                       type="button"
-                      className="text-blue-600"
+                      className="shrink-0 text-[color:var(--tomo-teal-muted)] hover:text-[color:var(--tomo-teal)]"
                       onClick={() => navigator.clipboard.writeText(slackInstallUrl)}
                     >
                       Copy
@@ -618,13 +643,15 @@ export default function OnboardingPage() {
                   >
                     Open Slack install
                   </button>
-                  {slackOpened ? <p className="mt-2 text-xs text-green-700">Tab opened — finish install in Slack.</p> : null}
+                  {slackOpened ? (
+                    <p className="mt-2 text-xs text-[color:var(--tomo-status-green)]">Tab opened — finish install in Slack.</p>
+                  ) : null}
                 </div>
               </div>
 
-              <p className="text-xs text-gray-500">You can skip Slack and enable it later under Settings → Messaging.</p>
+              <p className="text-xs text-[color:var(--tomo-mute)]">You can skip Slack and enable it later under Settings → Messaging.</p>
 
-              <div className="flex justify-end border-t border-gray-100 pt-4">
+              <div className="flex justify-end border-t border-[color:var(--tomo-rule-soft)] pt-4">
                 <button type="button" className="button-primary" onClick={goNext}>
                   Next
                 </button>
@@ -634,12 +661,12 @@ export default function OnboardingPage() {
 
           {currentStep === 6 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-gray-900">Onboarding complete</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Onboarding complete</h2>
+              <p className="text-sm text-[color:var(--tomo-body)]">
                 TOMO will finish syncing in the background. You can start from Home; deeper pipeline import, duplicate review,
                 and Day 1 signal surfaces ship in production beyond this mock wizard.
               </p>
-              <div className="space-y-2 text-sm text-gray-700">
+              <div className="space-y-2 text-sm text-[color:var(--tomo-body)]">
                 <StatusLine
                   label={`Workspace: ${state.workspaceBundleConnected ? (state.workspaceProvider === "google" ? "Google" : "Microsoft 365") : "—"}`}
                   ok={state.workspaceBundleConnected}
@@ -676,8 +703,8 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <p className="text-sm text-gray-600">
-          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-blue-500 align-middle" />
+        <p className="text-sm text-[color:var(--tomo-body)]">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[color:var(--tomo-teal)] align-middle" />
           Progress is saved in this browser until you finish onboarding.
         </p>
       </div>
@@ -688,8 +715,12 @@ export default function OnboardingPage() {
 function StatusLine({ label, ok }: { label: string; ok?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${ok ? "bg-green-500" : "bg-gray-300"}`} />
-      <span className="text-gray-700">{label}</span>
+      <span
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+          ok ? "bg-[color:var(--tomo-status-green)]" : "bg-[color:color-mix(in_srgb,var(--tomo-mute)_40%,var(--tomo-rule))]"
+        }`}
+      />
+      <span className="text-[color:var(--foreground)]">{label}</span>
     </div>
   );
 }
