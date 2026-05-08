@@ -346,16 +346,7 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
     >
     <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
       {/* Header */}
-      <header className="flex h-14 items-center justify-between border-b border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-4 dark:bg-[color:var(--tomo-card)]">
-        <Link
-          href="/home"
-          className="shrink-0 font-[family-name:var(--font-fraunces),Georgia,serif] text-[20px] font-medium leading-none tracking-[-0.02em] text-[color:var(--tomo-navy)] [font-variation-settings:'opsz'_36] sm:text-[22px]"
-          aria-label="Tomo — Today"
-          title="Tomo"
-        >
-          tomo.
-        </Link>
-
+      <header className="flex h-14 items-center justify-end border-b border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-4 dark:bg-[color:var(--tomo-card)]">
         <div className="flex min-w-0 items-center gap-3">
           {/* LP Network (Phase 6): global fund selector drives mandate filtering via `useFunds` */}
           {section === "lp_network" ? (
