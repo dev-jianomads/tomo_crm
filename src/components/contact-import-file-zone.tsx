@@ -46,9 +46,9 @@ export function ContactImportFileZone({ accept, disabled, onFileSelected, autoOp
         type="button"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-sm font-medium text-gray-800 transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-[var(--tomo-radius-md)] border-2 border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-4 py-8 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--tomo-teal)] hover:bg-[color:var(--tomo-teal-tint)] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-navy-soft))]"
       >
-        <DocumentArrowUpIcon className="h-6 w-6 text-gray-500" aria-hidden />
+        <DocumentArrowUpIcon className="h-6 w-6 text-[color:var(--tomo-mute)]" aria-hidden />
         Choose file…
       </button>
     </>

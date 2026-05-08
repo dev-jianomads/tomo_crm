@@ -38,17 +38,17 @@ export function DisconnectIntegrationDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center tomo-modal-scrim p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="disconnect-integration-title"
     >
-      <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close dialog" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
-        <h2 id="disconnect-integration-title" className="text-base font-semibold text-gray-900">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close dialog" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-modal-shadow)]">
+        <h2 id="disconnect-integration-title" className="text-base font-semibold text-[color:var(--foreground)]">
           {title}
         </h2>
-        <p className="mt-2 text-sm text-gray-600">{description}</p>
+        <p className="mt-2 text-sm text-[color:var(--tomo-body)]">{description}</p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" className="button-secondary" onClick={onClose}>
             Cancel

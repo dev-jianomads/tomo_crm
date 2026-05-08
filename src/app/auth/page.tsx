@@ -376,38 +376,42 @@ export default function AuthPage() {
 
       {/* Password reset modal */}
       {showReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 shadow-xl">
-            <div className="flex items-start justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center tomo-modal-scrim px-4">
+          <div className="w-full max-w-md rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-5 shadow-[var(--tomo-modal-shadow)]">
+            <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-lg font-semibold accent-title">Reset password</p>
-                <p className="text-sm text-gray-600">We'll send a reset link to the email below.</p>
+                <p className="text-sm text-[color:var(--tomo-body)]">
+                  {"We'll send a reset link to the email below."}
+                </p>
               </div>
-              <button className="text-gray-500" onClick={() => setShowReset(false)}>
+              <button type="button" className="tomo-drawer-icon-btn shrink-0 text-base leading-none" onClick={() => setShowReset(false)} aria-label="Close">
                 ✕
               </button>
             </div>
             <div className="mt-4 space-y-2">
-              <label className="text-xs uppercase tracking-wide text-gray-500">Email</label>
+              <label className="block tomo-field-label">Email</label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="tomo-input text-sm"
               />
             </div>
             {resetSent ? (
-              <div className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                We've sent a reset link to {email || "your email"}. Check your inbox.
+              <div className="mt-4 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_30%,var(--tomo-rule))] bg-[color:var(--tomo-teal-evidence-bg)] px-3 py-2 text-sm text-[color:var(--tomo-teal-muted)]">
+                {"We've sent a reset link to "}
+                {email || "your email"}. Check your inbox.
               </div>
             ) : null}
             <div className="mt-4 flex items-center justify-end gap-2">
-              <button className="text-sm text-gray-600" onClick={() => setShowReset(false)}>
+              <button
+                type="button"
+                className="text-sm text-[color:var(--tomo-body)] transition hover:text-[color:var(--foreground)]"
+                onClick={() => setShowReset(false)}
+              >
                 Cancel
               </button>
-              <button
-                onClick={handleReset}
-                className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
-              >
+              <button type="button" onClick={handleReset} className="button-primary rounded-md px-4 py-2 text-sm font-medium">
                 Send reset link
               </button>
             </div>

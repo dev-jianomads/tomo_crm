@@ -940,18 +940,18 @@ function CreatePipelineModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center tomo-drawer-veil p-4"
       onClick={onClose}
       aria-modal="true"
     >
       <div
-        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
+        className="w-full max-w-sm rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-modal-shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-sm font-semibold text-gray-900">Create list</h3>
-        <p className="mt-1 text-xs text-gray-500">{filteredCount} relationships in current filters</p>
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Create list</h3>
+        <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">{filteredCount} relationships in current filters</p>
         <input
-          className="mt-3 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+          className="tomo-input mt-3 text-sm"
           placeholder="List name"
           value={pipelineName}
           onChange={(e) => onNameChange(e.target.value)}
@@ -961,7 +961,7 @@ function CreatePipelineModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-sm text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           >
             Cancel
           </button>
@@ -1230,7 +1230,7 @@ function KanbanTerminalStageModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center tomo-drawer-veil p-4"
       onClick={onClose}
       aria-modal="true"
       role="alertdialog"
@@ -1238,23 +1238,23 @@ function KanbanTerminalStageModal({
       aria-describedby="kanban-stage-confirm-desc"
     >
       <div
-        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
+        className="w-full max-w-sm rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-modal-shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="kanban-stage-confirm-title" className="text-sm font-semibold text-gray-900">
+        <h3 id="kanban-stage-confirm-title" className="text-sm font-semibold text-[color:var(--foreground)]">
           Move to {targetStage}?
         </h3>
-        <p id="kanban-stage-confirm-desc" className="mt-2 text-sm text-gray-700">
-          <span className="font-medium text-gray-900">{firm}</span>
-          <span className="text-gray-500"> · </span>
+        <p id="kanban-stage-confirm-desc" className="mt-2 text-sm text-[color:var(--tomo-body)]">
+          <span className="font-medium text-[color:var(--foreground)]">{firm}</span>
+          <span className="text-[color:var(--tomo-mute)]"> · </span>
           {name}
         </p>
-        <p className="mt-1 text-xs text-gray-500">This updates their CRM stage. Band is not changed.</p>
+        <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">This updates their CRM stage. Band is not changed.</p>
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-sm text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           >
             Cancel
           </button>

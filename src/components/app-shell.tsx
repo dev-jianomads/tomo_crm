@@ -476,19 +476,19 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
 function AssistantSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <div
-      className={`fixed inset-0 z-50 bg-black/20 transition ${open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+      className={`fixed inset-0 z-50 tomo-drawer-veil transition ${open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
       onClick={onClose}
     >
       <div
-        className={`absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white shadow-2xl transition-transform duration-300 ${
+        className={`absolute bottom-0 left-0 right-0 rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] transition-transform duration-300 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ minHeight: "70vh", maxHeight: "92vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle indicator */}
-        <div className="flex items-center justify-center border-b border-gray-200 py-2">
-          <div className="h-1.5 w-12 rounded-full bg-gray-200" />
+        <div className="flex items-center justify-center border-b border-[color:var(--tomo-rule-soft)] py-2">
+          <div className="h-1.5 w-12 rounded-full bg-[color:var(--tomo-rule)]" />
         </div>
         <div className="h-full overflow-hidden px-3 pb-4 pt-2">{children}</div>
       </div>

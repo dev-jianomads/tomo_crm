@@ -227,11 +227,11 @@ function FieldEnum({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-700">{cfg.label}</span>
+      <span className="mb-1 block tomo-field-label">{cfg.label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="tomo-input py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
       >
         <option value="">Any</option>
         {cfg.options.map((opt) => (
@@ -257,13 +257,13 @@ function FieldText({
 }) {
   return (
     <label className="block sm:col-span-2">
-      <span className="mb-1 block text-xs font-medium text-gray-700">{label}</span>
+      <span className="mb-1 block tomo-field-label">{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="tomo-input py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
       />
     </label>
   );
@@ -319,37 +319,34 @@ export function RelationshipsAdvancedFiltersModal({
   const handleResetForm = () => setDraft(EMPTY_DRAFT);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center tomo-modal-scrim p-0 sm:items-center sm:p-4">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="advanced-filters-title"
-        className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:max-h-[85vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 id="advanced-filters-title" className="text-sm font-semibold text-gray-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+          <h2 id="advanced-filters-title" className="text-sm font-semibold text-[color:var(--foreground)]">
             Advanced filters
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close"
-          >
+          <button type="button" onClick={onClose} className="tomo-drawer-icon-btn" aria-label="Close">
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-3 text-xs text-[color:var(--tomo-mute)]">
             Choose criteria below. Confirm replaces all active filters (including Tomo). Leave fields as Any / empty to
             ignore them.
           </p>
 
           <section className="mb-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Search &amp; text</h3>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">
+              Search &amp; text
+            </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FieldText
                 label="Name / firm contains"
@@ -371,10 +368,12 @@ export function RelationshipsAdvancedFiltersModal({
           </section>
 
           <section className="mb-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Numeric ranges</h3>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">
+              Numeric ranges
+            </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-gray-700">Days since meaningful contact</span>
+                <span className="mb-1 block tomo-field-label">Days since meaningful contact</span>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -382,7 +381,7 @@ export function RelationshipsAdvancedFiltersModal({
                     placeholder="Min"
                     value={draft.daysMin}
                     onChange={(e) => setField("daysMin", e.target.value)}
-                    className="w-full min-w-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="tomo-input min-w-0 py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
                   />
                   <input
                     type="number"
@@ -390,12 +389,12 @@ export function RelationshipsAdvancedFiltersModal({
                     placeholder="Max"
                     value={draft.daysMax}
                     onChange={(e) => setField("daysMax", e.target.value)}
-                    className="w-full min-w-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="tomo-input min-w-0 py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
                   />
                 </div>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-gray-700">Open loops count</span>
+                <span className="mb-1 block tomo-field-label">Open loops count</span>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -403,7 +402,7 @@ export function RelationshipsAdvancedFiltersModal({
                     placeholder="Min"
                     value={draft.openLoopsMin}
                     onChange={(e) => setField("openLoopsMin", e.target.value)}
-                    className="w-full min-w-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="tomo-input min-w-0 py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
                   />
                   <input
                     type="number"
@@ -411,7 +410,7 @@ export function RelationshipsAdvancedFiltersModal({
                     placeholder="Max"
                     value={draft.openLoopsMax}
                     onChange={(e) => setField("openLoopsMax", e.target.value)}
-                    className="w-full min-w-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="tomo-input min-w-0 py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
                   />
                 </div>
               </label>
@@ -419,7 +418,7 @@ export function RelationshipsAdvancedFiltersModal({
           </section>
 
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Fields</h3>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Fields</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {ENUM_FIELDS.map((cfg) => (
                 <FieldEnum
@@ -433,11 +432,11 @@ export function RelationshipsAdvancedFiltersModal({
           </section>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[color:var(--tomo-rule-soft)] px-4 py-3">
           <button
             type="button"
             onClick={handleResetForm}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-body)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           >
             Clear all fields
           </button>
@@ -445,15 +444,11 @@ export function RelationshipsAdvancedFiltersModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            >
+            <button type="button" onClick={handleConfirm} className="button-primary rounded-lg px-3 py-1.5 text-xs font-semibold">
               Confirm
             </button>
           </div>

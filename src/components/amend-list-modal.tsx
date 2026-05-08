@@ -41,9 +41,11 @@ export function AmendListModal({
 
   useEffect(() => {
     if (!open || !pipeline) return;
-    setExcluded([...(pipeline.excludedRelationshipIds ?? [])]);
-    setAdded([...(pipeline.addedRelationshipIds ?? [])]);
-    setShowAddPicker(false);
+    queueMicrotask(() => {
+      setExcluded([...(pipeline.excludedRelationshipIds ?? [])]);
+      setAdded([...(pipeline.addedRelationshipIds ?? [])]);
+      setShowAddPicker(false);
+    });
   }, [open, pipeline?.id]);
 
   const members = useMemo(() => {
@@ -90,7 +92,7 @@ export function AmendListModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/40 p-4 sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto overscroll-contain tomo-modal-scrim p-4 sm:items-center">
       <div
         className="fixed inset-0"
         aria-hidden
@@ -100,22 +102,22 @@ export function AmendListModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="amend-list-title"
-        className="relative z-[61] my-8 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl max-h-[min(92dvh,calc(100vh-2rem))]"
+        className="relative z-[61] my-8 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(92dvh,calc(100vh-2rem))]"
         onClick={(e) => e.stopPropagation()}
         data-testid="amend-list-modal"
       >
-        <div className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-5">
+        <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 sm:px-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Amend list</p>
-              <h2 id="amend-list-title" className="text-lg font-semibold text-gray-900">
+              <p className="tomo-field-label">Amend list</p>
+              <h2 id="amend-list-title" className="text-lg font-semibold text-[color:var(--foreground)]">
                 {pipeline.name}
               </h2>
             </div>
             <button
               type="button"
               onClick={() => setShowAddPicker((s) => !s)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
               aria-expanded={showAddPicker}
               aria-label="Add to list"
               title="Add to list"
@@ -124,9 +126,9 @@ export function AmendListModal({
             </button>
           </div>
           {showAddPicker ? (
-            <div className="mt-3 max-h-40 overflow-y-auto rounded-md border border-gray-200 bg-gray-50/80 p-2">
+            <div className="mt-3 max-h-40 overflow-y-auto rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] p-2">
               {addable.length === 0 ? (
-                <p className="px-2 py-2 text-xs text-gray-500">No more contacts to add.</p>
+                <p className="px-2 py-2 text-xs text-[color:var(--tomo-mute)]">No more contacts to add.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {addable.map((r) => (
@@ -134,10 +136,10 @@ export function AmendListModal({
                       <button
                         type="button"
                         onClick={() => addMember(r.id)}
-                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-white"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm transition hover:bg-[color:var(--tomo-card)]"
                       >
-                        <span className="font-medium text-gray-900">{r.firm}</span>
-                        <span className="truncate text-xs text-gray-500">{r.name}</span>
+                        <span className="font-medium text-[color:var(--foreground)]">{r.firm}</span>
+                        <span className="truncate text-xs text-[color:var(--tomo-mute)]">{r.name}</span>
                       </button>
                     </li>
                   ))}
@@ -148,20 +150,20 @@ export function AmendListModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-[color:var(--tomo-rule-soft)]">
             {members.length === 0 ? (
-              <li className="py-8 text-center text-sm text-gray-500">No contacts in this list yet.</li>
+              <li className="py-8 text-center text-sm text-[color:var(--tomo-mute)]">No contacts in this list yet.</li>
             ) : (
               members.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">{r.firm}</p>
-                    <p className="truncate text-xs text-gray-500">{r.name}</p>
+                    <p className="truncate text-sm font-medium text-[color:var(--foreground)]">{r.firm}</p>
+                    <p className="truncate text-xs text-[color:var(--tomo-mute)]">{r.name}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeMember(r.id)}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] text-[color:var(--tomo-mute)] hover:bg-[color:color-mix(in_srgb,var(--tomo-red)_12%,transparent)] hover:text-[color:var(--tomo-red)]"
                     aria-label={`Remove ${r.firm} from list`}
                     title="Remove from list"
                   >
@@ -173,11 +175,11 @@ export function AmendListModal({
           </ul>
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-100 px-4 py-3 sm:px-5">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-[color:var(--tomo-rule-soft)] px-4 py-3 sm:px-5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           >
             Cancel
           </button>

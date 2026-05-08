@@ -377,30 +377,37 @@ function EditMandateModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center tomo-modal-scrim p-4"
       role="presentation"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border border-gray-200 bg-white shadow-xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)]"
         role="dialog"
         aria-labelledby="edit-mandate-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-gray-200 px-4 py-3">
-          <h2 id="edit-mandate-title" className="text-base font-semibold text-gray-900">
+        <div className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+          <h2 id="edit-mandate-title" className="text-base font-semibold text-[color:var(--foreground)]">
             Update my preferences
           </h2>
-          <p className="mt-1 text-xs text-gray-500">Same question buckets as the mandate form — stored locally for the prototype.</p>
+          <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
+            Same question buckets as the mandate form — stored locally for the prototype.
+          </p>
         </div>
 
         <div className="space-y-4 px-4 py-4 text-sm">
           <div>
-            <p className="text-xs font-medium text-gray-700">Strategy preferences</p>
+            <p className="tomo-field-label mb-2">Strategy preferences</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {STRATEGY_TAGS_POOL.map((tag) => (
-                <label key={tag} className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-800">
-                  <input type="checkbox" checked={tags.has(tag)} onChange={() => toggleTag(tag)} className="rounded border-gray-300" />
+                <label key={tag} className="flex cursor-pointer items-center gap-1.5 text-xs text-[color:var(--foreground)]">
+                  <input
+                    type="checkbox"
+                    checked={tags.has(tag)}
+                    onChange={() => toggleTag(tag)}
+                    className="rounded border-[color:var(--tomo-rule)] text-[color:var(--accent)] focus:ring-[color:var(--tomo-teal)]"
+                  />
                   {tag}
                 </label>
               ))}
@@ -408,9 +415,9 @@ function EditMandateModal({
           </div>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">Typical check size</span>
+            <span className="mb-1 block tomo-field-label">Typical check size</span>
             <select
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 py-2 text-sm"
               value={checkSizeBand}
               onChange={(e) => setCheckSizeBand(e.target.value as CheckSizeBand)}
             >
@@ -423,9 +430,9 @@ function EditMandateModal({
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">Geographic preferences</span>
+            <span className="mb-1 block tomo-field-label">Geographic preferences</span>
             <select
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 py-2 text-sm"
               value={geographyLabel}
               onChange={(e) => setGeographyLabel(e.target.value)}
             >
@@ -438,9 +445,9 @@ function EditMandateModal({
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">Deployment pace</span>
+            <span className="mb-1 block tomo-field-label">Deployment pace</span>
             <select
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 py-2 text-sm"
               value={deploymentStatus}
               onChange={(e) => setDeploymentStatus(e.target.value as DeploymentStatus)}
             >
@@ -453,9 +460,9 @@ function EditMandateModal({
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">Manager stage preference</span>
+            <span className="mb-1 block tomo-field-label">Manager stage preference</span>
             <select
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 py-2 text-sm"
               value={managerStagePreference}
               onChange={(e) => setManagerStagePreference(e.target.value as ManagerStagePreference)}
             >
@@ -468,9 +475,9 @@ function EditMandateModal({
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">Hard constraints</span>
+            <span className="mb-1 block tomo-field-label">Hard constraints</span>
             <textarea
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 resize-y py-2 text-sm"
               rows={3}
               value={hardConstraints}
               onChange={(e) => setHardConstraints(e.target.value)}
@@ -478,9 +485,9 @@ function EditMandateModal({
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">What makes an introduction worth your time?</span>
+            <span className="mb-1 block tomo-field-label">What makes an introduction worth your time?</span>
             <textarea
-              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-2 text-sm"
+              className="tomo-input mt-1 resize-y py-2 text-sm"
               rows={3}
               value={introWorthTime}
               onChange={(e) => setIntroWorthTime(e.target.value)}
@@ -488,11 +495,11 @@ function EditMandateModal({
           </label>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-[color:var(--tomo-rule-soft)] px-4 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+            className="rounded-lg border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           >
             Cancel
           </button>
@@ -513,7 +520,7 @@ function EditMandateModal({
                 strategyTags: [...tags],
               });
             }}
-            className="rounded-lg bg-[color:var(--accent)] px-3 py-2 text-sm font-semibold text-white"
+            className="button-primary rounded-lg px-3 py-2 text-sm font-semibold"
           >
             Save
           </button>

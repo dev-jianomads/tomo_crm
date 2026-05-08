@@ -36,8 +36,8 @@ type NewContactModalProps = {
 };
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none";
-const labelClass = "block text-xs font-medium text-gray-600";
+  "tomo-input mt-1 text-sm text-[color:var(--foreground)] focus-visible:border-[color:var(--tomo-teal)]";
+const labelClass = "tomo-field-label block";
 
 export function NewContactModal({ open, onClose, onConfirm }: NewContactModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
@@ -84,20 +84,20 @@ export function NewContactModal({ open, onClose, onConfirm }: NewContactModalPro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center tomo-drawer-veil p-4"
       onClick={onClose}
       aria-modal="true"
       role="dialog"
       aria-labelledby="new-contact-modal-title"
     >
       <div
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border border-gray-200 bg-white p-4 shadow-xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-modal-shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="new-contact-modal-title" className="text-sm font-semibold text-gray-900">
+        <h3 id="new-contact-modal-title" className="text-sm font-semibold text-[color:var(--foreground)]">
           New Contact
         </h3>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
           {step === 1 ? "Required fields — name, firm, tier, stage, owner." : "Optional details — defaults work; adjust before saving."}
         </p>
 

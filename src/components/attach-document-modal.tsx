@@ -56,30 +56,25 @@ export function AttachDocumentModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="presentation">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center tomo-modal-scrim p-0 sm:items-center sm:p-4" role="presentation">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="attach-document-title"
-        className="relative z-10 flex w-full max-w-md flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        className="relative z-10 flex w-full max-w-md flex-col rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 id="attach-document-title" className="text-sm font-semibold text-gray-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+          <h2 id="attach-document-title" className="text-sm font-semibold text-[color:var(--foreground)]">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close"
-          >
+          <button type="button" onClick={onClose} className="tomo-drawer-icon-btn" aria-label="Close">
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
         <div className="px-4 py-4">
-          <p className="text-sm text-gray-600">{description}</p>
+          <p className="text-sm text-[color:var(--tomo-body)]">{description}</p>
           <div className="mt-4">
             <ContactImportFileZone
               accept={accept}
