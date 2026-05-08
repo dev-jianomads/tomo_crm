@@ -30,10 +30,10 @@ function ChatBubble({ message }: { message: UIMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
+        className={`max-w-[85%] rounded-[var(--tomo-radius-md)] border px-3 py-2.5 ${
           isUser
-            ? "border-blue-200 bg-blue-50 text-gray-900"
-            : "border-gray-200 bg-gray-50 text-gray-900"
+            ? "border-[color:color-mix(in_srgb,var(--tomo-teal)_32%,var(--tomo-rule))] bg-[color:var(--tomo-teal-tint)] text-[color:var(--foreground)]"
+            : "border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] text-[color:var(--foreground)]"
         }`}
       >
         <p className="whitespace-pre-line text-sm leading-relaxed">{displayText}</p>
@@ -127,15 +127,15 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
   };
 
   return (
-    <div className="flex min-h-[220px] max-h-[40vh] flex-col rounded-lg border border-gray-200 bg-white">
-      <div className="shrink-0 border-b border-gray-100 px-3 py-2">
-        <p className="text-xs font-medium text-gray-900">TOMO — create workflow</p>
-        <p className="text-[11px] text-gray-500">Share a name, trigger, and action for this list.</p>
+    <div className="flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
+      <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+        <p className="text-xs font-medium text-[color:var(--foreground)]">TOMO — create workflow</p>
+        <p className="text-[11px] text-[color:var(--tomo-mute)]">Share a name, trigger, and action for this list.</p>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
         <div className="flex justify-start">
-          <div className="max-w-[90%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <p className="text-sm text-gray-900">
+          <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
+            <p className="text-sm text-[color:var(--foreground)]">
               I’ll ask for a short <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong>. When
               we’re aligned, I’ll finalize the workflow for list &quot;{pipeline.name}&quot;.
             </p>
@@ -146,18 +146,18 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
         ))}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
               <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:150ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:300ms]" />
               </div>
             </div>
           </div>
         )}
         <div ref={endRef} />
       </div>
-      <div className="flex shrink-0 gap-2 border-t border-gray-100 p-2">
+      <div className="flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
         <input
           type="text"
           value={input}
@@ -165,24 +165,24 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
           placeholder="Message Tomo…"
           disabled={isStreaming}
-          className="min-w-0 flex-1 rounded-md border border-gray-200 px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
+          className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={isStreaming || !input.trim()}
-          className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
           aria-label="Send"
         >
           <PaperAirplaneIcon className="h-4 w-4" />
         </button>
       </div>
       {messages.length > 0 && (
-        <div className="border-t border-gray-100 px-2 pb-2">
+        <div className="border-t border-[color:var(--tomo-rule-soft)] px-2 pb-2">
           <button
             type="button"
             onClick={() => setMessages([])}
-            className="text-[11px] text-gray-400 hover:text-gray-600"
+            className="text-[11px] text-[color:var(--tomo-mute)] transition hover:text-[color:var(--foreground)]"
           >
             Clear chat
           </button>

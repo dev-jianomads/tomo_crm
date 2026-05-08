@@ -47,38 +47,42 @@ export default function SettingsIntegrationsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-shadow-1)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img src="/icons/affinity.svg" alt="Affinity" className="h-5 w-5" />
-              <p className="text-base font-semibold text-gray-900">Affinity CRM</p>
+              <p className="text-base font-semibold text-[color:var(--foreground)]">Affinity CRM</p>
             </div>
             {integrations.affinityConnected ? (
-              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Connected ✓</span>
+              <span className="rounded-full bg-[color:var(--tomo-status-green-bg)] px-3 py-1 text-xs font-medium text-[color:var(--tomo-status-green)]">
+                Connected ✓
+              </span>
             ) : (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
+              <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_85%,var(--tomo-card))] px-3 py-1 text-xs font-medium text-[color:var(--tomo-mute)]">
+                Not connected
+              </span>
             )}
           </div>
-          <p className="mt-2 text-sm text-gray-600">Sync people and companies from Affinity into Tomo.</p>
+          <p className="mt-2 text-sm text-[color:var(--tomo-body)]">Sync people and companies from Affinity into Tomo.</p>
           <div className="mt-3 space-y-2">
-            <label className="text-xs uppercase tracking-wide text-gray-500">List ID</label>
+            <label className="tomo-field-label block">List ID</label>
             <input
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="tomo-input w-full text-sm shadow-none"
               value={affinityListId}
               onChange={(e) => setAffinityListId(e.target.value)}
               placeholder="e.g. 12345"
             />
           </div>
           <div className="mt-3 space-y-2">
-            <label className="text-xs uppercase tracking-wide text-gray-500">API token</label>
+            <label className="tomo-field-label block">API token</label>
             <input
               type="password"
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="tomo-input w-full text-sm shadow-none"
               value={affinityToken}
               onChange={(e) => setAffinityToken(e.target.value)}
               placeholder="Paste your token"
             />
-            <p className="text-xs text-gray-500">Stored securely server-side in production (mocked locally here).</p>
+            <p className="text-xs text-[color:var(--tomo-mute)]">Stored securely server-side in production (mocked locally here).</p>
           </div>
           <div className="mt-4 flex gap-2">
             <button
@@ -109,7 +113,7 @@ export default function SettingsIntegrationsPage() {
             {integrations.affinityConnected ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50"
+                className="inline-flex items-center justify-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-red)_35%,var(--tomo-rule))] bg-[color:var(--tomo-card)] px-3 py-2 text-sm font-medium text-[color:var(--tomo-red)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-red-bg)]"
                 onClick={() => setAffinityDisconnectOpen(true)}
               >
                 <LinkSlashIcon className="h-4 w-4" aria-hidden />
@@ -133,32 +137,32 @@ export default function SettingsIntegrationsPage() {
             confirmLabel="Disconnect Affinity"
           />
           {integrations.affinityConnected ? (
-            <p className="mt-2 text-xs text-green-700">
+            <p className="mt-2 text-xs text-[color:var(--tomo-status-green)]">
               Connected to list {integrations.affinityListId ?? affinityListId}. Token ending {integrations.affinityTokenLast4 ?? "••••"}.
             </p>
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-shadow-1)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img src="/icons/google-sheets.svg" alt="Google Sheets" className="h-5 w-5" />
-              <p className="text-base font-semibold text-gray-900">Google Sheets</p>
+              <p className="text-base font-semibold text-[color:var(--foreground)]">Google Sheets</p>
             </div>
             {integrations.googleSheetsConnected ? (
-              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Ready ✓</span>
+              <span className="rounded-full bg-[color:var(--tomo-status-green-bg)] px-3 py-1 text-xs font-medium text-[color:var(--tomo-status-green)]">
+                Ready ✓
+              </span>
             ) : (
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not connected</span>
+              <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_85%,var(--tomo-card))] px-3 py-1 text-xs font-medium text-[color:var(--tomo-mute)]">
+                Not connected
+              </span>
             )}
           </div>
-          <p className="mt-2 text-sm text-gray-600">Authenticate and create the preset sheet name before confirming.</p>
+          <p className="mt-2 text-sm text-[color:var(--tomo-body)]">Authenticate and create the preset sheet name before confirming.</p>
           <div className="mt-3 space-y-2">
-            <label className="text-xs uppercase tracking-wide text-gray-500">Sheet filename</label>
-            <input
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              value={sheetName}
-              onChange={(e) => setSheetName(e.target.value)}
-            />
+            <label className="tomo-field-label block">Sheet filename</label>
+            <input className="tomo-input w-full text-sm shadow-none" value={sheetName} onChange={(e) => setSheetName(e.target.value)} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -206,7 +210,7 @@ export default function SettingsIntegrationsPage() {
             {integrations.googleSheetsConnected ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50"
+                className="inline-flex items-center justify-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-red)_35%,var(--tomo-rule))] bg-[color:var(--tomo-card)] px-3 py-2 text-sm font-medium text-[color:var(--tomo-red)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-red-bg)]"
                 onClick={() => setSheetsDisconnectOpen(true)}
               >
                 <LinkSlashIcon className="h-4 w-4" aria-hidden />
@@ -230,7 +234,9 @@ export default function SettingsIntegrationsPage() {
             confirmLabel="Disconnect Google Sheets"
           />
           {integrations.googleSheetsConnected ? (
-            <p className="mt-2 text-xs text-green-700">Google Sheets ready. Filename {integrations.googleSheetsFilename ?? sheetName}.</p>
+            <p className="mt-2 text-xs text-[color:var(--tomo-status-green)]">
+              Google Sheets ready. Filename {integrations.googleSheetsFilename ?? sheetName}.
+            </p>
           ) : null}
         </div>
       </div>

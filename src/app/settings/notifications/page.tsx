@@ -23,8 +23,8 @@ export default function SettingsNotificationsPage() {
       <h2 className="text-lg font-semibold accent-title">Notifications</h2>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-900">Channels</h3>
-        <p className="text-xs text-gray-600">
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Channels</h3>
+        <p className="text-xs text-[color:var(--tomo-body)]">
           Routing and digest delivery use these connections. Disconnect here or under Integrations / Messaging; state is
           shared.
         </p>
@@ -50,27 +50,27 @@ export default function SettingsNotificationsPage() {
         />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900">Daily Brief (email)</h3>
-        <p className="mt-1 text-xs text-gray-600">
+      <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Daily Brief (email)</h3>
+        <p className="mt-1 text-xs text-[color:var(--tomo-body)]">
           Full four-section digest (same content as the Loops template). Scheduled delivery uses{" "}
           <span className="font-mono text-[11px]">vercel.json</span> cron (UTC) and{" "}
           <span className="font-mono text-[11px]">LOOPS_SEND_TO</span> until per-user routing is stored in the database.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-800">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--foreground)]">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--accent)] focus:ring-[color:var(--tomo-teal)]"
               checked={dailyDigestPrefs.emailDigest}
               onChange={(e) => setDailyDigestPrefs((p) => ({ ...p, emailDigest: e.target.checked }))}
             />
             Email daily brief
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-500">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--tomo-mute)]">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--accent)] focus:ring-[color:var(--tomo-teal)]"
               checked={dailyDigestPrefs.slackDigest}
               disabled
               title="Slack digest wiring comes next"
@@ -79,13 +79,13 @@ export default function SettingsNotificationsPage() {
           </label>
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <label className="text-xs text-gray-600">
+          <label className="text-xs text-[color:var(--tomo-body)]">
             Preferred local hour (display only)
             <input
               type="number"
               min={0}
               max={23}
-              className="ml-2 w-16 rounded border border-gray-200 px-2 py-1 text-sm"
+              className="tomo-input ml-2 inline-block w-16 py-1 text-sm shadow-none"
               value={dailyDigestPrefs.preferredLocalHour}
               onChange={(e) =>
                 setDailyDigestPrefs((p) => ({
@@ -96,21 +96,21 @@ export default function SettingsNotificationsPage() {
             />
           </label>
         </div>
-        <p className="mt-2 text-[11px] text-gray-500">
+        <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
           Cron schedule is set in repo <span className="font-mono">vercel.json</span> (default 12:00 UTC). Set{" "}
           <span className="font-mono">CRON_SECRET</span> in Vercel; the platform sends it as{" "}
           <span className="font-mono">Authorization: Bearer</span> to the cron route.
         </p>
       </div>
 
-      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/80 px-4 py-3">
-        <h3 className="text-sm font-semibold text-gray-900">Today · On My Radar memory</h3>
-        <p className="mt-1 text-xs text-gray-600">
+      <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_45%,var(--tomo-card))] px-4 py-3">
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Today · On My Radar memory</h3>
+        <p className="mt-1 text-xs text-[color:var(--tomo-body)]">
           “Still in To-Do” uses this browser’s saved list of surfaced vs opened actions. Clear it if demos get confusing.
         </p>
         <button
           type="button"
-          className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
+          className="mt-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
           onClick={() => {
             resetTodayEngagement();
             window.alert("Cleared. Reload Today to reset On My Radar.");
@@ -120,7 +120,7 @@ export default function SettingsNotificationsPage() {
         </button>
       </div>
 
-      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+      <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2 text-sm text-[color:var(--tomo-body)]">
         Configure routing per channel. Slack/Telegram must be connected to enable those switches.
       </div>
     </div>

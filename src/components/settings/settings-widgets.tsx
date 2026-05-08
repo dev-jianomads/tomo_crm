@@ -23,7 +23,9 @@ export function DisconnectIntegrationDialog({
   confirmLabel,
 }: DisconnectIntegrationDialogProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +57,7 @@ export function DisconnectIntegrationDialog({
           </button>
           <button
             type="button"
-            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-100"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-red)_40%,var(--tomo-rule))] bg-[color:var(--tomo-red-bg)] px-3 py-2 text-sm font-medium text-[color:var(--tomo-red)] transition hover:bg-[color:color-mix(in_srgb,var(--tomo-red-bg)_65%,var(--tomo-card))]"
             onClick={() => {
               onConfirm();
               onClose();
@@ -87,17 +89,17 @@ export function IntegrationRow({ title, status, connected, onDisconnect, disconn
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-2 shadow-[var(--tomo-shadow-1)]">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900">{title}</p>
-          <p className="text-xs text-gray-600">Manage connection</p>
+          <p className="text-sm font-medium text-[color:var(--foreground)]">{title}</p>
+          <p className="text-xs text-[color:var(--tomo-body)]">Manage connection</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-xs text-gray-500">{status}</span>
+          <span className="text-xs text-[color:var(--tomo-mute)]">{status}</span>
           {canDisconnect ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+              className="inline-flex items-center gap-1 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-red)_35%,var(--tomo-rule))] bg-[color:var(--tomo-card)] px-2 py-1 text-xs font-medium text-[color:var(--tomo-red)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-red-bg)]"
               onClick={() => setDialogOpen(true)}
               title={`Disconnect ${title}`}
             >
@@ -135,18 +137,28 @@ export function PlanCard({
   active?: boolean;
 }) {
   return (
-    <div className={`rounded-lg border p-4 ${active ? "border-blue-500 bg-blue-50/40" : "border-gray-200 bg-white"}`}>
+    <div
+      className={`rounded-[var(--tomo-radius-md)] border p-4 shadow-[var(--tomo-shadow-1)] ${
+        active
+          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_35%,transparent)]"
+          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-base font-semibold text-gray-900">{name}</p>
-          <p className="text-sm text-gray-700">{price}</p>
+          <p className="text-base font-semibold text-[color:var(--foreground)]">{name}</p>
+          <p className="text-sm text-[color:var(--tomo-body)]">{price}</p>
         </div>
-        {badge ? <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{badge}</span> : null}
+        {badge ? (
+          <span className="rounded-full bg-[color:var(--tomo-teal-tint)] px-3 py-1 text-xs font-medium text-[color:var(--tomo-teal-muted)]">
+            {badge}
+          </span>
+        ) : null}
       </div>
-      <ul className="mt-3 space-y-1 text-sm text-gray-700">
+      <ul className="mt-3 space-y-1 text-sm text-[color:var(--tomo-body)]">
         {features.map((feature) => (
           <li key={feature} className="flex items-start gap-2">
-            <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
+            <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" />
             <span>{feature}</span>
           </li>
         ))}
@@ -160,10 +172,10 @@ export function PlanCard({
 
 export function PlaceholderCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3">
+    <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-3 shadow-[var(--tomo-shadow-1)]">
       <p className="text-sm font-semibold accent-title">{title}</p>
-      <p className="text-xs text-gray-600">{body}</p>
-      <p className="mt-2 text-[11px] uppercase tracking-wide text-gray-500">Coming soon</p>
+      <p className="text-xs text-[color:var(--tomo-body)]">{body}</p>
+      <p className="mt-2 text-[11px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Coming soon</p>
     </div>
   );
 }
@@ -187,20 +199,20 @@ export function FundManager({
 }) {
   const [draftName, setDraftName] = useState("");
   return (
-    <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+    <div className="space-y-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-3 shadow-[var(--tomo-shadow-1)]">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-900">Manage funds</p>
-        <span className="text-xs text-gray-600">{funds.length} saved</span>
+        <p className="text-sm font-medium text-[color:var(--foreground)]">Manage funds</p>
+        <span className="text-xs text-[color:var(--tomo-body)]">{funds.length} saved</span>
       </div>
       <div className="space-y-2">
         {funds.map((fund) => (
           <div key={fund.id} className="flex items-center gap-2">
             <input
-              className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+              className="tomo-input flex-1 py-1 text-sm shadow-none"
               defaultValue={fund.name}
               onBlur={(e) => onUpdate(fund.id, e.target.value)}
             />
-            <button type="button" className="text-xs text-rose-600 underline" onClick={() => onRemove(fund.id)}>
+            <button type="button" className="text-xs text-[color:var(--tomo-red)] underline hover:opacity-90" onClick={() => onRemove(fund.id)}>
               Remove
             </button>
           </div>
@@ -208,7 +220,7 @@ export function FundManager({
       </div>
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+          className="tomo-input flex-1 py-1 text-sm shadow-none"
           placeholder="Add fund"
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}

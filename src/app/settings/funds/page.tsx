@@ -9,10 +9,10 @@ export default function SettingsFundsPage() {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold accent-title">Funds</h2>
-      <div className="rounded-lg border border-gray-200 bg-white p-3">
-        <p className="text-sm font-medium text-gray-900">Active fund</p>
+      <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-3 shadow-[var(--tomo-shadow-1)]">
+        <p className="text-sm font-medium text-[color:var(--foreground)]">Active fund</p>
         <select
-          className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+          className="tomo-input mt-2 w-full text-sm shadow-none"
           value={activeFundId}
           onChange={(e) => setActiveFundId(e.target.value)}
         >

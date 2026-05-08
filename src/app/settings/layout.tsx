@@ -36,9 +36,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             clearSession();
             router.replace("/auth");
           }}
-          className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:border-gray-300"
+          className="inline-flex items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
         >
-          <span className="h-2 w-2 rounded-full bg-rose-500" />
+          <span className="h-2 w-2 rounded-full bg-[color:var(--tomo-red)]" />
           Sign out
         </button>
       </PageListHeader>
@@ -50,12 +50,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           return (
             <div key={entry.href}>
               {showGroup ? (
-                <p className="mb-2 mt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{entry.groupStart}</p>
+                <p className="mb-2 mt-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--tomo-mute)]">{entry.groupStart}</p>
               ) : null}
               <Link
                 href={entry.href}
-                className={`block w-full rounded-md border px-3 py-2 text-left text-sm transition ${
-                  active ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
+                className={`block w-full rounded-[var(--tomo-radius-md)] border px-3 py-2 text-left text-sm shadow-[var(--tomo-shadow-1)] transition ${
+                  active
+                    ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_30%,transparent)]"
+                    : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))] hover:bg-[color:var(--tomo-navy-soft)]"
                 }`}
               >
                 {entry.label}

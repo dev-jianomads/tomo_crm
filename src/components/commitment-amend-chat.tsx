@@ -58,8 +58,10 @@ export function CommitmentAmendChat({
   const isStreaming = status === "streaming" || status === "submitted";
 
   useEffect(() => {
-    setMessages([]);
-    setInput("");
+    queueMicrotask(() => {
+      setMessages([]);
+      setInput("");
+    });
   }, [entityKey, setMessages]);
 
   useEffect(() => {
@@ -83,32 +85,32 @@ export function CommitmentAmendChat({
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="commitment-amend-chat">
-      <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-1 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--tomo-rule-soft)] px-1 py-2">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+          className="inline-flex items-center gap-1 rounded-[var(--tomo-radius-md)] px-2 py-1.5 text-xs font-medium text-[color:var(--foreground)] transition hover:bg-[color:var(--tomo-navy-soft)]"
         >
           <ArrowLeftIcon className="h-4 w-4" aria-hidden />
           Back
         </button>
-        <span className="text-xs font-medium text-gray-900">Amend with Tomo</span>
+        <span className="text-xs font-medium text-[color:var(--foreground)]">Amend with Tomo</span>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 text-sm">
-        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Current agenda</p>
-          <p className="text-xs text-gray-500">
+        <div className="space-y-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2.5 shadow-[var(--tomo-shadow-1)]">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">Current agenda</p>
+          <p className="text-xs text-[color:var(--tomo-mute)]">
             {commitment.lp} : {commitment.contactName}
             {commitment.title ? ` · ${commitment.title}` : ""}
           </p>
-          {preview.leadText ? <p className="text-sm leading-relaxed text-gray-800">{preview.leadText}</p> : null}
-          {preview.summary ? <p className="text-sm leading-relaxed text-gray-800">{preview.summary}</p> : null}
+          {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
+          {preview.summary ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.summary}</p> : null}
           {preview.snapshotFallback && !preview.summary ? (
-            <p className="text-sm leading-relaxed text-gray-800">{preview.snapshotFallback}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.snapshotFallback}</p>
           ) : null}
           {preview.agenda.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-sm text-gray-800">
+            <ul className="mt-2 space-y-1 text-sm text-[color:var(--tomo-body)]">
               {preview.agenda.map((line) => (
                 <li key={line} className="flex items-start gap-2">
                   <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent)]" />
@@ -118,10 +120,10 @@ export function CommitmentAmendChat({
             </ul>
           ) : null}
           {preview.commitments.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-sm text-gray-800">
+            <ul className="mt-2 space-y-1 text-sm text-[color:var(--tomo-body)]">
               {preview.commitments.map((line) => (
                 <li key={line} className="flex items-start gap-2">
-                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" />
                   <span>{line}</span>
                 </li>
               ))}
@@ -132,7 +134,7 @@ export function CommitmentAmendChat({
           !preview.snapshotFallback &&
           preview.agenda.length === 0 &&
           preview.commitments.length === 0 ? (
-            <p className="text-sm text-gray-600">No agenda block yet — describe what to change.</p>
+            <p className="text-sm text-[color:var(--tomo-mute)]">No agenda block yet — describe what to change.</p>
           ) : null}
         </div>
 
@@ -142,14 +144,16 @@ export function CommitmentAmendChat({
 
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">Tomo is thinking…</div>
+            <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2 text-xs text-[color:var(--tomo-mute)]">
+              Tomo is thinking…
+            </div>
           </div>
         )}
 
         <div ref={endRef} />
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-gray-200 px-1 py-2">
+      <div className="shrink-0 space-y-2 border-t border-[color:var(--tomo-rule-soft)] px-1 py-2">
         {hasAssistantReply ? (
           <button type="button" className="button-primary tomo-ai-bg w-full text-sm" onClick={() => onFinalApprove()}>
             {finalApproveLabel}
@@ -160,16 +164,20 @@ export function CommitmentAmendChat({
             e.preventDefault();
             handleSend(input);
           }}
-          className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2"
+          className="flex items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 shadow-[var(--tomo-shadow-1)]"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tell Tomo how to amend the agenda…"
             disabled={isStreaming}
-            className="min-w-0 flex-1 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
+            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--tomo-mute)] disabled:opacity-50"
           />
-          <button type="submit" disabled={!input.trim() || isStreaming} className="text-gray-400 transition hover:text-gray-600 disabled:opacity-30">
+          <button
+            type="submit"
+            disabled={!input.trim() || isStreaming}
+            className="text-[color:var(--tomo-mute)] transition hover:text-[color:var(--tomo-teal)] disabled:opacity-30"
+          >
             <PaperAirplaneIcon className="h-4 w-4" />
           </button>
         </form>
@@ -193,8 +201,10 @@ function AmendBubble({ message }: { message: UIMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[90%] rounded-lg border px-3 py-2 text-sm leading-relaxed ${
-          isUser ? "border-blue-200 bg-blue-50 text-gray-900" : "border-gray-200 bg-gray-50 text-gray-900"
+        className={`max-w-[90%] rounded-[var(--tomo-radius-md)] border px-3 py-2 text-sm leading-relaxed ${
+          isUser
+            ? "border-[color:color-mix(in_srgb,var(--tomo-teal)_32%,var(--tomo-rule))] bg-[color:var(--tomo-teal-tint)] text-[color:var(--foreground)]"
+            : "border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] text-[color:var(--foreground)]"
         }`}
       >
         <p className="whitespace-pre-line">{textContent}</p>
