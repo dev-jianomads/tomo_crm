@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { FundProvider } from "@/components/fund-provider";
 import { RelationshipsProvider } from "@/components/relationships-provider";
 import { Sonner } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 import { VersionCheck } from "@/components/version-check";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -46,11 +47,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <FundProvider>
-      <RelationshipsProvider>{children}</RelationshipsProvider>
-      <VersionCheck />
-      <Sonner />
-    </FundProvider>
+    <ThemeProvider>
+      <FundProvider>
+        <RelationshipsProvider>{children}</RelationshipsProvider>
+        <VersionCheck />
+        <Sonner />
+      </FundProvider>
+    </ThemeProvider>
   );
 }
 

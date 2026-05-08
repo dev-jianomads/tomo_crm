@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Action Drawer · Draft Approval · Light</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Brand & intelligence — lifted teal for dark */
+    --teal: #13A8A8;
+    --teal-tint: rgba(19, 168, 168, 0.12);
+    --teal-evidence-bg: rgba(19, 168, 168, 0.08);
+    --teal-strong: #1AC0C0;
+    --navy: #F0F2F5;          /* primary text on dark */
+    --navy-soft: rgba(255, 255, 255, 0.06);
+    --amber: #D4A24C;
+    --amber-deep: #B88838;
+
+    /* Status — slightly desaturated for dark */
+    --green: #4CAE7E;
+    --green-bg: rgba(76, 174, 126, 0.14);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.16);
+    --status-amber-text: #E8A838;
+    --red: #E66464;
+    --red-bg: rgba(230, 100, 100, 0.14);
+    --red-strong: #F07474;
+
+    /* Five-layer surface system */
+    --L1: #0D131B;            /* nav rail */
+    --L2: #141C26;            /* main page canvas */
+    --L3: #1C2A37;            /* primary cards (draft surface, attendee, etc.) */
+    --L4: #233241;            /* drawer body, raised modals */
+    --L5: #2E3F52;            /* hover, action zones, separation */
+
+    /* Aliased to existing token names so the rest of the CSS just works */
+    --canvas: var(--L2);
+    --card-warm: var(--L5);   /* action bar zone — slightly raised, distinct */
+    --card: var(--L3);
+    --rule: rgba(255, 255, 255, 0.08);
+    --rule-soft: rgba(255, 255, 255, 0.05);
+    --body: #C8CFD8;          /* secondary text */
+    --mute: #8B95A3;          /* muted text */
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --r-lg: 8px;
+
+    --motion-utility: 180ms cubic-bezier(0.2, 0, 0, 1);
+    --motion-confirm: 250ms cubic-bezier(0.32, 0.72, 0, 1);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.20);
+    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.32);
+    --shadow-drawer: -16px 0 48px rgba(0, 0, 0, 0.50);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--L2);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    line-height: 1.5;
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ============================================================
+     LEFT NAV
+     ============================================================ */
+  .nav {
+    width: 72px;
+    background: var(--L1);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 20px 0 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--navy);
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+    font-variation-settings: "opsz" 36;
+    line-height: 1;
+  }
+  .nav-item {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-md);
+    color: var(--mute);
+    cursor: pointer;
+    transition: background var(--motion-utility), color var(--motion-utility);
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: rgba(255, 255, 255, 0.10); color: #F0F2F5; }
+  .nav-spacer { flex: 1; }
+
+  /* ============================================================
+     MAIN — dimmed when drawer is open
+     ============================================================ */
+  .main {
+    flex: 1;
+    padding: 32px 48px 80px;
+    max-width: 1280px;
+    transition: filter var(--motion-utility);
+  }
+  body.drawer-open .main {
+    pointer-events: none;
+    filter: brightness(0.45) saturate(0.7);
+  }
+
+  /* Top eyebrow row */
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .top-actions { display: flex; align-items: center; gap: 16px; }
+  .top-link { font-size: 12px; color: var(--mute); cursor: pointer; }
+  .top-link:hover { color: var(--navy); }
+  .radar-button {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--L4); color: var(--navy); border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: var(--r-md); padding: 8px 14px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .radar-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,0.18);
+    padding: 2px 6px; border-radius: 10px;
+  }
+
+  /* Greeting */
+  .greeting {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 32px;
+    line-height: 1.25; color: var(--navy);
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 40;
+  }
+  .greeting .intel {
+    color: var(--teal);
+  }
+  .greeting-stamp {
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+
+  /* AI input */
+  .ai-input-row {
+    margin-top: 32px;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 12px 16px;
+  }
+  .ai-input-row input {
+    flex: 1; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; color: var(--navy); background: transparent;
+  }
+  .ai-input-row input::placeholder { color: var(--mute); }
+  .ai-shortcut {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute); background: rgba(0, 0, 0, 0.30);
+    padding: 3px 8px; border-radius: var(--r-sm);
+    border: 1px solid rgba(255, 255, 255, 0.06); letter-spacing: 0.05em;
+  }
+
+  /* Grid */
+  .grid {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 48px;
+  }
+  .col-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 18px; color: var(--navy);
+    margin-bottom: 16px;
+    font-variation-settings: "opsz" 24;
+  }
+  .col-title .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 400; color: var(--mute);
+    margin-left: 8px; letter-spacing: 0.04em;
+  }
+
+  /* Cards (compressed, since drawer is the focus) */
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 16px 18px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 16px; align-items: center; cursor: pointer;
+  }
+  .card.selected {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(19, 168, 168, 0.16);
+    background: var(--L4);
+  }
+  .card.overdue-2 { border-left: 3px solid var(--red); }
+  .card-meta-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px; font-size: 11px;
+  }
+  .workflow-tag {
+    color: var(--mute); font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .urgency-pill {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .urgency-pill.amber { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .urgency-pill.red { background: var(--red-bg); color: var(--red); }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--navy); margin-bottom: 3px; line-height: 1.4; }
+  .card-title .person { font-weight: 400; color: var(--body); }
+  .card-action { font-size: 13px; color: var(--body); line-height: 1.45; }
+  .card-button {
+    background: rgba(19, 168, 168, 0.10); color: var(--teal);
+    border: 1px solid rgba(19, 168, 168, 0.40); border-radius: var(--r-md);
+    padding: 7px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+  }
+  .card-button .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; opacity: 0.6; margin-left: 4px;
+  }
+
+  /* ============================================================
+     ACTION DRAWER — right slide-in
+     ============================================================ */
+  .drawer-veil {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 720px; max-width: 92vw;
+    background: var(--L4);
+    box-shadow: var(--shadow-drawer);
+    z-index: 60;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+
+  /* Drawer head */
+  .drawer-head {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .drawer-head-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16px; margin-bottom: 14px;
+  }
+  .drawer-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .drawer-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    line-height: 1.25;
+    font-variation-settings: "opsz" 28;
+  }
+  .drawer-subtitle {
+    font-size: 13px; color: var(--body);
+    margin-top: 6px;
+  }
+  .drawer-close {
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: var(--r-sm); padding: 4px 10px;
+    color: var(--mute); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    flex-shrink: 0;
+    transition: all var(--motion-utility);
+  }
+  .drawer-close:hover { color: var(--navy); border-color: var(--navy); }
+
+  /* Status strip */
+  .status-strip {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-sm);
+  }
+  .status-pill.red { background: var(--red-bg); color: var(--red-strong); }
+  .status-pill.amber { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .status-pill.teal { background: var(--teal-evidence-bg); color: var(--teal); }
+  .status-pill.navy { background: var(--navy-soft); color: var(--navy); }
+  .status-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .status-pill.red .dot { background: var(--red); }
+  .status-pill.amber .dot { background: var(--status-amber); }
+  .status-pill.teal .dot { background: var(--teal); }
+  .quick-link {
+    font-size: 12px; color: var(--mute);
+    text-decoration: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: color var(--motion-utility);
+  }
+  .quick-link:hover { color: var(--teal); }
+  .quick-link svg { opacity: 0.6; }
+
+  /* Drawer body */
+  .drawer-body {
+    flex: 1;
+    padding: 24px 32px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* Why-this-surfaced block */
+  .why-block {
+    background: rgba(19, 168, 168, 0.06);
+    border-left: 3px solid var(--teal);
+    padding: 14px 16px;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .why-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--teal); font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .why-text {
+    font-size: 13px; color: var(--navy); line-height: 1.55;
+  }
+  .why-stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* Section */
+  .section { display: flex; flex-direction: column; gap: 10px; }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute); font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+
+  /* Email draft surface */
+  .draft-surface {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .draft-meta {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-soft);
+    background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    row-gap: 4px;
+    column-gap: 12px;
+    font-size: 12px;
+  }
+  .draft-meta-label { color: var(--mute); font-weight: 500; }
+  .draft-meta-value { color: var(--navy); }
+  .draft-meta-value .recipient {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    padding: 1px 8px;
+    display: inline-block;
+    font-size: 12px;
+  }
+  .draft-subject {
+    font-weight: 500; color: var(--navy);
+  }
+  .draft-body {
+    padding: 18px 20px;
+    font-size: 14px;
+    color: var(--navy);
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+  .draft-body p { margin-bottom: 12px; }
+  .draft-body p:last-child { margin-bottom: 0; }
+
+  /* Edit-affordance footer of draft */
+  .draft-foot {
+    padding: 10px 16px;
+    border-top: 1px solid var(--rule-soft);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--mute);
+  }
+  .draft-foot-left { display: flex; align-items: center; gap: 14px; }
+  .draft-foot-link {
+    color: var(--mute); cursor: pointer;
+    transition: color var(--motion-utility);
+  }
+  .draft-foot-link:hover { color: var(--navy); }
+  .draft-foot-stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
+  /* Scheduling availability mini-block */
+  .avail-block {
+    background: var(--L3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--r-md);
+    padding: 12px 14px;
+  }
+  .avail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .avail-row:last-child { border-bottom: 0; }
+  .avail-time { color: var(--navy); font-weight: 500; }
+  .avail-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--green);
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .avail-foot {
+    margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px;
+  }
+  .avail-foot-link {
+    color: var(--teal); cursor: pointer; font-weight: 500;
+  }
+  .avail-foot-link:hover { text-decoration: underline; }
+
+  /* Activity log — Granola pattern (TOMO entries visually distinct from human) */
+  .activity-list { display: flex; flex-direction: column; }
+  .activity-row {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 12px; align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .activity-row:last-child { border-bottom: 0; }
+  .activity-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .activity-icon.tomo { background: var(--teal-tint); color: var(--teal); }
+  .activity-icon.human { background: var(--navy-soft); color: var(--navy); }
+  .activity-row-body { min-width: 0; }
+  .activity-row-title {
+    font-size: 13px; color: var(--navy);
+    margin-bottom: 3px; line-height: 1.45;
+  }
+  .activity-row-title .actor-tomo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--teal);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--teal-tint);
+    padding: 1px 5px; border-radius: 2px;
+    margin-right: 6px; vertical-align: 2px;
+  }
+  .activity-row-title .actor-gp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--navy);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--navy-soft);
+    padding: 1px 5px; border-radius: 2px;
+    margin-right: 6px; vertical-align: 2px;
+  }
+  .activity-row-detail {
+    font-size: 12px; color: var(--body); line-height: 1.5;
+  }
+  .activity-row-detail .quoted {
+    font-style: italic; color: var(--mute);
+  }
+  .activity-row-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.06em; flex-shrink: 0;
+    text-align: right; line-height: 1.4;
+  }
+  .activity-foot {
+    margin-top: 8px;
+    font-size: 12px; color: var(--mute);
+    cursor: pointer;
+  }
+  .activity-foot:hover { color: var(--navy); }
+
+  /* Drawer footer — primary actions */
+  .drawer-foot {
+    padding: 18px 32px;
+    border-top: 1px solid var(--rule);
+    background: var(--L4);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px;
+    position: sticky; bottom: 0;
+    box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.24);
+  }
+  .drawer-foot-left { display: flex; gap: 8px; }
+  .drawer-foot-right { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: var(--r-md);
+    padding: 8px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all var(--motion-utility);
+  }
+  .btn .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; opacity: 0.55; margin-left: 2px;
+  }
+  .btn-primary { background: var(--teal); color: var(--L1); box-shadow: 0 0 0 1px rgba(19, 168, 168, 0.30); }
+  .btn-primary:hover { background: var(--teal-strong); }
+  .btn-secondary {
+    background: transparent; color: var(--navy);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  .btn-secondary:hover { border-color: rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.04); }
+  .btn-tertiary {
+    background: transparent; color: var(--mute);
+    border-color: transparent;
+  }
+  .btn-tertiary:hover { color: var(--navy); background: rgba(255, 255, 255, 0.04); }
+  .btn-danger {
+    background: transparent; color: var(--red);
+    border-color: transparent;
+  }
+  .btn-danger:hover { background: var(--red-bg); }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; }
+  }
+
+  /* ============================================================
+     ACTION BAR — chip row attached to the draft surface.
+     Primary action filled teal, secondaries outline.
+     This is where the commit lives — not in the drawer footer.
+     ============================================================ */
+  .action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 14px 16px;
+    background: var(--L5);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--r-md);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: var(--r-md);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all var(--motion-utility);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .chip .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.65;
+    margin-left: 2px;
+    letter-spacing: 0.04em;
+  }
+  .chip svg { flex-shrink: 0; }
+  .chip-primary {
+    background: var(--teal);
+    color: var(--L1);
+    box-shadow: 0 0 0 1px rgba(19, 168, 168, 0.40), 0 4px 12px rgba(19, 168, 168, 0.28);
+  }
+  .chip-primary:hover {
+    background: var(--teal-strong);
+    box-shadow: 0 0 0 1px rgba(19, 168, 168, 0.50), 0 6px 16px rgba(19, 168, 168, 0.36);
+  }
+  .chip-primary .key { opacity: 0.8; }
+  .chip-outline {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--navy);
+    border-color: rgba(255, 255, 255, 0.10);
+  }
+  .chip-outline:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .chip-outline svg { color: var(--mute); }
+
+  /* ============================================================
+     EXAMPLE TOGGLE — switch between Albourne and PAAMCO drawers
+     ============================================================ */
+  .example-switcher {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--L4);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex; gap: 2px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.50);
+  }
+  .ex-toggle {
+    background: transparent; border: 0;
+    padding: 8px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500;
+    color: var(--mute); cursor: pointer;
+    border-radius: 999px;
+    transition: all var(--motion-utility);
+  }
+  .ex-toggle.active {
+    background: rgba(255, 255, 255, 0.10); color: #F0F2F5;
+  }
+  .ex-toggle:hover:not(.active) { color: var(--navy); }
+
+  /* Drawer visibility toggle */
+  .drawer-pane { display: none; }
+  body[data-drawer="albourne"] #drawer-albourne { display: flex; }
+  body[data-drawer="paamco"] #drawer-paamco { display: flex; }
+  body[data-drawer="albourne"] #card-albourne { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(19, 168, 168, 0.16); }
+  body[data-drawer="paamco"] #card-paamco { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(19, 168, 168, 0.16); }
+</style>
+</head>
+<body class="drawer-open" data-drawer="albourne">
+
+<div class="app">
+
+  <!-- LEFT NAV -->
+  <nav class="nav" aria-label="Primary">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item active" title="Today">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div class="nav-item" title="Relationships">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg>
+    </div>
+    <div class="nav-item" title="Lists">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+    </div>
+    <div class="nav-item" title="Workflows">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 20H4v-6"/><path d="M4 20l9-9"/></svg>
+    </div>
+    <div class="nav-item" title="Insights">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="top-row">
+      <div class="eyebrow">Today · Thursday, May 7</div>
+      <div class="top-actions">
+        <span class="top-link">Resend daily brief</span>
+        <button class="radar-button">On my radar <span class="radar-count">11</span></button>
+      </div>
+    </div>
+
+    <div class="greeting-block">
+      <div class="greeting">
+        Good morning, Geoffrey.
+        <span class="intel">Frank Ieraci's reply time halved this week — CPPIB is accelerating.</span>
+      </div>
+      <div class="greeting-stamp">Computed 2:04am · 90-day window</div>
+    </div>
+
+    <div class="ai-input-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#13A8A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      <input type="text" placeholder="Ask Tomo about your raise, an LP, or what to focus on…" />
+      <span class="ai-shortcut">⌘K</span>
+    </div>
+
+    <div class="grid">
+      <section>
+        <h2 class="col-title">What needs your attention <span class="count">3</span></h2>
+        <div class="cards">
+          <div class="card overdue-2" id="card-albourne" onclick="showDrawer('albourne')">
+            <div>
+              <div class="card-meta-row">
+                <span class="urgency-pill red">SLA past · 26h</span>
+                <span class="workflow-tag">Post-Meeting Follow-Up</span>
+              </div>
+              <div class="card-title">Albourne Partners · <span class="person">James Staltari</span></div>
+              <div class="card-action">Post-meeting note ready for your approval.</div>
+            </div>
+            <button class="card-button">Approve <span class="key">A</span></button>
+          </div>
+
+          <div class="card" id="card-paamco" onclick="showDrawer('paamco')">
+            <div>
+              <div class="card-meta-row">
+                <span class="urgency-pill amber">Today</span>
+                <span class="workflow-tag">Email Scheduling Assistant</span>
+              </div>
+              <div class="card-title">PAAMCO Prisma · <span class="person">Peter Zakowich</span></div>
+              <div class="card-action">March 18 meeting — propose times. Draft ready, two slots picked.</div>
+            </div>
+            <button class="card-button">Approve <span class="key">A</span></button>
+          </div>
+
+          <div class="card">
+            <div>
+              <div class="card-meta-row">
+                <span class="urgency-pill amber">Today</span>
+                <span class="workflow-tag">Warm Intro Tracker</span>
+              </div>
+              <div class="card-title">Goldman Sachs · <span class="person">Michel del Buono</span></div>
+              <div class="card-action">Intro to Edmond de Rothschild Family Office. Reply due within 24h.</div>
+            </div>
+            <button class="card-button">Approve <span class="key">A</span></button>
+          </div>
+        </div>
+      </section>
+
+      <aside></aside>
+    </div>
+  </main>
+</div>
+
+<!-- =========================================================
+     DRAWER VEIL
+     ========================================================= -->
+<div class="drawer-veil" onclick="closeDrawer()"></div>
+
+<!-- =========================================================
+     DRAWER 1 — ALBOURNE / JAMES STALTARI · POST-MEETING FOLLOW-UP
+     ========================================================= -->
+<aside class="drawer drawer-pane" id="drawer-albourne" aria-labelledby="d1-title">
+  <div class="drawer-head">
+    <div class="drawer-head-top">
+      <div>
+        <div class="drawer-eyebrow">Post-Meeting Follow-Up · Draft for approval</div>
+        <h1 class="drawer-title" id="d1-title">Albourne Partners · James Staltari</h1>
+        <div class="drawer-subtitle">Senior Investment Consultant · Tier 1 · Hedge fund advisory</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">Esc</button>
+    </div>
+    <div class="status-strip">
+      <span class="status-pill red"><span class="dot"></span>SLA past · 26h</span>
+      <span class="status-pill teal"><span class="dot"></span>Active diligence</span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Open thread in Outlook
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/><path d="M22 21V11a4 4 0 0 0-4-4h-1"/><path d="M14 21v-7a4 4 0 0 0-4-4h-1"/></svg>
+        LinkedIn
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Open LP record
+      </a>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- Why this surfaced -->
+    <div class="why-block">
+      <div class="why-label">Why this is here</div>
+      <div class="why-text">
+        Yesterday's 90-minute meeting ended at 16:00. Your Post-Meeting Follow-Up workflow has a 2-hour SLA on summary notes; the draft has been waiting on your approval since 16:45 yesterday. James asked specifically for portfolio-positioning materials and a call with your COO — both are open commitments and need to be acknowledged in the reply.
+      </div>
+      <div class="why-stamp">Computed 09:00 · From meeting recap + 14d activity</div>
+    </div>
+
+    <!-- Email draft -->
+    <div class="section">
+      <div class="section-label">Drafted by Tomo · Edit before sending</div>
+      <div class="draft-surface">
+        <div class="draft-meta">
+          <div class="draft-meta-label">To</div>
+          <div class="draft-meta-value"><span class="recipient">james.staltari@albourne.com</span></div>
+          <div class="draft-meta-label">Cc</div>
+          <div class="draft-meta-value" style="color: var(--mute);">— add recipients</div>
+          <div class="draft-meta-label">Subject</div>
+          <div class="draft-meta-value draft-subject">Yesterday's discussion — materials and next steps</div>
+        </div>
+        <div class="draft-body">
+<p>Hi James,</p>
+<p>Thank you for the time yesterday — a useful conversation, and I appreciated the directness on the liquidity terms in particular.</p>
+<p>To recap what we covered and committed to:</p>
+<p>· Portfolio positioning into year-end, and how the fund is sized against the tail risk you flagged. I'll send the latest positioning deck and the Q1 attribution detail by end of week.<br>
+· Liquidity terms and the rationale behind the gate provision. I'll include the side-letter language from Fund III as a reference point.<br>
+· A follow-up conversation with our COO, Sarah Chen, on operational diligence ahead of your Q2 allocator reads. I'll propose two times for next week.</p>
+<p>If anything else surfaced after the meeting that you'd like included before the COO call, send it across and we'll cover it on the day.</p>
+<p>Best,<br>Geoffrey</p>
+        </div>
+        <div class="draft-foot">
+          <div class="draft-foot-stamp" style="margin-left: auto;">217 words · drafted 16:45 yesterday · sending from geoffrey@tomosolutions.ai</div>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="chip chip-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Approve & Send
+          <span class="key">A</span>
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+          <span class="key">E</span>
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 18.36"/></svg>
+          Add attachment
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          Regenerate
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+          Tone
+        </button>
+      </div>
+    </div>
+
+    <!-- Open commitments / loops -->
+    <div class="section">
+      <div class="section-label">Commitments captured from this meeting</div>
+      <div style="background: var(--L3); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--r-md); padding: 12px 14px;">
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed var(--rule);">
+          <div style="color: var(--navy);">Send portfolio positioning deck + Q1 attribution</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--status-amber-text); letter-spacing: 0.10em;">DUE FRI</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed var(--rule);">
+          <div style="color: var(--navy);">Include Fund III side-letter language as reference</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--mute); letter-spacing: 0.10em;">WITH DECK</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px;">
+          <div style="color: var(--navy);">Propose two times for COO call next week</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--mute); letter-spacing: 0.10em;">THIS WEEK</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="section">
+      <div class="section-label">Recent activity</div>
+      <div class="activity-list">
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Meeting · Albourne Partners (in person, London)</div>
+            <div class="activity-row-detail">90 min. Walked through portfolio positioning, liquidity terms, side-letter precedents. James pressed on gate provision rationale; agreed to follow up with reference to Fund III. Scoped a COO call for Q2 allocator reads.</div>
+          </div>
+          <div class="activity-row-time">Yesterday<br>14:30 → 16:00</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon tomo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-tomo">Tomo</span>Drafted post-meeting follow-up from Teams transcript + recap</div>
+            <div class="activity-row-detail">Recap path: Microsoft 365 Copilot. Captured three commitments, drafted reply against your tone profile. <span class="quoted">"Useful conversation, and I appreciated the directness…"</span></div>
+          </div>
+          <div class="activity-row-time">Yesterday<br>16:45</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon tomo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-tomo">Tomo</span>SLA reminder — still awaiting your approval</div>
+            <div class="activity-row-detail">Post-Meeting Follow-Up workflow target is 2 hours. Currently 26 hours past target.</div>
+          </div>
+          <div class="activity-row-time">Today<br>09:00</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">JS</span>Email · "Confirming tomorrow at 14:30, looking forward."</div>
+            <div class="activity-row-detail">Reply length 14 words. Reply velocity 6h, typical 18h for this LP — pre-meeting engagement was strong.</div>
+          </div>
+          <div class="activity-row-time">Tue<br>11:42</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Email · Sent meeting agenda + portfolio one-pager</div>
+            <div class="activity-row-detail">Pre-read materials shared 24h before meeting. James acknowledged within 6 hours.</div>
+          </div>
+          <div class="activity-row-time">Mon<br>09:15</div>
+        </div>
+
+      </div>
+      <div class="activity-foot">View full history (47 entries) →</div>
+    </div>
+
+  </div>
+
+  <!-- Drawer footer (sticky actions) -->
+  <div class="drawer-foot">
+    <div class="drawer-foot-left">
+      <button class="btn btn-danger">Dismiss</button>
+      <button class="btn btn-tertiary">Snooze</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- =========================================================
+     DRAWER 2 — PAAMCO PRISMA / PETER ZAKOWICH · SCHEDULING
+     ========================================================= -->
+<aside class="drawer drawer-pane" id="drawer-paamco" aria-labelledby="d2-title">
+  <div class="drawer-head">
+    <div class="drawer-head-top">
+      <div>
+        <div class="drawer-eyebrow">Email Scheduling Assistant · Draft reply for approval</div>
+        <h1 class="drawer-title" id="d2-title">PAAMCO Prisma · Peter Zakowich</h1>
+        <div class="drawer-subtitle">Managing Director · Tier 1 · Fund-of-funds</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">Esc</button>
+    </div>
+    <div class="status-strip">
+      <span class="status-pill amber"><span class="dot"></span>Reply due today</span>
+      <span class="status-pill teal"><span class="dot"></span>Active diligence · 22d</span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Open thread in Gmail
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Open calendar
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Open LP record
+      </a>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <div class="why-block">
+      <div class="why-label">Why this is here</div>
+      <div class="why-text">
+        Peter emailed at 06:42 this morning asking for time on March 18 to discuss allocation timeline and the manager-comparison materials. He's been in active diligence 22 days. Your calendar shows 9am and 11am ET both free — Tomo drafted a reply proposing both. Reply target is end-of-day to keep the meeting in the same week.
+      </div>
+      <div class="why-stamp">Computed 07:16 · From inbound + calendar</div>
+    </div>
+
+    <!-- Original inbound -->
+    <div class="section">
+      <div class="section-label">Inbound from Peter — 06:42 today</div>
+      <div style="background: var(--L3); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--r-md); padding: 14px 16px; font-size: 13px; color: var(--body); line-height: 1.6;">
+        <div style="font-size: 11px; color: var(--mute); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em;">PETER ZAKOWICH · 06:42 · RE: PAAMCO ALLOCATION REVIEW</div>
+        Geoffrey — quick one. Could we find time on March 18 to walk through the allocation timeline and the manager-comparison spread you mentioned last week? Anything between 9 and noon ET works on my side, would need 30-45 min. Happy to push to the following week if that's cleaner.
+      </div>
+    </div>
+
+    <!-- Drafted reply -->
+    <div class="section">
+      <div class="section-label">Drafted by Tomo · Edit before sending</div>
+      <div class="draft-surface">
+        <div class="draft-meta">
+          <div class="draft-meta-label">To</div>
+          <div class="draft-meta-value"><span class="recipient">peter.zakowich@paamcoprisma.com</span></div>
+          <div class="draft-meta-label">Subject</div>
+          <div class="draft-meta-value draft-subject">RE: PAAMCO allocation review — March 18</div>
+        </div>
+        <div class="draft-body">
+<p>Hi Peter,</p>
+<p>Happy to find time on March 18. Two slots that work on my side:</p>
+<p>· Tuesday March 18 at 9:00 AM ET (45 min)<br>
+· Tuesday March 18 at 11:00 AM ET (45 min)</p>
+<p>Either works. I'll bring the manager-comparison spread we touched on last week and the allocation timeline against Q2 close — let me know which slot suits and I'll send the calendar invite straight after.</p>
+<p>Best,<br>Geoffrey</p>
+        </div>
+        <div class="draft-foot">
+          <div class="draft-foot-stamp" style="margin-left: auto;">94 words · drafted 07:16 today · sending from geoffrey@tomosolutions.ai</div>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="chip chip-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Approve & Send
+          <span class="key">A</span>
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+          <span class="key">E</span>
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Find another time
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          Regenerate
+        </button>
+        <button class="chip chip-outline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+          Tone
+        </button>
+      </div>
+    </div>
+
+    <!-- Availability -->
+    <div class="section">
+      <div class="section-label">Your availability · Tuesday March 18 ET</div>
+      <div class="avail-block">
+        <div class="avail-row">
+          <span class="avail-time">9:00 AM — 9:45 AM</span>
+          <span class="avail-state">PROPOSED</span>
+        </div>
+        <div class="avail-row">
+          <span class="avail-time">10:00 AM — 10:45 AM</span>
+          <span class="avail-state" style="color: var(--mute);">FREE — NOT PROPOSED</span>
+        </div>
+        <div class="avail-row">
+          <span class="avail-time">11:00 AM — 11:45 AM</span>
+          <span class="avail-state">PROPOSED</span>
+        </div>
+        <div class="avail-row">
+          <span class="avail-time">12:00 PM — 1:00 PM</span>
+          <span class="avail-state" style="color: var(--mute);">BUSY — IR INTERNAL</span>
+        </div>
+        <div class="avail-foot">
+          <span style="color: var(--mute);">All times Eastern · pulled from your connected calendar</span>
+          <span class="avail-foot-link">Find another time →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="section">
+      <div class="section-label">Recent activity</div>
+      <div class="activity-list">
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">PZ</span>Email · Asked for March 18 meeting</div>
+            <div class="activity-row-detail"><span class="quoted">"Could we find time on March 18 to walk through the allocation timeline and the manager-comparison spread…"</span></div>
+          </div>
+          <div class="activity-row-time">Today<br>06:42</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon tomo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-tomo">Tomo</span>Detected meeting request, drafted reply with two open slots</div>
+            <div class="activity-row-detail">Checked calendar for March 18 ET. Selected 9am and 11am from four available slots, weighted toward earlier in the day per Peter's stated preference window.</div>
+          </div>
+          <div class="activity-row-time">Today<br>07:16</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Call · Reviewed allocation timeline with PAAMCO Prisma and aligned next steps</div>
+            <div class="activity-row-detail">30 min · Peter walked through their Q2 review process. Promised manager-comparison spread by today. Logged manually.</div>
+          </div>
+          <div class="activity-row-time">Wed<br>15:20</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Meeting · Walked through Q4 performance, requested follow-up materials</div>
+            <div class="activity-row-detail">60 min in person, San Francisco. Peter requested attribution detail and the manager-comparison spread.</div>
+          </div>
+          <div class="activity-row-time">Tue<br>11:00</div>
+        </div>
+
+        <div class="activity-row">
+          <div class="activity-icon tomo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+          </div>
+          <div class="activity-row-body">
+            <div class="activity-row-title"><span class="actor-tomo">Tomo</span>Signal change · Reply velocity tightened</div>
+            <div class="activity-row-detail">Last 3 exchanges: 22h, 14h, 6h. Typical for this LP is 18h. Pattern starting to emerge — early sign of acceleration.</div>
+          </div>
+          <div class="activity-row-time">Mon<br>10:30</div>
+        </div>
+
+      </div>
+      <div class="activity-foot">View full history (31 entries) →</div>
+    </div>
+
+  </div>
+
+  <div class="drawer-foot">
+    <div class="drawer-foot-left">
+      <button class="btn btn-danger">Dismiss</button>
+      <button class="btn btn-tertiary">Snooze</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- =========================================================
+     EXAMPLE SWITCHER (mockup-only chrome)
+     ========================================================= -->
+<div class="example-switcher" role="tablist">
+  <button class="ex-toggle active" onclick="showDrawer('albourne')">Albourne · Post-meeting</button>
+  <button class="ex-toggle" onclick="showDrawer('paamco')">PAAMCO · Scheduling</button>
+</div>
+
+<script>
+  function showDrawer(which) {
+    document.body.dataset.drawer = which;
+    document.body.classList.add('drawer-open');
+    document.querySelectorAll('.ex-toggle').forEach(b => b.classList.remove('active'));
+    const idx = which === 'albourne' ? 0 : 1;
+    document.querySelectorAll('.ex-toggle')[idx].classList.add('active');
+  }
+  function closeDrawer() {
+    document.body.classList.remove('drawer-open');
+    document.body.dataset.drawer = '';
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDrawer();
+  });
+</script>
+
+</body>
+</html>

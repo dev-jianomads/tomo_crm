@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · On My Radar / Daily Brief Modal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ========================================================================
+     LIGHT MODE TOKENS (default)
+     ======================================================================== */
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.04);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-tint: rgba(201, 147, 58, 0.10);
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.08);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.10);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.08);
+
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --r-lg: 8px;
+
+    --motion: 180ms cubic-bezier(0.2, 0, 0, 1);
+
+    --shadow-modal: 0 24px 80px rgba(28, 43, 58, 0.20), 0 8px 24px rgba(28, 43, 58, 0.08);
+    --veil: rgba(28, 43, 58, 0.30);
+
+    --bg-page: var(--canvas);
+    --bg-modal: var(--card);
+    --bg-section: #FBFBFA;
+    --bg-action-zone: var(--card-warm);
+    --bg-card-content: var(--card);
+    --bg-tinted-content: var(--canvas);
+  }
+
+  /* ========================================================================
+     DARK MODE TOKENS (toggled)
+     ======================================================================== */
+  body.dark {
+    --teal: #13A8A8;
+    --teal-tint: rgba(19, 168, 168, 0.12);
+    --teal-evidence-bg: rgba(19, 168, 168, 0.08);
+    --teal-strong: #1AC0C0;
+    --navy: #F0F2F5;
+    --navy-soft: rgba(255, 255, 255, 0.06);
+    --amber: #D4A24C;
+    --amber-tint: rgba(212, 162, 76, 0.14);
+    --green: #4CAE7E;
+    --green-bg: rgba(76, 174, 126, 0.14);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.16);
+    --status-amber-text: #E8A838;
+    --red: #E66464;
+    --red-bg: rgba(230, 100, 100, 0.14);
+
+    /* Five-layer surface system */
+    --L1: #0D131B;
+    --L2: #141C26;
+    --L3: #1C2A37;
+    --L4: #233241;
+    --L5: #2E3F52;
+
+    --canvas: var(--L2);
+    --card-warm: var(--L5);
+    --card: var(--L3);
+    --rule: rgba(255, 255, 255, 0.08);
+    --rule-soft: rgba(255, 255, 255, 0.05);
+    --body: #C8CFD8;
+    --mute: #8B95A3;
+
+    --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.50), 0 8px 24px rgba(0, 0, 0, 0.32);
+    --veil: rgba(0, 0, 0, 0.65);
+
+    --bg-page: var(--L2);
+    --bg-modal: var(--L4);
+    --bg-section: rgba(255, 255, 255, 0.02);
+    --bg-action-zone: var(--L5);
+    --bg-card-content: var(--L3);
+    --bg-tinted-content: var(--L3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg-page);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    line-height: 1.5;
+    transition: background var(--motion), color var(--motion);
+  }
+
+  /* ========================================================================
+     BACKGROUND TODAY PAGE (dimmed when modal open)
+     ======================================================================== */
+  .today-bg {
+    position: fixed; inset: 0;
+    padding: 60px 80px;
+    pointer-events: none;
+    user-select: none;
+  }
+  body.modal-open .today-bg {
+    filter: brightness(0.45) saturate(0.7);
+  }
+  body.light.modal-open .today-bg {
+    filter: brightness(0.95) saturate(0.85);
+  }
+  .bg-eyebrow {
+    font-size: 11px; font-weight: 500;
+    color: var(--mute); letter-spacing: 0.22em;
+    text-transform: uppercase; margin-bottom: 28px;
+  }
+  .bg-greeting {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 32px;
+    line-height: 1.25; color: var(--navy);
+    letter-spacing: -0.01em; max-width: 800px;
+    font-variation-settings: "opsz" 40;
+  }
+  .bg-greeting .intel { color: var(--teal); }
+  .bg-stamp {
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+
+  /* ========================================================================
+     VEIL
+     ======================================================================== */
+  .veil {
+    position: fixed; inset: 0;
+    background: var(--veil);
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+
+  /* ========================================================================
+     MODAL
+     ======================================================================== */
+  .modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(840px, 92vw);
+    max-height: 86vh;
+    background: var(--bg-modal);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-modal);
+    z-index: 60;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  body.dark .modal {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* ========================================================================
+     MODAL HEADER
+     ======================================================================== */
+  .modal-head {
+    padding: 26px 32px 22px;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--bg-modal);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .modal-head-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 20px;
+  }
+  .modal-head-left {
+    display: flex; align-items: flex-start; gap: 16px;
+    flex: 1; min-width: 0;
+  }
+  /* Radar logo — concentric circles + sweep */
+  .radar-logo {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .radar-logo circle, .radar-logo line {
+    stroke: var(--teal);
+    stroke-width: 1;
+    fill: none;
+  }
+  .radar-logo .ring-faint { opacity: 0.20; }
+  .radar-logo .ring-mid { opacity: 0.45; }
+  .radar-logo .ring-near { opacity: 0.75; }
+  .radar-logo .ping {
+    fill: var(--teal);
+    opacity: 0.85;
+  }
+  .radar-logo .sweep {
+    stroke: var(--teal); stroke-width: 1; opacity: 0.6;
+  }
+  .modal-head-text { flex: 1; min-width: 0; padding-top: 2px; }
+  .modal-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .modal-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 24px;
+    color: var(--navy); line-height: 1.2;
+    margin-bottom: 10px; letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 32;
+  }
+  .modal-summary {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 400; font-size: 15px;
+    color: var(--body); line-height: 1.55;
+    font-variation-settings: "opsz" 18;
+    max-width: 680px;
+  }
+  .modal-summary .accent { color: var(--navy); font-weight: 500; }
+  .modal-summary .teal-accent { color: var(--teal); font-weight: 500; }
+  .modal-stamp {
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .modal-close {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    color: var(--mute); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    flex-shrink: 0;
+    transition: all var(--motion);
+  }
+  .modal-close:hover { color: var(--navy); border-color: var(--navy); }
+  body.dark .modal-close:hover { border-color: rgba(255, 255, 255, 0.30); }
+
+  /* ========================================================================
+     MODAL BODY (scrollable)
+     ======================================================================== */
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 24px;
+  }
+  .modal-body::-webkit-scrollbar { width: 8px; }
+  .modal-body::-webkit-scrollbar-track { background: transparent; }
+  .modal-body::-webkit-scrollbar-thumb {
+    background: var(--rule);
+    border-radius: 4px;
+  }
+
+  /* ========================================================================
+     SECTION
+     ======================================================================== */
+  .section {
+    border-bottom: 1px solid var(--rule-soft);
+    padding: 20px 32px 18px;
+    transition: background var(--motion);
+  }
+  .section:last-child { border-bottom: 0; }
+  .section.empty { padding: 18px 32px; }
+  .section.collapsed .section-items,
+  .section.collapsed .see-more { display: none; }
+
+  .section-head {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-title-row {
+    display: flex; align-items: baseline; gap: 10px;
+    flex: 1; min-width: 0;
+  }
+  .section-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 600;
+    color: var(--navy);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    line-height: 1;
+  }
+  .section-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    font-weight: 500; letter-spacing: 0.04em;
+  }
+  .section-direction {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .section-direction.warm { background: var(--teal-evidence-bg); color: var(--teal); }
+  .section-direction.cool { background: var(--amber-tint); color: var(--amber); }
+  body.dark .section-direction.cool { color: var(--amber); }
+
+  .section-toggle {
+    color: var(--mute);
+    transition: transform var(--motion);
+  }
+  .section.collapsed .section-toggle { transform: rotate(-90deg); }
+
+  .section-empty-state {
+    margin-top: 8px;
+    font-size: 13px; color: var(--body);
+    font-style: italic;
+    line-height: 1.5;
+  }
+  .section-empty-state .check {
+    color: var(--green);
+    margin-right: 6px;
+    vertical-align: -2px;
+  }
+
+  .section-items {
+    margin-top: 14px;
+    display: flex; flex-direction: column;
+    gap: 0;
+  }
+
+  /* ========================================================================
+     ITEMS — the building block of every section
+     ======================================================================== */
+  .item {
+    display: grid;
+    grid-template-columns: 4px 1fr auto;
+    gap: 0;
+    padding: 12px 0 12px 14px;
+    border-top: 1px dashed var(--rule);
+    align-items: flex-start;
+    position: relative;
+  }
+  .item:first-child { border-top: 0; padding-top: 4px; }
+  .item-rule {
+    grid-column: 1;
+    align-self: stretch;
+    border-radius: 1px;
+    background: transparent;
+    margin-right: 12px;
+  }
+  .item.tier-1 .item-rule { background: var(--teal); width: 2px; }
+  .item-body {
+    grid-column: 2;
+    min-width: 0;
+    padding-right: 16px;
+  }
+  .item-meta-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px; flex-wrap: wrap;
+  }
+  .item-lp {
+    font-size: 13px; font-weight: 600;
+    color: var(--navy); line-height: 1.3;
+  }
+  .item-lp .person {
+    font-weight: 400; color: var(--body);
+  }
+  .item-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 2px 5px; border-radius: 2px;
+  }
+  .item-tag.tier-1 { background: var(--teal-evidence-bg); color: var(--teal); }
+  .item-tag.tier-2 { background: var(--navy-soft); color: var(--navy); }
+  .item-tag.warm { background: var(--teal-evidence-bg); color: var(--teal); }
+  .item-tag.cool { background: var(--amber-tint); color: var(--amber); }
+  .item-tag.urgent { background: var(--red-bg); color: var(--red); }
+  .item-tag.amber-state { background: var(--status-amber-bg); color: var(--status-amber-text); }
+
+  .item-evidence {
+    font-size: 13px; color: var(--body);
+    line-height: 1.5;
+  }
+  .item-evidence .number {
+    color: var(--navy); font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .item-evidence .quoted {
+    color: var(--mute); font-style: italic;
+  }
+
+  .item-aside {
+    grid-column: 3;
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 6px;
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+  .item-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    line-height: 1.4;
+    text-align: right;
+  }
+  .item-action {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px; font-weight: 500;
+    background: transparent; color: var(--teal);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-md);
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--motion);
+  }
+  .item-action:hover {
+    background: var(--teal-evidence-bg);
+  }
+  .item-action.subtle {
+    color: var(--mute);
+    border-color: var(--rule);
+  }
+  .item-action.subtle:hover {
+    color: var(--navy);
+    border-color: var(--navy);
+    background: transparent;
+  }
+
+  /* ========================================================================
+     SEE MORE / SEE LESS expand
+     ======================================================================== */
+  .see-more {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    background: transparent; border: 0;
+    padding: 6px 0;
+    transition: color var(--motion);
+  }
+  .see-more:hover { color: var(--navy); }
+  .item.hidden { display: none; }
+  .section.expanded .item.hidden { display: grid; }
+
+  /* ========================================================================
+     MODAL FOOTER
+     ======================================================================== */
+  .modal-foot {
+    padding: 16px 32px;
+    border-top: 1px solid var(--rule-soft);
+    background: var(--bg-modal);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .foot-stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .foot-actions { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--r-md);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all var(--motion);
+  }
+  .btn-tertiary { background: transparent; color: var(--mute); }
+  .btn-tertiary:hover { color: var(--navy); }
+  .btn-secondary {
+    background: transparent; color: var(--navy);
+    border-color: var(--rule);
+  }
+  .btn-secondary:hover {
+    border-color: var(--navy);
+  }
+  body.dark .btn-secondary {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  body.dark .btn-secondary:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* ========================================================================
+     LIGHT/DARK TOGGLE (chrome — not in real product)
+     ======================================================================== */
+  .mode-switch {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--bg-modal);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex; gap: 2px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  }
+  body.dark .mode-switch { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.50); }
+  .mode-toggle {
+    background: transparent; border: 0;
+    padding: 8px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500;
+    color: var(--mute); cursor: pointer;
+    border-radius: 999px;
+    transition: all var(--motion);
+  }
+  .mode-toggle.active {
+    background: var(--navy); color: var(--bg-modal);
+  }
+  body.dark .mode-toggle.active {
+    background: rgba(255, 255, 255, 0.10);
+    color: #F0F2F5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; }
+  }
+</style>
+</head>
+<body class="light modal-open">
+
+<!-- ========================================================================
+     BACKGROUND CONTEXT — Today page underneath
+     ======================================================================== -->
+<div class="today-bg">
+  <div class="bg-eyebrow">Today · Thursday, May 7</div>
+  <div class="bg-greeting">
+    Good morning, Geoffrey.
+    <span class="intel">Frank Ieraci's reply time halved this week — CPPIB is accelerating.</span>
+  </div>
+  <div class="bg-stamp">Computed 2:04am · 90-day window</div>
+</div>
+
+<!-- ========================================================================
+     VEIL
+     ======================================================================== -->
+<div class="veil"></div>
+
+<!-- ========================================================================
+     MODAL
+     ======================================================================== -->
+<div class="modal" role="dialog" aria-labelledby="radar-title">
+
+  <!-- HEADER -->
+  <div class="modal-head">
+    <div class="modal-head-top">
+      <div class="modal-head-left">
+        <!-- Radar logo: concentric rings + sweep + ping -->
+        <svg class="radar-logo" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ring-faint" cx="22" cy="22" r="20"/>
+          <circle class="ring-mid" cx="22" cy="22" r="14"/>
+          <circle class="ring-near" cx="22" cy="22" r="8"/>
+          <line class="sweep" x1="22" y1="22" x2="22" y2="2"/>
+          <line class="sweep" x1="22" y1="22" x2="38" y2="14" opacity="0.35"/>
+          <circle class="ping" cx="32" cy="14" r="1.6"/>
+          <circle class="ping" cx="14" cy="29" r="1.2" opacity="0.6"/>
+          <circle class="ping" cx="27" cy="33" r="1" opacity="0.5"/>
+        </svg>
+
+        <div class="modal-head-text">
+          <div class="modal-eyebrow">Daily Brief · Thursday 7 May</div>
+          <h1 class="modal-title" id="radar-title">On my radar</h1>
+          <p class="modal-summary">
+            <span class="accent">Three items returning from snooze</span>, one commitment due tomorrow that you haven't drafted, and <span class="teal-accent">Frank Ieraci re-engaged after 18 days quiet</span>. Two diligence threads have gone quieter than their typical cadence — Brookfield and Lingotto. PAAMCO's DDQ is now nine days out against their stated five-to-seven.
+          </p>
+          <div class="modal-stamp">Computed 06:30 · Spans 90-day window · 14 items today</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">Esc</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="modal-body">
+
+    <!-- =========================================================
+         SECTION 1: RETURNING TO YOU (snoozed items expired)
+         ========================================================= -->
+    <section class="section" id="sec-returning">
+      <div class="section-head" onclick="toggleSection('sec-returning')">
+        <div class="section-title-row">
+          <span class="section-title">Returning to you</span>
+          <span class="section-count">3 items · snoozes expired today</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">CPPIB · <span class="person">Frank Ieraci</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+            </div>
+            <div class="item-evidence">
+              You snoozed Frank's intro to the Toronto private credit team on <span class="number">Tuesday</span>. The snooze just expired and his reply velocity has tightened since — last three exchanges <span class="number">22h, 14h, 6h</span> against typical <span class="number">18h</span>.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Tue<br>2 days</span>
+            <button class="item-action">Bring to Today</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Albourne · <span class="person">Sarah Chen</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Operational due-diligence questionnaire from Albourne ops team. You snoozed for <span class="number">48 hours</span> on Tuesday to gather inputs from Lisa.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Tue<br>2 days</span>
+            <button class="item-action subtle">Bring to Today</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Lingotto Investment Management · <span class="person">Edoardo Lanzavecchia</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Follow-up email after the Mosaic introduction. Snoozed <span class="number">5 days</span> to land after the Apr 30 Lingotto Q1 publication.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Sat<br>5 days</span>
+            <button class="item-action subtle">Bring to Today</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 2: YOUR COMMITMENTS APPROACHING
+         ========================================================= -->
+    <section class="section" id="sec-commitments-yours">
+      <div class="section-head" onclick="toggleSection('sec-commitments-yours')">
+        <div class="section-title-row">
+          <span class="section-title">Your commitments approaching</span>
+          <span class="section-count">2 due in next 3 days</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Albourne · <span class="person">James Staltari</span></span>
+              <span class="item-tag urgent">Due tomorrow</span>
+            </div>
+            <div class="item-evidence">
+              You promised the portfolio positioning deck and Q1 attribution detail <span class="number">"by end of week"</span> on Wednesday's call. Tomorrow is Friday. No draft yet — not currently in Today's queue.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Promised Wed<br>1 day left</span>
+            <button class="item-action">Draft now</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">UBS Hedge Fund Solutions · <span class="person">Charly Malek</span></span>
+              <span class="item-tag amber-state">Due Mon</span>
+            </div>
+            <div class="item-evidence">
+              Side-letter terms summary (Fund II precedent) was the open ask from Charly's Mar 4 email. You promised it for <span class="number">"early next week"</span> on Apr 28 — Monday is the natural landing point.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Promised Apr 28<br>4 days left</span>
+            <button class="item-action subtle">Draft now</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 3: OUTSTANDING FROM YOUR LPs
+         ========================================================= -->
+    <section class="section" id="sec-commitments-theirs">
+      <div class="section-head" onclick="toggleSection('sec-commitments-theirs')">
+        <div class="section-title-row">
+          <span class="section-title">Outstanding from your LPs</span>
+          <span class="section-count">3 past their typical turnaround</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">PAAMCO Prisma · <span class="person">Operations team</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+              <span class="item-tag amber-state">Past stated turnaround</span>
+            </div>
+            <div class="item-evidence">
+              DDQ submitted to PAAMCO ops <span class="number">9 days ago</span>. Their stated turnaround is <span class="number">5–7 business days</span>. Peter Zakowich has been responsive elsewhere — last reply <span class="number">6h</span> ago on the scheduling thread.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Sent Apr 28<br>9 days</span>
+            <button class="item-action">Draft a nudge</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Cambridge Associates · <span class="person">Stuart Reid</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Stuart said he'd intro you to <span class="number">two more LPs</span> after the GIC connection landed. <span class="number">8 days</span> since that email. GIC intro completed Apr 30 — the trigger has cleared.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Promised Apr 29<br>8 days</span>
+            <button class="item-action subtle">Draft a nudge</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Goldman Sachs · <span class="person">Michel del Buono</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Promised intro to Edmond de Rothschild Family Office <span class="number">11 days</span> ago. Reply velocity in the thread has been <span class="number">2-day average</span>; latest acknowledgement was <span class="number">"working on it"</span> on Apr 29.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Promised Apr 26<br>11 days</span>
+            <button class="item-action subtle">Draft a nudge</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 4: HEATING UP (positive signal direction)
+         ========================================================= -->
+    <section class="section" id="sec-heating">
+      <div class="section-head" onclick="toggleSection('sec-heating')">
+        <div class="section-title-row">
+          <span class="section-title">Heating up</span>
+          <span class="section-count">2 LPs accelerating</span>
+          <span class="section-direction warm">Positive direction</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">CPPIB · <span class="person">Frank Ieraci</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+              <span class="item-tag warm">Accelerating</span>
+            </div>
+            <div class="item-evidence">
+              Reply velocity halved this week. Last three exchanges: <span class="number">22h, 14h, 6h</span> against typical <span class="number">18h</span>. Frank initiated <span class="number">2 of last 5 exchanges</span> — first time since January. Multiple signals pointing in the same direction.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Last 14 days</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Brookfield Asset Management · <span class="person">Lawrence Chiu</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+              <span class="item-tag warm">Inbound activity</span>
+            </div>
+            <div class="item-evidence">
+              Two unsolicited inbound messages in the last <span class="number">30 days</span> — both with technical questions on the strategy. No prior LP-initiated contact in the preceding <span class="number">90 days</span>. One signal to watch — not yet a pattern, but worth banking.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Last 30 days</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 5: COOLING OFF (collapsed by default)
+         ========================================================= -->
+    <section class="section collapsed" id="sec-cooling">
+      <div class="section-head" onclick="toggleSection('sec-cooling')">
+        <div class="section-title-row">
+          <span class="section-title">Cooling off</span>
+          <span class="section-count">3 LPs decelerating</span>
+          <span class="section-direction cool">Negative direction</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Lingotto Investment Management · <span class="person">Edoardo Lanzavecchia</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+              <span class="item-tag cool">Decelerating</span>
+            </div>
+            <div class="item-evidence">
+              Reply length dropped from <span class="number">~110 words</span> across earlier exchanges to <span class="number">~35 words</span> in the last three. Reply time has been slowing — last three replies took <span class="number">4d, 6d, 9d</span> against typical <span class="number">2d</span>. Across reply speed, length, and initiation: pointing in the same direction.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Last 21 days</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">UBS Wealth Management · <span class="person">Patrick Müller</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+              <span class="item-tag cool">One-way contact</span>
+            </div>
+            <div class="item-evidence">
+              Last contact was one-way: your email on Apr 25 has not received a reply (<span class="number">12 days</span>). Within the typical silence threshold for Patrick (<span class="number">14 days</span>) but worth noting — he's been responsive within 5 days for the prior six months.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">12 days quiet</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Caisse de dépôt et placement du Québec · <span class="person">Marie-Claude Dumas</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+              <span class="item-tag cool">Stage stagnation</span>
+            </div>
+            <div class="item-evidence">
+              In <span class="number">"first meeting"</span> stage for <span class="number">62 days</span>. Spent <span class="number">14 days</span> in prior stage. Average for active diligence threads is <span class="number">28 days</span>.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">62d in stage</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 6: QUIET BEYOND CADENCE (collapsed)
+         ========================================================= -->
+    <section class="section collapsed" id="sec-quiet">
+      <div class="section-head" onclick="toggleSection('sec-quiet')">
+        <div class="section-title-row">
+          <span class="section-title">Quiet beyond cadence</span>
+          <span class="section-count">2 active diligence threads silent past typical</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Brookfield Asset Management · <span class="person">Lawrence Chiu</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+              <span class="item-tag amber-state">11 days silent</span>
+            </div>
+            <div class="item-evidence">
+              No meaningful contact in <span class="number">11 days</span>. Typical silence between exchanges is <span class="number">4 days</span>. Note: this LP also appears in Heating up — the inbound activity is from a different team contact (Suresh Patel). Worth knowing both signals fired.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">11d quiet</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">PineBridge Investments · <span class="person">Ravi Bulchandani</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+              <span class="item-tag amber-state">9 days silent</span>
+            </div>
+            <div class="item-evidence">
+              No reply since Apr 28 acknowledgement of the Q1 deck. Typical reply window is <span class="number">3–5 days</span>. Single data point, flagged for awareness — Ravi was OOO last week per his auto-responder.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">9d quiet</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 7: NEXT 7 DAYS AT A GLANCE
+         ========================================================= -->
+    <section class="section" id="sec-calendar">
+      <div class="section-head" onclick="toggleSection('sec-calendar')">
+        <div class="section-title-row">
+          <span class="section-title">Next 7 days at a glance</span>
+          <span class="section-count">2 things to flag ahead of time</span>
+        </div>
+        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="section-items">
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">First-meeting density · <span class="person">Tuesday May 13</span></span>
+              <span class="item-tag tier-2">Calendar tension</span>
+            </div>
+            <div class="item-evidence">
+              Three first meetings on Tuesday: BNF Capital (10am), Edmond de Rothschild (12pm), GIC second-call (3pm). All Tier 1 or Tier 2. Two have no prior interaction history — prep needs <span class="number">~45 min each</span>.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Tue May 13<br>6 days out</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Quarterly LP review window · <span class="person">Closes Wed May 14</span></span>
+              <span class="item-tag tier-2">Process cadence</span>
+            </div>
+            <div class="item-evidence">
+              Eleven Tier 1 LPs are due for their Q2 review. <span class="number">3 reviewed</span> so far. Workspace target is to complete the cohort by mid-quarter — current pace lands the last review around May 22.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Wed May 14<br>7 days out</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="modal-foot">
+    <span class="foot-stamp">Daily Brief delivered also via email · Slack DM at 07:30 SGT</span>
+    <div class="foot-actions">
+      <button class="btn btn-tertiary">Brief settings</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Done</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========================================================================
+     LIGHT/DARK MODE SWITCH (mockup chrome)
+     ======================================================================== -->
+<div class="mode-switch">
+  <button class="mode-toggle active" onclick="setMode('light')">Light</button>
+  <button class="mode-toggle" onclick="setMode('dark')">Dark</button>
+</div>
+
+<script>
+  function setMode(m) {
+    document.body.classList.remove('light', 'dark');
+    document.body.classList.add(m);
+    document.querySelectorAll('.mode-toggle').forEach(b => b.classList.remove('active'));
+    const idx = m === 'light' ? 0 : 1;
+    document.querySelectorAll('.mode-toggle')[idx].classList.add('active');
+  }
+  function toggleSection(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+  function closeModal() {
+    // mockup-only — keep it open visually
+    alert('Closing the modal would return you to Today.');
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+</script>
+
+</body>
+</html>

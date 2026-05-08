@@ -1,13 +1,15 @@
 "use client";
 
+import { AppearanceSettings } from "@/components/appearance-settings";
 import { useRequireSession } from "@/lib/auth";
 
 export default function SettingsProfilePage() {
   const { session } = useRequireSession();
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       <h2 className="text-lg font-semibold accent-title">Profile</h2>
+      <AppearanceSettings />
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="text-xs uppercase tracking-wide text-gray-500">Name</label>

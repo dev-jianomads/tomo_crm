@@ -1242,7 +1242,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 **Sub-page processing.**
 
-1. **Profile.** Display name, photo, timezone, language. Writes `users` and `user_preferences`.
+1. **Profile.** Display name, photo, timezone, language. **Appearance:** colour theme preference `system` | `light` | `dark`. Default is **system** (follow the browser or OS `prefers-color-scheme`). The user may override with an explicit light or dark choice; the preference is persisted in `user_preferences` (mock: client storage key `tomo-appearance-preference`). Product chrome and Tomo AI affordances use the **teal** accent defined in the visual language (replacing any legacy peach-only AI styling). Writes `users` and `user_preferences`.
 2. **Funds.** Per-workspace funds; raise target, target close, currency, concentration threshold (read-only V1, hardcoded 20%; editable V1.5).
 3. **Integrations.** Status banner per provider (`microsoft`, `google`, `slack`, `affinity`). Connect / Reconnect / Disconnect buttons. Health and last-success timestamp from `crm_sync_status`. Granted scopes listed (audit visibility).
 4. **Messaging (Slack).** Slack workspace connection via OAuth. Default channel selector. Per-event channel override.
@@ -1266,6 +1266,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 - AC-3.16.1 — Disconnecting Microsoft Graph in Integrations triggers the upstream revoke and surfaces a "Reconnect to resume sync" banner on Today within 30 seconds.
 - AC-3.16.2 — Adding another member via invite succeeds when prerequisites are met (matching email accept, unused token); UI does not show a numeric member cap error.
 - AC-3.16.3 — A workspace owner sees billing details; a non-owner member sees plan tier but not card information.
+- AC-3.16.4 — Changing **Appearance** to light or dark applies immediately and survives reload; **system** tracks OS/browser theme changes without requiring a reload.
 
 ---
 

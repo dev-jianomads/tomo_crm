@@ -27,7 +27,7 @@ import {
   type SchedulingDraftOverride,
 } from "@/lib/schedulingFindTime";
 import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
-import { TomoAiBadge } from "@/components/tomo-ai-badge";
+import { TomoAiBadge, TomoAiSparkleIcon } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import {
@@ -983,7 +983,7 @@ function OnMyRadarModal({
                 aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
                 title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
               >
-                <span className="tomo-ai-badge inline-block h-4 w-4 align-middle" aria-hidden="true" />
+                <TomoAiSparkleIcon className="inline-block h-4 w-4 shrink-0 align-middle text-[color:var(--tomo-teal)]" />
               </button>
             ) : null}
             <button

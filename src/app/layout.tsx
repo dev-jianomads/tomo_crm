@@ -56,17 +56,23 @@
  */
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { themeBlockingScript } from "@/lib/theme-appearance";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -94,9 +100,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBlockingScript() }} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
+        className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} antialiased bg-[color:var(--background)] text-[color:var(--foreground)]`}
+        suppressHydrationWarning
       >
         {/* 
           PRODUCTION: Wrap with providers

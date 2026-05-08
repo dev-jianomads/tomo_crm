@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Today · Light</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Brand & intelligence — locked to revised design guide */
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.04);
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;            /* brand-only, used in Founding Circle stamp */
+    --amber-deep: #A87826;
+
+    /* Status — product only */
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.08);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.10);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.08);
+    --red-border: rgba(217, 79, 79, 0.25);
+
+    /* Surfaces — light mode (revised, warmer) */
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    /* Spacing — 8px base grid */
+    --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px;
+    --s5: 48px; --s6: 64px; --s7: 96px;
+
+    /* Radius — tight, considered */
+    --r-sm: 2px;
+    --r-md: 4px;
+    --r-lg: 8px;
+
+    /* Motion */
+    --motion-utility: 180ms cubic-bezier(0.2, 0, 0, 1);
+    --motion-confirm: 250ms cubic-bezier(0.32, 0.72, 0, 1);
+
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-2: 0 4px 12px rgba(28, 43, 58, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    line-height: 1.5;
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ============================================================
+     LEFT NAV — Fraunces logotype, navy iconography on warm canvas
+     ============================================================ */
+  .nav {
+    width: 72px;
+    background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--navy);
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+    font-variation-settings: "opsz" 36;
+    line-height: 1;
+  }
+  .nav-item {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-md);
+    color: var(--mute);
+    cursor: pointer;
+    transition: background var(--motion-utility), color var(--motion-utility);
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: var(--navy); color: white; }
+  .nav-spacer { flex: 1; }
+
+  /* ============================================================
+     MAIN
+     ============================================================ */
+  .main {
+    flex: 1;
+    padding: 32px 48px 80px;
+    max-width: 1280px;
+  }
+
+  /* Top eyebrow row */
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .top-link {
+    font-size: 12px;
+    color: var(--mute);
+    cursor: pointer;
+    transition: color var(--motion-utility);
+  }
+  .top-link:hover { color: var(--navy); }
+  .radar-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--navy);
+    color: white;
+    border: 0;
+    border-radius: var(--r-md);
+    padding: 8px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-utility);
+  }
+  .radar-button:hover { background: #2A3D52; }
+  .radar-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,0.18);
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  /* ============================================================
+     GREETING — Newsreader, intelligence inline
+     ============================================================ */
+  .greeting-block {
+    margin-bottom: 12px;
+  }
+  .greeting {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.25;
+    color: var(--navy);
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 40;
+  }
+  .greeting .name { color: var(--navy); }
+  .greeting .intel {
+    color: var(--navy);
+    font-style: normal;
+  }
+  .greeting-stamp {
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* AI input — single collapsed row, no "TOMO AI" header */
+  .ai-input-row {
+    margin-top: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 12px 16px;
+    transition: border-color var(--motion-utility), box-shadow var(--motion-utility);
+  }
+  .ai-input-row:focus-within {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(14, 124, 124, 0.10);
+  }
+  .ai-input-row input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--navy);
+    background: transparent;
+  }
+  .ai-input-row input::placeholder { color: var(--mute); }
+  .ai-shortcut {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    background: var(--canvas);
+    padding: 3px 8px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--rule);
+    letter-spacing: 0.05em;
+  }
+
+  /* ============================================================
+     CONTENT GRID — two columns
+     ============================================================ */
+  .grid {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 48px;
+  }
+
+  .col-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--navy);
+    margin-bottom: 16px;
+    font-variation-settings: "opsz" 24;
+  }
+  .col-title .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--mute);
+    margin-left: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ============================================================
+     ATTENTION QUEUE — action cards, compact
+     ============================================================ */
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color var(--motion-utility), box-shadow var(--motion-utility), transform var(--motion-utility);
+    position: relative;
+  }
+  .card:hover {
+    border-color: rgba(28, 43, 58, 0.20);
+    box-shadow: var(--shadow-2);
+  }
+  .card.active {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(14, 124, 124, 0.08);
+  }
+
+  /* Urgency border (left edge) */
+  .card.overdue-1 { border-left: 3px solid var(--status-amber); }
+  .card.overdue-2 { border-left: 3px solid var(--red); }
+  .card.urgent { border-left: 3px solid var(--red); }
+
+  .card-body { min-width: 0; }
+
+  .card-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+  .workflow-tag {
+    color: var(--mute);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .urgency-pill {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .urgency-pill.amber {
+    background: var(--status-amber-bg);
+    color: var(--status-amber-text);
+  }
+  .urgency-pill.red {
+    background: var(--red-bg);
+    color: var(--red);
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 3px;
+    line-height: 1.4;
+  }
+  .card-title .firm { font-weight: 500; }
+  .card-title .person { font-weight: 400; color: var(--body); }
+
+  .card-action {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.45;
+  }
+
+  .card-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--teal);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-md);
+    padding: 7px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-utility);
+    white-space: nowrap;
+  }
+  .card-button:hover {
+    background: var(--teal);
+    color: white;
+  }
+  .card-button .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+
+  /* "Previous" collapse */
+  .previous-row {
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    cursor: pointer;
+    border-top: 1px solid var(--rule);
+    color: var(--mute);
+    font-size: 12px;
+  }
+  .previous-row:hover { color: var(--navy); }
+  .previous-chevron { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ============================================================
+     RIGHT COLUMN — Coming Up + Pipeline read
+     ============================================================ */
+  .meeting {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color var(--motion-utility), box-shadow var(--motion-utility);
+  }
+  .meeting:hover {
+    border-color: rgba(28, 43, 58, 0.20);
+    box-shadow: var(--shadow-1);
+  }
+  .meeting-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .meeting-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    line-height: 1.4;
+    flex: 1;
+  }
+  .meeting-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin-left: 10px;
+    flex-shrink: 0;
+  }
+  .meeting-state.prep-ready { background: var(--teal-evidence-bg); color: var(--teal); }
+  .meeting-state.first-contact { background: var(--navy-soft); color: var(--navy); }
+  .meeting-state.commitment-overdue { background: var(--red-bg); color: var(--red); }
+
+  .meeting-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+
+  /* Pipeline state-of-raise tile */
+  .pipeline-tile {
+    margin-top: 32px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 18px 20px;
+  }
+  .pipeline-tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .pipeline-tile-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+  }
+  .pipeline-tile-link {
+    font-size: 12px;
+    color: var(--mute);
+    cursor: pointer;
+  }
+  .pipeline-tile-link:hover { color: var(--navy); }
+
+  .pipeline-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .pipeline-row:first-of-type { border-top: none; padding-top: 2px; }
+  .pipeline-row-label {
+    color: var(--body);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pipeline-row-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pipeline-row-dot.green { background: var(--green); }
+  .pipeline-row-dot.amber { background: var(--status-amber); }
+  .pipeline-row-dot.red { background: var(--red); }
+  .pipeline-row-dot.teal { background: var(--teal); }
+  .pipeline-row-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--navy);
+    letter-spacing: 0.02em;
+  }
+  .pipeline-row-count.up { color: var(--green); }
+  .pipeline-row-count.watch { color: var(--status-amber-text); }
+  .pipeline-row-count.act { color: var(--red); }
+  .pipeline-row-count.intel { color: var(--teal); }
+
+  /* ============================================================
+     ON MY RADAR MODAL
+     ============================================================ */
+  .modal-veil {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 43, 58, 0.32);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    z-index: 100;
+    backdrop-filter: blur(2px);
+  }
+  .modal-veil.open { display: flex; }
+  .modal {
+    width: 640px;
+    max-width: 92vw;
+    background: var(--card);
+    border-radius: var(--r-lg);
+    box-shadow: 0 20px 48px rgba(28, 43, 58, 0.20);
+    padding: 28px 32px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .modal-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--navy);
+    font-variation-settings: "opsz" 32;
+  }
+  .modal-close {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--mute);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all var(--motion-utility);
+  }
+  .modal-close:hover { color: var(--navy); border-color: var(--navy); }
+
+  .modal-intro {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.55;
+    margin-bottom: 24px;
+  }
+  .modal-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+  }
+  .modal-section:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+  .modal-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .modal-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .modal-section-sub {
+    font-size: 12px;
+    color: var(--mute);
+    margin-bottom: 12px;
+  }
+  .modal-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .modal-list li {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.55;
+    padding: 6px 0 6px 14px;
+    position: relative;
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    transition: background var(--motion-utility), padding var(--motion-utility);
+  }
+  .modal-list li::before {
+    content: "·";
+    position: absolute;
+    left: 0;
+    color: var(--mute);
+    font-weight: 500;
+  }
+  .modal-list li:hover {
+    background: var(--canvas);
+    padding-left: 18px;
+    color: var(--navy);
+  }
+  .modal-list li .lp-name { font-weight: 500; color: var(--navy); }
+  .modal-list li .evidence-fragment { color: var(--teal); font-weight: 500; }
+
+  /* ============================================================
+     CARD HOVER SHORTCUTS — keyboard hint surface
+     ============================================================ */
+  .keys-row {
+    display: none;
+    position: absolute;
+    right: 16px;
+    bottom: -10px;
+    background: var(--navy);
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.10em;
+    padding: 4px 10px;
+    border-radius: var(--r-sm);
+    text-transform: uppercase;
+  }
+  .card:hover .keys-row { display: block; }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 80ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LEFT NAV -->
+  <nav class="nav" aria-label="Primary">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item active" title="Today (G T)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div class="nav-item" title="Relationships (G R)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg>
+    </div>
+    <div class="nav-item" title="Lists">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+    </div>
+    <div class="nav-item" title="Workflows (G W)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 20H4v-6"/><path d="M4 20l9-9"/></svg>
+    </div>
+    <div class="nav-item" title="Insights (G I)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOP -->
+    <div class="top-row">
+      <div class="eyebrow">Today · Thursday, May 7</div>
+      <div class="top-actions">
+        <span class="top-link">Resend daily brief</span>
+        <button class="radar-button" id="open-radar" aria-haspopup="dialog">
+          On my radar
+          <span class="radar-count">11</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- GREETING -->
+    <div class="greeting-block">
+      <div class="greeting">
+        Good morning, Geoffrey.
+        <span class="intel">Frank Ieraci's reply time halved this week — CPPIB is accelerating.</span>
+      </div>
+      <div class="greeting-stamp">Computed 2:04am · 90-day window</div>
+    </div>
+
+    <!-- AI INPUT — collapsed, no "TOMO AI" header -->
+    <div class="ai-input-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E7C7C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+      <input type="text" placeholder="Ask Tomo about your raise, an LP, or what to focus on…" />
+      <span class="ai-shortcut">⌘K</span>
+    </div>
+
+    <!-- TWO-COLUMN GRID -->
+    <div class="grid">
+
+      <!-- LEFT: ATTENTION QUEUE -->
+      <section aria-labelledby="attn-title">
+        <h2 class="col-title" id="attn-title">
+          What needs your attention
+          <span class="count">3</span>
+        </h2>
+
+        <div class="cards">
+
+          <!-- CARD 1: SLA-overdue post-meeting follow-up -->
+          <div class="card overdue-2" tabindex="0">
+            <div class="card-body">
+              <div class="card-meta-row">
+                <span class="urgency-pill red">SLA past · 26h</span>
+                <span class="workflow-tag">Post-Meeting Follow-Up</span>
+              </div>
+              <div class="card-title">
+                <span class="firm">Albourne Partners</span> · <span class="person">James Staltari</span>
+              </div>
+              <div class="card-action">Post-meeting note ready for your approval.</div>
+            </div>
+            <button class="card-button" aria-label="Approve and send (A)">
+              Approve <span class="key">A</span>
+            </button>
+            <div class="keys-row">A approve · E edit · J/K next · Esc close</div>
+          </div>
+
+          <!-- CARD 2: Scheduling -->
+          <div class="card" tabindex="0">
+            <div class="card-body">
+              <div class="card-meta-row">
+                <span class="urgency-pill amber">Today</span>
+                <span class="workflow-tag">Email Scheduling Assistant</span>
+              </div>
+              <div class="card-title">
+                <span class="firm">PAAMCO Prisma</span> · <span class="person">Peter Zakowich</span>
+              </div>
+              <div class="card-action">March 18 meeting — propose times. Draft ready, two slots picked.</div>
+            </div>
+            <button class="card-button">Approve <span class="key">A</span></button>
+            <div class="keys-row">A approve · E edit · J/K next · Esc close</div>
+          </div>
+
+          <!-- CARD 3: Warm intro reply -->
+          <div class="card" tabindex="0">
+            <div class="card-body">
+              <div class="card-meta-row">
+                <span class="urgency-pill amber">Today</span>
+                <span class="workflow-tag">Warm Intro Tracker</span>
+              </div>
+              <div class="card-title">
+                <span class="firm">Goldman Sachs</span> · <span class="person">Michel del Buono</span>
+              </div>
+              <div class="card-action">Intro to Edmond de Rothschild Family Office. Reply due within 24h.</div>
+            </div>
+            <button class="card-button">Approve <span class="key">A</span></button>
+            <div class="keys-row">A approve · E edit · J/K next · Esc close</div>
+          </div>
+
+        </div>
+
+        <div class="previous-row">
+          <span>Previous (3)</span>
+          <span class="previous-chevron">▾</span>
+        </div>
+      </section>
+
+      <!-- RIGHT: COMING UP + PIPELINE -->
+      <aside aria-labelledby="up-title">
+        <h2 class="col-title" id="up-title">
+          Coming up
+          <span class="count">4</span>
+        </h2>
+
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">UBS · Charly Malek · HF Update</div>
+            <span class="meeting-state prep-ready">Prep ready</span>
+          </div>
+          <div class="meeting-time">Today · 2:00 PM ET</div>
+        </div>
+
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">CPPIB · Frank Ieraci · Investment Update</div>
+            <span class="meeting-state prep-ready">Prep ready</span>
+          </div>
+          <div class="meeting-time">Today · 4:00 PM ET</div>
+        </div>
+
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">GIC · Kwong Hong Huat · Intro Call</div>
+            <span class="meeting-state first-contact">First contact</span>
+          </div>
+          <div class="meeting-time">Tomorrow · 10:00 AM ET</div>
+        </div>
+
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">BNF Capital · Nic Fallows · Intro Call</div>
+            <span class="meeting-state commitment-overdue">Commitment overdue</span>
+          </div>
+          <div class="meeting-time">Thursday · 3:00 PM ET</div>
+        </div>
+
+        <!-- PIPELINE STATE-OF-RAISE TILE -->
+        <div class="pipeline-tile">
+          <div class="pipeline-tile-head">
+            <div class="pipeline-tile-title">Where the raise stands</div>
+            <span class="pipeline-tile-link">Insights →</span>
+          </div>
+
+          <div class="pipeline-row">
+            <div class="pipeline-row-label">
+              <span class="pipeline-row-dot teal"></span> Genuinely moveable
+            </div>
+            <div class="pipeline-row-count intel">14</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-row-label">
+              <span class="pipeline-row-dot green"></span> Healthy & on track
+            </div>
+            <div class="pipeline-row-count up">62</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-row-label">
+              <span class="pipeline-row-dot amber"></span> Cooling — watch
+            </div>
+            <div class="pipeline-row-count watch">9</div>
+          </div>
+          <div class="pipeline-row">
+            <div class="pipeline-row-label">
+              <span class="pipeline-row-dot red"></span> Drifting — act
+            </div>
+            <div class="pipeline-row-count act">5</div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </main>
+</div>
+
+<!-- ON MY RADAR MODAL -->
+<div class="modal-veil" id="radar-modal" role="dialog" aria-labelledby="radar-title">
+  <div class="modal" role="document">
+    <div class="modal-head">
+      <div class="modal-title" id="radar-title">On my radar <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute);font-weight:400;">11</span></div>
+      <button class="modal-close" id="close-radar">Esc</button>
+    </div>
+    <div class="modal-intro">
+      Priority follow-ups, momentum signals, and execution loops. Tap a line to open it in the drawer.
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-head">
+        <div class="modal-section-title">Momentum signals</div>
+      </div>
+      <div class="modal-section-sub">Direction of travel · last 7 days</div>
+      <ul class="modal-list">
+        <li><span class="lp-name">CPPIB · Frank Ieraci</span> — <span class="evidence-fragment">reply time halved over the last 3 exchanges</span></li>
+        <li><span class="lp-name">Amundi (FoF)</span> — <span class="evidence-fragment">18 days since contact, opened Q2 read twice</span></li>
+        <li><span class="lp-name">Bluefin Asset Management · Kai Andersen</span> — <span class="evidence-fragment">first LP-initiated reply since onboarding</span></li>
+      </ul>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-head">
+        <div class="modal-section-title">Open execution loops</div>
+      </div>
+      <div class="modal-section-sub">Approvals, blocked items, briefs</div>
+      <ul class="modal-list">
+        <li><span class="lp-name">Albourne Partners</span> — post-meeting note, <span class="evidence-fragment">26h past 2h SLA</span></li>
+        <li><span class="lp-name">Northwind Capital · Q4 review</span> — 1 loop open, deck not yet shared</li>
+        <li><span class="lp-name">Peakline Allocation Check-In</span> — 2 loops open</li>
+        <li><span class="lp-name">UBS · HF Update</span> — prep brief ready, meeting at 2pm</li>
+        <li><span class="lp-name">CPPIB · Investment Update</span> — prep brief ready, meeting at 4pm</li>
+      </ul>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-head">
+        <div class="modal-section-title">Still in to-do</div>
+      </div>
+      <div class="modal-section-sub">Surfaced earlier — not opened yet</div>
+      <ul class="modal-list">
+        <li><span class="lp-name">GIC · Kwong Hong Huat</span> — meeting confirm, new fund</li>
+        <li><span class="lp-name">Investor relations</span> — engagement vs last 3 months</li>
+        <li><span class="lp-name">Amundi (FoF)</span> — 18 days since contact, Q2 read</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const veil = document.getElementById('radar-modal');
+  document.getElementById('open-radar').addEventListener('click', () => veil.classList.add('open'));
+  document.getElementById('close-radar').addEventListener('click', () => veil.classList.remove('open'));
+  veil.addEventListener('click', (e) => { if (e.target === veil) veil.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') veil.classList.remove('open'); });
+</script>
+
+</body>
+</html>

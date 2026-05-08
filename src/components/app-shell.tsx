@@ -46,6 +46,7 @@ import {
   ArrowPathRoundedSquareIcon,
   FunnelIcon,
   PresentationChartLineIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -416,10 +417,10 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
         section !== "settings" && (
         <button
           onClick={() => setAssistantOpen(true)}
-          className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--accent)] text-white shadow-lg shadow-blue-200"
+          className="fixed bottom-16 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--tomo-teal)] text-white shadow-lg shadow-[color:rgba(14,124,124,0.35)] dark:shadow-[color:rgba(19,168,168,0.35)]"
           aria-label="Open TOMO chat"
         >
-          <img src="/icons/tomo-ai.png" alt="Tomo" className="h-5 w-5" />
+          <SparklesIcon className="h-5 w-5" aria-hidden />
         </button>
       )}
 

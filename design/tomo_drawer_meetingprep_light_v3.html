@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Action Drawer · Meeting Prep · Light</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.04);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-deep: #A87826;
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.08);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.10);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.08);
+    --red-strong: #C03A3A;
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+    --r-sm: 2px;
+    --r-md: 4px;
+    --r-lg: 8px;
+    --motion-utility: 180ms cubic-bezier(0.2, 0, 0, 1);
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-2: 0 4px 12px rgba(28, 43, 58, 0.08);
+    --shadow-drawer: -8px 0 32px rgba(28, 43, 58, 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* NAV */
+  .nav {
+    width: 72px; background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    margin-bottom: 24px; letter-spacing: -0.02em;
+    font-variation-settings: "opsz" 36; line-height: 1;
+  }
+  .nav-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-md); color: var(--mute); cursor: pointer;
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: var(--navy); color: white; }
+  .nav-spacer { flex: 1; }
+
+  /* MAIN */
+  .main {
+    flex: 1; padding: 32px 48px 80px; max-width: 1280px;
+    transition: filter var(--motion-utility);
+  }
+  body.drawer-open .main {
+    pointer-events: none;
+    filter: brightness(0.95) saturate(0.85);
+  }
+  .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+  .eyebrow { font-size: 11px; font-weight: 500; color: var(--mute); letter-spacing: 0.22em; text-transform: uppercase; }
+  .top-actions { display: flex; align-items: center; gap: 16px; }
+  .top-link { font-size: 12px; color: var(--mute); cursor: pointer; }
+  .radar-button {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--navy); color: white; border: 0;
+    border-radius: var(--r-md); padding: 8px 14px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .radar-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; background: rgba(255,255,255,0.18);
+    padding: 2px 6px; border-radius: 10px;
+  }
+  .greeting {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 32px; line-height: 1.25;
+    color: var(--navy); letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 40;
+  }
+  .greeting-stamp {
+    margin-top: 10px; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .ai-input-row {
+    margin-top: 32px; display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 12px 16px;
+  }
+  .ai-input-row input {
+    flex: 1; border: 0; outline: 0;
+    font-size: 14px; color: var(--navy); background: transparent;
+  }
+  .ai-input-row input::placeholder { color: var(--mute); }
+  .ai-shortcut {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute); background: var(--canvas);
+    padding: 3px 8px; border-radius: var(--r-sm);
+    border: 1px solid var(--rule); letter-spacing: 0.05em;
+  }
+  .grid {
+    margin-top: 48px;
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px;
+  }
+  .col-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 18px; color: var(--navy);
+    margin-bottom: 16px;
+    font-variation-settings: "opsz" 24;
+  }
+  .col-title .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 400; color: var(--mute); margin-left: 8px;
+  }
+  .meeting {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .meeting.selected {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(14, 124, 124, 0.08);
+  }
+  .meeting-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .meeting-title { font-size: 13px; font-weight: 500; color: var(--navy); flex: 1; }
+  .meeting-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+    margin-left: 10px; flex-shrink: 0;
+  }
+  .meeting-state.prep-ready { background: var(--teal-evidence-bg); color: var(--teal); }
+  .meeting-state.first-contact { background: var(--navy-soft); color: var(--navy); }
+  .meeting-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute); letter-spacing: 0.04em;
+  }
+
+  /* DRAWER */
+  .drawer-veil {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.18);
+    z-index: 50; backdrop-filter: blur(1px);
+  }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 720px; max-width: 92vw;
+    background: var(--card);
+    box-shadow: var(--shadow-drawer);
+    z-index: 60; overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .drawer-head {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .drawer-head-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16px; margin-bottom: 14px;
+  }
+  .drawer-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .drawer-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    line-height: 1.25;
+    font-variation-settings: "opsz" 28;
+  }
+  .drawer-subtitle { font-size: 13px; color: var(--body); margin-top: 6px; }
+  .drawer-close {
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: var(--r-sm); padding: 4px 10px;
+    color: var(--mute); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    flex-shrink: 0;
+  }
+  .drawer-close:hover { color: var(--navy); border-color: var(--navy); }
+
+  /* Meeting time strip */
+  .time-strip {
+    display: flex; align-items: center; gap: 16px;
+    margin: 14px 0 0;
+    padding: 12px 14px;
+    background: var(--canvas);
+    border-radius: var(--r-md);
+    border: 1px solid var(--rule);
+  }
+  .time-strip-when {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 500; color: var(--navy);
+    letter-spacing: 0.04em;
+  }
+  .time-strip-divider { color: var(--mute); }
+  .time-strip-where {
+    font-size: 12px; color: var(--body);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .time-strip-where svg { opacity: 0.55; }
+  .time-strip-stretch { flex: 1; }
+  .quick-link {
+    font-size: 12px; color: var(--mute);
+    text-decoration: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: color var(--motion-utility);
+  }
+  .quick-link:hover { color: var(--teal); }
+  .quick-link svg { opacity: 0.6; }
+
+  .status-strip {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-sm);
+  }
+  .status-pill.teal { background: var(--teal-evidence-bg); color: var(--teal); }
+  .status-pill.navy { background: var(--navy-soft); color: var(--navy); }
+  .status-pill.amber { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .status-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .status-pill.teal .dot { background: var(--teal); }
+  .status-pill.amber .dot { background: var(--status-amber); }
+
+  /* Body */
+  .drawer-body {
+    flex: 1; padding: 24px 32px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .why-block {
+    background: var(--canvas);
+    border-left: 3px solid var(--teal);
+    padding: 14px 16px;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .why-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--teal); font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .why-text { font-size: 13px; color: var(--navy); line-height: 1.55; }
+  .why-stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .section { display: flex; flex-direction: column; gap: 10px; }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute); font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+
+  /* Attendees */
+  .attendees {
+    display: flex; flex-direction: column; gap: 0;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .attendee {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 14px; align-items: flex-start;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .attendee:last-child { border-bottom: 0; }
+  .attendee-avatar {
+    width: 32px; height: 32px;
+    background: var(--navy-soft); color: var(--navy);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .attendee-body { min-width: 0; }
+  .attendee-name {
+    font-size: 13px; font-weight: 500; color: var(--navy);
+    margin-bottom: 2px;
+  }
+  .attendee-name .role {
+    font-weight: 400; color: var(--body); margin-left: 4px;
+  }
+  .attendee-context {
+    font-size: 12px; color: var(--body); line-height: 1.5;
+  }
+  .attendee-links {
+    display: flex; gap: 12px; flex-shrink: 0; align-items: center;
+    padding-top: 4px;
+  }
+  .attendee-links .quick-link { font-size: 11px; }
+
+  /* Last touch synthesis */
+  .synth-block {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--navy);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    padding: 14px 16px;
+  }
+  .synth-block p {
+    font-size: 13px; color: var(--navy); line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .synth-block p:last-child { margin-bottom: 0; }
+  .synth-block .quoted {
+    color: var(--mute); font-style: italic;
+  }
+
+  /* Open commitments */
+  .commitment-list {
+    display: flex; flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .commitment {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 14px; align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 13px;
+  }
+  .commitment:last-child { border-bottom: 0; }
+  .commitment-text { color: var(--navy); line-height: 1.45; }
+  .commitment-text .source {
+    display: block; font-size: 11px; color: var(--mute); margin-top: 2px;
+  }
+  .commitment-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .commitment-state.delivered { background: var(--green-bg); color: var(--green); }
+  .commitment-state.open { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .commitment-state.queued { background: var(--navy-soft); color: var(--navy); }
+
+  /* Suggested focus */
+  .focus-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .focus-item {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px; align-items: flex-start;
+    font-size: 13px; color: var(--body); line-height: 1.55;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .focus-item:last-child { border-bottom: 0; }
+  .focus-item-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--teal); font-weight: 500;
+    margin-top: 1px;
+  }
+  .focus-item strong {
+    color: var(--navy); font-weight: 500;
+  }
+  .focus-evidence {
+    color: var(--teal); font-weight: 500;
+  }
+
+  /* Activity log compact */
+  .activity-list { display: flex; flex-direction: column; }
+  .activity-row {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 12px; align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .activity-row:last-child { border-bottom: 0; }
+  .activity-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .activity-icon.tomo { background: var(--teal-tint); color: var(--teal); }
+  .activity-icon.human { background: var(--navy-soft); color: var(--navy); }
+  .activity-row-title {
+    font-size: 13px; color: var(--navy);
+    margin-bottom: 2px; line-height: 1.45;
+  }
+  .activity-row-title .actor-tomo,
+  .activity-row-title .actor-gp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 2px;
+    margin-right: 6px; vertical-align: 2px;
+  }
+  .activity-row-title .actor-tomo { color: var(--teal); background: var(--teal-tint); }
+  .activity-row-title .actor-gp { color: var(--navy); background: var(--navy-soft); }
+  .activity-row-detail { font-size: 12px; color: var(--body); line-height: 1.5; }
+  .activity-row-detail .quoted { font-style: italic; color: var(--mute); }
+  .activity-row-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.06em; flex-shrink: 0;
+    text-align: right; line-height: 1.4;
+  }
+  .activity-foot {
+    margin-top: 8px;
+    font-size: 12px; color: var(--mute);
+    cursor: pointer;
+  }
+
+  /* Materials */
+  .materials-list {
+    display: flex; flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .material {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 13px;
+  }
+  .material:last-child { border-bottom: 0; }
+  .material-icon {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--mute); flex-shrink: 0;
+  }
+  .material-name { color: var(--navy); font-weight: 500; }
+  .material-meta { color: var(--mute); font-size: 11px; }
+  .material-link {
+    font-size: 11px; color: var(--teal); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+  }
+  .material-link:hover { text-decoration: underline; }
+
+  /* Footer */
+  .drawer-foot {
+    padding: 18px 32px;
+    border-top: 1px solid var(--rule);
+    background: var(--card);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px;
+    position: sticky; bottom: 0;
+    box-shadow: 0 -2px 8px rgba(28, 43, 58, 0.04);
+  }
+  .drawer-foot-left, .drawer-foot-right { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: var(--r-md); padding: 8px 16px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all var(--motion-utility);
+  }
+  .btn .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; opacity: 0.55; margin-left: 2px;
+  }
+  .btn-primary { background: var(--teal); color: white; }
+  .btn-primary:hover { background: var(--teal-strong); }
+  .btn-secondary {
+    background: transparent; color: var(--navy);
+    border-color: var(--rule);
+  }
+  .btn-secondary:hover { border-color: var(--navy); background: var(--canvas); }
+  .btn-tertiary { background: transparent; color: var(--mute); border-color: transparent; }
+  .btn-tertiary:hover { color: var(--navy); background: var(--canvas); }
+  .btn-mark {
+    background: transparent; color: var(--green);
+    border-color: var(--rule);
+  }
+  .btn-mark:hover { background: var(--green-bg); border-color: var(--green); }
+
+  /* Switcher */
+  .example-switcher {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex; gap: 2px;
+    box-shadow: 0 8px 24px rgba(28, 43, 58, 0.16);
+  }
+  .ex-toggle {
+    background: transparent; border: 0;
+    padding: 8px 16px;
+    font-size: 12px; font-weight: 500;
+    color: var(--mute); cursor: pointer;
+    border-radius: 999px;
+    transition: all var(--motion-utility);
+  }
+  .ex-toggle.active { background: var(--navy); color: white; }
+  .ex-toggle:hover:not(.active) { color: var(--navy); }
+
+  .drawer-pane { display: none; }
+  body[data-drawer="ubs"] #drawer-ubs { display: flex; }
+  body[data-drawer="gic"] #drawer-gic { display: flex; }
+  body[data-drawer="ubs"] #meeting-ubs { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 124, 124, 0.08); }
+  body[data-drawer="gic"] #meeting-gic { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 124, 124, 0.08); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; }
+  }
+
+  /* ============================================================
+     ACTION BAR — chip row attached to the prep surface.
+     Primary action filled teal, secondaries outline.
+     ============================================================ */
+  .action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    background: var(--card-warm);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: var(--r-md);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all var(--motion-utility);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .chip .key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.65;
+    margin-left: 2px;
+    letter-spacing: 0.04em;
+  }
+  .chip svg { flex-shrink: 0; }
+  .chip-primary {
+    background: var(--teal);
+    color: white;
+    box-shadow: 0 1px 2px rgba(14, 124, 124, 0.20);
+  }
+  .chip-primary:hover {
+    background: var(--teal-strong);
+    box-shadow: 0 2px 6px rgba(14, 124, 124, 0.28);
+  }
+  .chip-primary .key { opacity: 0.8; }
+  .chip-outline {
+    background: var(--card);
+    color: var(--navy);
+    border-color: var(--rule);
+  }
+  .chip-outline:hover {
+    border-color: var(--navy);
+    background: var(--canvas);
+  }
+  .chip-outline svg { color: var(--mute); }
+</style>
+</head>
+<body class="drawer-open" data-drawer="ubs">
+
+<div class="app">
+
+  <nav class="nav">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 20H4v-6"/><path d="M4 20l9-9"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </nav>
+
+  <main class="main">
+    <div class="top-row">
+      <div class="eyebrow">Today · Thursday, May 7</div>
+      <div class="top-actions">
+        <span class="top-link">Resend daily brief</span>
+        <button class="radar-button">On my radar <span class="radar-count">11</span></button>
+      </div>
+    </div>
+
+    <div class="greeting-block">
+      <div class="greeting">
+        Good morning, Geoffrey.
+        <span class="intel">Frank Ieraci's reply time halved this week — CPPIB is accelerating.</span>
+      </div>
+      <div class="greeting-stamp">Computed 2:04am · 90-day window</div>
+    </div>
+
+    <div class="ai-input-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E7C7C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      <input type="text" placeholder="Ask Tomo about your raise, an LP, or what to focus on…" />
+      <span class="ai-shortcut">⌘K</span>
+    </div>
+
+    <div class="grid">
+      <section></section>
+      <aside>
+        <h2 class="col-title">Coming up <span class="count">4</span></h2>
+        <div class="meeting" id="meeting-ubs" onclick="showDrawer('ubs')">
+          <div class="meeting-head">
+            <div class="meeting-title">UBS · Charly Malek · HF Update</div>
+            <span class="meeting-state prep-ready">Prep ready</span>
+          </div>
+          <div class="meeting-time">Today · 2:00 PM ET</div>
+        </div>
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">CPPIB · Frank Ieraci · Investment Update</div>
+            <span class="meeting-state prep-ready">Prep ready</span>
+          </div>
+          <div class="meeting-time">Today · 4:00 PM ET</div>
+        </div>
+        <div class="meeting" id="meeting-gic" onclick="showDrawer('gic')">
+          <div class="meeting-head">
+            <div class="meeting-title">GIC · Kwong Hong Huat · Intro Call</div>
+            <span class="meeting-state first-contact">First contact</span>
+          </div>
+          <div class="meeting-time">Tomorrow · 10:00 AM ET</div>
+        </div>
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">BNF Capital · Nic Fallows · Intro Call</div>
+            <span class="meeting-state first-contact">First contact</span>
+          </div>
+          <div class="meeting-time">Thursday · 3:00 PM ET</div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="drawer-veil" onclick="closeDrawer()"></div>
+
+<!-- =========================================================
+     DRAWER 1 — UBS / CHARLY MALEK · QUARTERLY HF UPDATE
+     ========================================================= -->
+<aside class="drawer drawer-pane" id="drawer-ubs">
+  <div class="drawer-head">
+    <div class="drawer-head-top">
+      <div>
+        <div class="drawer-eyebrow">Meeting Prep · Quarterly HF Update</div>
+        <h1 class="drawer-title">UBS Hedge Fund Solutions · Charly Malek</h1>
+        <div class="drawer-subtitle">Head of Manager Research · Tier 1 · Existing investor since Fund II</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">Esc</button>
+    </div>
+
+    <!-- Time strip -->
+    <div class="time-strip">
+      <span class="time-strip-when">Today · 2:00 — 2:45 PM ET</span>
+      <span class="time-strip-divider">·</span>
+      <span class="time-strip-where">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Zoom
+      </span>
+      <span class="time-strip-stretch"></span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Open in calendar
+      </a>
+      <a class="quick-link" style="color: var(--teal);">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Join meeting
+      </a>
+    </div>
+
+    <div class="status-strip">
+      <span class="status-pill teal"><span class="dot"></span>Existing investor</span>
+      <span class="status-pill amber"><span class="dot"></span>Re-up window — Fund III closing Q3</span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Open LP record
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Latest thread (3d ago)
+      </a>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- Why this matters now -->
+    <div class="why-block">
+      <div class="why-label">What changed since you last spoke</div>
+      <div class="why-text">
+        Charly's team re-opened the risk attribution and capacity sections of your January investor pack twice this week — the second visit was at 11pm Zurich time, longer than 12 minutes. UBS is in active diligence on three other managers in your strategy bucket. The re-up window for Fund III closes Q3; Charly has not yet confirmed Fund III interest in writing, but allocator behaviour suggests they are pricing it.
+      </div>
+      <div class="why-stamp">Computed 09:00 · From email metadata + portal access logs (forwarded)</div>
+    </div>
+
+    <!-- Attendees -->
+    <div class="section">
+      <div class="section-label">Who's on the call</div>
+      <div class="attendees">
+
+        <div class="attendee">
+          <div class="attendee-avatar">CM</div>
+          <div class="attendee-body">
+            <div class="attendee-name">Charly Malek <span class="role">— Head of Manager Research, UBS HFS</span></div>
+            <div class="attendee-context">
+              Decision-maker on UBS HFS hedge fund allocations. Typically does not commit on a single call. Last met in person at the Zurich roadshow 4 months ago. Her note from that meeting flagged "attribution clarity" as the open question.
+            </div>
+          </div>
+          <div class="attendee-links">
+            <a class="quick-link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/><path d="M22 21V11a4 4 0 0 0-4-4h-1"/><path d="M14 21v-7a4 4 0 0 0-4-4h-1"/></svg>LinkedIn</a>
+          </div>
+        </div>
+
+        <div class="attendee">
+          <div class="attendee-avatar">DR</div>
+          <div class="attendee-body">
+            <div class="attendee-name">Daniel Roth <span class="role">— Senior Investment Analyst</span></div>
+            <div class="attendee-context">
+              New on the UBS HFS team since January. Authored the internal capacity memo that accessed your portal last week. Likely to drive the technical questions today.
+            </div>
+          </div>
+          <div class="attendee-links">
+            <a class="quick-link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/><path d="M22 21V11a4 4 0 0 0-4-4h-1"/><path d="M14 21v-7a4 4 0 0 0-4-4h-1"/></svg>LinkedIn</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Last touch synthesis -->
+    <div class="section">
+      <div class="section-label">Where you left things</div>
+      <div class="synth-block">
+        <p>Last call with Charly was the Q4 update on January 21 (45 min, Zoom). You walked through 2025 attribution and the capacity outlook. Charly asked two pointed questions: how the strategy performed in the August vol spike specifically, and whether the soft-close timeline allowed for a Fund III increase from existing LPs.</p>
+        <p>You committed to two things: <span class="quoted">"send the August attribution detail by end of week"</span> (delivered Jan 24) and <span class="quoted">"come back with a capacity view for existing LPs ahead of Q2 close"</span> — that's what today is for.</p>
+        <p>Tone of last meeting: warm, technical, no concerns flagged on people or process. The diligence question is sizing, not whether.</p>
+      </div>
+    </div>
+
+    <!-- Open commitments -->
+    <div class="section">
+      <div class="section-label">Open commitments to UBS</div>
+      <div class="commitment-list">
+        <div class="commitment">
+          <div>
+            <div class="commitment-text">August vol-spike attribution detail
+              <span class="source">Promised on Jan 21 call · sent Jan 24</span>
+            </div>
+          </div>
+          <span class="commitment-state delivered">Delivered</span>
+          <span></span>
+        </div>
+        <div class="commitment">
+          <div>
+            <div class="commitment-text">Fund III capacity view for existing LPs
+              <span class="source">Promised on Jan 21 call · today's discussion</span>
+            </div>
+          </div>
+          <span class="commitment-state open">For today</span>
+          <span></span>
+        </div>
+        <div class="commitment">
+          <div>
+            <div class="commitment-text">Side-letter terms summary (Fund II precedent)
+              <span class="source">Charly raised in Mar 4 email · not yet sent</span>
+            </div>
+          </div>
+          <span class="commitment-state queued">Queued</span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggested focus — what to push on -->
+    <div class="section">
+      <div class="section-label">What to push on</div>
+      <div class="focus-list">
+        <div class="focus-item">
+          <span class="focus-item-num">01</span>
+          <div>
+            <strong>Get Fund III on the record.</strong> Charly has not committed in writing. Today is the call to ask directly: <span class="focus-evidence">"Are you tracking a Fund III ticket from UBS HFS, and if so, in what range?"</span> The capacity ask is the natural opening — they need a number from you to size theirs.
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">02</span>
+          <div>
+            <strong>Address the attribution sections directly.</strong> Daniel Roth re-opened risk attribution and capacity twice in the last week. Pre-empt the technical questions; don't wait for them.
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">03</span>
+          <div>
+            <strong>Be explicit on the Q3 close timeline.</strong> If UBS wants to size up, they need to know the gating dates. <span class="focus-evidence">Fund III soft-close: July 31. Hard close: September 30.</span>
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">04</span>
+          <div>
+            <strong>Note the side-letter ask is open.</strong> If it doesn't come up naturally, surface it before they do — getting ahead of it signals diligence on your side.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Materials at hand -->
+    <div class="section">
+      <div class="section-label">Materials at hand</div>
+      <div class="materials-list">
+        <div class="material">
+          <div class="material-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <div class="material-name">Q1 Investor Pack — UBS edition</div>
+            <div class="material-meta">PDF · sent to Charly Apr 15 · she opened twice this week</div>
+          </div>
+          <span class="material-link">OPEN ↗</span>
+        </div>
+        <div class="material">
+          <div class="material-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <div class="material-name">August vol-spike attribution memo</div>
+            <div class="material-meta">PDF · sent Jan 24 in response to Charly's question</div>
+          </div>
+          <span class="material-link">OPEN ↗</span>
+        </div>
+        <div class="material">
+          <div class="material-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </div>
+          <div>
+            <div class="material-name">Fund III capacity model — existing LPs</div>
+            <div class="material-meta">XLSX · prepared for today · not yet sent</div>
+          </div>
+          <span class="material-link">OPEN ↗</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity log compact -->
+    <div class="section">
+      <div class="section-label">Recent activity (last 30 days)</div>
+      <div class="activity-list">
+        <div class="activity-row">
+          <div class="activity-icon tomo">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-tomo">Tomo</span>Investor pack re-opened twice this week</div>
+            <div class="activity-row-detail">Sections accessed: risk attribution, capacity. Second visit 11pm Zurich time.</div>
+          </div>
+          <div class="activity-row-time">This week</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">CM</span>Email · Confirmed today's call agenda focus on capacity</div>
+            <div class="activity-row-detail"><span class="quoted">"Looking forward to the conversation Thursday — particularly the capacity view…"</span></div>
+          </div>
+          <div class="activity-row-time">3d ago</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Email · Sent Q1 investor pack with capacity preview</div>
+            <div class="activity-row-detail">Sent Apr 15. Charly acknowledged within 4 hours.</div>
+          </div>
+          <div class="activity-row-time">3w ago</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Email · Side-letter terms ask raised by Charly</div>
+            <div class="activity-row-detail"><span class="quoted">"On Fund III, would the Fund II side-letter terms carry over for existing LPs?"</span> Awaiting response — flagged as open commitment.</div>
+          </div>
+          <div class="activity-row-time">Mar 4</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Q4 Update call · 45 min, Zoom</div>
+            <div class="activity-row-detail">Walked through 2025 attribution, August vol-spike Q&A, Fund III timeline. Two open commitments captured.</div>
+          </div>
+          <div class="activity-row-time">Jan 21</div>
+        </div>
+      </div>
+      <div class="activity-foot">View full history (84 entries since Fund II close) →</div>
+    </div>
+
+    <!-- Action bar — commit + working actions for the prep brief as a whole -->
+    <div class="action-bar">
+      <button class="chip chip-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark as reviewed
+        <span class="key">R</span>
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print prep
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Send to phone
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Add my own note
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Draft message before call
+      </button>
+    </div>
+
+  </div>
+
+  <div class="drawer-foot">
+    <div class="drawer-foot-left">
+      <button class="btn btn-danger">Dismiss</button>
+    </div>
+  </div>
+</aside>
+
+<!-- =========================================================
+     DRAWER 2 — GIC / KWONG HONG HUAT · INTRO CALL
+     ========================================================= -->
+<aside class="drawer drawer-pane" id="drawer-gic">
+  <div class="drawer-head">
+    <div class="drawer-head-top">
+      <div>
+        <div class="drawer-eyebrow">Meeting Prep · First Contact · Intro Call</div>
+        <h1 class="drawer-title">GIC · Kwong Hong Huat</h1>
+        <div class="drawer-subtitle">Senior Vice President, External Managers · Tier 1 · No prior contact</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">Esc</button>
+    </div>
+
+    <div class="time-strip">
+      <span class="time-strip-when">Tomorrow · 10:00 — 10:30 AM ET</span>
+      <span class="time-strip-divider">·</span>
+      <span class="time-strip-where">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Zoom
+      </span>
+      <span class="time-strip-stretch"></span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Open in calendar
+      </a>
+    </div>
+
+    <div class="status-strip">
+      <span class="status-pill navy"><span class="dot"></span>First contact</span>
+      <span class="status-pill teal"><span class="dot"></span>Intro from Stuart Reid (Cambridge Associates)</span>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Intro thread
+      </a>
+      <a class="quick-link">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Open LP record
+      </a>
+    </div>
+  </div>
+
+  <div class="drawer-body">
+
+    <div class="why-block">
+      <div class="why-label">What you're walking into</div>
+      <div class="why-text">
+        First live conversation with Kwong, introduced by Stuart Reid at Cambridge Associates last Wednesday. GIC is a Tier 1 sovereign — long evaluation cycles, structured process. Kwong is on the External Managers team specifically; intro context was about your strategy fit, not a specific allocation. Today is qualification: are they actively looking at this strategy, what's their process, who else gets involved, and what's a realistic timeline.
+      </div>
+      <div class="why-stamp">Computed 09:00 · From intro thread + public sources</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Who's on the call</div>
+      <div class="attendees">
+        <div class="attendee">
+          <div class="attendee-avatar">KH</div>
+          <div class="attendee-body">
+            <div class="attendee-name">Kwong Hong Huat <span class="role">— SVP, External Managers, GIC</span></div>
+            <div class="attendee-context">
+              Singapore-based. 11 years at GIC, prior to that at Temasek. External Managers team covers all third-party manager relationships across asset classes. Stuart's intro line: <span style="color: var(--mute); font-style: italic;">"Geoff — Kwong is one of the sharpest people on the GIC bench. Worth the time."</span>
+            </div>
+          </div>
+          <div class="attendee-links">
+            <a class="quick-link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/><path d="M22 21V11a4 4 0 0 0-4-4h-1"/><path d="M14 21v-7a4 4 0 0 0-4-4h-1"/></svg>LinkedIn</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background — what TOMO knows publicly -->
+    <div class="section">
+      <div class="section-label">What we know going in</div>
+      <div class="synth-block">
+        <p>GIC manages over $700bn for the Singapore government. External Managers are part of their public markets and alternatives allocation framework. Their hedge fund book sits within the alternatives sleeve and tends toward larger, established managers — but the External Managers team has historically taken meetings with emerging managers at the strategy-fit stage.</p>
+        <p>GIC's process is multi-stage and slow by design: initial conversation, then internal sponsor identification, then a formal RFI, then due diligence, then committee. From first call to close is typically 9–14 months for managers they end up sizing.</p>
+        <p>Stuart's intro suggested strategy fit but did not specify a fund or allocation pool. Don't assume Fund III; ask which fund cycle they'd be evaluating.</p>
+      </div>
+    </div>
+
+    <!-- Suggested focus -->
+    <div class="section">
+      <div class="section-label">Goals for the 30 minutes</div>
+      <div class="focus-list">
+        <div class="focus-item">
+          <span class="focus-item-num">01</span>
+          <div>
+            <strong>Earn the second meeting.</strong> First calls with sovereigns are not allocation conversations. They are <span class="focus-evidence">"do you want to learn more about us, and do we have a reason to keep talking."</span>
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">02</span>
+          <div>
+            <strong>Map their process and timeline.</strong> Where does External Managers sit in the GIC org chart? Who sponsors a manager internally? What does the early diligence look like?
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">03</span>
+          <div>
+            <strong>Test mandate fit honestly.</strong> Don't oversell. If their strategy bucket isn't a fit, surface that directly — sovereigns remember managers who waste their time and managers who don't.
+          </div>
+        </div>
+        <div class="focus-item">
+          <span class="focus-item-num">04</span>
+          <div>
+            <strong>Close with a specific next step.</strong> Either (a) a follow-up with a written fund overview and a proposed second call window, or (b) an honest park if the fit isn't there.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggested questions to ask -->
+    <div class="section">
+      <div class="section-label">Questions worth asking</div>
+      <div class="synth-block">
+        <p>· How does the External Managers team think about this strategy bucket inside the broader alternatives book?</p>
+        <p>· What does a typical early-stage conversation look like for you — RFI, in-person, paper review first?</p>
+        <p>· Who else on your side typically gets involved as a manager moves through evaluation?</p>
+        <p>· Is there a specific fund cycle or window you're evaluating against, or is this an evergreen mapping conversation?</p>
+        <p>· What would tell you, from this call, that it's worth a second meeting?</p>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="section">
+      <div class="section-label">Activity to date</div>
+      <div class="activity-list">
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">KH</span>Email · Confirmed Friday 10am ET, looking forward</div>
+            <div class="activity-row-detail">Reply within 3 hours of your proposal. Brief and direct.</div>
+          </div>
+          <div class="activity-row-time">Mon<br>14:20</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">GP</span>Email · Replied to intro, proposed two times</div>
+            <div class="activity-row-detail"><span class="quoted">"Kwong — Stuart spoke very highly of you. Happy to find time…"</span></div>
+          </div>
+          <div class="activity-row-time">Mon<br>11:08</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-icon human">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div class="activity-row-title"><span class="actor-gp">SR</span>Email · Stuart Reid intro to Kwong</div>
+            <div class="activity-row-detail"><span class="quoted">"Both worth knowing each other. Kwong runs External Managers at GIC; Geoffrey is raising Fund III…"</span> Tracked under Warm Intro Tracker workflow.</div>
+          </div>
+          <div class="activity-row-time">Last Wed<br>09:32</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action bar — commit + working actions for the prep brief as a whole.
+         For first-contact, "Send pre-read email" is a relevant working action. -->
+    <div class="action-bar">
+      <button class="chip chip-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark as reviewed
+        <span class="key">R</span>
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send pre-read email
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print prep
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Send to phone
+      </button>
+      <button class="chip chip-outline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Add my own note
+      </button>
+    </div>
+
+  </div>
+
+  <div class="drawer-foot">
+    <div class="drawer-foot-left">
+      <button class="btn btn-danger">Dismiss</button>
+    </div>
+  </div>
+</aside>
+
+<div class="example-switcher" role="tablist">
+  <button class="ex-toggle active" onclick="showDrawer('ubs')">UBS · Existing investor prep</button>
+  <button class="ex-toggle" onclick="showDrawer('gic')">GIC · First contact prep</button>
+</div>
+
+<script>
+  function showDrawer(which) {
+    document.body.dataset.drawer = which;
+    document.body.classList.add('drawer-open');
+    document.querySelectorAll('.ex-toggle').forEach(b => b.classList.remove('active'));
+    const idx = which === 'ubs' ? 0 : 1;
+    document.querySelectorAll('.ex-toggle')[idx].classList.add('active');
+  }
+  function closeDrawer() {
+    document.body.classList.remove('drawer-open');
+    document.body.dataset.drawer = '';
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDrawer();
+  });
+</script>
+
+</body>
+</html>
