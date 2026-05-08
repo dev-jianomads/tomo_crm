@@ -77,9 +77,9 @@ export function CommitmentDrawerPanel({
 
   const commitmentStatusPillClass =
     pillIsSent || verbLabel === "Prep sent"
-      ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+      ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]"
       : verbLabel === "First Contact"
-        ? "inline-flex shrink-0 items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-900"
+        ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--foreground)] dark:bg-[color:var(--tomo-navy-soft)]"
         : verbLabel === "Prep ready"
           ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
           : null;
@@ -89,14 +89,14 @@ export function CommitmentDrawerPanel({
       <div className="space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Commitment</p>
+            <p className="tomo-field-label">Commitment</p>
             <p className="text-sm font-semibold accent-title">
               {commitment.lp} : {commitment.contactName}
-              {commitment.title ? <span className="font-semibold text-gray-800"> · {commitment.title}</span> : null}
+              {commitment.title ? <span className="font-semibold text-[color:var(--foreground)]"> · {commitment.title}</span> : null}
             </p>
-            <p className="text-sm text-gray-600">{timeLine}</p>
+            <p className="text-sm text-[color:var(--tomo-body)]">{timeLine}</p>
             {commitment.commitmentOverdue ? (
-              <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-800">
+              <p className="mt-1 inline-flex rounded-full border border-[color:var(--tomo-red)] bg-[color:var(--tomo-red-bg)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-red)]">
                 Commitment overdue — needs attention
               </p>
             ) : null}
@@ -107,7 +107,7 @@ export function CommitmentDrawerPanel({
                     href={commitment.calendarUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    className="text-sm font-medium text-[color:var(--tomo-teal)] underline underline-offset-2 hover:text-[color:var(--tomo-teal-muted)]"
                   >
                     Open calendar
                   </a>
@@ -131,24 +131,24 @@ export function CommitmentDrawerPanel({
         </div>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2.5">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Tomo</p>
-        {preview.leadText ? <p className="text-sm leading-relaxed text-gray-900">{preview.leadText}</p> : null}
+      <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
+        <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>
+        {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
 
         {preview.summary || preview.agenda.length > 0 || preview.commitments.length > 0 || preview.snapshotFallback ? (
-          <div className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
-            {preview.summary ? <p className="text-sm leading-relaxed text-gray-800">{preview.summary}</p> : null}
+          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
+            {preview.summary ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.summary}</p> : null}
             {preview.snapshotFallback && !preview.summary ? (
-              <p className="text-sm leading-relaxed text-gray-800">{preview.snapshotFallback}</p>
+              <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.snapshotFallback}</p>
             ) : null}
 
             {preview.agenda.length > 0 ? (
               <div className={preview.summary || preview.snapshotFallback ? "mt-3" : ""}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Agenda</p>
-                <ul className="mt-1 space-y-1 text-sm text-gray-800">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Agenda</p>
+                <ul className="mt-1 space-y-1 text-sm text-[color:var(--foreground)]">
                   {preview.agenda.map((line) => (
                     <li key={line} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent)]" />
+                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" />
                       <span>{line}</span>
                     </li>
                   ))}
@@ -158,11 +158,11 @@ export function CommitmentDrawerPanel({
 
             {preview.commitments.length > 0 ? (
               <div className="mt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Commitments</p>
-                <ul className="mt-1 space-y-1 text-sm text-gray-800">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Commitments</p>
+                <ul className="mt-1 space-y-1 text-sm text-[color:var(--foreground)]">
                   {preview.commitments.map((line) => (
                     <li key={line} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal-muted)]" />
                       <span>{line}</span>
                     </li>
                   ))}
@@ -176,13 +176,13 @@ export function CommitmentDrawerPanel({
       {showCtas ? (
         <>
           {attachedFiles.length > 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Attached</p>
+            <div className="tomo-card px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Attached</p>
               <ul className="mt-2 space-y-1.5">
                 {attachedFiles.map((name, index) => (
                   <li
                     key={`${name}-${index}`}
-                    className="flex min-w-0 items-center justify-between gap-2 text-sm text-gray-800"
+                    className="flex min-w-0 items-center justify-between gap-2 text-sm text-[color:var(--foreground)]"
                   >
                     <span className="min-w-0 truncate" title={name}>
                       {name}
@@ -190,7 +190,7 @@ export function CommitmentDrawerPanel({
                     <button
                       type="button"
                       onClick={() => onDetachFile?.(index)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                      className="tomo-drawer-icon-btn h-7 w-7"
                       aria-label={`Remove ${name}`}
                     >
                       <XMarkIcon className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function CommitmentDrawerPanel({
           </div>
         </>
       ) : (
-        <p className="text-xs text-gray-500">Agenda sent — participants will receive the prep pack.</p>
+        <p className="text-xs text-[color:var(--tomo-mute)]">Agenda sent — participants will receive the prep pack.</p>
       )}
     </div>
   );

@@ -94,23 +94,23 @@ export function WorkflowDetailDrawer({
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
+        className={`tomo-drawer-veil fixed inset-0 z-40 transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[min(1200px,96vw)] flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[min(1200px,96vw)] flex-col overflow-hidden border-l border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-drawer-shadow)] transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
         aria-label={title}
         data-testid="workflow-detail-drawer"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+            <p className="truncate text-sm font-semibold text-[color:var(--foreground)]">{title}</p>
             {headerNote}
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -118,18 +118,13 @@ export function WorkflowDetailDrawer({
               type="button"
               data-testid="workflow-drawer-reset"
               onClick={onReset}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] px-2.5 py-1.5 text-xs text-[color:var(--tomo-body)] transition hover:bg-[color:var(--tomo-navy-soft)] dark:hover:bg-[color:var(--tomo-navy-soft)]"
               title="Restore this workflow to its default template (clears saved edits for this row)"
             >
               <ArrowPathIcon className="h-3.5 w-3.5" />
               Reset
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
-              aria-label="Close"
-            >
+            <button type="button" onClick={onClose} className="tomo-drawer-icon-btn" aria-label="Close">
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
@@ -138,17 +133,17 @@ export function WorkflowDetailDrawer({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto">
             {playbookPipelineBanner?.kind === "ok" && (
-              <div className="border-b border-gray-200 bg-white px-4 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Audience list</p>
-                <p className="mt-0.5 text-sm font-semibold text-gray-900">{playbookPipelineBanner.name}</p>
-                <p className="mt-0.5 text-xs text-gray-600">
+              <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Audience list</p>
+                <p className="mt-0.5 text-sm font-semibold text-[color:var(--foreground)]">{playbookPipelineBanner.name}</p>
+                <p className="mt-0.5 text-xs text-[color:var(--tomo-body)]">
                   {playbookPipelineBanner.count} relationships
                   {playbookPipelineBanner.filterSummary ? ` · ${playbookPipelineBanner.filterSummary}` : ""}
                 </p>
               </div>
             )}
             {playbookPipelineBanner?.kind === "missing" && (
-              <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+              <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-status-amber-bg)] px-4 py-2 text-xs text-[color:var(--tomo-status-amber-text)]">
                 Linked list not found ({playbookPipelineBanner.pipelineId}). Pick another list or reset demo.
               </div>
             )}

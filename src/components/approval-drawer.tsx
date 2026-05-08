@@ -29,7 +29,7 @@ export function ApprovalDrawer({ open, onClose, title = "Review & approve", chil
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
+        className={`tomo-drawer-veil fixed inset-0 z-40 transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
@@ -38,17 +38,17 @@ export function ApprovalDrawer({ open, onClose, title = "Review & approve", chil
 
       {/* Drawer panel */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-drawer-shadow)] transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
         aria-label={title}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+          <h2 className="text-sm font-semibold text-[color:var(--foreground)]">{title}</h2>
           <button
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="tomo-drawer-icon-btn"
             aria-label="Close drawer"
           >
             <XMarkIcon className="h-5 w-5" />

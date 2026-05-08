@@ -121,7 +121,7 @@ export function ActionDrawerPanel({
 
   const card = action.attentionCard;
   if (!card) {
-    return <p className="text-sm text-gray-600">This action has no structured card layout.</p>;
+    return <p className="text-sm text-[color:var(--tomo-body)]">This action has no structured card layout.</p>;
   }
 
   const preview = getActionDrawerDraftPreview(action, assistance);
@@ -140,7 +140,7 @@ export function ActionDrawerPanel({
   const laterConfirmModal =
     portalReady && laterConfirmOpen
       ? createPortal(
-          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="presentation">
+          <div className="tomo-modal-scrim fixed inset-0 z-[200] flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
             <button
               type="button"
               className="absolute inset-0 cursor-default"
@@ -151,32 +151,32 @@ export function ActionDrawerPanel({
               role="dialog"
               aria-modal="true"
               aria-labelledby="do-later-confirm-title"
-              className="relative z-10 w-full max-w-md rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+              className="relative z-10 w-full max-w-md rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:rounded-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-                <h2 id="do-later-confirm-title" className="text-sm font-semibold text-gray-900">
+              <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+                <h2 id="do-later-confirm-title" className="text-sm font-semibold text-[color:var(--foreground)]">
                   Do later?
                 </h2>
                 <button
                   type="button"
                   onClick={() => setLaterConfirmOpen(false)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  className="tomo-drawer-icon-btn"
                   aria-label="Close"
                 >
                   <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
               <div className="px-4 py-4">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-[color:var(--foreground)]">
                   Are you sure? We&apos;ll keep this in Needs your attention with a reminder tomorrow.
                 </p>
-                <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-gray-700">
+                <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-[color:var(--foreground)]">
                   <input
                     type="checkbox"
                     checked={dontShowAgain}
                     onChange={(e) => setDontShowAgain(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[color:var(--accent)] focus:ring-[color:var(--accent)]"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-[color:var(--tomo-rule)] text-[color:var(--tomo-teal)] focus:ring-[color:var(--tomo-teal)]"
                   />
                   <span>Don&apos;t show this again</span>
                 </label>
@@ -206,7 +206,7 @@ export function ActionDrawerPanel({
   const dismissConfirmModal =
     portalReady && dismissConfirmOpen
       ? createPortal(
-          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="presentation">
+          <div className="tomo-modal-scrim fixed inset-0 z-[200] flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
             <button
               type="button"
               className="absolute inset-0 cursor-default"
@@ -217,24 +217,24 @@ export function ActionDrawerPanel({
               role="dialog"
               aria-modal="true"
               aria-labelledby="dismiss-confirm-title"
-              className="relative z-10 w-full max-w-md rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+              className="relative z-10 w-full max-w-md rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:rounded-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
-                <h2 id="dismiss-confirm-title" className="text-sm font-semibold text-gray-900">
+              <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
+                <h2 id="dismiss-confirm-title" className="text-sm font-semibold text-[color:var(--foreground)]">
                   Dismiss task?
                 </h2>
                 <button
                   type="button"
                   onClick={() => setDismissConfirmOpen(false)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  className="tomo-drawer-icon-btn"
                   aria-label="Close"
                 >
                   <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
               <div className="px-4 py-4">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-[color:var(--foreground)]">
                   Are you sure? This removes the task permanently from What Needs Your Attention.
                 </p>
                 <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -243,7 +243,7 @@ export function ActionDrawerPanel({
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-800 transition hover:bg-red-50"
+                    className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-red)] bg-[color:var(--tomo-red-bg)] px-4 py-2 text-sm font-medium text-[color:var(--tomo-red)] transition hover:brightness-95 dark:hover:brightness-110"
                     onClick={() => {
                       setDismissConfirmOpen(false);
                       onDismiss();
@@ -269,49 +269,53 @@ export function ActionDrawerPanel({
           <span
             className={
               pillIsDismissed
-                ? "inline-flex shrink-0 items-center rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700"
+                ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-navy-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-body)]"
                 : pillIsApproved
-                  ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                  ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]"
                   : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
             }
           >
             {verbLabel}
           </span>
         </div>
-        <p className="text-xs leading-snug text-gray-600">
-          <span className="font-medium text-gray-700">Action required:</span> {card.workKind}: {card.workSubject}
+        <p className="text-xs leading-snug text-[color:var(--tomo-body)]">
+          <span className="font-medium text-[color:var(--foreground)]">Action required:</span> {card.workKind}: {card.workSubject}
         </p>
-        <p className="text-[11px] leading-snug text-[color:var(--peach-ink)]">
-          <span className="font-medium text-gray-600">Workflow:</span> {workflowDisplayName}
+        <p className="text-[11px] leading-snug text-[color:var(--tomo-teal-muted)]">
+          <span className="font-medium text-[color:var(--tomo-body)]">Workflow:</span> {workflowDisplayName}
         </p>
         {action.emailSourceUrl ? (
           <a
             href={action.emailSourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+            className="mt-1 inline-block text-[11px] font-medium text-[color:var(--tomo-teal)] underline underline-offset-2 hover:text-[color:var(--tomo-teal-muted)]"
           >
             Open email
           </a>
         ) : null}
       </div>
 
-      <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2.5">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Tomo</p>
-        {preview.leadText ? <p className="text-sm leading-relaxed text-gray-900">{preview.leadText}</p> : null}
+      <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
+        <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>
+        {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
 
         {preview.draftBody ? (
-          <div className="rounded-md border border-gray-200 bg-white px-3 py-2.5">
+          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--accent)]">Drafted by Tomo</span>
-              <span className="text-[11px] text-gray-500">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
+              <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
+                Drafted by Tomo
+              </span>
+              <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
             </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{preview.draftBody}</p>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--tomo-body)]">{preview.draftBody}</p>
           </div>
         ) : null}
 
         {preview.scheduleHint ? (
-          <p className="rounded-md border border-blue-100 bg-blue-50/80 px-2.5 py-1.5 text-xs text-blue-950">{preview.scheduleHint}</p>
+          <p className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-status-amber-bg)] px-2.5 py-1.5 text-xs text-[color:var(--tomo-status-amber-text)]">
+            {preview.scheduleHint}
+          </p>
         ) : null}
       </div>
 
@@ -333,14 +337,14 @@ export function ActionDrawerPanel({
           </button>
           <button
             type="button"
-            className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-800 transition hover:bg-red-50"
+            className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-red)] bg-[color:var(--tomo-card)] px-4 py-2 text-sm font-medium text-[color:var(--tomo-red)] transition hover:bg-[color:var(--tomo-red-bg)]"
             onClick={() => setDismissConfirmOpen(true)}
           >
             Dismiss
           </button>
         </div>
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[color:var(--tomo-mute)]">
           {resolution === "approved"
             ? "Approved — Tomo will proceed with this action."
             : resolution === "dismissed"

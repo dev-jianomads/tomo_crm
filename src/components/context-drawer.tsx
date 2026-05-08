@@ -74,7 +74,7 @@ export function ContextDrawer({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-200 ${
+        className={`tomo-drawer-veil fixed inset-0 z-40 transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
@@ -83,7 +83,7 @@ export function ContextDrawer({
 
       {/* Drawer panel */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full ${panelMaxWidthClassName} flex-col overflow-hidden border-l border-gray-200 bg-white shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full ${panelMaxWidthClassName} flex-col overflow-hidden border-l border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-drawer-shadow)] transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-modal="true"
@@ -91,12 +91,16 @@ export function ContextDrawer({
       >
         {/* Header */}
         <div
-          className={`flex shrink-0 items-center border-b border-gray-200 px-4 py-3 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}
+          className={`flex shrink-0 items-center border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}
         >
-          {hideHeaderTitle ? <span className="sr-only">{drawerAriaLabel ?? title}</span> : <h2 className="text-sm font-semibold text-gray-900">{title}</h2>}
+          {hideHeaderTitle ? (
+            <span className="sr-only">{drawerAriaLabel ?? title}</span>
+          ) : (
+            <h2 className="text-sm font-semibold text-[color:var(--foreground)]">{title}</h2>
+          )}
           <button
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="tomo-drawer-icon-btn"
             aria-label="Close drawer"
           >
             <XMarkIcon className="h-5 w-5" />
@@ -112,7 +116,7 @@ export function ContextDrawer({
                 : `min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`
             }
           >
-            <div className="border-b border-gray-100 px-4 py-3">{section1Content}</div>
+            <div className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">{section1Content}</div>
           </div>
         ) : null}
 
@@ -121,12 +125,12 @@ export function ContextDrawer({
           <div
             className={
               listContextDrawerLayout
-                ? `flex max-h-[min(280px,42vh)] shrink-0 flex-col overflow-hidden border-t border-gray-100 p-4 min-h-0 ${section2MinHeightClassName}`
-                : `flex flex-1 flex-col overflow-hidden border-t border-gray-100 p-4 ${section2MinHeightClassName}`
+                ? `flex max-h-[min(280px,42vh)] shrink-0 flex-col overflow-hidden border-t border-[color:var(--tomo-rule-soft)] p-4 min-h-0 ${section2MinHeightClassName}`
+                : `flex flex-1 flex-col overflow-hidden border-t border-[color:var(--tomo-rule-soft)] p-4 ${section2MinHeightClassName}`
             }
           >
             {section2Content ?? (
-              <div className="flex h-[280px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/50 text-xs text-gray-500">
+              <div className="flex h-[280px] items-center justify-center rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:var(--tomo-teal-tint)] text-xs text-[color:var(--tomo-mute)]">
                 Tomo chat (coming soon)
               </div>
             )}
@@ -137,7 +141,9 @@ export function ContextDrawer({
 
         {/* Activity log or custom footer */}
         {section3Custom != null ? (
-          <div className="shrink-0 border-t border-gray-200 bg-gray-50/80">{section3Custom}</div>
+          <div className="shrink-0 border-t border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] dark:bg-[color:var(--tomo-canvas)]">
+            {section3Custom}
+          </div>
         ) : (
           <DrawerSection3ActivityLog entries={section3Entries} />
         )}

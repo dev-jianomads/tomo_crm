@@ -33,18 +33,18 @@ export function DrawerSection3ActivityLog({
   if (!display.length) return null;
 
   return (
-    <div className="shrink-0 border-t border-gray-200 bg-gray-50/80">
+    <div className="shrink-0 border-t border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] dark:bg-[color:var(--tomo-canvas)]">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-gray-100/80 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[color:var(--tomo-navy-soft)] dark:hover:bg-[color:var(--tomo-card)]"
         aria-expanded={expanded}
         aria-controls="activity-log-content"
       >
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+        <p className="tomo-field-label text-[11px] tracking-wide">
           Activity log {entries.length > 5 ? "(5 most recent)" : ""}
         </p>
-        <span className="text-gray-400">
+        <span className="text-[color:var(--tomo-mute)]">
           {expanded ? (
             <ChevronUpIcon className="h-4 w-4" aria-hidden />
           ) : (
@@ -60,17 +60,17 @@ export function DrawerSection3ActivityLog({
           expanded ? "max-h-40" : "max-h-0"
         }`}
       >
-        <div className="space-y-2 overflow-y-auto px-4 pb-3 pt-0 max-h-32">
+        <div className="max-h-32 space-y-2 overflow-y-auto px-4 pb-3 pt-0">
           {display.map((entry, i) => (
             <div
               key={entry.id ?? `log-${i}`}
               className="flex items-start justify-between gap-3 text-xs"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-gray-900">{entry.summary}</p>
-                <span className="text-[11px] text-gray-500">{displayActor(entry.actor)}</span>
+                <p className="text-[color:var(--foreground)]">{entry.summary}</p>
+                <span className="text-[11px] text-[color:var(--tomo-mute)]">{displayActor(entry.actor)}</span>
               </div>
-              <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">{entry.ts}</span>
+              <span className="shrink-0 whitespace-nowrap text-[11px] text-[color:var(--tomo-mute)]">{entry.ts}</span>
             </div>
           ))}
         </div>

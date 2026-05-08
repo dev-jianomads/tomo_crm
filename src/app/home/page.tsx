@@ -162,6 +162,8 @@ export default function HomePage() {
     false
   );
   const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
+  /** Remount radar modal on each open so internal UI state resets without effects. */
+  const [onMyRadarModalKey, setOnMyRadarModalKey] = useState(0);
   /** Collapsible “Previous” under What needs your attention (closed by default). */
   const [previousAttentionExpanded, setPreviousAttentionExpanded] = useState(false);
 
@@ -541,7 +543,10 @@ export default function HomePage() {
               </button>
               <button
                 type="button"
-                onClick={() => setOnMyRadarOpen(true)}
+                onClick={() => {
+                  setOnMyRadarModalKey((k) => k + 1);
+                  setOnMyRadarOpen(true);
+                }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 aria-label={
                   onMyRadarLineCount > 0
@@ -879,6 +884,7 @@ export default function HomePage() {
         }}
       />
       <OnMyRadarModal
+        key={onMyRadarModalKey}
         open={onMyRadarOpen}
         onClose={() => setOnMyRadarOpen(false)}
         blocks={onMyRadarBlocks}
@@ -904,19 +910,19 @@ function DailyBriefLineRow({
 }) {
   return (
     <li className="flex items-start gap-2">
-      <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" aria-hidden />
+      <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-mute)]" aria-hidden />
       {line.link ? (
         <button
           type="button"
           onClick={() => onNavigate(line.link!)}
           title={line.label}
-          className="min-w-0 cursor-pointer text-left text-sm leading-snug text-gray-800 underline-offset-2 transition hover:text-gray-950 hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] focus-visible:ring-offset-1"
+          className="min-w-0 cursor-pointer text-left text-sm leading-snug text-[color:var(--foreground)] underline-offset-2 transition hover:text-[color:var(--tomo-teal)] hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--tomo-card)]"
           aria-label={`Open details: ${line.label.length > 120 ? `${line.label.slice(0, 120)}…` : line.label}`}
         >
           <span className="line-clamp-2 sm:line-clamp-none">{line.label}</span>
         </button>
       ) : (
-        <span className="text-sm leading-snug text-gray-800">{line.label}</span>
+        <span className="text-sm leading-snug text-[color:var(--foreground)]">{line.label}</span>
       )}
     </li>
   );
@@ -945,29 +951,25 @@ function OnMyRadarModal({
   const [showInsights, setShowInsights] = useState(false);
   const insightsVisible = SHOW_ON_MY_RADAR_INSIGHTS_HEADER && showInsights;
 
-  useEffect(() => {
-    if (!open) setShowInsights(false);
-  }, [open]);
-
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="presentation">
+    <div className="tomo-modal-scrim fixed inset-0 z-[110] flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="on-my-radar-modal-title"
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <h2 id="on-my-radar-modal-title" className="text-sm font-semibold text-gray-900">
+            <h2 id="on-my-radar-modal-title" className="text-sm font-semibold text-[color:var(--foreground)]">
               On My Radar
             </h2>
             {lineCount > 0 ? (
-              <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-blue-50 px-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-200/80">
+              <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-[color:var(--tomo-teal-tint)] px-1.5 text-xs font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]">
                 {lineCount}
               </span>
             ) : null}
@@ -977,8 +979,10 @@ function OnMyRadarModal({
               <button
                 type="button"
                 onClick={() => setShowInsights((prev) => !prev)}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-gray-50 ${
-                  showInsights ? "border-[color:var(--peach)] bg-[color:var(--peach-soft)]" : "border-gray-200 bg-white"
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-[var(--tomo-radius-md)] border transition ${
+                  showInsights
+                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)]"
+                    : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"
                 }`}
                 aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
                 title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
@@ -989,7 +993,7 @@ function OnMyRadarModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="tomo-drawer-icon-btn h-9 w-9"
               aria-label="Close"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -997,36 +1001,36 @@ function OnMyRadarModal({
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <p className="mb-2 text-xs text-gray-600">
+          <p className="mb-2 text-xs text-[color:var(--tomo-body)]">
             Priority follow-ups and meetings are in the columns below. On My Radar focuses on momentum, execution
             loops, and items you haven&apos;t engaged yet.
           </p>
-          <p className="mb-3 text-xs text-gray-600">Tap a line to open details in the drawer.</p>
+          <p className="mb-3 text-xs text-[color:var(--tomo-body)]">Tap a line to open details in the drawer.</p>
           <div className="space-y-2.5 sm:space-y-3">
             {blocks.map((block) => (
               <section
                 key={`${block.icon}-${block.title}`}
-                className="rounded-xl border border-blue-100 bg-blue-50/40 px-2.5 py-2.5 sm:px-3 sm:py-2.5"
+                className="rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-teal-tint)] px-2.5 py-2.5 dark:bg-[color:var(--tomo-navy-soft)] sm:px-3 sm:py-2.5"
               >
                 <div className={insightsVisible ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
                       <BriefSectionIcon kind={block.icon} />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{block.title}</p>
-                        <p className="text-xs text-gray-600">{block.subtitle}</p>
+                        <p className="text-sm font-semibold text-[color:var(--foreground)]">{block.title}</p>
+                        <p className="text-xs text-[color:var(--tomo-body)]">{block.subtitle}</p>
                       </div>
                     </div>
-                    <ul className="ml-4 mt-1.5 space-y-1 text-sm text-gray-800 sm:mt-2 sm:space-y-1.5">
+                    <ul className="ml-4 mt-1.5 space-y-1 text-sm text-[color:var(--foreground)] sm:mt-2 sm:space-y-1.5">
                       {block.items.map((item, idx) => (
                         <DailyBriefLineRow key={dailyBriefLineKey(item, idx)} line={item} onNavigate={onLineNavigate} />
                       ))}
                     </ul>
                     {block.secondarySubtitle ? (
-                      <p className="ml-6 mt-1.5 text-xs font-medium text-gray-600">{block.secondarySubtitle}</p>
+                      <p className="ml-6 mt-1.5 text-xs font-medium text-[color:var(--tomo-body)]">{block.secondarySubtitle}</p>
                     ) : null}
                     {block.secondaryItems?.length ? (
-                      <ul className="ml-4 mt-1 space-y-1 text-sm text-gray-800 sm:space-y-1.5">
+                      <ul className="ml-4 mt-1 space-y-1 text-sm text-[color:var(--foreground)] sm:space-y-1.5">
                         {block.secondaryItems.map((item, idx) => (
                           <DailyBriefLineRow
                             key={dailyBriefLineKey(item, idx)}
@@ -1039,7 +1043,7 @@ function OnMyRadarModal({
                   </div>
 
                   {insightsVisible ? (
-                    <div className="rounded-md border tomo-ai-border bg-white px-2.5 py-2 sm:w-56 sm:shrink-0">
+                    <div className="rounded-[var(--tomo-radius-md)] border tomo-ai-border bg-[color:var(--tomo-card)] px-2.5 py-2 sm:w-56 sm:shrink-0">
                       <div className="flex items-center justify-start">
                         <TomoAiBadge label="Tomo insight" />
                       </div>
@@ -1057,7 +1061,7 @@ function OnMyRadarModal({
 }
 
 function BriefSectionIcon({ kind }: { kind: DailyBriefBlock["icon"] }) {
-  const common = "h-4 w-4 text-[color:var(--accent)]";
+  const common = "h-4 w-4 shrink-0 text-[color:var(--tomo-teal)]";
 
   if (kind === "followups") {
     return (
