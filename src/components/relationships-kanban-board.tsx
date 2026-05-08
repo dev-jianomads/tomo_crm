@@ -21,9 +21,9 @@ type Column = { stage: Stage; items: Relationship[] };
 
 function KanbanDragCardPreview({ rel }: { rel: Relationship }) {
   return (
-    <div className="pointer-events-none min-w-[100px] max-w-[180px] rounded border border-blue-200 bg-white px-1.5 py-1.5 shadow-lg">
-      <span className="block min-w-0 truncate text-[11px] font-medium text-gray-900">{rel.firm}</span>
-      <span className="block min-w-0 truncate text-[10px] text-gray-600">{rel.name}</span>
+    <div className="pointer-events-none min-w-[100px] max-w-[180px] rounded border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule))] bg-[color:var(--tomo-card)] px-1.5 py-1.5 shadow-[var(--tomo-modal-shadow)]">
+      <span className="block min-w-0 truncate text-[11px] font-medium text-[color:var(--foreground)]">{rel.firm}</span>
+      <span className="block min-w-0 truncate text-[10px] text-[color:var(--tomo-body)]">{rel.name}</span>
     </div>
   );
 }
@@ -55,14 +55,16 @@ function KanbanDraggableCard({
       {...listeners}
       {...attributes}
       onClick={() => onSelect()}
-      className={`block w-full min-w-0 max-w-full touch-none rounded border px-1.5 py-1.5 text-left transition ${
-        isActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+      className={`block w-full min-w-0 max-w-full touch-none rounded border px-1.5 py-1.5 text-left shadow-[var(--tomo-shadow-1)] transition ${
+        isActive
+          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_22%,transparent)]"
+          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
       } ${isDragging ? "z-10 cursor-grabbing shadow-md" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-gray-900" title={rel.firm}>
+      <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-[color:var(--foreground)]" title={rel.firm}>
         {rel.firm}
       </span>
-      <span className="block min-w-0 max-w-full truncate text-[10px] text-gray-600" title={rel.name}>
+      <span className="block min-w-0 max-w-full truncate text-[10px] text-[color:var(--tomo-body)]" title={rel.name}>
         {rel.name}
       </span>
     </button>
@@ -89,8 +91,10 @@ function KanbanColumn({
   return (
     <section
       ref={setNodeRef}
-      className={`flex min-h-0 min-w-0 flex-1 flex-col rounded-md border bg-white shadow-sm transition-shadow ${
-        isOver ? "border-blue-400 ring-2 ring-blue-400/35" : "border-gray-200"
+      className={`flex min-h-0 min-w-0 flex-1 flex-col rounded-[var(--tomo-radius-md)] border bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)] transition-shadow ${
+        isOver
+          ? "border-[color:var(--tomo-teal)] ring-2 ring-[color:color-mix(in_srgb,var(--tomo-teal)_28%,transparent)]"
+          : "border-[color:var(--tomo-rule-soft)]"
       }`}
       aria-label={`${stage}, ${items.length} relationships`}
     >
@@ -108,7 +112,7 @@ function KanbanColumn({
       </header>
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
         {items.length === 0 ? (
-          <p className="px-0.5 py-2 text-center text-[10px] leading-snug text-gray-400">No contacts</p>
+          <p className="px-0.5 py-2 text-center text-[10px] leading-snug text-[color:var(--tomo-mute)]">No contacts</p>
         ) : (
           items.map((rel) => (
             <KanbanDraggableCard

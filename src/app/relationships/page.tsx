@@ -543,22 +543,18 @@ export default function RelationshipsPage() {
             <button
               type="button"
               onClick={handleResetRelationshipsDemo}
-              className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline"
+              className="text-[11px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline"
               title="Clears manual contacts and field overrides; reloads CRM mock from default (demo)"
             >
               Reset demo
             </button>
-            <button
-              type="button"
-              onClick={() => setNewContactOpen(true)}
-              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            >
+            <button type="button" onClick={() => setNewContactOpen(true)} className="button-primary rounded-lg px-3 py-1.5 text-xs font-semibold">
               New Contact
             </button>
             <button
               type="button"
               onClick={() => setCsvImportOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="button-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
               aria-label="Upload CSV"
               title="Upload CSV"
             >
@@ -571,7 +567,7 @@ export default function RelationshipsPage() {
                 setAdvancedFiltersSession((s) => s + 1);
                 setAdvancedFiltersOpen(true);
               }}
-              className="relative inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="button-primary relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
               aria-label={
                 activeFilterFieldCount > 0
                   ? `Advanced filters, ${activeFilterFieldCount} active`
@@ -583,7 +579,7 @@ export default function RelationshipsPage() {
               Advanced filters
               {activeFilterFieldCount > 0 ? (
                 <span
-                  className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold tabular-nums text-gray-900 shadow-sm ring-2 ring-white"
+                  className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color:var(--tomo-status-amber-bg)] px-1 text-[10px] font-bold tabular-nums text-[color:var(--tomo-status-amber-text)] shadow-sm ring-2 ring-[color:var(--tomo-card)]"
                   aria-hidden
                 >
                   {activeFilterFieldCount > 99 ? "99+" : activeFilterFieldCount}
@@ -594,7 +590,7 @@ export default function RelationshipsPage() {
         }
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-gray-200 bg-white">
+      <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
         <RelationshipsFilterChat
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
@@ -605,7 +601,7 @@ export default function RelationshipsPage() {
       <div className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3">
         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="shrink-0 text-xs text-gray-500">
+            <span className="shrink-0 text-xs text-[color:var(--tomo-mute)]">
               {Object.keys(filterCriteria).length > 0
                 ? `Showing ${filtered.length} of ${relationshipsWithOverrides.length} relationship${relationshipsWithOverrides.length !== 1 ? "s" : ""}`
                 : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
@@ -622,7 +618,7 @@ export default function RelationshipsPage() {
               <button
                 type="button"
                 onClick={() => setCreatePipelineModalOpen(true)}
-                className="inline-flex shrink-0 items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="button-primary inline-flex shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
               >
                 Create list
               </button>
@@ -635,7 +631,9 @@ export default function RelationshipsPage() {
                   type="button"
                   onClick={() => setColumnsPopoverOpen((o) => !o)}
                   className={`rounded p-1.5 transition ${
-                    columnsPopoverOpen ? "bg-blue-100 text-blue-700" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    columnsPopoverOpen
+                      ? "bg-[color:var(--accent-soft)] text-[color:var(--foreground)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                      : "text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)] hover:text-[color:var(--foreground)]"
                   }`}
                   aria-label="Choose columns"
                   aria-expanded={columnsPopoverOpen}
@@ -645,17 +643,17 @@ export default function RelationshipsPage() {
                 </button>
                 {columnsPopoverOpen && (
                   <div
-                    className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-2 shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 w-56 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] py-2 shadow-[var(--tomo-modal-shadow)]"
                     role="menu"
                   >
-                    <div className="border-b border-gray-100 px-3 py-2">
-                      <p className="text-xs font-medium text-gray-700">Show columns</p>
+                    <div className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+                      <p className="text-xs font-medium text-[color:var(--foreground)]">Show columns</p>
                     </div>
                     <div className="max-h-64 overflow-y-auto px-2 py-1">
                       {TABLE_COLUMNS.map((col) => (
                         <label
                           key={col.key}
-                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-[color:var(--foreground)] hover:bg-[color:var(--tomo-navy-soft)]"
                           role="menuitemcheckbox"
                           aria-checked={columnVisibility[col.key] !== false}
                         >
@@ -673,17 +671,17 @@ export default function RelationshipsPage() {
                                 [col.key]: checked,
                               }));
                             }}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--accent)] focus:ring-[color:var(--tomo-teal)]"
                           />
                           <span className="truncate">{col.label}</span>
                         </label>
                       ))}
                     </div>
-                    <div className="border-t border-gray-100 px-2 py-1">
+                    <div className="border-t border-[color:var(--tomo-rule-soft)] px-2 py-1">
                       <button
                         type="button"
                         onClick={() => setColumnVisibility({ ...DEFAULT_COLUMN_VISIBILITY })}
-                        className="w-full rounded px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        className="w-full rounded px-2 py-1.5 text-left text-xs text-[color:var(--tomo-body)] hover:bg-[color:var(--tomo-navy-soft)] hover:text-[color:var(--foreground)]"
                       >
                         Show all
                       </button>
@@ -697,8 +695,8 @@ export default function RelationshipsPage() {
               onClick={() => setViewMode("list")}
               className={`rounded p-1.5 transition ${
                 viewMode === "list"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  ? "bg-[color:var(--accent-soft)] text-[color:var(--foreground)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                  : "text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)] hover:text-[color:var(--foreground)]"
               }`}
               aria-label="List view"
               aria-pressed={viewMode === "list"}
@@ -710,8 +708,8 @@ export default function RelationshipsPage() {
               onClick={() => setViewMode("card")}
               className={`rounded p-1.5 transition ${
                 viewMode === "card"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  ? "bg-[color:var(--accent-soft)] text-[color:var(--foreground)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                  : "text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)] hover:text-[color:var(--foreground)]"
               }`}
               aria-label="Card view"
               aria-pressed={viewMode === "card"}
@@ -723,8 +721,8 @@ export default function RelationshipsPage() {
               onClick={() => setViewMode("kanban")}
               className={`rounded p-1.5 transition ${
                 viewMode === "kanban"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  ? "bg-[color:var(--accent-soft)] text-[color:var(--foreground)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                  : "text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)] hover:text-[color:var(--foreground)]"
               }`}
               aria-label="Kanban view"
               aria-pressed={viewMode === "kanban"}
@@ -737,7 +735,7 @@ export default function RelationshipsPage() {
           className={`min-w-0 flex-1 ${viewMode === "kanban" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-auto"}`}
         >
           {viewMode === "list" ? (
-            <div className="overflow-x-auto overflow-y-auto rounded-md border border-gray-200 bg-white">
+            <div className="overflow-x-auto overflow-y-auto rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
               <table
                 className="border-collapse text-left text-sm"
                 style={{ minWidth: tableMinWidth, tableLayout: "fixed" }}
@@ -747,8 +745,8 @@ export default function RelationshipsPage() {
                     <col key={col.key} style={{ width: effectiveColumnWidths[col.key], minWidth: effectiveColumnWidths[col.key] }} />
                   ))}
                 </colgroup>
-                <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
-                  <tr className="border-b border-gray-200">
+                <thead className="sticky top-0 z-10 bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_58%,var(--tomo-card))] shadow-[0_1px_0_0_color-mix(in_srgb,var(--tomo-rule)_85%,transparent)]">
+                  <tr className="border-b border-[color:var(--tomo-rule-soft)]">
                     {visibleColumns.map((col) => (
                       <SortableTh
                         key={col.key}
@@ -776,7 +774,7 @@ export default function RelationshipsPage() {
                 </tbody>
               </table>
               {!sortedFiltered.length ? (
-                <div className="px-4 py-8 text-center text-sm text-gray-500">No relationships match.</div>
+                <div className="px-4 py-8 text-center text-sm text-[color:var(--tomo-mute)]">No relationships match.</div>
               ) : null}
             </div>
           ) : viewMode === "card" ? (
@@ -831,7 +829,7 @@ export default function RelationshipsPage() {
           active && snapshotParagraph ? (
             <RelationshipDrawerSnapshotSection summaryText={snapshotParagraph} />
           ) : (
-            <div className="text-sm text-gray-500">Select a relationship</div>
+            <div className="text-sm text-[color:var(--tomo-mute)]">Select a relationship</div>
           )
         }
         section2MinHeightClassName="min-h-0"
@@ -1000,15 +998,15 @@ function SortableTh({
   const isSticky = columnKey === "name";
   return (
     <th
-      className={`relative min-w-0 px-3 py-2.5 ${isSticky ? "sticky left-0 z-10 bg-gray-50" : ""}`}
-      style={isSticky ? { boxShadow: "2px 0 4px -2px rgba(0,0,0,0.1)" } : undefined}
+      className={`relative min-w-0 px-3 py-2.5 ${isSticky ? "sticky left-0 z-10 bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_58%,var(--tomo-card))]" : ""}`}
+      style={isSticky ? { boxShadow: "2px 0 4px -2px color-mix(in srgb, var(--tomo-rule) 55%, transparent)" } : undefined}
     >
       <button
         type="button"
         onClick={onClick}
         data-testid={`relationships-sort-${columnKey}`}
-        className={`flex w-full items-center gap-1 font-medium transition hover:text-gray-900 ${
-          active ? "text-gray-900" : "text-gray-600"
+        className={`flex w-full items-center gap-1 font-medium transition hover:text-[color:var(--foreground)] ${
+          active ? "text-[color:var(--foreground)]" : "text-[color:var(--tomo-body)]"
         } ${highlight ? "text-[color:var(--accent)]" : ""}`}
       >
         <span className="truncate">{label}</span>
@@ -1018,7 +1016,7 @@ function SortableTh({
         role="separator"
         aria-label={`Resize ${label} column`}
         onMouseDown={onResizeStart}
-        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none hover:bg-blue-200/50 active:bg-blue-300/50"
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none hover:bg-[color:color-mix(in_srgb,var(--tomo-teal)_22%,transparent)] active:bg-[color:color-mix(in_srgb,var(--tomo-teal)_35%,transparent)]"
         style={{ marginRight: -3 }}
       />
     </th>
@@ -1042,8 +1040,10 @@ function RelationshipTableRow({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
-      className={`group cursor-pointer border-b border-gray-100 transition last:border-b-0 ${
-        isActive ? "border-l-4 border-l-blue-500 bg-blue-50" : "hover:bg-gray-50"
+      className={`group cursor-pointer border-b border-[color:var(--tomo-rule-soft)] transition last:border-b-0 ${
+        isActive
+          ? "border-l-4 border-l-[color:var(--accent)] bg-[color:var(--accent-soft)]"
+          : "hover:bg-[color:var(--tomo-navy-soft)]"
       }`}
     >
       {columns.map((col) => (
@@ -1054,13 +1054,13 @@ function RelationshipTableRow({
 }
 
 function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey: SortColumn; isActive: boolean }) {
-  const baseClass = "max-w-0 truncate px-3 py-2.5 text-gray-600";
+  const baseClass = "max-w-0 truncate px-3 py-2.5 text-[color:var(--tomo-body)]";
   const accentClass = "font-semibold accent-title";
-  const stickyNameClass = `sticky left-0 z-[1] ${isActive ? "bg-blue-50" : "bg-white group-hover:bg-gray-50"} ${baseClass} ${accentClass}`;
+  const stickyNameClass = `sticky left-0 z-[1] ${isActive ? "bg-[color:var(--accent-soft)]" : "bg-[color:var(--tomo-card)] group-hover:bg-[color:var(--tomo-navy-soft)]"} ${baseClass} ${accentClass}`;
   switch (columnKey) {
     case "name":
       return (
-        <td className={stickyNameClass} title={rel.name} style={{ boxShadow: "2px 0 4px -2px rgba(0,0,0,0.1)" }}>
+        <td className={stickyNameClass} title={rel.name} style={{ boxShadow: "2px 0 4px -2px color-mix(in srgb, var(--tomo-rule) 55%, transparent)" }}>
           {rel.name}
         </td>
       );
@@ -1110,11 +1110,11 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
       return (
         <td className="px-3 py-2.5">
           {rel.openLoops > 0 ? (
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
+            <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_75%,var(--tomo-card))] px-2.5 py-1 text-[11px] font-medium text-[color:var(--foreground)]">
               {rel.openLoops}
             </span>
           ) : (
-            <span className="text-xs text-gray-400">—</span>
+            <span className="text-xs text-[color:var(--tomo-mute)]">—</span>
           )}
         </td>
       );
@@ -1279,26 +1279,28 @@ function RelationshipCard({
   return (
     <button
       onClick={onSelect}
-      className={`flex flex-col rounded-md border px-3 py-3 text-left transition ${
-        isActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+      className={`flex flex-col rounded-[var(--tomo-radius-md)] border px-3 py-3 text-left shadow-[var(--tomo-shadow-1)] transition ${
+        isActive
+          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
+          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold accent-title">{rel.name}</p>
-          <p className="truncate text-xs text-gray-600">{rel.firm}</p>
+          <p className="truncate text-xs text-[color:var(--tomo-body)]">{rel.firm}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} />
           {rel.openLoops ? (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700">
+            <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_75%,var(--tomo-card))] px-2 py-0.5 text-[11px] text-[color:var(--foreground)]">
               {rel.openLoops}
             </span>
           ) : null}
         </div>
       </div>
-      <p className="mt-2 line-clamp-1 text-xs text-gray-600">Last: {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</p>
-      <p className="line-clamp-1 text-xs text-gray-600">Next: {rel.nextMove}</p>
+      <p className="mt-2 line-clamp-1 text-xs text-[color:var(--tomo-body)]">Last: {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</p>
+      <p className="line-clamp-1 text-xs text-[color:var(--tomo-body)]">Next: {rel.nextMove}</p>
     </button>
   );
 }
@@ -1315,10 +1317,10 @@ function MomentumChip({
   const icon = direction === "Heating up" ? "↑" : direction === "Cooling" ? "↓" : "→";
   const trendStyles =
     direction === "Heating up"
-      ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/60"
+      ? "bg-[color:var(--tomo-status-green-bg)] text-[color:var(--tomo-status-green)] ring-1 ring-[color:color-mix(in_srgb,var(--tomo-status-green)_25%,var(--tomo-rule))]"
       : direction === "Cooling"
-        ? "bg-rose-100 text-rose-800 ring-1 ring-rose-200/60"
-        : "bg-amber-100 text-amber-800 ring-1 ring-amber-200/60";
+        ? "bg-[color:var(--tomo-red-bg)] text-[color:var(--tomo-red)] ring-1 ring-[color:color-mix(in_srgb,var(--tomo-red)_22%,var(--tomo-rule))]"
+        : "bg-[color:var(--tomo-status-amber-bg)] text-[color:var(--tomo-status-amber-text)] ring-1 ring-[color:color-mix(in_srgb,var(--tomo-status-amber)_25%,var(--tomo-rule))]";
   const sizeClass = prominent ? "px-3 py-1.5 text-xs font-semibold" : "px-2.5 py-1 text-[11px] font-medium";
   return (
     <span className={`inline-flex items-center gap-0.5 rounded-full ${trendStyles} ${sizeClass}`}>
@@ -1331,6 +1333,10 @@ function MomentumChip({
 }
 
 function Placeholder({ title }: { title: string }) {
-  return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;
+  return (
+    <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_45%,var(--tomo-card))] px-4 py-8 text-sm text-[color:var(--tomo-body)]">
+      {title}
+    </div>
+  );
 }
 
