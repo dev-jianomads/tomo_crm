@@ -8,7 +8,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -27,6 +26,8 @@ import {
   type SchedulingDraftOverride,
 } from "@/lib/schedulingFindTime";
 import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
+import { TomoUrgencyPill } from "@/components/ui/urgency-pill";
+import { TomoWorkflowTag } from "@/components/ui/workflow-tag";
 import { TomoAiBadge, TomoAiSparkleIcon } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
@@ -65,6 +66,35 @@ function workflowLabelForAction(action: ActionItem): string {
   return fromPlaybook ?? fromTomo ?? "—";
 }
 
+/** Urgency row + left accent on attention cards (design/tomo_today_light_v2.html). */
+function attentionVisualsForAction(a: ActionItem): {
+  urgency?: { tone: "red" | "amber"; label: string };
+  accent?: "red" | "amber";
+} {
+  const today = new Date().toISOString().slice(0, 10);
+  const out: {
+    urgency?: { tone: "red" | "amber"; label: string };
+    accent?: "red" | "amber";
+  } = {};
+
+  if (a.dueDate) {
+    if (a.dueDate < today) {
+      out.accent = "red";
+      out.urgency = { tone: "red", label: "SLA past" };
+    } else if (a.dueDate === today) {
+      out.accent = "amber";
+      out.urgency = { tone: "amber", label: "Today" };
+    }
+  }
+
+  if (!out.urgency && (a.status === "approval" || a.status === "blocked")) {
+    out.urgency = { tone: "amber", label: "Today" };
+    if (!out.accent) out.accent = "amber";
+  }
+
+  return out;
+}
+
 type TodayListItem = {
   id: string;
   title: string;
@@ -77,7 +107,9 @@ type TodayListItem = {
   attentionWorkflowName?: string;
   verbLabel?: string;
   comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
-  commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" };
+  commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" | "red" };
+  attentionUrgency?: { tone: "red" | "amber"; label: string };
+  attentionAccent?: "red" | "amber";
   commitmentOverdue?: boolean;
   calendarUrl?: string;
   linkedInUrl?: string;
@@ -89,6 +121,7 @@ function mapActionToAttentionListItem(
   a: ActionItem,
   verbLabelForId: (id: string) => string
 ): TodayListItem {
+  const visuals = attentionVisualsForAction(a);
   const attentionWorkflowName =
     (a.workflowPlaybookId && suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
     (a.workflowTomoDefaultId && tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
@@ -103,6 +136,8 @@ function mapActionToAttentionListItem(
     attentionWorkflowName,
     verbLabel: verbLabelForId(a.id),
     attentionEmailSourceUrl: a.emailSourceUrl,
+    attentionUrgency: visuals.urgency,
+    attentionAccent: visuals.accent,
   };
 }
 
@@ -510,7 +545,7 @@ export default function HomePage() {
       >
         {/* Top: Tomo chat UI */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden bg-white px-4 py-3"
+          className="flex min-w-0 flex-col overflow-hidden bg-[color:var(--tomo-card)] px-4 py-3"
           style={
             todayChatExpanded
               ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
@@ -518,16 +553,16 @@ export default function HomePage() {
           }
         >
           <div className="mb-3 flex items-start justify-between gap-3">
-            <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900">
+            <h1 className="min-w-0 flex-1 text-xl font-semibold text-[color:var(--foreground)]">
               {greeting}, {userName}.
             </h1>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pt-0.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1 pt-0.5">
               {showDailyBriefResend ? (
                 <button
                   type="button"
                   onClick={() => void resendDailyBrief()}
                   disabled={dailyBriefResendBusy}
-                  className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline disabled:opacity-50"
+                  className="text-[12px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline disabled:opacity-50"
                   title="Sends the Daily Brief email via Loops (demo)"
                 >
                   {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
@@ -536,7 +571,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={resetDemoAttention}
-                className="text-[11px] font-normal text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline"
+                className="text-[12px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline"
                 title="Clears completed Today actions for this browser session (demo)"
               >
                 Reset demo
@@ -547,7 +582,7 @@ export default function HomePage() {
                   setOnMyRadarModalKey((k) => k + 1);
                   setOnMyRadarOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="button-primary inline-flex items-center gap-2 rounded-[var(--tomo-radius-md)] px-3.5 py-2 text-[13px] font-medium shadow-none focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tomo-card)]"
                 aria-label={
                   onMyRadarLineCount > 0
                     ? `On My Radar, ${onMyRadarLineCount} items`
@@ -556,7 +591,7 @@ export default function HomePage() {
               >
                 On My Radar
                 {onMyRadarLineCount > 0 ? (
-                  <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-white/20 px-1 text-[11px] font-bold tabular-nums">
+                  <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-[10px] bg-[rgba(255,255,255,0.18)] px-1.5 font-mono text-[11px] font-normal tabular-nums">
                     {onMyRadarLineCount}
                   </span>
                 ) : null}
@@ -569,7 +604,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setTodayChatExpanded(false)}
-                  className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500 hover:text-gray-800"
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-[color:var(--tomo-mute)] hover:text-[color:var(--foreground)]"
                   aria-label="Collapse Tomo to single-line"
                 >
                   Collapse
@@ -584,11 +619,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setTodayChatExpanded(true)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2.5 text-left transition hover:bg-gray-100"
+              className="flex w-full items-center justify-between gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))] px-3 py-2.5 text-left transition hover:border-[color:color-mix(in_srgb,var(--tomo-navy)_18%,var(--tomo-rule))]"
               aria-label="Expand Tomo chat"
             >
-              <span className="text-sm text-gray-600">Ask Tomo about what&apos;s on Today…</span>
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+              <span className="text-sm text-[color:var(--tomo-body)]">Ask Tomo about what&apos;s on Today…</span>
+              <ChevronDownIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
             </button>
           )}
         </div>
@@ -597,10 +632,10 @@ export default function HomePage() {
           <div
             role="separator"
             aria-label="Resize top and bottom sections"
-            className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-gray-50 ${draggingSplit ? "bg-gray-50" : ""}`}
+            className={`flex shrink-0 cursor-row-resize items-center justify-center py-1 hover:bg-[color:var(--tomo-navy-soft)] ${draggingSplit ? "bg-[color:var(--tomo-navy-soft)]" : ""}`}
             onMouseDown={() => setDraggingSplit(true)}
           >
-            <div className="h-1 w-12 rounded-full bg-gray-200" />
+            <div className="h-1 w-12 rounded-full bg-[color:var(--tomo-rule-soft)] dark:bg-[color:color-mix(in_srgb,var(--tomo-mute)_35%,transparent)]" />
           </div>
         ) : null}
 
@@ -614,6 +649,7 @@ export default function HomePage() {
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <TodayGroup
                   title="What needs your attention"
+                  titleCount={attentionActionsVisible.length}
                   emptyHint="All caught up — nothing needs your attention right now."
                   items={attentionActionsVisible.map((a) => mapActionToAttentionListItem(a, verbPillForAction))}
                   activeId={selection?.type === "action" ? selection.id : undefined}
@@ -636,6 +672,7 @@ export default function HomePage() {
             <div className="flex min-h-0 flex-col overflow-hidden">
               <TodayGroup
                 title="Coming up"
+                titleCount={sortedCommitments.length}
                 items={sortedCommitments.map((c) => ({
                   id: c.id,
                   title: c.title,
@@ -646,11 +683,13 @@ export default function HomePage() {
                   commitmentStatusPill:
                     commitmentOutcomeById[c.id] === "approved"
                       ? { label: "Prep sent", tone: "green" as const }
-                      : c.prepStatus === "ready"
-                        ? { label: "Prep ready", tone: "peach" as const }
-                        : c.prepStatus === "first_contact"
-                          ? { label: "First Contact", tone: "violet" as const }
-                          : undefined,
+                      : c.commitmentOverdue
+                        ? { label: "Commitment overdue", tone: "red" as const }
+                        : c.prepStatus === "ready"
+                          ? { label: "Prep ready", tone: "peach" as const }
+                          : c.prepStatus === "first_contact"
+                            ? { label: "First contact", tone: "violet" as const }
+                            : undefined,
                   comingUpCard: {
                     company: c.lp,
                     contactName: c.contactName,
@@ -1105,6 +1144,18 @@ function BriefSectionIcon({ kind }: { kind: DailyBriefBlock["icon"] }) {
   );
 }
 
+function commitmentMeetingStateToneClass(
+  tone: NonNullable<TodayListItem["commitmentStatusPill"]>["tone"],
+): string {
+  const map = {
+    peach: "tomo-meeting-state--prep-ready",
+    green: "tomo-meeting-state--positive",
+    violet: "tomo-meeting-state--first-contact",
+    red: "tomo-meeting-state--overdue",
+  } as const;
+  return map[tone];
+}
+
 function TodayListRows({
   items,
   onSelect,
@@ -1114,92 +1165,95 @@ function TodayListRows({
   onSelect: (id: string) => void;
   activeId?: string;
 }) {
+  const linkClass =
+    "text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]";
+
   return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          data-testid={`today-${item.type}-row-${item.id}`}
-          onClick={() => onSelect(item.id)}
-          className={`w-full rounded-md border px-3 py-2 text-left transition ${
-            activeId === item.id ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]" : "border-gray-200 bg-white hover:border-gray-300"
-          }`}
-        >
-          {item.attentionCard ? (
-            <>
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
-                  {item.attentionCard.company} : {item.attentionCard.contactName}
-                </p>
-                <span
-                  className={
-                    (item.verbLabel ?? item.attentionCard.verb) === "Approved"
-                      ? "inline-flex shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                      : (item.verbLabel ?? item.attentionCard.verb) === "Later"
-                        ? "inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900"
-                        : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-                  }
-                >
-                  {item.verbLabel ?? item.attentionCard.verb}
-                </span>
-              </div>
-              <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">
-                {item.attentionCard.workKind} : {item.attentionCard.workSubject}
-              </p>
-              <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--peach-ink)]">
-                {item.attentionWorkflowName ?? item.meta}
-              </p>
-              {item.attentionEmailSourceUrl ? (
-                <a
-                  href={item.attentionEmailSourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-0.5 inline-block text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Open email
-                </a>
-              ) : null}
-            </>
-          ) : item.comingUpCard ? (
-            <>
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm font-semibold accent-title">
-                  <span>
-                    {item.comingUpCard.company} : {item.comingUpCard.contactName}
-                  </span>
-                  {item.comingUpCard.meetingTitle ? (
-                    <span className="font-semibold text-gray-700"> · {item.comingUpCard.meetingTitle}</span>
+    <div className="flex flex-col gap-2.5">
+      {items.map((item) => {
+        const isActive = activeId === item.id;
+        const cardInteractive = "tomo-card tomo-card--interactive w-full text-left";
+        const selected = isActive ? "tomo-card--selected" : "";
+
+        if (item.attentionCard) {
+          const accent =
+            item.attentionAccent === "red"
+              ? "tomo-card-accent--red"
+              : item.attentionAccent === "amber"
+                ? "tomo-card-accent--amber"
+                : "";
+          const verb = item.verbLabel ?? item.attentionCard.verb;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`today-${item.type}-row-${item.id}`}
+              onClick={() => onSelect(item.id)}
+              className={`${cardInteractive} flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${accent} ${selected}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                  {item.attentionUrgency ? (
+                    <TomoUrgencyPill tone={item.attentionUrgency.tone}>{item.attentionUrgency.label}</TomoUrgencyPill>
                   ) : null}
+                  {item.attentionWorkflowName ? <TomoWorkflowTag>{item.attentionWorkflowName}</TomoWorkflowTag> : null}
+                </div>
+                <p className="mb-1 text-sm font-medium leading-snug">
+                  <span className="text-[color:var(--foreground)]">{item.attentionCard.company}</span>
+                  <span className="text-[color:var(--tomo-body)]"> · </span>
+                  <span className="font-normal text-[color:var(--tomo-body)]">{item.attentionCard.contactName}</span>
                 </p>
-                {item.commitmentStatusPill ? (
-                  <span
-                    className={`inline-flex max-w-[min(100%,11rem)] shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${
-                      item.commitmentStatusPill.tone === "green"
-                        ? "border-green-200 bg-green-50 text-green-800"
-                        : item.commitmentStatusPill.tone === "violet"
-                          ? "border-violet-200 bg-violet-50 text-violet-900"
-                          : "border-[color:var(--peach)] bg-[color:var(--peach-soft)] text-[color:var(--peach-ink)]"
-                    }`}
+                <p className="text-[13px] leading-snug text-[color:var(--tomo-body)]">
+                  {item.attentionCard.workKind} — {item.attentionCard.workSubject}
+                </p>
+                {item.attentionEmailSourceUrl ? (
+                  <a
+                    href={item.attentionEmailSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`mt-1.5 inline-block ${linkClass}`}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {item.commitmentStatusPill.label}
-                  </span>
+                    Open email
+                  </a>
                 ) : null}
               </div>
-              <p className="mt-0.5 min-w-0 truncate text-xs leading-snug text-gray-600">{item.comingUpCard.timeLabel}</p>
-              {item.commitmentOverdue ? (
-                <p className="mt-1 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800">
-                  Commitment overdue
+              <span className="tomo-btn-teal-outline pointer-events-none hidden shrink-0 sm:inline-flex" aria-hidden>
+                {verb}
+              </span>
+            </button>
+          );
+        }
+
+        if (item.comingUpCard) {
+          const pill = item.commitmentStatusPill;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`today-${item.type}-row-${item.id}`}
+              onClick={() => onSelect(item.id)}
+              className={`${cardInteractive} px-4 py-3.5 ${selected}`}
+            >
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <p className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-[color:var(--foreground)]">
+                  <span className="line-clamp-2">
+                    {item.comingUpCard.company} · {item.comingUpCard.contactName}
+                    {item.comingUpCard.meetingTitle ? ` · ${item.comingUpCard.meetingTitle}` : ""}
+                  </span>
                 </p>
-              ) : null}
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                {pill ? (
+                  <span className={`tomo-meeting-state ${commitmentMeetingStateToneClass(pill.tone)}`}>{pill.label}</span>
+                ) : null}
+              </div>
+              <p className="font-mono text-[11px] tracking-[0.04em] text-[color:var(--tomo-mute)]">{item.comingUpCard.timeLabel}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
                 {item.calendarUrl ? (
                   <a
                     href={item.calendarUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    className={linkClass}
                     data-testid="today-commitment-open-calendar"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1219,25 +1273,35 @@ function TodayListRows({
                   </a>
                 ) : null}
               </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</p>
-                {item.pills.length > 0 ? (
-                  <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                    {item.pills.map((pill) => (
-                      <UrgencyChip key={pill} kind={pill} />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <p className="mt-0.5 truncate text-xs text-gray-600">{item.meta}</p>
-              {item.workflowName ? <p className="mt-0.5 text-[11px] text-gray-500">{item.workflowName}</p> : null}
-            </>
-          )}
-        </button>
-      ))}
+            </button>
+          );
+        }
+
+        return (
+          <button
+            key={item.id}
+            type="button"
+            data-testid={`today-${item.type}-row-${item.id}`}
+            onClick={() => onSelect(item.id)}
+            className={`${cardInteractive} px-3 py-2 ${selected}`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-[color:var(--foreground)]">{item.title}</p>
+              {item.pills.length > 0 ? (
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  {item.pills.map((pill) => (
+                    <UrgencyChip key={pill} kind={pill} />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <p className="mt-0.5 truncate text-xs text-[color:var(--tomo-body)]">{item.meta}</p>
+            {item.workflowName ? (
+              <p className="mt-0.5 text-[11px] text-[color:var(--tomo-mute)]">{item.workflowName}</p>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1260,28 +1324,28 @@ function PreviousAttentionCollapsible({
   onSelectAction: (id: string) => void;
 }) {
   return (
-    <div className="mt-2 shrink-0 border-t border-gray-100 pt-2">
+    <div className="mt-2 shrink-0 border-t border-[color:var(--tomo-rule-soft)] pt-2">
       <button
         type="button"
         onClick={onToggle}
         data-testid="today-previous-toggle"
-        className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1.5 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        className="flex w-full items-center justify-between gap-2 rounded-[var(--tomo-radius-md)] px-1 py-1.5 text-left text-sm font-medium text-[color:var(--foreground)] transition hover:bg-[color:var(--tomo-navy-soft)]"
         aria-expanded={expanded}
       >
         <span>
-          Previous <span className="font-normal text-gray-500">({count})</span>
+          Previous <span className="font-normal text-[color:var(--tomo-mute)]">({count})</span>
         </span>
         {expanded ? (
-          <ChevronUpIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+          <ChevronUpIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
         ) : (
-          <ChevronDownIcon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+          <ChevronDownIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
         )}
       </button>
       {expanded ? (
         <div className="mt-1 max-h-[min(50vh,22rem)] space-y-3 overflow-y-auto pr-0.5" role="region" aria-label="Previous attention">
           {groups.map((g) => (
             <div key={g.id} className="space-y-1.5">
-              <p className="px-0.5 text-xs font-medium text-gray-500">{g.heading}</p>
+              <p className="px-0.5 text-xs font-medium text-[color:var(--tomo-mute)]">{g.heading}</p>
               <TodayListRows
                 items={g.items.map((a) => mapActionToItem(a))}
                 onSelect={onSelectAction}
@@ -1297,6 +1361,7 @@ function PreviousAttentionCollapsible({
 
 function TodayGroup({
   title,
+  titleCount,
   items,
   onSelect,
   activeId,
@@ -1304,6 +1369,7 @@ function TodayGroup({
   emptyHint,
 }: {
   title: string;
+  titleCount?: number;
   /** Shown when there are no rows (e.g. attention list after completions) */
   emptyHint?: string;
   items: TodayListItem[];
@@ -1314,10 +1380,15 @@ function TodayGroup({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <p className="shrink-0 text-base font-semibold accent-title">{title}</p>
+      <h2 className="tomo-section-title flex shrink-0 flex-wrap items-baseline">
+        <span>{title}</span>
+        {titleCount != null ? <span className="tomo-section-title-count">{titleCount}</span> : null}
+      </h2>
       <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto" : ""}`}>
         {items.length === 0 && emptyHint ? (
-          <p className="rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-4 text-center text-sm text-gray-500">{emptyHint}</p>
+          <p className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] px-3 py-4 text-center text-sm text-[color:var(--tomo-mute)]">
+            {emptyHint}
+          </p>
         ) : null}
         {items.length > 0 ? <TodayListRows items={items} onSelect={onSelect} activeId={activeId} /> : null}
       </div>
@@ -1331,18 +1402,18 @@ function SuggestedWorkflows() {
   if (!playbooks.length) return null;
   return (
     <div className="space-y-2">
-      <p className="text-sm font-semibold text-gray-700">Suggested workflows</p>
+      <p className="text-sm font-semibold text-[color:var(--foreground)]">Suggested workflows</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {playbooks.map((playbook) => (
           <button
             key={playbook.id}
             onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-            className="rounded-lg border border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[color:var(--peach)] hover:bg-[color:var(--peach-soft)]"
+            className="tomo-card tomo-card--interactive rounded-[var(--tomo-radius-md)] border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--peach)] hover:shadow-[var(--tomo-shadow-2)]"
           >
             <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
-            <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">{playbook.description}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs text-[color:var(--tomo-body)]">{playbook.description}</p>
             {playbook.targetCount != null && playbook.targetCount > 0 ? (
-              <span className="mt-2 inline-block text-[11px] text-gray-500">{playbook.targetCount} targets</span>
+              <span className="mt-2 inline-block text-[11px] text-[color:var(--tomo-mute)]">{playbook.targetCount} targets</span>
             ) : null}
           </button>
         ))}

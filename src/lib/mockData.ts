@@ -631,7 +631,7 @@ export const actions: ActionItem[] = [
     id: "a1",
     title: "PAAMCO Prisma Meeting Request",
     attentionCard: {
-      company: "PAAMCO Prisma",
+      company: "Hamilton Lane Advisors — Outsourced CIO & Private Markets Platform",
       contactName: "Peter Zakowich",
       verb: "Approve",
       workKind: "Scheduling",
@@ -904,7 +904,7 @@ export const commitments: Commitment[] = [
     id: "c2",
     title: "Investment Update",
     datetime: "Today 4:00 PM ET",
-    lp: "CPPIB",
+    lp: "Ontario Teachers' Pension Plan Board — Private Capital & Alternatives Group",
     contactName: "Frank Ieraci",
     briefId: "b4",
     window: "today",
