@@ -208,3 +208,25 @@ body {
     box-shadow: 0 0 0 8px transparent;
   }
 }
+
+/* Nav rail — matches design/*.html (light: navy pill; dark: L4 surface + teal stroke hint) */
+.nav-rail-item-hover:hover {
+  background: var(--tomo-navy-soft);
+  color: var(--tomo-navy);
+}
+
+.dark .nav-rail-item-hover:hover {
+  background: #2e3f52;
+  color: var(--tomo-navy);
+}
+
+.nav-rail-item-active {
+  background: var(--tomo-navy);
+  color: #fff;
+}
+
+.dark .nav-rail-item-active {
+  background: #233241;
+  color: var(--tomo-teal);
+  box-shadow: inset 0 0 0 1px rgba(19, 168, 168, 0.2);
+}
