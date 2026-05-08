@@ -1,6 +1,10 @@
 "use client";
 
 import { AppearanceSettings } from "@/components/appearance-settings";
+import { TomoCard } from "@/components/ui/card";
+import { TomoField } from "@/components/ui/field";
+import { TomoInput } from "@/components/ui/input";
+import { TomoSectionHeading } from "@/components/ui/section-heading";
 import { useRequireSession } from "@/lib/auth";
 
 export default function SettingsProfilePage() {
@@ -8,21 +12,27 @@ export default function SettingsProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold accent-title">Profile</h2>
+      <TomoSectionHeading title="Profile" titleAs="h2" />
       <AppearanceSettings />
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="text-xs uppercase tracking-wide text-gray-500">Name</label>
-          <input className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm" defaultValue="Jordan Doe" />
-        </div>
-        <div>
-          <label className="text-xs uppercase tracking-wide text-gray-500">Email</label>
-          <input className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm" defaultValue={session?.email ?? ""} />
-        </div>
+        <TomoField label="Name" htmlFor="profile-name">
+          <TomoInput id="profile-name" name="displayName" autoComplete="name" defaultValue="Jordan Doe" />
+        </TomoField>
+        <TomoField label="Email" htmlFor="profile-email">
+          <TomoInput
+            id="profile-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            defaultValue={session?.email ?? ""}
+          />
+        </TomoField>
       </div>
-      <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-        TOMO uses your profile to personalize briefs and messages.
-      </p>
+      <TomoCard className="tomo-hint-banner px-3 py-2">
+        <p className="text-xs text-[color:var(--tomo-body)]">
+          TOMO uses your profile to personalize briefs and messages.
+        </p>
+      </TomoCard>
     </div>
   );
 }

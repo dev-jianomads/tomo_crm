@@ -17,6 +17,17 @@
   --tomo-body: #4a5568;
   --tomo-mute: #8898aa;
 
+  /* Status + elevation (design/*.html) */
+  --tomo-status-amber: #e8a838;
+  --tomo-status-amber-bg: rgba(232, 168, 56, 0.1);
+  --tomo-status-amber-text: #b87a0a;
+  --tomo-red: #d94f4f;
+  --tomo-red-bg: rgba(217, 79, 79, 0.08);
+  --tomo-shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+  --tomo-shadow-2: 0 4px 12px rgba(28, 43, 58, 0.08);
+  --tomo-radius-sm: 2px;
+  --tomo-radius-md: 4px;
+
   --motion-utility: 180ms cubic-bezier(0.2, 0, 0, 1);
   --motion-confirm: 250ms cubic-bezier(0.32, 0.72, 0, 1);
 
@@ -50,6 +61,14 @@
   --tomo-rule: rgba(232, 236, 242, 0.08);
   --tomo-body: #b8c2ce;
   --tomo-mute: #7a8696;
+
+  --tomo-status-amber: #e8a838;
+  --tomo-status-amber-bg: rgba(232, 168, 56, 0.16);
+  --tomo-status-amber-text: #e8a838;
+  --tomo-red: #e66464;
+  --tomo-red-bg: rgba(230, 100, 100, 0.14);
+  --tomo-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --tomo-shadow-2: 0 4px 16px rgba(0, 0, 0, 0.35);
 
   --background: var(--tomo-canvas);
   --foreground: var(--tomo-navy);
@@ -229,4 +248,243 @@ body {
   background: #233241;
   color: var(--tomo-teal);
   box-shadow: inset 0 0 0 1px rgba(19, 168, 168, 0.2);
+}
+
+/* ── Phase 3 primitives — surfaces, type, chips (tokens only; no raw hex in components) ── */
+
+.tomo-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tomo-mute);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tomo-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+}
+
+.tomo-section-title-count {
+  margin-left: 8px;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--tomo-mute);
+  letter-spacing: 0.04em;
+}
+
+.tomo-workflow-tag {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tomo-mute);
+}
+
+.tomo-urgency-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--tomo-radius-sm);
+}
+
+.tomo-urgency-pill--amber {
+  background: var(--tomo-status-amber-bg);
+  color: var(--tomo-status-amber-text);
+}
+
+.tomo-urgency-pill--red {
+  background: var(--tomo-red-bg);
+  color: var(--tomo-red);
+}
+
+.tomo-card {
+  background: var(--tomo-card);
+  border: 1px solid var(--tomo-rule);
+  border-radius: var(--tomo-radius-md);
+}
+
+.tomo-card--interactive {
+  cursor: pointer;
+  transition: border-color var(--motion-utility), box-shadow var(--motion-utility);
+}
+
+.tomo-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--tomo-navy) 20%, var(--tomo-rule));
+  box-shadow: var(--tomo-shadow-2);
+}
+
+.dark .tomo-card--interactive:hover {
+  border-color: rgba(232, 236, 242, 0.14);
+}
+
+.tomo-card--selected {
+  border-color: var(--tomo-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tomo-teal) 10%, transparent);
+}
+
+.dark .tomo-card--selected {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tomo-teal) 14%, transparent);
+}
+
+.tomo-card-accent--amber {
+  border-left: 3px solid var(--tomo-status-amber);
+}
+
+.tomo-card-accent--red {
+  border-left: 3px solid var(--tomo-red);
+}
+
+.tomo-hint-banner {
+  background: var(--tomo-teal-tint);
+}
+
+.dark .tomo-hint-banner {
+  background: var(--tomo-navy-soft);
+}
+
+.tomo-input {
+  width: 100%;
+  border-radius: var(--tomo-radius-md);
+  border: 1px solid var(--tomo-rule);
+  background: var(--tomo-card);
+  color: var(--foreground);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  transition:
+    border-color var(--motion-utility),
+    box-shadow var(--motion-utility);
+}
+
+.tomo-input::placeholder {
+  color: var(--tomo-mute);
+}
+
+.tomo-input:focus {
+  outline: none;
+  border-color: var(--tomo-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tomo-teal) 10%, transparent);
+}
+
+.dark .tomo-input:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tomo-teal) 14%, transparent);
+}
+
+.tomo-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tomo-field-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tomo-mute);
+}
+
+.tomo-btn-teal-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--tomo-radius-md);
+  border: 1px solid var(--tomo-teal);
+  background: transparent;
+  color: var(--tomo-teal);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--motion-utility), color var(--motion-utility);
+}
+
+.tomo-btn-teal-outline:hover:not(:disabled) {
+  background: var(--tomo-teal);
+  color: #fff;
+}
+
+.dark .tomo-btn-teal-outline:hover:not(:disabled) {
+  color: #0d131b;
+}
+
+.tomo-btn-teal-outline:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tomo-btn-navy-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--tomo-radius-md);
+  background: var(--tomo-navy);
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--motion-utility), filter var(--motion-utility);
+}
+
+.dark .tomo-btn-navy-solid {
+  color: #0d131b;
+}
+
+.tomo-btn-navy-solid:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.tomo-btn-navy-solid:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tomo-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tomo-radius-md);
+  background: transparent;
+  color: var(--tomo-mute);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background var(--motion-utility),
+    color var(--motion-utility);
+}
+
+.tomo-btn-ghost:hover:not(:disabled) {
+  background: var(--tomo-navy-soft);
+  color: var(--foreground);
+}
+
+.dark .tomo-btn-ghost:hover:not(:disabled) {
+  background: rgba(232, 236, 242, 0.06);
+}
+
+.tomo-btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tomo-muted-link {
+  font-size: 12px;
+  color: var(--tomo-mute);
+  transition: color var(--motion-utility);
+}
+
+.tomo-muted-link:hover {
+  color: var(--foreground);
 }
