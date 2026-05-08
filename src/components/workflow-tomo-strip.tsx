@@ -99,17 +99,17 @@ export function WorkflowTomoStrip({
   };
 
   return (
-    <div className="shrink-0 border-t border-gray-200 bg-white" data-testid="workflow-tomo-strip">
+    <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]" data-testid="workflow-tomo-strip">
       <div className="flex items-center gap-2 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">TOMO AI</p>
-          <div className="flex min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">TOMO AI</p>
+          <div className="flex min-w-0 items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-2 shadow-[var(--tomo-shadow-1)]">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Tomo to amend this step"
               disabled={isStreaming}
-              className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+              className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--tomo-mute)] focus:outline-none disabled:opacity-50"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -121,7 +121,7 @@ export function WorkflowTomoStrip({
               type="button"
               onClick={() => handleSend(input)}
               disabled={isStreaming || !input.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md tomo-ai-bg text-white transition disabled:opacity-50"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] tomo-ai-bg text-[color:var(--tomo-card)] transition disabled:opacity-50"
               aria-label="Send to TOMO"
             >
               <PaperAirplaneIcon className="h-4 w-4" />

@@ -41,25 +41,33 @@ export function WorkflowOutboundSafetyChip({
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-2">
-        <p className="min-w-0 text-[11px] leading-snug text-gray-600">
-          <span className="font-medium text-gray-800">Outbound safety</span>
-          <span className="text-gray-500"> — {unique} unique LP{unique === 1 ? "" : "s"} on this {audienceLabel}</span>
-          {removed > 0 ? <span className="text-gray-500"> · {removed} duplicate address{removed === 1 ? "" : "es"} removed</span> : null}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-2 shadow-[var(--tomo-shadow-1)]">
+        <p className="min-w-0 text-[11px] leading-snug text-[color:var(--tomo-body)]">
+          <span className="font-medium text-[color:var(--foreground)]">Outbound safety</span>
+          <span className="text-[color:var(--tomo-mute)]">
+            {" "}
+            — {unique} unique LP{unique === 1 ? "" : "s"} on this {audienceLabel}
+          </span>
+          {removed > 0 ? (
+            <span className="text-[color:var(--tomo-mute)]">
+              {" "}
+              · {removed} duplicate address{removed === 1 ? "" : "es"} removed
+            </span>
+          ) : null}
         </p>
         <button
           type="button"
           data-testid="workflow-outbound-safety-chip"
           onClick={() => setOpen(true)}
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums transition ${
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums shadow-[var(--tomo-shadow-1)] transition ${
             hasOverlap
-              ? "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100"
-              : "border-gray-200 bg-gray-50 text-gray-800 hover:bg-gray-100"
+              ? "border-[color:color-mix(in_srgb,var(--tomo-status-amber)_45%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] text-[color:var(--tomo-status-amber-text)] hover:bg-[color:color-mix(in_srgb,var(--tomo-status-amber-bg)_85%,var(--tomo-card))]"
+              : "border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_52%,var(--tomo-card))] text-[color:var(--foreground)] hover:bg-[color:var(--tomo-navy-soft)]"
           }`}
           title="How Tomo prevents duplicate workflow touches"
         >
           {hasOverlap ? (
-            <ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-600" aria-hidden />
+            <ExclamationTriangleIcon className="h-3.5 w-3.5 text-[color:var(--tomo-status-amber)]" aria-hidden />
           ) : null}
           {chipLabel}
         </button>

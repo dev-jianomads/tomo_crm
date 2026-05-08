@@ -44,16 +44,20 @@ export function WorkflowStepConfigPanel({
   const [stepCondition, setStepCondition] = useState(step?.condition ?? "");
 
   useEffect(() => {
-    setTriggerText(workflow.trigger);
-    setScheduledNote("");
+    queueMicrotask(() => {
+      setTriggerText(workflow.trigger);
+      setScheduledNote("");
+    });
   }, [workflow.trigger, workflow.title, target]);
 
   useEffect(() => {
     if (!step) return;
-    setStepName(step.name);
-    setStepDescription(step.description);
-    setStepDuration(step.duration ?? "");
-    setStepCondition(step.condition ?? "");
+    queueMicrotask(() => {
+      setStepName(step.name);
+      setStepDescription(step.description);
+      setStepDuration(step.duration ?? "");
+      setStepCondition(step.condition ?? "");
+    });
   }, [step, target, workflow]);
 
   const triggerKind = workflow.triggerKind ?? "EVENT";
@@ -128,14 +132,14 @@ export function WorkflowStepConfigPanel({
 
   return (
     <div
-      className="mt-3 rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-3 shadow-sm"
+      className="mt-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_42%,var(--tomo-card))] px-3 py-3 shadow-[var(--tomo-shadow-1)]"
       data-testid="workflow-step-config-panel"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{title}</p>
+          <p className="tomo-field-label">{title}</p>
           {target.kind === "step" && step ? (
-            <p className="mt-0.5 text-xs text-gray-600">
+            <p className="mt-0.5 text-xs text-[color:var(--tomo-body)]">
               Step {stepIndex + 2} · {step.type === "wait" ? "Wait" : "Action"}
             </p>
           ) : null}
@@ -143,7 +147,7 @@ export function WorkflowStepConfigPanel({
         <button
           type="button"
           onClick={onDismiss}
-          className="shrink-0 text-[11px] font-medium text-gray-500 hover:text-gray-800"
+          className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-mute)] transition hover:text-[color:var(--foreground)]"
         >
           Close
         </button>
@@ -153,28 +157,28 @@ export function WorkflowStepConfigPanel({
         {target.kind === "trigger" ? (
           <>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Trigger text</label>
+              <label className="tomo-field-label block">Trigger text</label>
               <textarea
                 value={triggerText}
                 onChange={(e) => setTriggerText(e.target.value)}
                 rows={3}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 min-h-[4.5rem] w-full resize-y text-xs shadow-none"
               />
-              <p className="mt-1 text-[10px] text-gray-500">
+              <p className="mt-1 text-[10px] text-[color:var(--tomo-mute)]">
                 Describes when this workflow runs ({triggerKind}). Tomo chat can also edit this.
               </p>
             </div>
             {triggerKind === "SCHEDULED" ? (
               <div>
-                <label className="text-[11px] font-medium text-gray-600">Schedule / run note (optional)</label>
+                <label className="tomo-field-label block">Schedule / run note (optional)</label>
                 <input
                   type="text"
                   value={scheduledNote}
                   onChange={(e) => setScheduledNote(e.target.value)}
                   placeholder="e.g. 7 days before NYC trip — 30 May 2026"
-                  className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                  className="tomo-input mt-1 w-full text-xs shadow-none"
                 />
-                <p className="mt-1 text-[10px] text-gray-500">
+                <p className="mt-1 text-[10px] text-[color:var(--tomo-mute)]">
                   Appended to the trigger so cadence stays explicit for the team.
                 </p>
               </div>
@@ -185,31 +189,31 @@ export function WorkflowStepConfigPanel({
         {target.kind === "step" && step && isWait ? (
           <>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Duration</label>
+              <label className="tomo-field-label block">Duration</label>
               <input
                 type="text"
                 value={stepDuration}
                 onChange={(e) => setStepDuration(e.target.value)}
                 placeholder="e.g. 48h, 5 business days, Human review"
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 w-full text-xs shadow-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Condition (optional)</label>
+              <label className="tomo-field-label block">Condition (optional)</label>
               <input
                 type="text"
                 value={stepCondition}
                 onChange={(e) => setStepCondition(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 w-full text-xs shadow-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Description</label>
+              <label className="tomo-field-label block">Description</label>
               <textarea
                 value={stepDescription}
                 onChange={(e) => setStepDescription(e.target.value)}
                 rows={2}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 min-h-[3.25rem] w-full resize-y text-xs shadow-none"
               />
             </div>
           </>
@@ -218,37 +222,39 @@ export function WorkflowStepConfigPanel({
         {target.kind === "step" && step && !isWait && isDraft ? (
           <>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Step name</label>
+              <label className="tomo-field-label block">Step name</label>
               <input
                 type="text"
                 value={stepName}
                 onChange={(e) => setStepName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 w-full text-xs shadow-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">What should this reply say?</label>
+              <label className="tomo-field-label block">What should this reply say?</label>
               <textarea
                 value={stepDescription}
                 onChange={(e) => setStepDescription(e.target.value)}
                 rows={3}
                 placeholder="e.g. Thank them, recap AI landscape and our fund thesis, propose a short call"
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 min-h-[5rem] w-full resize-y text-xs shadow-none"
               />
             </div>
-            <div className="rounded-md border border-dashed border-gray-200 bg-white px-2 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Preview</p>
-              <p className="mt-1 text-[10px] text-gray-500">
+            <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2 py-2 shadow-[var(--tomo-shadow-1)]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Preview</p>
+              <p className="mt-1 text-[10px] text-[color:var(--tomo-mute)]">
                 Example LP:{" "}
                 {previewLp ? (
-                  <span className="font-medium text-gray-800">
+                  <span className="font-medium text-[color:var(--foreground)]">
                     {previewLp.name} · {previewLp.firm}
                   </span>
                 ) : (
-                  <span className="text-amber-800">Link a list with relationships to use a live LP name.</span>
+                  <span className="font-medium text-[color:var(--tomo-status-amber-text)]">
+                    Link a list with relationships to use a live LP name.
+                  </span>
                 )}
               </p>
-              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-gray-50 px-2 py-1.5 text-[11px] text-gray-800">
+              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-[var(--tomo-radius-sm)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-2 py-1.5 text-[11px] text-[color:var(--foreground)]">
                 {previewBody}
               </pre>
             </div>
@@ -258,39 +264,39 @@ export function WorkflowStepConfigPanel({
         {target.kind === "step" && step && !isWait && !isDraft ? (
           <>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Step name</label>
+              <label className="tomo-field-label block">Step name</label>
               <input
                 type="text"
                 value={stepName}
                 onChange={(e) => setStepName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 w-full text-xs shadow-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-600">Description</label>
+              <label className="tomo-field-label block">Description</label>
               <textarea
                 value={stepDescription}
                 onChange={(e) => setStepDescription(e.target.value)}
                 rows={3}
-                className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]"
+                className="tomo-input mt-1 min-h-[5rem] w-full resize-y text-xs shadow-none"
               />
             </div>
           </>
         ) : null}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-3">
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-[color:var(--tomo-rule-soft)] pt-3">
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)]"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-md border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-gray-900 hover:opacity-90"
+          className="rounded-[var(--tomo-radius-md)] border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:opacity-90"
         >
           Save
         </button>

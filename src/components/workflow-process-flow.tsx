@@ -18,25 +18,25 @@ const TRIGGER_KIND_LABEL: Record<WorkflowTriggerKind, string> = {
   SCHEDULED: "SCHEDULED",
 };
 
-/** Border/background + chip colors so EVENT / THRESHOLD / SCHEDULED read at a glance. */
+/** Border/background + chip colors — Tomo tokens; EVENT / THRESHOLD / SCHEDULED stay visually distinct. */
 const TRIGGER_KIND_STYLES: Record<
   WorkflowTriggerKind,
   { card: string; label: string; chip: string }
 > = {
   EVENT: {
-    card: "border-sky-300 bg-sky-50/70",
-    label: "text-sky-600",
-    chip: "bg-sky-600",
+    card: "border-[color:color-mix(in_srgb,var(--tomo-teal)_42%,var(--tomo-rule))] bg-[color:var(--tomo-teal-tint)]",
+    label: "text-[color:var(--tomo-teal-muted)]",
+    chip: "bg-[color:var(--tomo-teal)]",
   },
   THRESHOLD: {
-    card: "border-amber-300 bg-amber-50/80",
-    label: "text-amber-800",
-    chip: "bg-amber-600",
+    card: "border-[color:color-mix(in_srgb,var(--tomo-status-amber)_48%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)]",
+    label: "text-[color:var(--tomo-status-amber-text)]",
+    chip: "bg-[color:var(--tomo-status-amber)]",
   },
   SCHEDULED: {
-    card: "border-violet-300 bg-violet-50/70",
-    label: "text-violet-700",
-    chip: "bg-violet-600",
+    card: "border-[color:color-mix(in_srgb,var(--accent)_45%,var(--tomo-rule))] bg-[color:var(--accent-soft)]",
+    label: "text-[color:var(--accent-ink)]",
+    chip: "bg-[color:var(--accent)]",
   },
 };
 
@@ -49,7 +49,7 @@ function Connector() {
       className={`mx-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center self-start sm:mx-1 sm:w-10 ${CONNECTOR_TOP_PAD}`}
     >
       <svg
-        className="h-4 w-4 text-gray-300"
+        className="h-4 w-4 text-[color:var(--tomo-rule)]"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -63,7 +63,7 @@ function Connector() {
 
 function TomoUpdatedLabel() {
   return (
-    <span className="mt-1.5 text-[10px] font-medium animate-pulse" style={{ color: "#ff8a65" }}>
+    <span className="mt-1.5 animate-pulse text-[10px] font-medium text-[color:var(--tomo-teal)]">
       Tomo updated
     </span>
   );
@@ -134,7 +134,7 @@ export function WorkflowProcessFlow({
 
     if (changed.size === 0) return;
 
-    setChangedSet(changed);
+    queueMicrotask(() => setChangedSet(changed));
     const timer = setTimeout(() => setChangedSet(new Set()), 5000);
     return () => clearTimeout(timer);
   }, [highlightVersion, workflow]);
@@ -150,22 +150,22 @@ export function WorkflowProcessFlow({
   const isSel = (k: FlowSelection) =>
     selectionMatches(selection, k) ? "ring-2 ring-[color:var(--accent)] ring-offset-1" : "";
   const cardInteractive =
-    "cursor-pointer text-left transition hover:border-gray-300 hover:bg-gray-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]";
+    "cursor-pointer text-left transition hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))] hover:bg-[color:var(--tomo-navy-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]";
 
   return (
     <div className="flex flex-col overflow-hidden" data-testid="workflow-process-flow">
-      <p className="px-4 pt-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">Process flow</p>
+      <p className="px-4 pt-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">Process flow</p>
       <div className="flex min-h-0 items-start overflow-x-auto px-4 py-2">
         <div className="flex items-start gap-0">
           {/* Trigger card */}
           <div className="flex shrink-0 flex-col items-center">
-            <span className="mb-1 w-full text-center text-[10px] font-medium text-gray-400">Step 1</span>
+            <span className="mb-1 w-full text-center text-[10px] font-medium text-[color:var(--tomo-mute)]">Step 1</span>
             <button
               type="button"
               disabled={!interactive}
               data-testid="workflow-flow-trigger"
               onClick={() => onSelect?.({ kind: "trigger" })}
-              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 px-3 py-1.5 shadow-sm sm:w-[190px] ${kindStyle.card} ${glowFor("trigger")} ${isSel({ kind: "trigger" })} ${interactive ? cardInteractive : ""}`}
+              className={`flex w-[160px] min-h-0 flex-col rounded-lg border-2 px-3 py-1.5 shadow-[var(--tomo-shadow-1)] sm:w-[190px] ${kindStyle.card} ${glowFor("trigger")} ${isSel({ kind: "trigger" })} ${interactive ? cardInteractive : ""}`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] font-medium uppercase tracking-wide ${kindStyle.label}`}>
@@ -180,7 +180,7 @@ export function WorkflowProcessFlow({
                   {TRIGGER_KIND_LABEL[triggerKind]}
                 </span>
               </div>
-              <span className="mt-0.5 text-xs font-semibold leading-snug text-gray-900 line-clamp-4">
+              <span className="mt-0.5 text-xs font-semibold leading-snug text-[color:var(--foreground)] line-clamp-4">
                 {trigger}
               </span>
             </button>
@@ -193,7 +193,7 @@ export function WorkflowProcessFlow({
               <div key={`${step.name}-${i}`} className="flex items-start">
                 <Connector />
                 <div className="flex flex-col items-center">
-                  <span className="mb-1 w-full min-w-[140px] text-center text-[10px] font-medium text-gray-400 sm:min-w-[170px]">
+                  <span className="mb-1 w-full min-w-[140px] text-center text-[10px] font-medium text-[color:var(--tomo-mute)] sm:min-w-[170px]">
                     Step {i + 2}
                   </span>
                   <button
@@ -201,14 +201,14 @@ export function WorkflowProcessFlow({
                     disabled={!interactive}
                     data-testid={`workflow-flow-step-${i}`}
                     onClick={() => onSelect?.({ kind: "step", index: i })}
-                    className={`flex w-[140px] min-h-0 flex-col rounded-lg border-2 border-gray-200 bg-white px-3 py-1.5 shadow-sm transition-all duration-300 sm:w-[170px] ${glowFor(key)} ${isSel({ kind: "step", index: i })} ${interactive ? cardInteractive : ""}`}
+                    className={`flex w-[140px] min-h-0 flex-col rounded-lg border-2 border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-1.5 shadow-[var(--tomo-shadow-1)] transition-all duration-300 sm:w-[170px] ${glowFor(key)} ${isSel({ kind: "step", index: i })} ${interactive ? cardInteractive : ""}`}
                   >
-                    <span className="text-xs font-semibold text-gray-900">{step.name}</span>
-                    <span className="mt-0.5 text-[10px] leading-snug text-gray-500 line-clamp-4">
+                    <span className="text-xs font-semibold text-[color:var(--foreground)]">{step.name}</span>
+                    <span className="mt-0.5 text-[10px] leading-snug text-[color:var(--tomo-mute)] line-clamp-4">
                       {step.description}
                     </span>
                     {step.duration && (
-                      <span className="mt-1 inline-flex items-center self-start rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                      <span className="mt-1 inline-flex items-center self-start rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_72%,var(--tomo-card))] px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--tomo-body)]">
                         {step.duration}
                       </span>
                     )}
@@ -228,10 +228,10 @@ export function WorkflowProcessFlow({
               disabled={!interactive}
               data-testid="workflow-flow-add-step"
               onClick={() => onSelect?.({ kind: "add-step" })}
-              className={`flex min-h-0 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-2 py-1.5 ${isSel({ kind: "add-step" })} ${interactive ? `${cardInteractive} disabled:cursor-not-allowed disabled:opacity-60` : ""}`}
+              className={`flex min-h-0 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_45%,var(--tomo-card))] px-2 py-1.5 ${isSel({ kind: "add-step" })} ${interactive ? `${cardInteractive} disabled:cursor-not-allowed disabled:opacity-60` : ""}`}
             >
-              <span className="text-lg font-light leading-none text-gray-400">+</span>
-              <span className="mt-0.5 text-[10px] text-gray-500">Add step</span>
+              <span className="text-lg font-light leading-none text-[color:var(--tomo-mute)]">+</span>
+              <span className="mt-0.5 text-[10px] text-[color:var(--tomo-body)]">Add step</span>
             </button>
           </div>
         </div>
