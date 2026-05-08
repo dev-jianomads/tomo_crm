@@ -190,7 +190,7 @@ export type ActionItem = {
   workflowPlaybookId?: string;
   /** Link to Tomo Default workflow — shows "View workflow" in drawer */
   workflowTomoDefaultId?: string;
-  /** Override pill to display as "Tomo" (teal accent) even when workflowPlaybookId is set */
+  /** Override pill to display as "Tomo" (peach) even when workflowPlaybookId is set */
   workflowPillOverride?: "Tomo";
   /** Source email thread — “Open email” on Today cards and in the action drawer */
   emailSourceUrl?: string;
@@ -631,7 +631,7 @@ export const actions: ActionItem[] = [
     id: "a1",
     title: "PAAMCO Prisma Meeting Request",
     attentionCard: {
-      company: "Hamilton Lane Advisors — Outsourced CIO & Private Markets Platform",
+      company: "PAAMCO Prisma",
       contactName: "Peter Zakowich",
       verb: "Approve",
       workKind: "Scheduling",
@@ -904,7 +904,7 @@ export const commitments: Commitment[] = [
     id: "c2",
     title: "Investment Update",
     datetime: "Today 4:00 PM ET",
-    lp: "Ontario Teachers' Pension Plan Board — Private Capital & Alternatives Group",
+    lp: "CPPIB",
     contactName: "Frank Ieraci",
     briefId: "b4",
     window: "today",
