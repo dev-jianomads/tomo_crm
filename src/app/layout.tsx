@@ -56,7 +56,7 @@
  */
 
 import type { Metadata } from "next";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { themeBlockingScript } from "@/lib/theme-appearance";
@@ -74,6 +74,13 @@ const fraunces = Fraunces({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+});
+
+/** Today greeting headline — matches design/tomo_today_light_v2.html `.greeting`. */
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 /**
@@ -105,7 +112,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBlockingScript() }} />
       </head>
       <body
-        className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} antialiased bg-[color:var(--background)] text-[color:var(--foreground)]`}
+        className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${newsreader.variable} antialiased bg-[color:var(--background)] text-[color:var(--foreground)]`}
         suppressHydrationWarning
       >
         {/* 

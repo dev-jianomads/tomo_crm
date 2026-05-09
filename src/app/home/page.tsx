@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { PageListHeader } from "@/components/page-list-header";
 import { ActionAmendChat } from "@/components/action-amend-chat";
 import { ActionDrawerPanel } from "@/components/action-drawer-panel";
 import { AttachDocumentModal } from "@/components/attach-document-modal";
@@ -483,9 +482,35 @@ export default function HomePage() {
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  /** One-line briefing signal under the greeting — echoes design/tomo_today_light_v2.html `.greeting .intel`. */
+  const greetingIntelLine = useMemo(() => {
+    const pool = sortedActionItems.filter(isTodayAttentionSlot);
+    const outreach = pool.find((a) => a.type === "outreach");
+    if (outreach?.evidence?.[0]?.trim()) return outreach.evidence[0].trim();
+    const best = pool.find((a) => a.evidence?.[0]?.trim());
+    if (best?.evidence?.[0]) return best.evidence[0].trim();
+    return "Momentum and execution loops mirror What needs your attention and Coming up.";
+  }, [sortedActionItems]);
+
+  const todayEyebrowLabel = useMemo(() => {
+    const d = new Date();
+    const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
+    const rest = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    return `Today · ${weekday}, ${rest}`;
+  }, []);
+
+  const greetingStampPreview = useMemo(() => {
+    const t = new Date().toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `Computed ${t.replace(/\s/g, "").toLowerCase()} · 90-day window`;
   }, []);
 
   const userName = useMemo(() => {
@@ -537,26 +562,29 @@ export default function HomePage() {
 
   const listContent = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <PageListHeader label="Today" />
       {/* Resizable top/bottom split — Phase 2: collapsible inline Tomo */}
       <div
         ref={splitContainerRef}
         className="flex min-h-0 flex-1 flex-col"
       >
-        {/* Top: Tomo chat UI */}
+        {/* Top: Today header + Tomo */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden bg-[color:var(--tomo-card)] px-4 py-3"
+          className="flex min-w-0 flex-col overflow-hidden bg-[color:var(--tomo-card)] px-6 py-6 md:px-12 md:py-8"
           style={
             todayChatExpanded
               ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
               : { flex: "0 0 auto" }
           }
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <h1 className="min-w-0 flex-1 text-xl font-semibold text-[color:var(--foreground)]">
-              {greeting}, {userName}.
-            </h1>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1 pt-0.5">
+          {/* Matches design/tomo_today_light_v2.html `.top-row` + `.greeting-block` */}
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <p
+              className="shrink-0 text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]"
+              suppressHydrationWarning
+            >
+              {todayEyebrowLabel}
+            </p>
+            <div className="flex shrink-0 flex-wrap items-center justify-start gap-x-4 gap-y-2 sm:justify-end">
               {showDailyBriefResend ? (
                 <button
                   type="button"
@@ -597,6 +625,18 @@ export default function HomePage() {
                 ) : null}
               </button>
             </div>
+          </div>
+          <div className="mb-3">
+            <h1 className="text-[clamp(26px,3.8vw,32px)] font-medium leading-[1.25] tracking-[-0.01em] text-[color:var(--tomo-navy)] [font-family:var(--font-newsreader-display)]">
+              {greeting}, {userName}.{" "}
+              <span className="text-[color:var(--tomo-navy)]">{greetingIntelLine}</span>
+            </h1>
+            <p
+              className="mt-2.5 font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]"
+              suppressHydrationWarning
+            >
+              {greetingStampPreview}
+            </p>
           </div>
           {todayChatExpanded ? (
             <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
@@ -641,7 +681,7 @@ export default function HomePage() {
 
         {/* Bottom: attention | coming up (On My Radar is header + modal) */}
         <div
-          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3"
+          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-6 py-3 md:px-12"
           style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">

@@ -106,6 +106,8 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  /* Editorial Today headline — design/tomo_today_light_v2.html */
+  --font-newsreader-display: var(--font-newsreader), ui-serif, Georgia, serif;
 }
 
 body {
