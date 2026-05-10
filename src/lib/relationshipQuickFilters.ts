@@ -57,7 +57,7 @@ export const RELATIONSHIP_QUICK_FILTERS: RelationshipQuickFilter[] = [
     id: "stuck-stage",
     label: "Stuck in stage",
     criteria: {
-      stage: ["Nurturing", "Active diligence", "DD"],
+      stage: ["Nurturing", "Active diligence", "Soft commit"],
       daysSinceLastMeaningfulContact: { min: 28 },
     },
     srsNote: "§3.11 Stuck in stage — production: stage_stagnation_flag; mock: mid-funnel stages + long silence surrogate.",

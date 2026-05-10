@@ -29,7 +29,7 @@
 - **`lp_contacts.investor_type`** — Allocator category for **Type** column and advanced filters (enum in SRS §6.2).
 - **`lp_contacts.fund_id`** — Already in SRS; Relationships list/query filters by active fund.
 - **Active investments** column — **Derived projection** (tags such as prior fund / fund vintages); no new column beyond existing `prior_fund_*`, `pipeline_stage`, and workspace `funds`.
-- **Breaking migration:** Replace mock `STAGE_OPTIONS` with eight canonical stages (`sourced`, `first_meeting`, … `closed_lost`, `on_hold`). Bump persisted localStorage keys for filters/views if needed.
+- **Breaking migration:** Mock `STAGE_OPTIONS` now uses eight canonical **labels** (SRS-aligned): Sourced, First meeting, Nurturing, Active diligence, Soft commit, Committed, On hold, Closed lost. Persisted keys bumped for list sort/columns (`…-v3`).
 
 ---
 
@@ -53,24 +53,29 @@
 
 ### Phase 3 — Canonical stages & migration
 
-- [ ] Swap mock stages to SRS enums; migrate seed data in `mockData`.
-- [ ] Update Kanban column definitions, colours, and labels to match **`tomo_relationships_kanban_v3.html`**.
-- [ ] Drag/drop + terminal-stage confirm aligned to `closed_lost` / `on_hold`.
+- [x] Swap mock stages to canonical eight-stage set; migrate seeds + generator in `src/lib/mockData.ts` (`STAGE_OPTIONS`, `STAGE_COLORS`, `stageLabelOnColorClasses`, preserved rows r1–r9).
+- [x] Kanban columns fixed order, hex colours, and header typography aligned to **`tomo_relationships_kanban_v3.html`** (`RelationshipsKanbanBoard` reads `STAGE_COLORS` / `stageLabelOnColorClasses`).
+- [x] Terminal-stage confirm on drag to **Closed lost** or **On hold** (`handleKanbanMoveToStage`); other stages apply immediately (CRM override + toast).
+- [x] Downstream enums/heuristics updated: `relationshipFilters`, `parseFilterPrompt`, `relationshipQuickFilters`, `mockPlaybooks`, `pipelines`, `relationshipsCsv`, `buildManualRelationship`, `new-contact-modal`, `todayRaiseStands`, `radarModalDeriveFromToday`, pipeline funnel bar styling (`Committed` dark column).
 
 ### Phase 4 — List view
 
-- [ ] Implement v3 **columns** (including **Type** / `investor_type`, geography, active-investment tags).
-- [ ] **Stage group rows** with counts and optional commitment ranges when Group includes stage.
-- [ ] Default sort: **pipeline_flag** then **days_since_meaningful_touch** (mock pipeline_flag until signals API exists).
+- [x] v3 **columns** in `src/app/relationships/page.tsx`: LP (name + firm), Tier, Type (`investor_type`), Geography (`lp_location` · `investment_remit`), Active investments (derived from `last_fund_history` via helpers), Mandate fit (pill labels), Signal (`MomentumChip`), Ticket, Last touch, Loops, Next move, Owner, Flag (`derivePipelineFlagMock`). Helpers: `formatRelationshipGeography`, `formatActiveInvestmentsLabel`, `mandateFitTableLabel` in `mockData.ts`.
+- [x] **Group** headers with **counts** when Group ≠ none (stage order follows `STAGE_OPTIONS`). **Commitment / ticket range lines under stage headers** — not implemented (optional enhancement).
+- [x] Default sort: **`pipelineFlag`** (red → amber → green), tie-break **`daysSinceLastMeaningfulContact`** desc when sorting by Flag. Persisted sort keys `tomo-relationships-sort-column-v3` / `…-direction-v3`.
+- [x] Column visibility defaults: **Owner** and **Flag** start hidden (toggle via column picker); widths persist under `tomo-relationships-column-widths-v3` / `…-visibility-v3`.
 
 ### Phase 5 — Cards view
 
-- [ ] LP cards per **`tomo_relationships_cards_v3.html`**; honour **Group** (list parity).
+- [x] LP cards match **`tomo_relationships_cards_v3.html`** layout (signal dot, tier chip, prior-LP hint, signal pill, last/next touch block, ticket + mandate-fit pill, loops) in `RelationshipCard` on the Relationships page. **Group** parity with list (section headers + counts).
 
-### Phase 6 — Kanban
+### Phase 6 — Kanban (remainder)
 
-- [ ] Layout/meta (range lines, column chrome); **ignore Group by**.
-- [ ] Confirm DnD writes stage (mock override → later `lp_stage_transitions`).
+Kanban **column chrome and stages** shipped with Phase 3. Remaining polish:
+
+- [ ] Optional **column meta** (e.g. commitment range subtitle lines under headers per HTML) — not yet in React Kanban.
+- [x] **Group by** ignored in Kanban view (product rule; control hidden).
+- [x] **DnD → stage** persists via relationship overrides (mock); production → `lp_stage_transitions` later.
 
 ### Phase 7 — LP drawer (`tomo_relationships_lp_drawer_v2.html`)
 

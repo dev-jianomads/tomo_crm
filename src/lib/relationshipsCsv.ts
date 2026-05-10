@@ -151,7 +151,7 @@ function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relations
   const name = g("name") || "Unknown";
   const firm = g("firm") || "Unknown";
   const daysSinceLastMeaningfulContact = parseNum(g("daysSinceLastMeaningfulContact"), 0);
-  const stage = pick(g("stage"), STAGE_OPTIONS, "First contact");
+  const stage = pick(g("stage"), STAGE_OPTIONS, "Sourced");
   const momentumDirection = pick(g("momentumDirection"), MOMENTUM_DIRECTION_OPTIONS, "Stable");
   const tier = pick(g("tier"), TIER_OPTIONS, "Tier 2");
   const relationshipOwner = pick(g("relationshipOwner"), RELATIONSHIP_OWNER_OPTIONS, "Unassigned");

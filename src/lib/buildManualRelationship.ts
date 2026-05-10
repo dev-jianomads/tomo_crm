@@ -136,7 +136,7 @@ export function buildMockRelationshipFromCsvImport(
       name: "Imported contact",
       firm,
       tier: "Tier 2",
-      stage: "First contact",
+      stage: "Sourced",
       relationshipOwner: "You",
     },
     {

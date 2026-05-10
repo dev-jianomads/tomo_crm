@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowUpTrayIcon,
@@ -27,6 +27,9 @@ import {
   Relationship,
   formatDaysSinceContact,
   STAGE_OPTIONS,
+  formatRelationshipGeography,
+  formatActiveInvestmentsLabel,
+  mandateFitTableLabel,
 } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
 import type { MomentumDirection, Stage } from "@/lib/mockData";
@@ -53,33 +56,24 @@ import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 import { filterRelationshipsByFund, resolveEffectiveFundId } from "@/lib/relationshipFundScope";
+import { derivePipelineFlagMock } from "@/lib/todayRaiseStands";
 import { usePipelines } from "@/lib/use-pipelines";
 import { toast } from "sonner";
 
 type SortColumn =
-  | "name"
-  | "firm"
-  | "days"
-  | "momentum"
-  | "band"
-  | "stage"
+  | "lp"
   | "tier"
-  | "nextMove"
-  | "openLoops"
-  | "owner"
   | "investorType"
-  | "strategyFit"
-  | "strategyType"
-  | "lpLocation"
-  | "investmentRemit"
-  | "typicalCheckSize"
-  | "fundSizePreference"
-  | "source"
-  | "lastFundHistory"
-  | "decisionTimeline"
-  | "fiscalYearEnd"
-  | "consultantDependent"
-  | "esgRequired";
+  | "geo"
+  | "activeInvestments"
+  | "mandateFit"
+  | "signal"
+  | "ticket"
+  | "days"
+  | "openLoops"
+  | "nextMove"
+  | "owner"
+  | "pipelineFlag";
 type SortDirection = "asc" | "desc";
 
 type RelationshipsViewMode = "list" | "card" | "kanban";
@@ -87,78 +81,55 @@ type RelationshipsViewMode = "list" | "card" | "kanban";
 /** v3 control bar — grouping applies to list/cards only (Kanban is always by stage). */
 type RelationshipsGroupBy = "stage" | "tier" | "owner" | "signal" | "none";
 
-/** Primary columns (left) → secondary (scroll right) */
+/** List view v3 — `design/tomo_relationships_list_v3.html` */
 const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
-  { key: "name", label: "Name" },
-  { key: "firm", label: "Firm" },
-  { key: "days", label: "Days", highlight: true },
-  { key: "momentum", label: "Signal", highlight: true },
-  { key: "band", label: "Band" },
-  { key: "stage", label: "Stage" },
+  { key: "lp", label: "LP", highlight: true },
   { key: "tier", label: "Tier" },
+  { key: "investorType", label: "Type" },
+  { key: "geo", label: "Geography" },
+  { key: "activeInvestments", label: "Active investments" },
+  { key: "mandateFit", label: "Mandate fit" },
+  { key: "signal", label: "Signal", highlight: true },
+  { key: "ticket", label: "Ticket" },
+  { key: "days", label: "Last touch", highlight: true },
+  { key: "openLoops", label: "Loops" },
   { key: "nextMove", label: "Next move" },
-  { key: "openLoops", label: "Open loops", highlight: true },
   { key: "owner", label: "Owner" },
-  { key: "investorType", label: "Investor type" },
-  { key: "strategyFit", label: "Strategy fit" },
-  { key: "strategyType", label: "Strategy type" },
-  { key: "lpLocation", label: "Location" },
-  { key: "investmentRemit", label: "Investment remit" },
-  { key: "typicalCheckSize", label: "Typical check" },
-  { key: "fundSizePreference", label: "Fund size pref" },
-  { key: "source", label: "Source" },
-  { key: "lastFundHistory", label: "Last fund" },
-  { key: "decisionTimeline", label: "Decision timeline" },
-  { key: "fiscalYearEnd", label: "Fiscal year end" },
-  { key: "consultantDependent", label: "Consultant" },
-  { key: "esgRequired", label: "ESG required" },
+  { key: "pipelineFlag", label: "Flag" },
 ];
 
 const DEFAULT_COLUMN_WIDTHS: Record<SortColumn, number> = {
-  name: 140,
-  firm: 140,
-  days: 70,
-  momentum: 90,
-  band: 110,
-  stage: 120,
-  tier: 80,
-  nextMove: 180,
-  openLoops: 80,
-  owner: 100,
+  lp: 200,
+  tier: 72,
   investorType: 120,
-  strategyFit: 110,
-  strategyType: 110,
-  lpLocation: 100,
-  investmentRemit: 100,
-  typicalCheckSize: 90,
-  fundSizePreference: 100,
-  source: 100,
-  lastFundHistory: 110,
-  decisionTimeline: 90,
-  fiscalYearEnd: 90,
-  consultantDependent: 110,
-  esgRequired: 90,
+  geo: 160,
+  activeInvestments: 120,
+  mandateFit: 100,
+  signal: 100,
+  ticket: 88,
+  days: 88,
+  openLoops: 72,
+  nextMove: 200,
+  owner: 100,
+  pipelineFlag: 72,
 };
 
-/** Primary columns visible by default (~1380px) so table fits on typical screens without horizontal overflow */
-const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = Object.fromEntries(
-  TABLE_COLUMNS.map((c) => {
-    const secondary = [
-      "strategyType",
-      "lpLocation",
-      "investmentRemit",
-      "typicalCheckSize",
-      "fundSizePreference",
-      "source",
-      "lastFundHistory",
-      "decisionTimeline",
-      "fiscalYearEnd",
-      "consultantDependent",
-      "esgRequired",
-    ];
-    return [c.key, !secondary.includes(c.key)];
-  })
-) as Record<SortColumn, boolean>;
+/** Secondary columns off by default (~1280px-friendly); Flag hidden — default sort still uses pipeline flag */
+const DEFAULT_COLUMN_VISIBILITY: Record<SortColumn, boolean> = {
+  lp: true,
+  tier: true,
+  investorType: true,
+  geo: true,
+  activeInvestments: true,
+  mandateFit: true,
+  signal: true,
+  ticket: true,
+  days: true,
+  openLoops: true,
+  nextMove: true,
+  owner: false,
+  pipelineFlag: false,
+};
 
 const MIN_COLUMN_WIDTH = 60;
 const MAX_COLUMN_WIDTH = 400;
@@ -205,14 +176,14 @@ export default function RelationshipsPage() {
   } | null>(null);
 
   const [viewMode, setViewMode] = usePersistentState<RelationshipsViewMode>("tomo-relationships-view-mode", "list");
-  const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column", "momentum");
-  const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction", "desc");
+  const [sortColumn, setSortColumn] = usePersistentState<SortColumn>("tomo-relationships-sort-column-v3", "pipelineFlag");
+  const [sortDirection, setSortDirection] = usePersistentState<SortDirection>("tomo-relationships-sort-direction-v3", "desc");
   const [columnWidths, setColumnWidths] = usePersistentState<Record<string, number>>(
-    "tomo-relationships-column-widths-v2",
+    "tomo-relationships-column-widths-v3",
     DEFAULT_COLUMN_WIDTHS
   );
   const [columnVisibility, setColumnVisibility] = usePersistentState<Record<string, boolean>>(
-    "tomo-relationships-column-visibility-v2",
+    "tomo-relationships-column-visibility-v3",
     DEFAULT_COLUMN_VISIBILITY
   );
   const [relationshipOverrides, setRelationshipOverrides] = usePersistentState<
@@ -239,7 +210,7 @@ export default function RelationshipsPage() {
 
   const effectiveSortColumn = useMemo(() => {
     const visibleKeys = new Set(visibleColumns.map((c) => c.key));
-    return visibleKeys.has(sortColumn) ? sortColumn : visibleColumns[0]?.key ?? "name";
+    return visibleKeys.has(sortColumn) ? sortColumn : visibleColumns[0]?.key ?? "lp";
   }, [visibleColumns, sortColumn]);
 
   const tableMinWidth = useMemo(
@@ -312,7 +283,7 @@ export default function RelationshipsPage() {
     [relationshipsScopedFund, filterCriteria]
   );
 
-  const DESC_DEFAULT_COLS: SortColumn[] = ["days", "momentum", "openLoops"];
+  const DESC_DEFAULT_COLS: SortColumn[] = ["days", "signal", "openLoops", "pipelineFlag"];
   const handleSort = (col: SortColumn) => {
     if (sortColumn === col) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
@@ -328,83 +299,100 @@ export default function RelationshipsPage() {
     const col = effectiveSortColumn;
     arr.sort((a, b) => {
       let cmp = 0;
+      const rankFlag = (r: Relationship) => {
+        const f = derivePipelineFlagMock(r);
+        return f === "red" ? 0 : f === "amber" ? 1 : 2;
+      };
       switch (col) {
-        case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
-        case "firm":
-          cmp = a.firm.localeCompare(b.firm);
-          break;
-        case "days":
-          cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
-          break;
-        case "momentum": {
-          const rank: Record<string, number> = { "Heating up": 3, "Stable": 2, "Cooling": 1 };
-          cmp = (rank[a.momentumDirection] ?? 0) - (rank[b.momentumDirection] ?? 0);
-          break;
-        }
-        case "band":
-          cmp = a.band.localeCompare(b.band);
-          break;
-        case "stage":
-          cmp = a.stage.localeCompare(b.stage);
+        case "lp":
+          cmp = a.firm.localeCompare(b.firm) || a.name.localeCompare(b.name);
           break;
         case "tier":
           cmp = a.tier.localeCompare(b.tier);
           break;
-        case "nextMove":
-          cmp = a.nextMove.localeCompare(b.nextMove);
+        case "investorType":
+          cmp = a.investorType.localeCompare(b.investorType);
+          break;
+        case "geo":
+          cmp = formatRelationshipGeography(a).localeCompare(formatRelationshipGeography(b));
+          break;
+        case "activeInvestments":
+          cmp = a.lastFundHistory.localeCompare(b.lastFundHistory);
+          break;
+        case "mandateFit":
+          cmp = a.strategyFit.localeCompare(b.strategyFit);
+          break;
+        case "signal": {
+          const rank: Record<string, number> = { "Heating up": 3, Stable: 2, Cooling: 1 };
+          cmp = (rank[a.momentumDirection] ?? 0) - (rank[b.momentumDirection] ?? 0);
+          break;
+        }
+        case "ticket":
+          cmp = a.typicalCheckSize.localeCompare(b.typicalCheckSize);
+          break;
+        case "days":
+          cmp = a.daysSinceLastMeaningfulContact - b.daysSinceLastMeaningfulContact;
           break;
         case "openLoops":
           cmp = a.openLoops - b.openLoops;
           break;
+        case "nextMove":
+          cmp = a.nextMove.localeCompare(b.nextMove);
+          break;
         case "owner":
           cmp = a.relationshipOwner.localeCompare(b.relationshipOwner);
           break;
-        case "investorType":
-          cmp = a.investorType.localeCompare(b.investorType);
-          break;
-        case "strategyFit":
-          cmp = a.strategyFit.localeCompare(b.strategyFit);
-          break;
-        case "strategyType":
-          cmp = a.strategyType.localeCompare(b.strategyType);
-          break;
-        case "lpLocation":
-          cmp = a.lpLocation.localeCompare(b.lpLocation);
-          break;
-        case "investmentRemit":
-          cmp = a.investmentRemit.localeCompare(b.investmentRemit);
-          break;
-        case "typicalCheckSize":
-          cmp = a.typicalCheckSize.localeCompare(b.typicalCheckSize);
-          break;
-        case "fundSizePreference":
-          cmp = a.fundSizePreference.localeCompare(b.fundSizePreference);
-          break;
-        case "source":
-          cmp = a.source.localeCompare(b.source);
-          break;
-        case "lastFundHistory":
-          cmp = a.lastFundHistory.localeCompare(b.lastFundHistory);
-          break;
-        case "decisionTimeline":
-          cmp = a.decisionTimeline.localeCompare(b.decisionTimeline);
-          break;
-        case "fiscalYearEnd":
-          cmp = a.fiscalYearEnd.localeCompare(b.fiscalYearEnd);
-          break;
-        case "consultantDependent":
-          cmp = a.consultantDependent.localeCompare(b.consultantDependent);
-          break;
-        case "esgRequired":
-          cmp = a.esgRequired.localeCompare(b.esgRequired);
+        case "pipelineFlag":
+          cmp = rankFlag(a) - rankFlag(b);
+          if (cmp === 0) cmp = b.daysSinceLastMeaningfulContact - a.daysSinceLastMeaningfulContact;
           break;
       }
       return mult * cmp;
     });
     return arr;
   }, [filtered, effectiveSortColumn, sortDirection]);
+
+  const groupedForView = useMemo(() => {
+    if (groupBy === "none") {
+      return [{ key: "flat", label: "", items: sortedFiltered }];
+    }
+    const buckets = new Map<string, Relationship[]>();
+    const order: string[] = [];
+    for (const r of sortedFiltered) {
+      let k: string;
+      switch (groupBy) {
+        case "stage":
+          k = r.stage;
+          break;
+        case "tier":
+          k = r.tier;
+          break;
+        case "owner":
+          k = r.relationshipOwner;
+          break;
+        case "signal":
+          k = r.momentumDirection;
+          break;
+        default:
+          k = "Other";
+      }
+      if (!buckets.has(k)) {
+        order.push(k);
+        buckets.set(k, []);
+      }
+      buckets.get(k)!.push(r);
+    }
+    if (groupBy === "stage") {
+      order.sort((x, y) => STAGE_OPTIONS.indexOf(x as Stage) - STAGE_OPTIONS.indexOf(y as Stage));
+    } else {
+      order.sort((x, y) => x.localeCompare(y));
+    }
+    return order.map((label) => ({
+      key: `${groupBy}:${label}`,
+      label,
+      items: buckets.get(label)!,
+    }));
+  }, [sortedFiltered, groupBy]);
 
   /** Kanban: same order as list (header sort), grouped into fixed stage columns */
   const kanbanColumns = useMemo(() => {
@@ -509,7 +497,7 @@ export default function RelationshipsPage() {
     (relationshipId: string, targetStage: Stage) => {
       const rel = relationshipsWithOverrides.find((r) => r.id === relationshipId);
       if (!rel || rel.stage === targetStage) return;
-      if (targetStage === "Closed" || targetStage === "Pass") {
+      if (targetStage === "Closed lost" || targetStage === "On hold") {
         setKanbanStageConfirm({
           relationshipId,
           targetStage,
@@ -840,14 +828,31 @@ export default function RelationshipsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedFiltered.map((rel) => (
-                    <RelationshipTableRow
-                      key={rel.id}
-                      rel={rel}
-                      columns={visibleColumns}
-                      isActive={activeId === rel.id}
-                      onSelect={() => setActiveId(rel.id)}
-                    />
+                  {groupedForView.map((group) => (
+                    <Fragment key={group.key}>
+                      {group.label ? (
+                        <tr className="bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_72%,var(--tomo-card))]">
+                          <td
+                            colSpan={visibleColumns.length}
+                            className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)]"
+                          >
+                            {group.label}
+                            <span className="ml-2 font-mono text-[12px] tabular-nums font-semibold normal-case tracking-normal text-[color:var(--tomo-navy)]">
+                              {group.items.length}
+                            </span>
+                          </td>
+                        </tr>
+                      ) : null}
+                      {group.items.map((rel) => (
+                        <RelationshipTableRow
+                          key={rel.id}
+                          rel={rel}
+                          columns={visibleColumns}
+                          isActive={activeId === rel.id}
+                          onSelect={() => setActiveId(rel.id)}
+                        />
+                      ))}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -857,13 +862,25 @@ export default function RelationshipsPage() {
             </div>
           ) : viewMode === "card" ? (
             <div className="grid grid-cols-1 gap-3 pb-2 md:grid-cols-3">
-              {sortedFiltered.map((rel) => (
-                <RelationshipCard
-                  key={rel.id}
-                  rel={rel}
-                  isActive={activeId === rel.id}
-                  onSelect={() => setActiveId(rel.id)}
-                />
+              {groupedForView.map((group) => (
+                <Fragment key={group.key}>
+                  {group.label ? (
+                    <div className="col-span-full flex items-baseline gap-2 border-b border-[color:var(--tomo-rule-soft)] pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)] md:col-span-3">
+                      <span>{group.label}</span>
+                      <span className="font-mono text-[12px] tabular-nums font-semibold normal-case tracking-normal text-[color:var(--tomo-navy)]">
+                        {group.items.length}
+                      </span>
+                    </div>
+                  ) : null}
+                  {group.items.map((rel) => (
+                    <RelationshipCard
+                      key={rel.id}
+                      rel={rel}
+                      isActive={activeId === rel.id}
+                      onSelect={() => setActiveId(rel.id)}
+                    />
+                  ))}
+                </Fragment>
               ))}
               {!sortedFiltered.length ? <Placeholder title="No relationships match." /> : null}
             </div>
@@ -1075,7 +1092,7 @@ function SortableTh({
   onResizeStart: (e: React.MouseEvent) => void;
 }) {
   const Icon = direction === "asc" ? ChevronUpIcon : ChevronDownIcon;
-  const isSticky = columnKey === "name";
+  const isSticky = columnKey === "lp";
   return (
     <th
       className={`relative min-w-0 px-3 py-2.5 ${isSticky ? "sticky left-0 z-10 bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_58%,var(--tomo-card))]" : ""}`}
@@ -1136,42 +1153,17 @@ function RelationshipTableRow({
 function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey: SortColumn; isActive: boolean }) {
   const baseClass = "max-w-0 truncate px-3 py-2.5 text-[color:var(--tomo-body)]";
   const accentClass = "font-semibold accent-title";
-  const stickyNameClass = `sticky left-0 z-[1] ${isActive ? "bg-[color:var(--accent-soft)]" : "bg-[color:var(--tomo-card)] group-hover:bg-[color:var(--tomo-navy-soft)]"} ${baseClass} ${accentClass}`;
+  const stickyNameClass = `sticky left-0 z-[1] ${isActive ? "bg-[color:var(--accent-soft)]" : "bg-[color:var(--tomo-card)] group-hover:bg-[color:var(--tomo-navy-soft)]"} px-3 py-2.5 align-top ${accentClass}`;
   switch (columnKey) {
-    case "name":
+    case "lp":
       return (
-        <td className={stickyNameClass} title={rel.name} style={{ boxShadow: "2px 0 4px -2px color-mix(in srgb, var(--tomo-rule) 55%, transparent)" }}>
-          {rel.name}
-        </td>
-      );
-    case "firm":
-      return (
-        <td className={baseClass} title={rel.firm}>
-          {rel.firm}
-        </td>
-      );
-    case "days":
-      return (
-        <td className={baseClass} title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>
-          {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
-        </td>
-      );
-    case "momentum":
-      return (
-        <td className="px-3 py-2.5">
-          <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} prominent />
-        </td>
-      );
-    case "band":
-      return (
-        <td className={baseClass} title={rel.band}>
-          {rel.band}
-        </td>
-      );
-    case "stage":
-      return (
-        <td className={baseClass} title={rel.stage}>
-          {rel.stage}
+        <td
+          className={stickyNameClass}
+          title={`${rel.name} · ${rel.firm}`}
+          style={{ boxShadow: "2px 0 4px -2px color-mix(in srgb, var(--tomo-rule) 55%, transparent)" }}
+        >
+          <span className="block truncate font-semibold accent-title">{rel.name}</span>
+          <span className="block truncate text-[12px] font-normal leading-snug text-[color:var(--tomo-body)]">{rel.firm}</span>
         </td>
       );
     case "tier":
@@ -1180,10 +1172,46 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
           {rel.tier}
         </td>
       );
-    case "nextMove":
+    case "investorType":
       return (
-        <td className={baseClass} title={rel.nextMove}>
-          {rel.nextMove}
+        <td className={baseClass} title={rel.investorType}>
+          {rel.investorType}
+        </td>
+      );
+    case "geo":
+      return (
+        <td className={baseClass} title={formatRelationshipGeography(rel)}>
+          {formatRelationshipGeography(rel)}
+        </td>
+      );
+    case "activeInvestments":
+      return (
+        <td className={baseClass} title={rel.lastFundHistory}>
+          {formatActiveInvestmentsLabel(rel.lastFundHistory)}
+        </td>
+      );
+    case "mandateFit":
+      return (
+        <td className={baseClass} title={rel.strategyFit}>
+          {mandateFitTableLabel(rel.strategyFit)}
+        </td>
+      );
+    case "signal":
+      return (
+        <td className="px-3 py-2.5">
+          <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} prominent />
+        </td>
+      );
+    case "ticket":
+      return (
+        <td className={baseClass} title={rel.typicalCheckSize}>
+          {rel.typicalCheckSize}
+        </td>
+      );
+    case "days":
+      return (
+        <td className={baseClass} title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>
+          {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
         </td>
       );
     case "openLoops":
@@ -1198,90 +1226,36 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
           )}
         </td>
       );
+    case "nextMove":
+      return (
+        <td className={baseClass} title={rel.nextMove}>
+          {rel.nextMove}
+        </td>
+      );
     case "owner":
       return (
         <td className={baseClass} title={rel.relationshipOwner}>
           {rel.relationshipOwner}
         </td>
       );
-    case "investorType":
+    case "pipelineFlag": {
+      const f = derivePipelineFlagMock(rel);
+      const label = f === "red" ? "Red" : f === "amber" ? "Amber" : "Green";
+      const dot =
+        f === "red"
+          ? "bg-[color:var(--tomo-red)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-red)_18%,transparent)]"
+          : f === "amber"
+            ? "bg-[color:var(--tomo-status-amber)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-status-amber)_22%,transparent)]"
+            : "bg-[color:var(--tomo-status-green)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-status-green)_18%,transparent)]";
       return (
-        <td className={baseClass} title={rel.investorType}>
-          {rel.investorType}
+        <td className={`${baseClass}`} title={`Pipeline ${label}`}>
+          <span className="inline-flex items-center gap-2">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
+            <span>{label}</span>
+          </span>
         </td>
       );
-    case "strategyFit":
-      return (
-        <td className={baseClass} title={rel.strategyFit}>
-          {rel.strategyFit}
-        </td>
-      );
-    case "strategyType":
-      return (
-        <td className={baseClass} title={rel.strategyType}>
-          {rel.strategyType}
-        </td>
-      );
-    case "lpLocation":
-      return (
-        <td className={baseClass} title={rel.lpLocation}>
-          {rel.lpLocation}
-        </td>
-      );
-    case "investmentRemit":
-      return (
-        <td className={baseClass} title={rel.investmentRemit}>
-          {rel.investmentRemit}
-        </td>
-      );
-    case "typicalCheckSize":
-      return (
-        <td className={baseClass} title={rel.typicalCheckSize}>
-          {rel.typicalCheckSize}
-        </td>
-      );
-    case "fundSizePreference":
-      return (
-        <td className={baseClass} title={rel.fundSizePreference}>
-          {rel.fundSizePreference}
-        </td>
-      );
-    case "source":
-      return (
-        <td className={baseClass} title={rel.sourceDetail ? `${rel.source} (${rel.sourceDetail})` : rel.source}>
-          {rel.sourceDetail ? `${rel.source} (${rel.sourceDetail})` : rel.source}
-        </td>
-      );
-    case "lastFundHistory":
-      return (
-        <td className={baseClass} title={rel.lastFundHistory}>
-          {rel.lastFundHistory}
-        </td>
-      );
-    case "decisionTimeline":
-      return (
-        <td className={baseClass} title={rel.decisionTimeline}>
-          {rel.decisionTimeline}
-        </td>
-      );
-    case "fiscalYearEnd":
-      return (
-        <td className={baseClass} title={rel.fiscalYearEnd}>
-          {rel.fiscalYearEnd}
-        </td>
-      );
-    case "consultantDependent":
-      return (
-        <td className={baseClass} title={rel.consultantDependent}>
-          {rel.consultantDependent}
-        </td>
-      );
-    case "esgRequired":
-      return (
-        <td className={baseClass} title={rel.esgRequired}>
-          {rel.esgRequired}
-        </td>
-      );
+    }
     default:
       return <td className={baseClass}>—</td>;
   }
@@ -1356,31 +1330,130 @@ function RelationshipCard({
   isActive: boolean;
   onSelect: () => void;
 }) {
+  const flag = derivePipelineFlagMock(rel);
+  const signalDotClass =
+    flag === "green"
+      ? "bg-[color:var(--tomo-status-green)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-status-green)_14%,transparent)]"
+      : flag === "amber"
+        ? "bg-[color:var(--tomo-status-amber)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-status-amber)_14%,transparent)]"
+        : "bg-[color:var(--tomo-red)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--tomo-red)_14%,transparent)]";
+
+  const tierMono =
+    rel.tier === "Tier 1"
+      ? "bg-[color:var(--tomo-teal-evidence-bg)] text-[color:var(--tomo-teal)]"
+      : rel.tier === "Tier 2"
+        ? "bg-[color:var(--tomo-navy-soft)] text-[color:var(--tomo-navy)]"
+        : "border border-[color:var(--tomo-rule)] text-[color:var(--tomo-mute)]";
+
+  const signalPillClass =
+    rel.momentumDirection === "Heating up"
+      ? "bg-[color:var(--tomo-status-green-bg)] text-[color:var(--tomo-status-green)]"
+      : rel.momentumDirection === "Cooling"
+        ? "bg-[color:var(--tomo-status-amber-bg)] text-[color:var(--tomo-status-amber-text)]"
+        : "bg-[color:var(--tomo-card-warm)] text-[color:var(--tomo-mute)]";
+
+  const signalPillLabel =
+    rel.momentumDirection === "Heating up"
+      ? "Heating"
+      : rel.momentumDirection === "Cooling"
+        ? "Cooling"
+        : "Quiet";
+
+  const fitClass =
+    rel.strategyFit === "Active mandate"
+      ? "bg-[color:var(--tomo-status-green-bg)] text-[color:var(--tomo-status-green)]"
+      : rel.strategyFit === "Fully allocated"
+        ? "bg-[color:var(--tomo-status-amber-bg)] text-[color:var(--tomo-status-amber-text)]"
+        : rel.strategyFit === "No mandate"
+          ? "bg-[color:var(--tomo-red-bg)] text-[color:var(--tomo-red)]"
+          : "border border-[color:var(--tomo-rule)] text-[color:var(--tomo-mute)]";
+
+  const priorLp =
+    rel.lastFundHistory === "Invested Fund I" ||
+    rel.lastFundHistory === "Invested Fund II" ||
+    rel.lastFundHistory === "Re-upped"
+      ? "Prior LP"
+      : null;
+
   return (
     <button
+      type="button"
       onClick={onSelect}
-      className={`flex flex-col rounded-[var(--tomo-radius-md)] border px-3 py-3 text-left shadow-[var(--tomo-shadow-1)] transition ${
+      className={`flex flex-col gap-2.5 rounded-[var(--tomo-radius-md)] border px-4 py-3.5 text-left shadow-[var(--tomo-shadow-1)] transition ${
         isActive
           ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_28%,transparent)]"
           : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
+        <span className={`mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass}`} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold accent-title">{rel.name}</p>
-          <p className="truncate text-xs text-[color:var(--tomo-body)]">{rel.firm}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <MomentumChip direction={rel.momentumDirection} days={rel.daysSinceLastMeaningfulContact} />
-          {rel.openLoops ? (
-            <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_75%,var(--tomo-card))] px-2 py-0.5 text-[11px] text-[color:var(--foreground)]">
-              {rel.openLoops}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-[family-name:ui-serif,Georgia,'Newsreader',serif] text-base font-medium leading-tight text-[color:var(--tomo-navy)]">
+                {rel.firm}
+              </p>
+              <p className="truncate text-xs text-[color:var(--tomo-body)]">
+                {rel.name}
+                {rel.contactSeniority ? (
+                  <span className="text-[color:var(--tomo-mute)]"> · {rel.contactSeniority}</span>
+                ) : null}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className={`rounded-[2px] px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] ${tierMono}`}>
+                  {rel.tier.replace("Tier ", "T")}
+                </span>
+                {priorLp ? (
+                  <span className="font-mono text-[9px] font-medium uppercase tracking-[0.06em] text-[color:var(--tomo-amber)]">
+                    {priorLp}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-2 py-1 font-mono text-[10px] font-medium tracking-[0.04em] ${signalPillClass}`}
+            >
+              {signalPillLabel} · {rel.daysSinceLastMeaningfulContact}d
             </span>
-          ) : null}
+          </div>
         </div>
       </div>
-      <p className="mt-2 line-clamp-1 text-xs text-[color:var(--tomo-body)]">Last: {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}</p>
-      <p className="line-clamp-1 text-xs text-[color:var(--tomo-body)]">Next: {rel.nextMove}</p>
+
+      <div className="flex flex-col gap-0.5 border-t border-[color:var(--tomo-rule-soft)] pt-2">
+        <div className="flex gap-1.5 text-xs">
+          <span className="w-9 shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
+            Last
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[color:var(--tomo-body)]">
+            {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
+          </span>
+        </div>
+        <div className="flex gap-1.5 text-xs">
+          <span className="w-9 shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
+            Next
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[color:var(--tomo-body)]">{rel.nextMove}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--tomo-rule-soft)] pt-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span
+            className={`font-mono text-xs font-medium tabular-nums text-[color:var(--tomo-navy)] ${rel.typicalCheckSize === "Unknown" ? "font-normal text-[color:var(--tomo-mute)]" : ""}`}
+          >
+            {rel.typicalCheckSize === "Unknown" ? "Ticket —" : rel.typicalCheckSize}
+          </span>
+          <span className={`rounded-[2px] px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] ${fitClass}`}>
+            {mandateFitTableLabel(rel.strategyFit)}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 font-mono text-[10px] text-[color:var(--tomo-mute)]">
+          <span>Loops</span>
+          <span className="rounded-full bg-[color:var(--tomo-card-warm)] px-1.5 py-px text-[11px] font-semibold tabular-nums text-[color:var(--tomo-navy)]">
+            {rel.openLoops}
+          </span>
+        </div>
+      </div>
     </button>
   );
 }

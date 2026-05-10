@@ -7,7 +7,17 @@ export type MomentumTrend = "up" | "flat" | "down";
 export type Velocity = "Fast" | "Moderate" | "Slow";
 
 // ── Relationship enum constants (Tier 1–4 schema) ───────────────────────────
-export const STAGE_OPTIONS = ["First contact", "Deck sent", "Met", "Nurturing", "Active diligence", "DD", "Soft circle", "Closed", "Pass"] as const;
+/** Canonical CRM stages — matches SRS §3.10 + `design/tomo_relationships_kanban_v3.html` column order */
+export const STAGE_OPTIONS = [
+  "Sourced",
+  "First meeting",
+  "Nurturing",
+  "Active diligence",
+  "Soft commit",
+  "Committed",
+  "On hold",
+  "Closed lost",
+] as const;
 export const MOMENTUM_DIRECTION_OPTIONS = ["Heating up", "Stable", "Cooling"] as const;
 export const TIER_OPTIONS = ["Tier 1", "Tier 2", "Tier 3"] as const;
 export const RELATIONSHIP_OWNER_OPTIONS = ["You", "IR Person", "Placement Agent", "Unassigned"] as const;
@@ -32,17 +42,16 @@ export const DEFAULT_RELATIONSHIP_FUND_ID = "fund-3";
 
 export type Stage = (typeof STAGE_OPTIONS)[number];
 
-/** Funnel / Kanban — pale green → red spectrum; Pass = black (matches pipeline UI) */
+/** Kanban column headers — hex from `tomo_relationships_kanban_v3.html` */
 export const STAGE_COLORS: Record<Stage, string> = {
-  "First contact": "#c8e6c9",
-  "Deck sent": "#a5d6a7",
-  Met: "#81c784",
-  Nurturing: "#aed581",
-  "Active diligence": "#ffeb3b",
-  DD: "#ffb74d",
-  "Soft circle": "#ff8a65",
-  Closed: "#f44336",
-  Pass: "#000000",
+  Sourced: "#E6ECEA",
+  "First meeting": "#DCE8E1",
+  Nurturing: "#D2E5DA",
+  "Active diligence": "#F0E5D1",
+  "Soft commit": "#DDE8DC",
+  Committed: "#1C2B3A",
+  "On hold": "#EFD5D5",
+  "Closed lost": "#E8E8EC",
 };
 
 /** Readable text + border on solid STAGE_COLORS backgrounds */
@@ -51,11 +60,25 @@ export function stageLabelOnColorClasses(stage: Stage): {
   count: string;
   border: string;
 } {
-  if (stage === "Pass" || stage === "Closed") {
+  if (stage === "Committed") {
     return {
       title: "text-white",
       count: "text-white/80",
       border: "border-b border-white/25",
+    };
+  }
+  if (stage === "Closed lost") {
+    return {
+      title: "text-gray-700",
+      count: "text-gray-600",
+      border: "border-b border-black/10",
+    };
+  }
+  if (stage === "On hold") {
+    return {
+      title: "text-red-900",
+      count: "text-red-800/90",
+      border: "border-b border-red-900/15",
     };
   }
   return {
@@ -137,6 +160,35 @@ export function formatDaysSinceContact(days: number): string {
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   if (days < 60) return "1mo ago";
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+/** List/card v3 — geography column */
+export function formatRelationshipGeography(r: Relationship): string {
+  return `${r.lpLocation} · ${r.investmentRemit}`;
+}
+
+/** List/card v3 — concise tag derived from last fund participation */
+export function formatActiveInvestmentsLabel(h: LastFundHistory): string {
+  if (h === "New prospect") return "—";
+  if (h === "Invested Fund I") return "Fund I";
+  if (h === "Invested Fund II") return "Fund II";
+  if (h === "Re-upped") return "Re-up";
+  if (h === "Passed") return "Prior pass";
+  return h;
+}
+
+/** Mandate fit column — aligned with v3 fit pills */
+export function mandateFitTableLabel(fit: StrategyFit): string {
+  switch (fit) {
+    case "Active mandate":
+      return "Confirmed";
+    case "Fully allocated":
+      return "Allocated";
+    case "No mandate":
+      return "No fit";
+    default:
+      return fit;
+  }
 }
 
 export type ActionStatus = "approval" | "in_progress" | "blocked";
@@ -450,9 +502,9 @@ function generateRelationships(): Relationship[] {
   // r1–r4: Preserve original firms for cross-entity consistency (actions, briefs, commitments)
   const preserved: Partial<Relationship>[] = [
     { name: "Alex Morgan", firm: "Northwind Capital", daysSinceLastMeaningfulContact: 3, stage: "Active diligence", momentumDirection: "Heating up", tier: "Tier 1", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Direct", lastFundHistory: "Invested Fund II", decisionTimeline: "Q1", fiscalYearEnd: "Dec", consultantDependent: "Direct", esgRequired: "No", nextMove: "Share Q4 performance deck", openLoops: 2, band: "Heating Up", lastMeetingDate: "2025-02-15" },
-    { name: "Jamie Chen", firm: "Peakline Partners", daysSinceLastMeaningfulContact: 9, stage: "Deck sent", momentumDirection: "Stable", tier: "Tier 1", relationshipOwner: "IR Person", investorType: "Fund-of-funds", strategyFit: "Active mandate", strategyType: "Multi-strat", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$50–100M", fundSizePreference: "≤5% of fund", source: "Placement agent", lastFundHistory: "New prospect", decisionTimeline: "Q2", fiscalYearEnd: "Jun", consultantDependent: "Direct", esgRequired: "No", nextMove: "Schedule allocation review", openLoops: 1, band: "Active-Stable", lastMeetingDate: "2025-02-01" },
-    { name: "Priya Desai", firm: "Lumen LP", daysSinceLastMeaningfulContact: 14, stage: "Deck sent", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "EMEA", investmentRemit: "Europe only", typicalCheckSize: "$5–25M", fundSizePreference: "≤10% of fund", source: "Warm intro", sourceDetail: "Goldman cap intro", lastFundHistory: "New prospect", decisionTimeline: "Q3", fiscalYearEnd: "Mar", consultantDependent: "Direct", esgRequired: "Yes", nextMove: "Send concise update + ask for feedback", openLoops: 3, band: "Cooling" },
-    { name: "Samir Patel", firm: "Harborlight Advisors", daysSinceLastMeaningfulContact: 21, stage: "First contact", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "Placement Agent", investorType: "Endowment", strategyFit: "Fully allocated", strategyType: "Credit", lpLocation: "North America", investmentRemit: "US only", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Conference", lastFundHistory: "Passed", decisionTimeline: "Q4", fiscalYearEnd: "Jun", consultantDependent: "Consultant-dependent", consultantName: "Mercer", esgRequired: "Yes", nextMove: "Re-engage with performance snapshot", openLoops: 0, band: "Stalled" },
+    { name: "Jamie Chen", firm: "Peakline Partners", daysSinceLastMeaningfulContact: 9, stage: "First meeting", momentumDirection: "Stable", tier: "Tier 1", relationshipOwner: "IR Person", investorType: "Fund-of-funds", strategyFit: "Active mandate", strategyType: "Multi-strat", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$50–100M", fundSizePreference: "≤5% of fund", source: "Placement agent", lastFundHistory: "New prospect", decisionTimeline: "Q2", fiscalYearEnd: "Jun", consultantDependent: "Direct", esgRequired: "No", nextMove: "Schedule allocation review", openLoops: 1, band: "Active-Stable", lastMeetingDate: "2025-02-01" },
+    { name: "Priya Desai", firm: "Lumen LP", daysSinceLastMeaningfulContact: 14, stage: "First meeting", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "EMEA", investmentRemit: "Europe only", typicalCheckSize: "$5–25M", fundSizePreference: "≤10% of fund", source: "Warm intro", sourceDetail: "Goldman cap intro", lastFundHistory: "New prospect", decisionTimeline: "Q3", fiscalYearEnd: "Mar", consultantDependent: "Direct", esgRequired: "Yes", nextMove: "Send concise update + ask for feedback", openLoops: 3, band: "Cooling" },
+    { name: "Samir Patel", firm: "Harborlight Advisors", daysSinceLastMeaningfulContact: 21, stage: "Sourced", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "Placement Agent", investorType: "Endowment", strategyFit: "Fully allocated", strategyType: "Credit", lpLocation: "North America", investmentRemit: "US only", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Conference", lastFundHistory: "Passed", decisionTimeline: "Q4", fiscalYearEnd: "Jun", consultantDependent: "Consultant-dependent", consultantName: "Mercer", esgRequired: "Yes", nextMove: "Re-engage with performance snapshot", openLoops: 0, band: "Stalled" },
   ];
 
   for (let i = 0; i < 4; i++) {
@@ -581,7 +633,7 @@ function generateRelationships(): Relationship[] {
       name: "Kwong Hong Huat",
       firm: "GIC",
       daysSinceLastMeaningfulContact: 2,
-      stage: "First contact",
+      stage: "Sourced",
       momentumDirection: "Stable",
       tier: "Tier 1",
       relationshipOwner: "IR Person",
@@ -672,7 +724,7 @@ function generateRelationships(): Relationship[] {
   }
 
   // r10–r150: Generated with realistic distribution (50 original + 100 extended)
-  const stages: Stage[] = ["First contact", "Deck sent", "Met", "Nurturing", "Active diligence", "DD", "Soft circle", "Closed", "Pass"];
+  const stages: Stage[] = [...STAGE_OPTIONS];
   const momentumDirs: MomentumDirection[] = ["Heating up", "Stable", "Cooling"];
   const tiers: RelationshipTier[] = ["Tier 1", "Tier 2", "Tier 3"];
   const owners: RelationshipOwner[] = ["You", "IR Person", "Placement Agent", "Unassigned"];
@@ -716,7 +768,7 @@ function generateRelationships(): Relationship[] {
       name,
       firm,
       daysSinceLastMeaningfulContact: days,
-      stage: pick(stages, [10, 14, 10, 8, 8, 6, 5, 3, 5], rng),
+      stage: pick(stages, [14, 14, 12, 14, 12, 8, 10, 16], rng),
       momentumDirection: momentumDir,
       tier: pick(tiers, [20, 50, 30], rng),
       relationshipOwner: pick(owners, [40, 30, 20, 10], rng),
@@ -1330,7 +1382,7 @@ export const actions: ActionItem[] = [
       workSubject: "Q4 performance snapshot (older queue)",
     },
     status: "approval",
-    trigger: "Relationship marked Pass — optional light touch with performance snapshot",
+    trigger: "Relationship marked Closed lost — optional light touch with performance snapshot",
     evidence: [
       "Their allocator desk indicated they may re-open the file if returns stabilize.",
       "Low-risk one-pager; no commitment implied.",
@@ -1342,7 +1394,7 @@ export const actions: ActionItem[] = [
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:samir.patel@example.com?subject=Performance%20snapshot%20%28Q4%29",
     drawerWhySurfaced: {
-      body: "Relationship is marked Pass; allocator desk noted they may re-open if returns stabilize. This is an optional, low-commitment one-pager — dismiss if you prefer no outbound.",
+      body: "Relationship is marked Closed lost; allocator desk noted they may re-open if returns stabilize. This is an optional, low-commitment one-pager — dismiss if you prefer no outbound.",
       stamp: "Computed 1w ago · From re-engagement rules (older queue)",
     },
     drawerDraftMeta: {
@@ -1357,7 +1409,7 @@ export const actions: ActionItem[] = [
     drawerSpecHeader: {
       subtitle: "Advisor · Harborlight · Optional touch",
       statusPills: [
-        { tone: "navy", label: "Pass · optional" },
+        { tone: "navy", label: "Closed lost · optional" },
         { tone: "amber", label: "Older queue" },
       ],
       links: [
@@ -1377,7 +1429,7 @@ export const actions: ActionItem[] = [
         id: "al-a9-2",
         ts: "3d ago",
         actor: "User",
-        summary: "CRM · Confirmed Pass + allocator desk note",
+        summary: "CRM · Confirmed Closed lost + allocator desk note",
         detail: "File may re-open if returns stabilize — keep touch minimal.",
       },
     ],
@@ -1717,7 +1769,7 @@ export const commitments: Commitment[] = [
     relationshipId: "r8",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/kwong-hong-huat-mock",
-    drawerPrepEyebrow: "Meeting prep · First contact · Intro call",
+    drawerPrepEyebrow: "Meeting prep · First meeting · Intro call",
     drawerPrepTitle: "GIC · Kwong Hong Huat",
     drawerTimeStrip: {
       rangeLabel: "Tomorrow · 10:00 — 10:30 AM ET",
@@ -1807,7 +1859,7 @@ export const commitments: Commitment[] = [
     drawerSpecHeader: {
       subtitle: "Senior Vice President, External Managers · Tier 1 · No prior contact",
       statusPills: [
-        { tone: "navy", label: "First contact" },
+        { tone: "navy", label: "First meeting" },
         { tone: "teal", label: "Intro from Stuart Reid (Cambridge Associates) (mock)" },
       ],
       links: [
@@ -1842,7 +1894,7 @@ export const commitments: Commitment[] = [
     commitmentOverdue: true,
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/nic-fallows-mock",
-    drawerPrepEyebrow: "Meeting prep · First contact · Intro call",
+    drawerPrepEyebrow: "Meeting prep · First meeting · Intro call",
     drawerTimeStrip: {
       rangeLabel: "Thu · 3:00 — 3:30 PM ET",
       whereLabel: "Zoom",
@@ -1901,7 +1953,7 @@ export const commitments: Commitment[] = [
       subtitle: "Family office · BNF Capital",
       statusPills: [
         { tone: "red", label: "Commitment overdue" },
-        { tone: "navy", label: "First contact" },
+        { tone: "navy", label: "First meeting" },
       ],
       links: [
         { href: "https://www.linkedin.com/in/nic-fallows-mock", label: "LinkedIn", icon: "linkedin" },
@@ -2124,7 +2176,7 @@ export const briefs: Brief[] = [
       stamp: "Computed · Linked to commitment c3",
     },
     drawerSpecHeader: {
-      subtitle: "Sovereign wealth fund · First contact",
+      subtitle: "Sovereign wealth fund · Sourced",
       statusPills: [
         { tone: "navy", label: "Brief updated" },
         { tone: "amber", label: "1 open loop" },

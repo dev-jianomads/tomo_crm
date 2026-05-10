@@ -191,16 +191,15 @@ export function parseFilterPromptHeuristic(text: string): Partial<StructuredFilt
   else if (/\b(tier\s*2|t2)\b/.test(t)) criteria.tier = "Tier 2";
   else if (/\b(tier\s*3|t3)\b/.test(t)) criteria.tier = "Tier 3";
 
-  // Stage
-  if (/\b(first\s+contact|initial)\b/.test(t)) criteria.stage = "First contact";
-  else if (/\b(deck\s+sent|sent\s+deck)\b/.test(t)) criteria.stage = "Deck sent";
-  else if (/\b(second\s+meeting|nurturing)\b/.test(t)) criteria.stage = "Nurturing";
-  else if (/\b(met|meeting)\b/.test(t)) criteria.stage = "Met";
+  // Stage (canonical v3 labels)
+  if (/\b(sourced|initial\s+outreach|top\s+of\s+funnel)\b/.test(t)) criteria.stage = "Sourced";
+  else if (/\b(first\s+meeting|intro\s+call|deck)\b/.test(t)) criteria.stage = "First meeting";
+  else if (/\b(nurturing)\b/.test(t)) criteria.stage = "Nurturing";
   else if (/\b(active\s+diligence|diligence)\b/.test(t)) criteria.stage = "Active diligence";
-  else if (/\b(dd|due\s+diligence)\b/.test(t)) criteria.stage = "DD";
-  else if (/\b(soft\s+circle)\b/.test(t)) criteria.stage = "Soft circle";
-  else if (/\b(closed)\b/.test(t)) criteria.stage = "Closed";
-  else if (/\b(passed)\b/.test(t)) criteria.stage = "Pass";
+  else if (/\b(soft\s+commit)\b/.test(t)) criteria.stage = "Soft commit";
+  else if (/\b(committed|closed\s+won)\b/.test(t)) criteria.stage = "Committed";
+  else if (/\b(on\s+hold|paused)\b/.test(t)) criteria.stage = "On hold";
+  else if (/\b(closed\s+lost|lost|passed)\b/.test(t)) criteria.stage = "Closed lost";
 
   // Days since contact
   const daysMatch = t.match(/(?:no\s+)?(?:contact|touch|conversation)\s+(?:in|for)\s+(\d+)\s+days?/i);

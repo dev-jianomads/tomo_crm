@@ -47,7 +47,7 @@ export function WhereRaiseStandsCard({ breakdown, className = "" }: Props) {
         ))}
       </ul>
       <p className="mt-2.5 font-mono text-[10px] leading-snug text-[color:var(--tomo-mute)]">
-        CRM funnel: First contact → Deck sent → Met → Nurturing → Active diligence → DD → Soft circle → Closed → Pass
+        CRM funnel: Sourced → First meeting → Nurturing → Active diligence → Soft commit → Committed → On hold → Closed lost
       </p>
     </section>
   );

@@ -858,7 +858,7 @@ export default function HomePage() {
                         : c.prepStatus === "ready"
                           ? { label: "Prep ready", tone: "peach" as const }
                           : c.prepStatus === "first_contact"
-                            ? { label: "First contact", tone: "violet" as const }
+                            ? { label: "First meeting", tone: "violet" as const }
                             : undefined,
                   comingUpCard: {
                     company: c.lp,

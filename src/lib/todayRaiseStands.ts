@@ -10,7 +10,7 @@ export type RaiseStandsBreakdown = {
 
 export type PipelineFlagGar = "green" | "amber" | "red";
 
-const TERMINAL_STAGES: ReadonlySet<Stage> = new Set(["Closed", "Pass"]);
+const TERMINAL_STAGES: ReadonlySet<Stage> = new Set(["Committed", "Closed lost"]);
 
 /** CRM stages that count toward raise health (excludes terminal). */
 export function isActiveRaiseStage(stage: Stage): boolean {
@@ -25,16 +25,14 @@ function moveabilityStageGroup(
   stage: Stage
 ): "first_meeting" | "nurturing" | "active_diligence" | "soft_commit" | null {
   switch (stage) {
-    case "First contact":
-    case "Deck sent":
-    case "Met":
+    case "Sourced":
+    case "First meeting":
       return "first_meeting";
     case "Nurturing":
       return "nurturing";
     case "Active diligence":
-    case "DD":
       return "active_diligence";
-    case "Soft circle":
+    case "Soft commit":
       return "soft_commit";
     default:
       return null;

@@ -47,7 +47,7 @@ export function NewContactModal({ open, onClose, onConfirm, fundId }: NewContact
     name: "",
     firm: "",
     tier: "Tier 2",
-    stage: "First contact",
+    stage: "Sourced",
     relationshipOwner: "You",
   });
   const [step2, setStep2] = useState<ManualContactStep2>(() => defaultStep2());
@@ -59,7 +59,7 @@ export function NewContactModal({ open, onClose, onConfirm, fundId }: NewContact
       name: "",
       firm: "",
       tier: "Tier 2",
-      stage: "First contact",
+      stage: "Sourced",
       relationshipOwner: "You",
     });
     setStep2(defaultStep2());

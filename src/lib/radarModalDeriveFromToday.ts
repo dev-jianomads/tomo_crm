@@ -11,7 +11,7 @@ import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
 
 const CAP = { returning: 5, yours: 6, theirs: 4, heat: 5, cool: 5, quiet: 4, calendar: 8 } as const;
 
-const STAGES_ACTIVE = new Set<string>(["Active diligence", "DD", "Nurturing", "Met"]);
+const STAGES_ACTIVE = new Set<string>(["Active diligence", "Nurturing", "First meeting", "Sourced"]);
 
 function actionLink(id: string) {
   return { kind: "action" as const, id };

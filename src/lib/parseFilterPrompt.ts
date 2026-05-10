@@ -11,20 +11,18 @@ import {
   validateAndMergeFilters,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
+import { STAGE_OPTIONS } from "@/lib/mockData";
 
 const rangeSchema = z.object({
   min: z.number().nullable(),
   max: z.number().nullable(),
 });
 
+const stageEnum = STAGE_OPTIONS as unknown as readonly [string, ...string[]];
+
 const llmFilterSchema = z.object({
   daysSinceLastMeaningfulContact: rangeSchema.nullable(),
-  stage: z
-    .array(z.enum([
-      "First contact", "Deck sent", "Met", "Nurturing", "Active diligence",
-      "DD", "Soft circle", "Closed", "Pass",
-    ]))
-    .nullable(),
+  stage: z.array(z.enum(stageEnum)).nullable(),
   momentumDirection: z.array(z.enum(["Heating up", "Stable", "Cooling"])).nullable(),
   tier: z.array(z.enum(["Tier 1", "Tier 2", "Tier 3"])).nullable(),
   relationshipOwner: z

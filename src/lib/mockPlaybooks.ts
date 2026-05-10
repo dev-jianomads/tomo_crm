@@ -88,7 +88,7 @@ export const suggestedPlaybooks: Playbook[] = [
     enabled: true,
     targetCount: 6,
     pipelineId: MOCK_PIPELINE_IDS_FUND_1.activeDiligence,
-    filterCriteria: { stage: ["Soft circle", "DD", "Active diligence"], tier: ["Tier 1", "Tier 2"] },
+    filterCriteria: { stage: ["Soft commit", "Active diligence"], tier: ["Tier 1", "Tier 2"] },
   },
   {
     id: "pb-post-meeting",

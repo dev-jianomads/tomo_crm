@@ -72,7 +72,7 @@ export function generateMockPipelines(): Pipeline[] {
       name: "Active Diligence Focus",
       fundId,
       filterCriteria: {
-        stage: ["Active diligence", "DD", "Soft circle"],
+        stage: ["Active diligence", "Soft commit"],
         tier: ["Tier 1", "Tier 2"],
       },
       createdAt: now,
