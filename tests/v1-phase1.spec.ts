@@ -38,7 +38,7 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await page.getByRole("button", { name: /Q1 Target List/i }).first().click();
 
     await expect(page.getByText("Funnel by stage")).toBeVisible();
-    await expect(page.getByText("Companies by stage")).toBeVisible();
+    await expect(page.getByText("LPs in this list")).toBeVisible();
     await expect(page.getByTestId("list-drawer-workflows")).toBeVisible();
     await expect(page.getByTestId("list-drawer-actions")).toBeVisible();
     await expect(page.getByRole("button", { name: "Amend list" })).toBeVisible();

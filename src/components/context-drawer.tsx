@@ -129,7 +129,9 @@ export function ContextDrawer({
                 : `min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`
             }
           >
-            <div className={`border-b border-[color:var(--tomo-rule-soft)] ${section1PaddingClassName}`}>
+            <div
+              className={`${listContextDrawerLayout ? "" : "border-b border-[color:var(--tomo-rule-soft)]"} ${section1PaddingClassName}`}
+            >
               {section1Content}
             </div>
           </div>
