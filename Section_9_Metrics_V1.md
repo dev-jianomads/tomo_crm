@@ -182,6 +182,30 @@ moveability_value = SUM(expected_commitment_amount) over the moveability_count c
 
 **Where it appears:** Insights page, top half, two-up row right side. Anchors the Close List below (Metric 10 lists the same 23 LPs with their next moves).
 
+### Today page — “Where the raise stands” summary tile
+
+**What it shows:** four **mutually exclusive** counts over LPs still in the **live raise funnel**. **V1 cohort:** all `lp_contacts` whose `pipeline_stage` is **not** terminal — use the same terminal set as the Insights moveability denominator policy: exclude stages that mean “no longer pursuing” (e.g. `pass`, `closed_lost`); **exclude** `committed` from this tile so counts reflect *work left to do* (optional product flag may include committed in V1.5). The mock CRM uses terminal labels **`Closed`** and **`Pass`** only.
+
+**Why:** Scannable raise pulse on Today; **Insights →** links to the full Insights page.
+
+**Computation (partition — evaluate in this order):**
+
+```
+ACTIVE = lp_contacts WHERE pipeline_stage NOT IN (terminal_stages)
+# Production default: exclude pass, closed_lost, committed (work left). Mock CRM: exclude Closed, Pass only.
+
+MOVEABLE(lp) = same predicate as Metric 3 (this section §Metric 3)
+
+today_tile_drifting_act       = COUNT lp IN ACTIVE WHERE pipeline_flag = 'red'
+today_tile_genuinely_moveable = COUNT lp IN ACTIVE WHERE MOVEABLE(lp)
+today_tile_cooling_watch      = COUNT lp IN ACTIVE WHERE pipeline_flag = 'amber' AND NOT MOVEABLE(lp)
+today_tile_healthy_on_track   = COUNT lp IN ACTIVE WHERE pipeline_flag = 'green' AND NOT MOVEABLE(lp)
+```
+
+**Refresh cadence:** On read for Today, or nightly into `daily_pipeline_summary.today_tile_*` (optional, §6 SRS) with the metrics batch.
+
+**Where it appears:** Today (`/home`) under **Coming up**; agent `todayContext.raiseStands` stays in sync.
+
 ### Metric 4 — LP concentration risk alert
 
 **What it shows the GP:** a triggered amber banner that surfaces only when a single LP's expected commitment exceeds 20% of remaining target. *"CPPIB is sized at $50M — 46% of remaining target. Reduces optionality if they pull or scale back."*

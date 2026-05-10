@@ -45,7 +45,10 @@ import {
   type PreviousAttentionGroup,
 } from "@/lib/todayPreviousAttention";
 import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
+import { WhereRaiseStandsCard } from "@/components/where-raise-stands-card";
+import { useRelationships } from "@/components/relationships-provider";
 import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem } from "@/lib/mockData";
+import { computeRaiseStandsFromRelationships } from "@/lib/todayRaiseStands";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -186,6 +189,7 @@ function TomoChatInline({ showAssistantHeader = true }: { showAssistantHeader?: 
 
 export default function HomePage() {
   const { ready, session } = useRequireSession();
+  const { relationships } = useRelationships();
   const router = useRouter();
   const [selection, setSelection] = useState<TodaySelection>(null);
   const [actionDrawerPhase, setActionDrawerPhase] = useState<"cta" | "amend">("cta");
@@ -427,6 +431,8 @@ export default function HomePage() {
   const filteredCommitments = useMemo(() => {
     return commitments;
   }, []);
+
+  const raiseStandsBreakdown = useMemo(() => computeRaiseStandsFromRelationships(relationships), [relationships]);
 
   const sortedCommitments = useMemo(() => {
     const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -756,7 +762,7 @@ export default function HomePage() {
                 />
               ) : null}
             </div>
-            <div className="flex min-h-0 flex-col overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <TodayGroup
                 title="Coming up"
                 titleCount={sortedCommitments.length}
@@ -791,6 +797,7 @@ export default function HomePage() {
                 onSelect={(id) => setSelection({ type: "commitment", id })}
                 scrollable
               />
+              <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} />
             </div>
           </div>
         </div>
@@ -833,6 +840,7 @@ export default function HomePage() {
           })),
           dailyBriefBlocks,
           previousAttention: previousAttentionForContext,
+          raiseStands: raiseStandsBreakdown,
         }}
       />
       <ContextDrawer

@@ -814,6 +814,7 @@ Closing the browser preserves state and resumes after the last completed step. M
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow.
+   - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. CTA links to Insights (`/insights`). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
    - **On my radar**: small intelligence-line callouts ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.").
 2. **Daily Brief modal.**
    - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
@@ -841,6 +842,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 - BR-3.8.2 — Slack delivery requires a connected workspace (`slack_workspace_connections` row not revoked) and a user opt-in (`user_preferences.daily_brief_channels` includes 'slack').
 - BR-3.8.3 — If both email and Slack are enabled, both are delivered; no de-duplication.
 - BR-3.8.4 — Empty-state attention queue surfaces a "Nothing pressing today" state with a link to Lists.
+- BR-3.8.5 — **Where the raise stands** counts use the same normative definitions as Section 9 (Metric 3 for “genuinely moveable”; `lp_state.pipeline_flag` for G/A/R-derived buckets). The four buckets are mutually exclusive and sum to the **Today tile cohort** of LPs (non-terminal raise stages per Section 9 Today supplement — production default excludes `pass`, `closed_lost`, and `committed` from *work left*; the mock uses CRM labels **Closed** and **Pass** only).
 
 **Acceptance criteria.**
 
@@ -848,7 +850,8 @@ Closing the browser preserves state and resumes after the last completed step. M
 - AC-3.8.2 — The same GP reloading Today later in the same local day does not see the modal auto-open.
 - AC-3.8.3 — A GP with Slack connected and `daily_brief_channels=['in_app','email','slack']` receives the brief in their Slack DM at 07:30 local.
 - AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded.
-- AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, brief) and returns answers consistent with what's rendered on the page.
+- AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, brief, **raise-stands counts**) and returns answers consistent with what's rendered on the page.
+- AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (genuinely moveable, healthy & on track, cooling — watch, drifting — act) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
 
 ---
 
@@ -2835,7 +2838,11 @@ Per Section 8 §8.6. Global defaults per stage; per-workspace override deferred 
 | `total_soft_commit` | numeric(18,2) | not null | `0` | | |
 | `total_active_pipeline` | numeric(18,2) | not null | `0` | | first_meeting through active_diligence |
 | `cooling_currently_flagged` | int | not null | `0` | | LPs with pipeline_flag in (amber, red) |
-| `moveability_count` | int | not null | `0` | | |
+| `moveability_count` | int | not null | `0` | | Count of LPs in Metric 3 cohort |
+| `today_tile_drifting_act` | int | null | | | Optional materialisation: partition bucket — `pipeline_flag='red'` (active stages only) |
+| `today_tile_cooling_watch` | int | null | | | Optional: `pipeline_flag='amber'` and not in Metric 3 cohort |
+| `today_tile_healthy_on_track` | int | null | | | Optional: `pipeline_flag='green'` and not in Metric 3 cohort |
+| `today_tile_genuinely_moveable` | int | null | | | Optional: same as `moveability_count` when materialised for the tile; omit if derived from `moveability_count` column |
 | `flag_resolutions_today` | int | not null | `0` | | Cooling caught "resolved" component |
 | `currency` | varchar(3) | not null | `'USD'` | | Workspace primary at time of snapshot |
 | `snapshot_run_id` | uuid | not null | | | Tie back to the batch run |
@@ -4452,7 +4459,10 @@ stage_cadence_benchmarks (pipeline_stage pk, amber_threshold_days, red_threshold
 daily_pipeline_summary [A] (id pk, snapshot_date, day_1_gap_count, day_1_gap_baseline,
                             pipeline_velocity_avg_days, total_committed, total_soft_commit,
                             total_active_pipeline, cooling_currently_flagged,
-                            moveability_count, flag_resolutions_today, currency, snapshot_run_id)
+                            moveability_count,
+                            today_tile_drifting_act, today_tile_cooling_watch,
+                            today_tile_healthy_on_track, today_tile_genuinely_moveable,
+                            flag_resolutions_today, currency, snapshot_run_id)
 tomo_action_log [A] (id pk, lp_contact_id → lp_contacts.id, gp_user_id → users.id,
                      action_type, outcome, character_change_pct, time_saved_minutes,
                      metadata, generated_at, actioned_at, source_signal_log_id → lp_signal_log.id)
@@ -4921,6 +4931,24 @@ moveability_value = SUM(expected_commitment_amount) over the cohort
 ```
 
 Refresh: nightly.
+
+#### Today tile — Where the raise stands (partition)
+
+Section 9 supplement; four buckets are mutually exclusive over `ACTIVE` LPs.
+
+```
+ACTIVE = lp_contacts WHERE pipeline_stage NOT IN (terminal_stages)
+# V1 default terminal set: pass, closed_lost, committed (excludes won-but-done from “work left”); mock CRM may use Closed + Pass only.
+
+# MOVEABLE(lp) = same predicate as moveability_count (Metric 3 above)
+
+today_tile_drifting_act       = COUNT lp IN ACTIVE WHERE pipeline_flag = 'red'
+today_tile_genuinely_moveable = COUNT lp IN ACTIVE WHERE MOVEABLE(lp)
+today_tile_cooling_watch      = COUNT lp IN ACTIVE WHERE pipeline_flag = 'amber' AND NOT MOVEABLE(lp)
+today_tile_healthy_on_track   = COUNT lp IN ACTIVE WHERE pipeline_flag = 'green' AND NOT MOVEABLE(lp)
+```
+
+Optional materialisation: `daily_pipeline_summary.today_tile_*` columns. Refresh: nightly with metrics batch or compute on Today read.
 
 #### Metric 4 — LP concentration risk
 

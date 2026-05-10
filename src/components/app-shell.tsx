@@ -72,6 +72,13 @@ type TodayContext = {
     count: number;
     items: { id: string; title: string; trigger: string; status: string; type: string; group: string }[];
   };
+  /** “Where the raise stands” counts (SRS §3.8); same partition as Section 9 Today supplement. */
+  raiseStands?: {
+    genuinelyMoveable: number;
+    healthyOnTrack: number;
+    coolingWatch: number;
+    driftingAct: number;
+  };
 };
 
 type AppShellProps = {
