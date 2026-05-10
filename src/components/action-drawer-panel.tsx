@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import type { ActionItem } from "@/lib/mockData";
+import type { ActionItem, DrawerSpecHeader, DrawerSpecHeaderLink, DrawerSpecHeaderPill } from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { DrawerCommitmentsCaptured, DrawerDraftMeta, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
+import { DrawerCommitmentsCaptured, DrawerDraftMeta, DrawerSpecV3Head, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
 
 export type ActionResolution = "approved" | "later" | "dismissed" | null;
 
@@ -57,6 +57,34 @@ function extractScheduleHint(lead: string): string | undefined {
   return undefined;
 }
 
+function fallbackActionDrawerSpec(action: ActionItem): DrawerSpecHeader {
+  const today = new Date().toISOString().slice(0, 10);
+  const pills: DrawerSpecHeaderPill[] = [];
+  if (action.dueDate) {
+    if (action.dueDate < today) pills.push({ tone: "red", label: "SLA past" });
+    else if (action.dueDate === today) pills.push({ tone: "amber", label: "Reply due today" });
+  }
+  if (
+    pills.length === 0 &&
+    (action.status === "approval" || action.status === "blocked" || action.status === "in_progress")
+  ) {
+    pills.push({ tone: "amber", label: "Today" });
+  }
+  const links: DrawerSpecHeaderLink[] = [];
+  if (action.emailSourceUrl) {
+    links.push({ href: action.emailSourceUrl, label: "Open email", icon: "envelope" });
+  }
+  links.push({ href: "/relationships", label: "Open LP record", icon: "clock" });
+  return { statusPills: pills, links };
+}
+
+function resolutionSpecPills(resolution: ActionResolution): DrawerSpecHeaderPill[] {
+  if (resolution === "approved") return [{ tone: "teal", label: "Approved" }];
+  if (resolution === "dismissed") return [{ tone: "navy", label: "Dismissed" }];
+  if (resolution === "later") return [{ tone: "amber", label: "Deferred" }];
+  return [];
+}
+
 type ActionDrawerPanelProps = {
   action: ActionItem;
   workflowDisplayName: string;
@@ -68,6 +96,8 @@ type ActionDrawerPanelProps = {
   onLater: () => void;
   onDismiss: () => void;
   onAmend: () => void;
+  /** Closes drawer — v3 head Esc control */
+  onCloseDrawer: () => void;
   /** Scheduling actions only — opens week picker; omitted when not supported. */
   onFindAnotherTime?: () => void;
   /** Primary label for final send (email vs invite vs generic) */
@@ -80,7 +110,7 @@ type ActionDrawerPanelProps = {
 export function ActionDrawerPanel({
   action,
   workflowDisplayName,
-  verbLabel,
+  verbLabel: _verbLabel,
   resolution,
   assistance,
   onApprove,
@@ -88,6 +118,7 @@ export function ActionDrawerPanel({
   onDismiss,
   onAmend,
   onFindAnotherTime,
+  onCloseDrawer,
   finalApproveLabel = "Approve & send",
 }: ActionDrawerPanelProps) {
   const [laterConfirmOpen, setLaterConfirmOpen] = useState(false);
@@ -127,8 +158,11 @@ export function ActionDrawerPanel({
 
   const preview = getActionDrawerDraftPreview(action, assistance);
   const showCtas = resolution === null;
-  const pillIsApproved = verbLabel === "Approved" || resolution === "approved";
-  const pillIsDismissed = resolution === "dismissed" || verbLabel === "Dismissed";
+
+  const spec = action.drawerSpecHeader ?? fallbackActionDrawerSpec(action);
+  const eyebrowTail = action.type === "scheduling" ? "Draft reply for approval" : "Draft for approval";
+  const eyebrow = `${workflowDisplayName} · ${eyebrowTail}`;
+  const extraHeadPills = resolutionSpecPills(resolution);
 
   const requestDoLater = () => {
     if (persistReady && skipDoLaterConfirm) {
@@ -261,86 +295,59 @@ export function ActionDrawerPanel({
       : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <DrawerSpecV3Head
+        eyebrow={eyebrow}
+        title={`${card.company} · ${card.contactName}`}
+        subtitle={spec.subtitle}
+        spec={spec}
+        onClose={onCloseDrawer}
+        extraPills={extraHeadPills}
+      />
+
       {action.drawerWhySurfaced ? (
         <DrawerWhySurfaced body={action.drawerWhySurfaced.body} stamp={action.drawerWhySurfaced.stamp} />
       ) : null}
-      <div className="space-y-1.5">
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 text-sm font-semibold accent-title">
-            {card.company} : {card.contactName}
-          </p>
-          <span
-            className={
-              pillIsDismissed
-                ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-navy-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-body)]"
-                : pillIsApproved
-                  ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]"
-                  : "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-            }
-          >
-            {verbLabel}
-          </span>
-        </div>
-        <p className="text-xs leading-snug text-[color:var(--tomo-body)]">
-          <span className="font-medium text-[color:var(--foreground)]">Action required:</span> {card.workKind}: {card.workSubject}
-        </p>
-        <p className="text-[11px] leading-snug text-[color:var(--tomo-teal-muted)]">
-          <span className="font-medium text-[color:var(--tomo-body)]">Workflow:</span> {workflowDisplayName}
-        </p>
-        {action.emailSourceUrl ? (
-          <a
-            href={action.emailSourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-block text-[11px] font-medium text-[color:var(--tomo-teal)] underline underline-offset-2 hover:text-[color:var(--tomo-teal-muted)]"
-          >
-            Open email
-          </a>
-        ) : null}
-      </div>
+
+      <p className="text-xs leading-snug text-[color:var(--tomo-body)]">
+        <span className="font-medium text-[color:var(--foreground)]">Action required:</span> {card.workKind}:{" "}
+        {card.workSubject}
+      </p>
 
       <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
         <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>
         {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
 
         {preview.draftBody ? (
-          <div className="overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]">
-            {action.drawerDraftMeta ? (
-              <>
-                <div className="flex items-center justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                    Drafted by Tomo
-                  </span>
-                  <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
-                </div>
-                <DrawerDraftMeta
-                  to={action.drawerDraftMeta.to}
-                  ccPlaceholder={action.drawerDraftMeta.ccPlaceholder}
-                  subject={action.drawerDraftMeta.subject}
-                  footnote={undefined}
-                />
-                <p className="whitespace-pre-line px-3 py-2.5 text-sm leading-relaxed text-[color:var(--tomo-body)]">
-                  {preview.draftBody}
-                </p>
-                {action.drawerDraftMeta.footnote ? (
-                  <p className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-3 py-2 text-right font-mono text-[9px] uppercase tracking-wide text-[color:var(--tomo-mute)] dark:bg-[color:var(--tomo-navy-soft)]">
-                    {action.drawerDraftMeta.footnote}
+          <>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]">
+              Drafted by Tomo · Edit before sending
+            </p>
+            <div className="overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]">
+              {action.drawerDraftMeta ? (
+                <>
+                  <DrawerDraftMeta
+                    to={action.drawerDraftMeta.to}
+                    ccPlaceholder={action.drawerDraftMeta.ccPlaceholder}
+                    subject={action.drawerDraftMeta.subject}
+                    footnote={undefined}
+                  />
+                  <p className="whitespace-pre-line px-3 py-2.5 text-sm leading-relaxed text-[color:var(--tomo-body)]">
+                    {preview.draftBody}
                   </p>
-                ) : null}
-              </>
-            ) : (
-              <div className="px-3 py-2.5">
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                    Drafted by Tomo
-                  </span>
-                  <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
+                  {action.drawerDraftMeta.footnote ? (
+                    <p className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-3 py-2 text-right font-mono text-[9px] uppercase tracking-wide text-[color:var(--tomo-mute)] dark:bg-[color:var(--tomo-navy-soft)]">
+                      {action.drawerDraftMeta.footnote}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="px-3 py-2.5">
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--tomo-body)]">{preview.draftBody}</p>
                 </div>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--tomo-body)]">{preview.draftBody}</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </>
         ) : null}
 
         {preview.scheduleHint ? (

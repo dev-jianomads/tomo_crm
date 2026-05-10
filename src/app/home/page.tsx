@@ -15,6 +15,7 @@ import { ActionDrawerPanel } from "@/components/action-drawer-panel";
 import { AttachDocumentModal } from "@/components/attach-document-modal";
 import { CommitmentAmendChat } from "@/components/commitment-amend-chat";
 import { CommitmentDrawerPanel } from "@/components/commitment-drawer-panel";
+import { BriefDrawerPanel } from "@/components/brief-drawer-panel";
 import { ContextDrawer } from "@/components/context-drawer";
 import { DrawerSection2TomoChat } from "@/components/drawer-section-2-tomo-chat";
 import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
@@ -334,6 +335,13 @@ export default function HomePage() {
   const selectedCommitment = selection?.type === "commitment" ? commitments.find((c) => c.id === selection.id) : null;
   const selectedBrief = selection?.type === "brief" ? briefs.find((b) => b.id === selection.id) : null;
 
+  /** design/tomo_drawer_draft_light_v3.html — full chrome inside section 1 (Esc + eyebrow), not the slim shell row */
+  const todayV3SpecDrawer =
+    selection &&
+    (selection.type === "brief" ||
+      (selection.type === "action" && actionDrawerPhase === "cta") ||
+      (selection.type === "commitment" && commitmentDrawerPhase === "cta"));
+
   const effectiveTomoAssistanceForSelectedAction = useMemo(() => {
     if (selection?.type !== "action") return null;
     const base = getTomoAssistance(selection.id);
@@ -383,7 +391,16 @@ export default function HomePage() {
         },
       ];
     }
-    if (selection.type === "brief") return [];
+    if (selection.type === "brief") {
+      const b = briefs.find((x) => x.id === selection.id);
+      return (b?.activityLog ?? []).map((e) => ({
+        id: e.id,
+        ts: e.ts,
+        actor: e.actor,
+        summary: e.summary,
+        detail: e.detail,
+      }));
+    }
     return [];
   }, [selection]);
 
@@ -847,7 +864,12 @@ export default function HomePage() {
         open={Boolean(selection)}
         onClose={closeDrawerAndReset}
         title={selectedTitle ?? "Details"}
-        hideHeaderTitle={selection?.type === "action" || selection?.type === "commitment"}
+        hideHeaderTitle={
+          selection?.type === "action" || selection?.type === "commitment" || selection?.type === "brief"
+        }
+        hideChromeHeader={Boolean(todayV3SpecDrawer)}
+        section1PaddingClassName={todayV3SpecDrawer ? "px-6 pt-5 pb-4" : "px-4 py-3"}
+        panelMaxWidthClassName={todayV3SpecDrawer ? "max-w-[min(720px,92vw)]" : "max-w-2xl"}
         drawerAriaLabel={
           selection?.type === "action" && selectedAction?.attentionCard
             ? `${selectedAction.attentionCard.company} — ${selectedAction.attentionCard.workKind}`
@@ -890,6 +912,7 @@ export default function HomePage() {
                     }
                   : undefined
               }
+              onCloseDrawer={closeDrawerAndReset}
               finalApproveLabel="Approve & send"
             />
           ) : selection?.type === "commitment" && selectedCommitment ? (
@@ -923,11 +946,15 @@ export default function HomePage() {
               finalApproveLabel="Approve and Send"
             />
           ) : selection?.type === "brief" ? (
-            <BriefDetail
-              brief={selectedBrief}
-              onCreateAction={() => addToast("Follow-up captured (demo).")}
-              detailsOnly
-            />
+            selectedBrief ? (
+              <BriefDrawerPanel
+                brief={selectedBrief}
+                onClose={closeDrawerAndReset}
+                onCreateAction={() => addToast("Follow-up captured (demo).")}
+              />
+            ) : (
+              <Placeholder title="No brief selected" />
+            )
           ) : null
         }
         hideSection2={Boolean(
@@ -1491,32 +1518,6 @@ function TodayGroup({
   );
 }
 
-function SuggestedWorkflows() {
-  const router = useRouter();
-  const playbooks = suggestedPlaybooks.filter((p) => p.enabled).slice(0, 2);
-  if (!playbooks.length) return null;
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-semibold text-[color:var(--foreground)]">Suggested workflows</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {playbooks.map((playbook) => (
-          <button
-            key={playbook.id}
-            onClick={() => router.push(`/workflows?playbook=${playbook.id}`)}
-            className="tomo-card tomo-card--interactive rounded-[var(--tomo-radius-md)] border-[color:var(--peach)] bg-[color:var(--peach-soft)] p-3 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--peach)] hover:shadow-[var(--tomo-shadow-2)]"
-          >
-            <p className="text-sm font-semibold text-[color:var(--peach-ink)]">{playbook.name}</p>
-            <p className="mt-0.5 line-clamp-2 text-xs text-[color:var(--tomo-body)]">{playbook.description}</p>
-            {playbook.targetCount != null && playbook.targetCount > 0 ? (
-              <span className="mt-2 inline-block text-[11px] text-[color:var(--tomo-mute)]">{playbook.targetCount} targets</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function UrgencyChip({ kind }: { kind: string }) {
   const styles =
     kind === "Tomo"
@@ -1533,93 +1534,6 @@ function UrgencyChip({ kind }: { kind: string }) {
   );
 }
 
-
-function BriefDetail({
-  brief,
-  onCreateAction,
-  onOpenBrief,
-  compact = false,
-  detailsOnly = false,
-}: {
-  brief: (typeof briefs)[number] | null | undefined;
-  onCreateAction: () => void;
-  onOpenBrief?: (id: string) => void;
-  compact?: boolean;
-  detailsOnly?: boolean;
-}) {
-  if (!brief) return <Placeholder title="No brief selected" />;
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Brief</p>
-          <h3 className="text-lg font-semibold accent-title">{brief.meetingTitle}</h3>
-          <p className="text-sm text-gray-600">
-            {brief.datetime} • {brief.lp}
-          </p>
-        </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{brief.status}</span>
-      </div>
-      {detailsOnly ? null : (
-        <>
-          <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="font-medium text-gray-900">Summary</p>
-              <TomoAiBadge label="Tomo summary" />
-            </div>
-            <p className="text-sm tomo-ai-text">{brief.summary}</p>
-          </div>
-          {!compact ? (
-            <>
-              <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-gray-900">Agenda</p>
-                  <TomoAiBadge label="Tomo draft" />
-                </div>
-                <ul className="mt-1 space-y-1 tomo-ai-text">
-                  {brief.agenda.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="rounded-md border tomo-ai-border bg-white px-3 py-2 text-sm text-gray-800">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-gray-900">Commitments</p>
-                  <TomoAiBadge label="Tomo draft" />
-                </div>
-                <ul className="mt-1 space-y-1 tomo-ai-text">
-                  {brief.commitments.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-blue-600" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          ) : null}
-          {!compact ? <SuggestedWorkflows /> : null}
-          <div className="flex flex-wrap gap-2">
-            <button className="button-primary" onClick={onCreateAction}>
-              Create follow-up action
-            </button>
-            <button className="button-secondary" onClick={onCreateAction}>
-              Draft email
-            </button>
-            {onOpenBrief ? (
-              <button className="button-secondary" onClick={() => onOpenBrief(brief.id)}>
-                Open full brief
-              </button>
-            ) : null}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 function Placeholder({ title }: { title: string }) {
   return <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-sm text-gray-600">{title}</div>;

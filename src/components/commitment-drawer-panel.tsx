@@ -1,10 +1,10 @@
 "use client";
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import type { Commitment } from "@/lib/mockData";
+import type { Commitment, DrawerSpecHeader, DrawerSpecHeaderLink, DrawerSpecHeaderPill } from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
-import { DrawerCommitmentsCaptured, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
+import { DrawerCommitmentsCaptured, DrawerSpecV3Head, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
 
 function blockBrief(blocks: TomoMessageBlock[] | undefined): Extract<TomoMessageBlock, { kind: "brief" }> | null {
   const b = blocks?.find((x): x is Extract<TomoMessageBlock, { kind: "brief" }> => x.kind === "brief");
@@ -38,6 +38,31 @@ export function getCommitmentDrawerAgendaPreview(assistance: TomoAssistance | nu
 
 export type CommitmentResolution = "approved" | null;
 
+function commitmentDrawerEyebrow(c: Commitment): string {
+  if (c.prepStatus === "first_contact") return "Meeting prep · First contact";
+  if (c.prepStatus === "ready") return "Meeting prep · Draft for approval";
+  return "Coming up · Prep context";
+}
+
+function fallbackCommitmentDrawerSpec(c: Commitment): DrawerSpecHeader {
+  const pills: DrawerSpecHeaderPill[] = [];
+  if (c.commitmentOverdue) pills.push({ tone: "red", label: "Commitment overdue" });
+  if (c.prepStatus === "ready") pills.push({ tone: "teal", label: "Prep ready" });
+  else if (c.prepStatus === "first_contact") pills.push({ tone: "navy", label: "First contact" });
+
+  const links: DrawerSpecHeaderLink[] = [];
+  if (c.calendarUrl) links.push({ href: c.calendarUrl, label: "Open calendar", icon: "calendar" });
+  if (c.linkedInUrl) links.push({ href: c.linkedInUrl, label: "LinkedIn", icon: "linkedin" });
+  const relPath = c.relationshipId ? `/relationships?focus=${encodeURIComponent(c.relationshipId)}` : "/relationships";
+  links.push({ href: relPath, label: "Open LP record", icon: "clock" });
+  return { statusPills: pills, links };
+}
+
+function commitmentResolutionSpecPills(resolution: CommitmentResolution): DrawerSpecHeaderPill[] {
+  if (resolution === "approved") return [{ tone: "teal", label: "Prep sent" }];
+  return [];
+}
+
 type CommitmentDrawerPanelProps = {
   commitment: Commitment;
   assistance: TomoAssistance | null | undefined;
@@ -60,7 +85,7 @@ type CommitmentDrawerPanelProps = {
 export function CommitmentDrawerPanel({
   commitment,
   assistance,
-  verbLabel,
+  verbLabel: _verbLabel,
   resolution,
   onApproveAndSend,
   onAmend,
@@ -72,7 +97,6 @@ export function CommitmentDrawerPanel({
 }: CommitmentDrawerPanelProps) {
   const preview = getCommitmentDrawerAgendaPreview(assistance);
   const showCtas = resolution === null;
-  const pillIsSent = verbLabel === "Prep sent" || resolution === "approved";
 
   const commitmentLines =
     commitment.drawerMeetingCommitments && commitment.drawerMeetingCommitments.length > 0
@@ -80,65 +104,24 @@ export function CommitmentDrawerPanel({
       : preview.commitments.map((label) => ({ label }));
 
   const timeLine = commitmentDayTime(commitment.datetime);
-
-  const commitmentStatusPillClass =
-    pillIsSent || verbLabel === "Prep sent"
-      ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]"
-      : verbLabel === "First Contact"
-        ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--foreground)] dark:bg-[color:var(--tomo-navy-soft)]"
-        : verbLabel === "Prep ready"
-          ? "inline-flex shrink-0 items-center rounded-full border border-[color:var(--peach)] bg-[color:var(--peach-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--peach-ink)]"
-          : null;
+  const spec = commitment.drawerSpecHeader ?? fallbackCommitmentDrawerSpec(commitment);
+  const subtitle =
+    spec.subtitle ?? [commitment.title, timeLine].filter(Boolean).join(" · ");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <DrawerSpecV3Head
+        eyebrow={commitmentDrawerEyebrow(commitment)}
+        title={`${commitment.lp} · ${commitment.contactName}`}
+        subtitle={subtitle}
+        spec={spec}
+        onClose={onClose}
+        extraPills={commitmentResolutionSpecPills(resolution)}
+      />
+
       {commitment.drawerWhySurfaced ? (
         <DrawerWhySurfaced body={commitment.drawerWhySurfaced.body} stamp={commitment.drawerWhySurfaced.stamp} />
       ) : null}
-      <div className="space-y-1.5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="tomo-field-label">Commitment</p>
-            <p className="text-sm font-semibold accent-title">
-              {commitment.lp} : {commitment.contactName}
-              {commitment.title ? <span className="font-semibold text-[color:var(--foreground)]"> · {commitment.title}</span> : null}
-            </p>
-            <p className="text-sm text-[color:var(--tomo-body)]">{timeLine}</p>
-            {commitment.commitmentOverdue ? (
-              <p className="mt-1 inline-flex rounded-full border border-[color:var(--tomo-red)] bg-[color:var(--tomo-red-bg)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--tomo-red)]">
-                Commitment overdue — needs attention
-              </p>
-            ) : null}
-            {commitment.calendarUrl || commitment.linkedInUrl ? (
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                {commitment.calendarUrl ? (
-                  <a
-                    href={commitment.calendarUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-[color:var(--tomo-teal)] underline underline-offset-2 hover:text-[color:var(--tomo-teal-muted)]"
-                  >
-                    Open calendar
-                  </a>
-                ) : null}
-                {commitment.linkedInUrl ? (
-                  <a
-                    href={commitment.linkedInUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-[#0a66c2] underline underline-offset-2 hover:text-[#004182]"
-                  >
-                    LinkedIn profile
-                  </a>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-          {commitmentStatusPillClass && verbLabel ? (
-            <span className={commitmentStatusPillClass}>{verbLabel}</span>
-          ) : null}
-        </div>
-      </div>
 
       <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
         <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>

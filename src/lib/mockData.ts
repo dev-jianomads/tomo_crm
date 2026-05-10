@@ -191,6 +191,22 @@ export type DrawerDraftMeta = {
 };
 export type DrawerCommitmentLine = { label: string; badge?: string };
 
+/** design/tomo_drawer_draft_light_v3.html — drawer head status + quick links */
+export type DrawerSpecHeaderPill = { tone: "red" | "amber" | "teal" | "navy"; label: string };
+export type DrawerSpecHeaderLinkIcon = "envelope" | "linkedin" | "calendar" | "clock";
+export type DrawerSpecHeaderLink = {
+  href: string;
+  label: string;
+  icon: DrawerSpecHeaderLinkIcon;
+};
+
+export type DrawerSpecHeader = {
+  /** e.g. Senior IC · Tier 1 · Hedge fund advisory */
+  subtitle?: string;
+  statusPills: DrawerSpecHeaderPill[];
+  links?: DrawerSpecHeaderLink[];
+};
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -223,6 +239,8 @@ export type ActionItem = {
    * Omit or 0 = primary “today” column; 1 = yesterday, 2+ = earlier (shown under collapsible “Previous”).
    */
   attentionListDayOffset?: number;
+  /** Rich drawer head (v3 spec); links + pills are static mock. */
+  drawerSpecHeader?: DrawerSpecHeader;
 };
 
 /** `ready` = Tomo has drafted prep; `first_contact` = first live touch, distinct pill; `none` = no prep status pill. */
@@ -252,6 +270,7 @@ export type Commitment = {
   activityLog?: ActivityLogEntry[];
   /** Optional badges for prep commitments list; falls back to brief commitments as plain lines. */
   drawerMeetingCommitments?: DrawerCommitmentLine[];
+  drawerSpecHeader?: DrawerSpecHeader;
 };
 
 export type Brief = {
@@ -264,6 +283,9 @@ export type Brief = {
   summary: string;
   agenda: string[];
   commitments: string[];
+  drawerWhySurfaced?: DrawerWhySurfaced;
+  activityLog?: ActivityLogEntry[];
+  drawerSpecHeader?: DrawerSpecHeader;
 };
 
 export type Material = {
@@ -686,6 +708,22 @@ export const actions: ActionItem[] = [
       { label: "Bring manager-comparison spread from last week’s discussion", badge: "WITH REPLY" },
       { label: "Include allocation timeline against Q2 close", badge: "WITH REPLY" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Managing Director · Tier 1 · Fund-of-funds",
+      statusPills: [
+        { tone: "amber", label: "Reply due today" },
+        { tone: "teal", label: "Active diligence · 22d" },
+      ],
+      links: [
+        {
+          href: "mailto:peter.zakowich@example.com?subject=Re%3A%20March%2018%20meeting%20request",
+          label: "Open thread in Gmail",
+          icon: "envelope",
+        },
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a1-1",
@@ -761,6 +799,17 @@ export const actions: ActionItem[] = [
       { label: "Acknowledge Liyen on the thread", badge: "IN REPLY" },
       { label: "Propose two intro-call windows this month", badge: "THIS WEEK" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Head of Private Investments · Edmond de Rothschild Family Office",
+      statusPills: [
+        { tone: "amber", label: "Reply due today" },
+        { tone: "navy", label: "Warm intro · 2d" },
+      ],
+      links: [
+        { href: "mailto:michel.delbuono@example.com?subject=Introduction%20from%20Liyen", label: "Open thread in Gmail", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a2-1",
@@ -822,6 +871,18 @@ export const actions: ActionItem[] = [
       { label: "Include Fund III side-letter language as reference", badge: "WITH DECK" },
       { label: "Propose two times for COO call next week", badge: "THIS WEEK" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Senior Investment Consultant · Tier 1 · Hedge fund advisory",
+      statusPills: [
+        { tone: "red", label: "SLA past · 26h" },
+        { tone: "teal", label: "Active diligence" },
+      ],
+      links: [
+        { href: "mailto:james.staltari@albourne.com?subject=Post-meeting%20follow-up", label: "Open thread in Outlook", icon: "envelope" },
+        { href: "https://www.linkedin.com/in/james-staltari-mock", label: "LinkedIn", icon: "linkedin" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a3-1",
@@ -897,6 +958,17 @@ export const actions: ActionItem[] = [
       { label: "Offer two alternate weeks if March slots stall", badge: "OPTIONAL" },
       { label: "Attach one-pager link already shared", badge: "IN THREAD" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Sovereign wealth fund · Singapore",
+      statusPills: [
+        { tone: "amber", label: "No reply · 2d" },
+        { tone: "teal", label: "New fund launch" },
+      ],
+      links: [
+        { href: "mailto:kwong.hong.huat@gic.com.sg?subject=Re%3A%20New%20fund%20launch%20discussion", label: "Open thread in Outlook", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a4-1",
@@ -945,6 +1017,17 @@ export const actions: ActionItem[] = [
       { label: "Queue follow-up drafts for cooling tier-1 LPs", badge: "THIS WEEK" },
       { label: "Sync narrative with Daily Brief — Momentum Signals", badge: "OPTIONAL" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Newsletter cohort · Engagement analytics",
+      statusPills: [
+        { tone: "amber", label: "Review" },
+        { tone: "navy", label: "In progress" },
+      ],
+      links: [
+        { href: "mailto:ir-newsletter@example.com?subject=Monthly%20Momentum%20Report", label: "Open thread in Gmail", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a5-1",
@@ -998,6 +1081,17 @@ export const actions: ActionItem[] = [
       { label: "Offer two specific call windows", badge: "IN REPLY" },
       { label: "Reference last positive call in one line", badge: "DONE" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Director · Fund-of-funds · Paris",
+      statusPills: [
+        { tone: "amber", label: "18d since contact" },
+        { tone: "teal", label: "Q2 read window" },
+      ],
+      links: [
+        { href: "mailto:camille.durand@amundi.com?subject=Check-in%20ahead%20of%20Q2", label: "Open thread in Outlook", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a6-1",
@@ -1051,6 +1145,17 @@ export const actions: ActionItem[] = [
       { label: "Offer 20m call to walk DDQ index", badge: "IN REPLY" },
       { label: "Confirm if anything blocks their side", badge: "IN REPLY" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Director · Fund-of-funds · Peakline",
+      statusPills: [
+        { tone: "amber", label: "Carried · Prior day" },
+        { tone: "navy", label: "Q2 read · 6w" },
+      ],
+      links: [
+        { href: "mailto:jamie.chen@example.com?subject=Re%3A%20Q2%20read%20materials", label: "Open thread in Gmail", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a7-1",
@@ -1104,6 +1209,17 @@ export const actions: ActionItem[] = [
       { label: "Attach consultant clarifications (pending upload)", badge: "BEFORE SEND" },
       { label: "Propose 20 minutes this week if questions remain", badge: "IN REPLY" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Principal · Family office · Lumen",
+      statusPills: [
+        { tone: "amber", label: "Consultant stall · 4d" },
+        { tone: "navy", label: "In progress" },
+      ],
+      links: [
+        { href: "mailto:priya.desai@example.com?subject=Re%3A%20Consultant%20follow-up", label: "Open thread in Gmail", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a8-1",
@@ -1157,6 +1273,17 @@ export const actions: ActionItem[] = [
       { label: "No meeting ask unless they reply", badge: "POLICY" },
       { label: "Attach one-pager v1 only", badge: "OPTIONAL" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Advisor · Harborlight · Optional touch",
+      statusPills: [
+        { tone: "navy", label: "Pass · optional" },
+        { tone: "amber", label: "Older queue" },
+      ],
+      links: [
+        { href: "mailto:samir.patel@example.com?subject=Performance%20snapshot%20%28Q4%29", label: "Open thread in Gmail", icon: "envelope" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-a9-1",
@@ -1195,6 +1322,17 @@ export const commitments: Commitment[] = [
       { label: "Send one-pager after call", badge: "POST CALL" },
       { label: "Confirm data room access renewal", badge: "THIS WEEK" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Allocator desk · UBS",
+      statusPills: [
+        { tone: "teal", label: "Prep ready" },
+        { tone: "navy", label: "HF update · today" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-c1-1",
@@ -1238,6 +1376,17 @@ export const commitments: Commitment[] = [
       { label: "Follow up on co-invest deck (promised 8d ago)", badge: "OVERDUE" },
       { label: "Share updated DDQ index", badge: "TODAY" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Investment management · CPPIB",
+      statusPills: [
+        { tone: "teal", label: "Prep ready" },
+        { tone: "amber", label: "Open loops · 2" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "/relationships?focus=r6", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-c2-1",
@@ -1282,6 +1431,18 @@ export const commitments: Commitment[] = [
       { label: "Circulate short deck after call", badge: "POST CALL" },
       { label: "Propose two follow-up slots", badge: "POST CALL" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Sovereign wealth fund · Singapore",
+      statusPills: [
+        { tone: "navy", label: "First contact" },
+        { tone: "teal", label: "Intro call · tomorrow" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "https://www.linkedin.com/in/kwong-hong-huat-mock", label: "LinkedIn", icon: "linkedin" },
+        { href: "/relationships?focus=r8", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-c3-1",
@@ -1318,6 +1479,18 @@ export const commitments: Commitment[] = [
       { label: "Circulate short deck after scheduling confirmed", badge: "OVERDUE" },
       { label: "Propose two follow-up slots", badge: "DUE" },
     ],
+    drawerSpecHeader: {
+      subtitle: "Family office · BNF Capital",
+      statusPills: [
+        { tone: "red", label: "Commitment overdue" },
+        { tone: "navy", label: "First contact" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "https://www.linkedin.com/in/nic-fallows-mock", label: "LinkedIn", icon: "linkedin" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
     activityLog: [
       {
         id: "al-c4-1",
@@ -1355,6 +1528,37 @@ export const briefs: Brief[] = [
     summary: "Northwind is leaning in after strong Q4; wants clarity on pipeline and risk.",
     agenda: ["Performance highlights", "Risk / hedging stance", "Next allocation step"],
     commitments: ["Send follow-up deck", "Confirm allocation window"],
+    drawerWhySurfaced: {
+      body: "Tomorrow’s Q4 review with Northwind — brief is locked from last touchpoints. One open loop on allocation window; deck follow-up is the main prep output.",
+      stamp: "Computed · From CRM + prior meeting notes",
+    },
+    drawerSpecHeader: {
+      subtitle: "Family office · Tier 1 momentum",
+      statusPills: [
+        { tone: "teal", label: "Brief ready" },
+        { tone: "amber", label: "1 open loop" },
+      ],
+      links: [
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+      ],
+    },
+    activityLog: [
+      {
+        id: "al-b1-1",
+        ts: "Yesterday",
+        actor: "TOMO",
+        summary: "Brief assembled from last call notes + deck opens",
+        detail: "Risk and pipeline themes flagged from allocator email thread.",
+      },
+      {
+        id: "al-b1-2",
+        ts: "Mon",
+        actor: "User",
+        summary: "Call · Aligned on Q4 narrative",
+        detail: "Northwind asked for clearer pipeline view for IC.",
+      },
+    ],
   },
   {
     id: "b2",
@@ -1366,6 +1570,37 @@ export const briefs: Brief[] = [
     summary: "Peakline opened deck multiple times; need to secure a concrete slot.",
     agenda: ["Scheduling decision", "Performance Q&A", "Next steps to commit"],
     commitments: ["Lock meeting time", "Share concise 3-bullet update"],
+    drawerWhySurfaced: {
+      body: "Friday check-in: engagement signals show repeated deck opens — brief emphasizes scheduling and a tight three-bullet update to unblock their IC path.",
+      stamp: "Computed · From materials engagement (stub)",
+    },
+    drawerSpecHeader: {
+      subtitle: "Fund-of-funds · Q2 read path",
+      statusPills: [
+        { tone: "navy", label: "Brief updated" },
+        { tone: "amber", label: "2 open loops" },
+      ],
+      links: [
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+      ],
+    },
+    activityLog: [
+      {
+        id: "al-b2-1",
+        ts: "Today 08:00",
+        actor: "TOMO",
+        summary: "Engagement spike · Risk deck section",
+        detail: "Third open in 48h — surfaced for Friday agenda.",
+      },
+      {
+        id: "al-b2-2",
+        ts: "Wed",
+        actor: "User",
+        summary: "Email · Proposed Fri 2pm slot",
+        detail: "Awaiting Jamie’s confirmation.",
+      },
+    ],
   },
   {
     id: "b3",
@@ -1378,6 +1613,37 @@ export const briefs: Brief[] = [
       "Signal: Allocator engagement on your January pack is tracking above the peer median — Charly's team re-opened the risk and attribution sections twice in the last week.\n\nContext: Quarterly hedge fund update; focus on attribution, capacity, and allocator-desk questions from Charly's last email. Brief is locked.",
     agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
     commitments: ["Send one-pager after call", "Confirm data room access renewal"],
+    drawerWhySurfaced: {
+      body: "Today’s HF update ties to Coming up (UBS · Charly). Brief mirrors the same prep pack — use this row when you land from Daily Brief or radar.",
+      stamp: "Computed · Linked to commitment c1",
+    },
+    drawerSpecHeader: {
+      subtitle: "Allocator desk · UBS · Today 2:00 PM ET",
+      statusPills: [
+        { tone: "teal", label: "Brief ready" },
+        { tone: "amber", label: "1 open loop" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "/relationships", label: "Open LP record", icon: "clock" },
+      ],
+    },
+    activityLog: [
+      {
+        id: "al-b3-1",
+        ts: "Today 07:00",
+        actor: "TOMO",
+        summary: "Brief locked — allocator questions pulled from thread",
+        detail: "Capacity + attribution lines match Charly’s last email.",
+      },
+      {
+        id: "al-b3-2",
+        ts: "Yesterday",
+        actor: "User",
+        summary: "Email · Charly confirmed attendance",
+        detail: "One capacity question flagged for top of call.",
+      },
+    ],
   },
   {
     id: "b4",
@@ -1393,6 +1659,37 @@ export const briefs: Brief[] = [
       "Follow up on co-invest deck — ⚠️ promised 8 days ago, not yet sent",
       "Share updated DDQ index",
     ],
+    drawerWhySurfaced: {
+      body: "Matches Coming up (CPPIB · Frank) today at 4pm. Co-invest deck overdue — called out in commitments for visibility in the drawer.",
+      stamp: "Computed · Linked to commitment c2",
+    },
+    drawerSpecHeader: {
+      subtitle: "Investment management · CPPIB",
+      statusPills: [
+        { tone: "teal", label: "Brief ready" },
+        { tone: "red", label: "Overdue promise" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "/relationships?focus=r6", label: "Open LP record", icon: "clock" },
+      ],
+    },
+    activityLog: [
+      {
+        id: "al-b4-1",
+        ts: "Yesterday",
+        actor: "TOMO",
+        summary: "Stub signal · Reply velocity tightening",
+        detail: "Narrative for demo — not from live mail.",
+      },
+      {
+        id: "al-b4-2",
+        ts: "Last week",
+        actor: "User",
+        summary: "Meeting · Liquidity + co-invest",
+        detail: "Notes feed this brief’s agenda ordering.",
+      },
+    ],
   },
   {
     id: "b5",
@@ -1405,6 +1702,38 @@ export const briefs: Brief[] = [
       "New contact — no prior meeting history. First live intro with Kwong; light CRM context and prep pack still building. Focus on mandate fit, pacing, and what GIC needs before deeper diligence.",
     agenda: ["Credentials & strategy", "Sizing and timeline", "Next steps to allocator reads"],
     commitments: ["Circulate short deck after call", "Propose two follow-up slots"],
+    drawerWhySurfaced: {
+      body: "Aligns with Coming up intro (GIC · Kwong) tomorrow. First-contact template — credentials-led, single clear ask.",
+      stamp: "Computed · Linked to commitment c3",
+    },
+    drawerSpecHeader: {
+      subtitle: "Sovereign wealth fund · First contact",
+      statusPills: [
+        { tone: "navy", label: "Brief updated" },
+        { tone: "amber", label: "1 open loop" },
+      ],
+      links: [
+        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
+        { href: "https://www.linkedin.com/in/kwong-hong-huat-mock", label: "LinkedIn", icon: "linkedin" },
+        { href: "/relationships?focus=r8", label: "Open LP record", icon: "clock" },
+      ],
+    },
+    activityLog: [
+      {
+        id: "al-b5-1",
+        ts: "Today 08:00",
+        actor: "TOMO",
+        summary: "First-contact brief scaffold complete",
+        detail: "Mandate fit + pacing bullets from onboarding stub.",
+      },
+      {
+        id: "al-b5-2",
+        ts: "2d ago",
+        actor: "User",
+        summary: "Email · Intro window accepted",
+        detail: "Tomorrow 10am ET confirmed.",
+      },
+    ],
   },
 ];
 

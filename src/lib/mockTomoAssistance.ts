@@ -360,6 +360,54 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     suggestedPrompts: ["Create follow-up action", "Draft email", "Open full brief"],
   },
 
+  b3: {
+    initialMessage: {
+      text: "UBS HF update today at 2pm — Charly’s desk re-opened risk and attribution. Brief is locked; one-pager after the call is the main output.",
+      blocks: [
+        {
+          kind: "brief",
+          agenda: ["Performance vs peers", "Risk & exposure snapshot", "Questions from their allocator desk"],
+          commitments: ["Send one-pager after call", "Confirm data room access renewal"],
+        },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
+      ],
+    },
+    suggestedPrompts: ["Draft one-pager outline", "Pull allocator questions", "Create follow-up action"],
+  },
+
+  b4: {
+    initialMessage: {
+      text: "CPPIB update at 4pm — co-invest deck is overdue. Frank’s reply velocity picked up; use the brief to anchor liquidity and IC path.",
+      blocks: [
+        {
+          kind: "brief",
+          agenda: ["Portfolio update", "Liquidity & terms", "Path to next IC"],
+          commitments: [
+            "Follow up on co-invest deck — ⚠️ promised 8 days ago, not yet sent",
+            "Share updated DDQ index",
+          ],
+        },
+        { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
+      ],
+    },
+    suggestedPrompts: ["Draft co-invest email", "Summarize liquidity asks", "Create follow-up action"],
+  },
+
+  b5: {
+    initialMessage: {
+      text: "First intro with GIC tomorrow — Kwong. No prior meeting history; keep credentials tight and one clear scheduling ask.",
+      blocks: [
+        {
+          kind: "brief",
+          agenda: ["Credentials & strategy", "Sizing and timeline", "Next steps to allocator reads"],
+          commitments: ["Circulate short deck after call", "Propose two follow-up slots"],
+        },
+        { kind: "workflow_link", playbookId: "pb-intro-tracker", name: "Warm Intro Tracker", description: "Detect CC'd intros, draft reply within 24h, escalate if LP is silent." },
+      ],
+    },
+    suggestedPrompts: ["Draft 5-line intro", "Suggest two meeting slots", "Create follow-up action"],
+  },
+
   // r1–r4: Relationships (Alex Morgan, Jamie Chen, Priya Desai, Samir Patel)
   r1: {
     initialMessage: {

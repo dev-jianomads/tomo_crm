@@ -38,6 +38,10 @@ export type ContextDrawerProps = {
    * Lists-style layout: Section 1 scrolls and grows; Section 2 is a compact middle band (no tall Tomo chat flex).
    */
   listContextDrawerLayout?: boolean;
+  /** Hide the slim title row — use when section 1 includes a full v3 spec head (Esc + eyebrow). */
+  hideChromeHeader?: boolean;
+  /** Tailwind padding classes for section 1 inner wrapper (default `px-4 py-3`). */
+  section1PaddingClassName?: string;
 };
 
 /**
@@ -60,6 +64,8 @@ export function ContextDrawer({
   section3Entries,
   section3Custom,
   listContextDrawerLayout = false,
+  hideChromeHeader = false,
+  section1PaddingClassName = "px-4 py-3",
 }: ContextDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -89,23 +95,24 @@ export function ContextDrawer({
         aria-modal="true"
         aria-label={drawerAriaLabel ?? title}
       >
-        {/* Header */}
-        <div
-          className={`flex shrink-0 items-center border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}
-        >
-          {hideHeaderTitle ? (
-            <span className="sr-only">{drawerAriaLabel ?? title}</span>
-          ) : (
-            <h2 className="text-sm font-semibold text-[color:var(--foreground)]">{title}</h2>
-          )}
-          <button
-            onClick={onClose}
-            className="tomo-drawer-icon-btn"
-            aria-label="Close drawer"
+        {!hideChromeHeader ? (
+          <div
+            className={`flex shrink-0 items-center border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}
           >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
-        </div>
+            {hideHeaderTitle ? (
+              <span className="sr-only">{drawerAriaLabel ?? title}</span>
+            ) : (
+              <h2 className="text-sm font-semibold text-[color:var(--foreground)]">{title}</h2>
+            )}
+            <button
+              onClick={onClose}
+              className="tomo-drawer-icon-btn"
+              aria-label="Close drawer"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        ) : null}
 
         {/* Section 1: Content Details — compact to maximize Tomo chat space, or flex-1 when Section 2 hidden */}
         {section1Content != null ? (
@@ -116,7 +123,9 @@ export function ContextDrawer({
                 : `min-h-0 min-w-0 overflow-y-auto ${hideSection2 ? "flex-1" : "shrink"}`
             }
           >
-            <div className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">{section1Content}</div>
+            <div className={`border-b border-[color:var(--tomo-rule-soft)] ${section1PaddingClassName}`}>
+              {section1Content}
+            </div>
           </div>
         ) : null}
 
