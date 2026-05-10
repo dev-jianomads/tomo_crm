@@ -18,7 +18,7 @@
 1. **Authoritative UI:** v3 Relationships HTML mocks win over older SRS bullets; SRS was amended to match.
 2. **Create list:** Control stays **disabled until at least one filter** is active (structured, advanced, or Tomo-applied).
 3. **Group by:** Applies to **List** and **Cards** only. **Kanban always columns by pipeline stage** — Group is ignored when the Kanban view is active.
-4. **Fund context:** Relationships cohort is scoped to the **active fund** (`lp_contacts.fund_id`). **Mock:** wire explicitly to `useFunds()` / `activeFundId` (and exclude “all” from LP queries or define behaviour when “all funds” is selected — default implementation: resolve to first fund or filter client-side until product defines multi-fund browse).
+4. **Fund context:** With a **specific fund** selected, the Relationships cohort is scoped to **`lp_contacts.fund_id`**. With workspace **All**, the **list/kanban cohort is the union** across funds (no fund filter); **New Contact / CSV / drawer “fund raised against”** still resolve a **single effective fund** (`resolveEffectiveFundId` → first fund in workspace order) until multi-fund creation UX exists.
 5. **Migration:** **Breaking migration is acceptable** — canonical pipeline stages, `investor_type`, fund scoping, and persisted filter keys may reset without backward compatibility for legacy mock stage enums.
 6. **Detail UX:** **Right-hand drawer** per `tomo_relationships_lp_drawer_v2.html`, not a separate full-page detail column (desktop); sheet on small screens.
 
@@ -38,7 +38,7 @@
 ### Phase 0 — Preconditions
 
 - [x] Map each v3 **quick filter** chip to §3.11 named-filter predicates (or mark demo-only).
-- [x] Define **`activeFundId === "all"`** behaviour for Relationships (recommended: treat as primary fund for counts until multi-fund UX exists).
+- [x] Define **`activeFundId === "all"`** behaviour for Relationships: **union cohort** for list/counts/Kanban; **primary fund** only for actions that require one fund ID (see `relationships/page.tsx` + `relationshipFundScope.ts`).
 
 ### Phase 1 — Shell & tokens
 
@@ -107,11 +107,12 @@ Kanban **column chrome and stages** shipped with Phase 3. Remaining polish:
 
 - **Horizontal density:** v3 list + eight-column Kanban stress smaller breakpoints — plan responsive truncation / horizontal scroll early.
 - **Drawer scope:** Drawer v2 is **larger** than current ContextDrawer content — risk of scroll fatigue; keep “Show full record” collapsed by default as in design.
-- **Fund “all”:** Until multi-fund UX is specified, implicit defaults can confuse counts — document chosen behaviour in Phase 0.
+- **Fund “all”:** Document that **list** shows all funds while **defaults for creation** still use the resolved primary fund — avoids empty lists when seed data spans funds unevenly.
 
 ---
 
 ## Open questions (remaining)
 
-- Exact **`activeFundId === "all"`** rule for Relationships (primary fund vs union vs disabled page).
 - Whether **row actions** in list (⋮) match existing pipeline shortcuts or wait for v2 spec.
+
+**Resolved:** **`activeFundId === "all"`** — union cohort for browse; primary fund for single-fund affordances.

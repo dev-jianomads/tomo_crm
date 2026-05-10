@@ -152,6 +152,12 @@ export default function RelationshipsPage() {
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = useMemo(() => resolveEffectiveFundId(activeFundId, funds), [activeFundId, funds]);
+  /** List/Kanban cohort label — when workspace is "All", show all LPs (not only `funds[0]`). */
+  const cohortFundLabel = useMemo(
+    () => (activeFundId === "all" ? "All funds" : funds.find((f) => f.id === activeFundId)?.name ?? "Fund"),
+    [activeFundId, funds]
+  );
+  /** Resolved fund for new contacts, imports, lists — still pins to primary fund when workspace is "All". */
   const activeFundLabel = useMemo(
     () => funds.find((f) => f.id === effectiveFundId)?.name ?? "Fund",
     [funds, effectiveFundId]
@@ -273,11 +279,11 @@ export default function RelationshipsPage() {
     [relationships, relationshipOverrides]
   );
 
-  /** LP rows for the active (or resolved) fund — matches SRS `fund_id` cohort. */
-  const relationshipsScopedFund = useMemo(
-    () => filterRelationshipsByFund(relationshipsWithOverrides, effectiveFundId),
-    [relationshipsWithOverrides, effectiveFundId]
-  );
+  /** LP rows for the table/kanban — full workspace when fund selector is All; otherwise single-fund cohort. */
+  const relationshipsScopedFund = useMemo(() => {
+    if (activeFundId === "all") return relationshipsWithOverrides;
+    return filterRelationshipsByFund(relationshipsWithOverrides, effectiveFundId);
+  }, [relationshipsWithOverrides, activeFundId, effectiveFundId]);
 
   const filtered = useMemo(
     () => applyFilters(relationshipsScopedFund, filterCriteria),
@@ -639,11 +645,11 @@ export default function RelationshipsPage() {
                   LPs
                   <span className="text-[color:var(--tomo-mute)]">
                     {" "}
-                    · current raise · {activeFundLabel}
+                    · current raise · {cohortFundLabel}
                   </span>
                   {activeFundId === "all" ? (
                     <span className="sr-only">
-                      Workspace fund selector is All; cohort uses the primary fund ({activeFundLabel}) for this raise.
+                      Workspace fund selector is All; showing LPs across all funds. New contacts still default to {activeFundLabel}.
                     </span>
                   ) : null}
                 </>
@@ -655,10 +661,10 @@ export default function RelationshipsPage() {
                     {relationshipsScopedFund.length}
                   </span>{" "}
                   LPs
-                  <span className="text-[color:var(--tomo-mute)]"> · {activeFundLabel}</span>
+                  <span className="text-[color:var(--tomo-mute)]"> · {cohortFundLabel}</span>
                   {activeFundId === "all" ? (
                     <span className="sr-only">
-                      Workspace fund selector is All; this list uses the primary fund ({activeFundLabel}) for the cohort.
+                      Workspace fund selector is All; showing LPs across all funds. New contacts still default to {activeFundLabel}.
                     </span>
                   ) : null}
                 </>
@@ -911,7 +917,7 @@ export default function RelationshipsPage() {
               activeId={activeId}
               onSelect={(id) => setActiveId(id)}
               onMoveToStage={handleKanbanMoveToStage}
-              fundRaiseLabel={activeFundLabel}
+              fundRaiseLabel={cohortFundLabel}
             />
           )}
         </div>
