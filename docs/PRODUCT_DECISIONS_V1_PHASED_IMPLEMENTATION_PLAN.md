@@ -54,7 +54,7 @@ Goal: lock high-risk behavior and demo-critical trust features first.
 Goal: complete core usability, compliance, and key architecture changes needed for V1 credibility.
 
 1. **Today + Relationships structural changes**
-   - Daily Brief modal retirement + `On My Radar` replacement.
+   - **Daily Brief modal retirement + `On My Radar` replacement** — implementation targets the unified **Radar Modal** IA (**SRS Appendix I**, visual reference `design/tomo_radar_modal_v1.html`): Daily Brief framing + On my radar sections in one surface (`T3`).
    - Chat panel collapse behavior on Today and Relationships.
      - **Delivered (Today inline Tomo):** Accordion-style expand/collapse (default collapsed single-line prompt); expanded panel uses persisted top/bottom split with resize handle. See **Appendix — Today inline Tomo UI delta** for copy and interaction diffs aligned with **T2**.
    - Relationships chip split (filter vs action) with persistent active filter tags.
@@ -121,7 +121,7 @@ Legend:
 |---|---|---|---|---|---|---|---|
 | T1 | Today | Strip subtitle + AI panel description; title only | S | Low | UI-only copy/layout cleanup | V1 | Phase 0 |
 | T2 | Today | Collapse AI chat to single-line input; expand on click; update prompts | M | Medium | Fold/viewport regressions | V1 | Initial V1 |
-| T3 | Today | Retire Daily Brief modal; add `On My Radar` with badge/content | L | Medium | Entry-point replacement and state continuity | V1 | Initial V1 |
+| T3 | Today | Retire legacy Daily Brief modal; ship unified **Radar Modal** (Daily Brief + On my radar per **SRS Appendix I** / `design/tomo_radar_modal_v1.html`) with badge/content | L | Medium | Entry-point replacement and state continuity | V1 | Initial V1 |
 | T4 | Today | External 7am brief send + in-app confirmation | L | Medium | Scheduler/timezone reliability | V1 | Later V1 |
 | T5 | Today | Cards persist and age; overdue sort + nav badge | M | Medium | Existing reset assumptions | V1 | Phase 0 |
 | T6 | Today | Drawer chip split; append-only draft blocks; no mode switch | L | High | Core interaction model rewrite | V1 | Initial V1 |

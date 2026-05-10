@@ -799,7 +799,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 ### 3.8. Today / Daily Brief
 
-**Description.** Today (`/home`) is the GP's daily landing surface. Greeting, inline Tomo chat, "What needs your attention" (action queue), "Coming up" (commitments + meetings), "On my radar" (signal callouts), and the Daily Brief modal that auto-opens on first daily login. Daily Brief is also delivered via email and Slack at the user's configured time.
+**Description.** Today (`/home`) is the GP's daily landing surface. Greeting, inline Tomo chat, "What needs your attention" (action queue), "Coming up" (commitments + meetings), "On my radar" (signal callouts), and a **unified Daily Brief + On my radar modal** (the **Radar Modal**, IA per **Appendix I**) that auto-opens on first daily login. The same brief is delivered via email and Slack at the user's configured time. Visual reference: `design/tomo_radar_modal_v1.html` in `tomo_crm`.
 
 **Inputs / triggers.**
 
@@ -815,19 +815,18 @@ Closing the browser preserves state and resumes after the last completed step. M
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow.
    - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. CTA links to Insights (`/insights`). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
-   - **On my radar**: small intelligence-line callouts ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.").
-2. **Daily Brief modal.**
+   - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal.
+2. **Radar Modal (Daily Brief + On my radar).**
    - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
-   - Content blocks (per Tomo MVP3 §C.13):
-     - Today's meetings (with LP context line and prep brief link).
-     - Urgent / approval-needed actions (count + top three).
-     - Follow-up compliance status (current / week-over-week).
-     - Key signal change since yesterday (top three).
-   - User can dismiss; dismissal does not affect tomorrow's auto-open.
+   - **Normative section taxonomy** (order, default collapsed state, CTA dictionary): **Appendix I — Radar Modal IA (v1)**.
+   - Header: eyebrow (*Daily Brief · {date}*), title *On my radar*, narrative summary paragraph, computation stamp (e.g. time computed, lookback window, item count). Optional radar glyph per design system.
+   - Body: collapsible sections with evidence-rich rows (tier rail, tags, optional primary/secondary CTAs routing to Action Drawer / commitments / drafts per Appendix I).
+   - Footer: channel delivery summary line; **Brief settings** navigates to notification/delivery preferences; **Done** dismisses. User can dismiss via Esc or veil; dismissal does not affect tomorrow's auto-open.
+   - **Badge count** (shown next to the entry-point control): count of **navigable / actionable** radar rows across sections for that day (implementation must use one normative rule — see Appendix I).
 3. **Daily Brief delivery (email + Slack).**
    - At `user_preferences.daily_brief_send_at_local`, the worker assembles the brief and delivers via configured channels (`user_preferences.daily_brief_channels`).
-   - Email: HTML body via Postmark/SES with the same content blocks.
-   - Slack: a single `chat.postMessage` to the workspace's `slack_workspace_connections.default_channel_id` (or the user's DM if Slack scope permits user-DM); blocks layout with section headers and one thread reply per section for detail.
+   - **Email:** HTML via Postmark/SES. **V1:** email uses the **same section taxonomy** as the in-app Radar Modal, optionally shortened (fewer rows per section) for readability; section headings align with Appendix I. Legacy four-theme digest (meetings / urgent / compliance / signals only) is **superseded** for normative structure.
+   - **Slack:** a single `chat.postMessage` (or DM) with **section blocks** mirroring Appendix I headings; threading optional per Appendix H O-7.
 
 **Outputs.**
 
@@ -843,15 +842,17 @@ Closing the browser preserves state and resumes after the last completed step. M
 - BR-3.8.3 — If both email and Slack are enabled, both are delivered; no de-duplication.
 - BR-3.8.4 — Empty-state attention queue surfaces a "Nothing pressing today" state with a link to Lists.
 - BR-3.8.5 — **Where the raise stands** counts use the same normative definitions as Section 9 (Metric 3 for “genuinely moveable”; `lp_state.pipeline_flag` for G/A/R-derived buckets). The four buckets are mutually exclusive and sum to the **Today tile cohort** of LPs (non-terminal raise stages per Section 9 Today supplement — production default excludes `pass`, `closed_lost`, and `committed` from *work left*; the mock uses CRM labels **Closed** and **Pass** only).
+- BR-3.8.6 — Radar Modal section titles, collapse defaults, and CTA labels match **Appendix I** unless an explicit **[OPEN]** issue records a product exception.
 
 **Acceptance criteria.**
 
-- AC-3.8.1 — A GP loading Today for the first time today sees the Daily Brief modal auto-open within 500ms.
+- AC-3.8.1 — A GP loading Today for the first time today sees the Radar Modal (Daily Brief + On my radar) auto-open within 500ms.
 - AC-3.8.2 — The same GP reloading Today later in the same local day does not see the modal auto-open.
 - AC-3.8.3 — A GP with Slack connected and `daily_brief_channels=['in_app','email','slack']` receives the brief in their Slack DM at 07:30 local.
 - AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded.
-- AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, brief, **raise-stands counts**) and returns answers consistent with what's rendered on the page.
+- AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, **Radar Modal payload**, **raise-stands counts**) and returns answers consistent with what's rendered on the page.
 - AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (genuinely moveable, healthy & on track, cooling — watch, drifting — act) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
+- AC-3.8.7 — The in-app Radar Modal implements the section taxonomy and defaults in **Appendix I** (including footer **Brief settings** and **Done**).
 
 ---
 
@@ -3663,11 +3664,11 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 **Epic:** Daily landing surface — attention queue, commitments, brief, inline Tomo.
 
 **Story 8.4.1 — Daily Brief auto-open.**
-*As a GP loading Today on the first visit of the local day, I see the Daily Brief modal auto-open.*
+*As a GP loading Today on the first visit of the local day, I see the unified Radar Modal (Daily Brief + On my radar) auto-open.*
 
 - AC — The modal renders within 500ms of page load when it should auto-open.
 - AC — A subsequent reload on the same local day does not re-open the modal.
-- AC — Daily Brief blocks: today's meetings, urgent / approval-needed actions, follow-up compliance, key signal change.
+- AC — Modal content follows **Appendix I — Radar Modal IA (v1)** (section headings, narrative header, stamp, collapsible sections, footer). Legacy four-block brief (meetings / urgent / compliance / signals only) is superseded for in-app structure.
 
 **Story 8.4.2 — Attention queue.**
 *As a GP, I see "What needs your attention" with today's most pressing items, sorted by priority.*
@@ -3683,15 +3684,16 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Commitments come from `commitments` rows with `status='open'` and `due_at <= tomorrow`.
 
 **Story 8.4.4 — On my radar.**
-*As a GP, I see small intelligence-line callouts highlighting positive directional signals.*
+*As a GP, I see small intelligence-line callouts on Today and the full **On my radar** experience inside the Radar Modal.*
 
-- AC — Callouts are sourced from `lp_signal_log` rows in the last 24 hours where `is_directional=true`.
-- AC — Each callout cites a specific LP and observation (e.g. "Frank Ieraci's reply time halved this week — CPPIB is accelerating").
+- AC — **Inline callouts** on the Today page are sourced from `lp_signal_log` (and related LP state) where directional intelligence applies; at minimum, observations that appear in **Heating up** / **Cooling off** in the Radar Modal may be summarized inline when space-constrained.
+- AC — Each inline callout cites a specific LP and observation (e.g. "Frank Ieraci's reply time halved this week — CPPIB is accelerating").
+- AC — The **Radar Modal** (Story 8.4.1) surfaces the complete multi-section view per **Appendix I**, not only positive signals.
 
 **Story 8.4.5 — Inline Tomo on Today.**
 *As a GP, I can chat with Tomo on Today, with the agent receiving structured context for what's on the page.*
 
-- AC — Tomo receives `todayContext` (action counts, meeting list, brief blocks) and grounds answers in it.
+- AC — Tomo receives `todayContext` (action counts, meeting list, **Radar Modal / brief payload** per §3.8, raise-stands counts) and grounds answers in it.
 - AC — Mutations proposed by Tomo require explicit confirm; no auto-apply.
 - AC — Tomo's answers do not invent records that aren't in the workspace.
 
@@ -4057,7 +4059,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 *As a GP with email enabled, I receive a Daily Brief email at 07:30 local time.*
 
 - AC — Email arrives within ±5 minutes of scheduled time.
-- AC — Same content blocks as the in-app modal: today's meetings, urgent / approval-needed, follow-up compliance, key signal change.
+- AC — Email uses the **same section taxonomy** as the in-app Radar Modal (**Appendix I** headings); row counts per section may be truncated for email readability.
 - AC — Email writes a row to `email_delivery_log` with `template='daily_brief'`.
 
 **Story 8.13.2 — Slack delivery.**
@@ -4278,7 +4280,8 @@ Extends §1.3. Alphabetical.
 | **CASA** | Cloud Application Security Assessment. Google's third-party security review programme for OAuth apps that access sensitive scopes. CASA Tier 2 is the V1 commitment. |
 | **Concentration risk** | Insights Metric 4. Triggered when one LP's expected commitment exceeds 20% of remaining target. |
 | **Day 1 Gap** | Count of LPs whose CRM lists them as active but for whom TOMO finds no meaningful touch in 60+ days. Insights Metric 2; revealed after initial sync (not a Document B onboarding step — §3.2). |
-| **Daily Brief** | Per-day summary surface that auto-opens on first daily login; also delivered via email and Slack. §3.8. |
+| **Daily Brief** | Per-day summary delivered in-app (Radar Modal), email, and Slack. §3.8; section taxonomy **Appendix I**. |
+| **Radar Modal** | Unified modal on Today: **Daily Brief** framing (eyebrow, narrative, stamp) + **On my radar** content with collapsible sections per **Appendix I**. Design reference: `design/tomo_radar_modal_v1.html`. |
 | **Delta sync** | Incremental ingestion via Microsoft Graph delta links and Google History API / push notifications. |
 | **Drifting** | Named filter on Lists for LPs in amber/red flag with silence reason. |
 | **Fat Middle** | Cohort of warm-stage LPs with no directional signal in 30+ days. Insights Metric 8 plus the named filter. |
@@ -4322,7 +4325,7 @@ Extends §1.3. Alphabetical.
 - `Tomo_MVP3.docx` — historical reference; carries SOC 2 / CASA framing and agent-orchestration tool inventory; superseded for everything else by V1 Final.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
-- `docs/Tomo MVP (April 24, 2026).md` — V1 narrative source.
+- `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
 
@@ -5150,7 +5153,7 @@ All three are present in §6.2.
 | O-4 | Microsoft 365 Copilot AI insight beta scope (`OnlineMeetingAiInsight.Read.All`) availability for FC tenants. | Eng lead | Fall back to transcript + TOMO LLM summarisation when scope or licence unavailable. |
 | O-5 | Google Meet AI notes (Gemini for Workspace add-on) availability for FC tenants. | Eng lead | Same fallback as O-4. |
 | O-6 | Daily Brief default delivery time per workspace timezone. | PM | 7:30am local, configurable. |
-| O-7 | Slack daily-brief format (canvas vs message + thread). | PM + Design | Single message with section blocks; thread for detail. |
+| O-7 | Slack daily-brief format (canvas vs message + thread). | PM + Design | Single message with **Appendix I** section blocks; thread for detail. |
 | O-8 | Email and calendar webhook architecture: Microsoft Graph subscriptions vs delta polling fallback when webhook unhealthy. | Eng lead | Webhooks primary, 30-minute delta polling fallback per integration. |
 | O-9 | Re-engagement webhook latency SLO: ≤ 1 hour confirmed. If MS Graph subscription delivery exceeds, supplemental polling job at 30-minute cadence. | Eng lead | Adopt SLO; provision polling fallback. |
 | O-10 | ~~Workspace transfer on owner departure (e.g. GP leaves the firm).~~ **DECIDED:** Manual support flow in V1; automated transfer in V2. | PM + Legal | Closed. |
@@ -5162,9 +5165,85 @@ All three are present in §6.2.
 
 ---
 
+### I. Radar Modal IA (v1)
+
+Normative interaction architecture for the unified **Daily Brief + On my radar** modal on Today (`§3.8`). **Design reference:** `design/tomo_radar_modal_v1.html` in the `tomo_crm` repository.
+
+#### I.1 Purpose
+
+- Replace the legacy four-theme brief (meetings / urgent / compliance / signals only) with one modal that surfaces **operational** and **relationship intelligence** in a single scan.
+- Align in-app, email, and Slack section **headings** (rows inside sections may be truncated out-of-app).
+
+#### I.2 Header and footer
+
+| Element | Requirement |
+|--------|--------------|
+| Eyebrow | **Daily Brief · {localized date}** |
+| Title | **On my radar** |
+| Narrative | One short paragraph summarizing cross-section themes (computed). |
+| Stamp | Mono / secondary line(s): e.g. computation time, lookback window (e.g. 90-day), total items surfaced. |
+| Close | Control labeled **Esc** or equivalent; Escape key dismisses when focus permits. |
+| Footer stamp | Plain-language reminder of channels (e.g. email + Slack delivery times). |
+| **Brief settings** | Navigates to notification / daily-brief delivery preferences (`user_preferences`). |
+| **Done** | Dismisses modal; records `last_daily_brief_seen_local_date` per **BR-3.8.1**. |
+
+#### I.3 Section taxonomy (order and defaults)
+
+| § | Section title | Default UI state | Direction pill (optional) |
+|---|----------------|------------------|---------------------------|
+| 1 | **Returning to you** | Expanded | — |
+| 2 | **Your commitments approaching** | Expanded | — |
+| 3 | **Outstanding from your LPs** | Expanded | — |
+| 4 | **Heating up** | Expanded | **Positive direction** |
+| 5 | **Cooling off** | **Collapsed** | **Negative direction** |
+| 6 | **Quiet beyond cadence** | **Collapsed** | — |
+| 7 | **Next 7 days at a glance** | Expanded | — |
+
+Sections with **zero** rows: render the section with prescribed empty-state copy **or** omit the section — engineering chooses one strategy per build, documented in release notes; QA verifies consistency.
+
+#### I.4 Row model (per item)
+
+| Element | Requirement |
+|--------|--------------|
+| Tier rail | Visual emphasis when **Tier 1** LP (normative tier from `lp_contacts`). |
+| Labels | **Firm / LP** · **Person** (person optional for role-based rows). |
+| Tags | JetBrains-style uppercase chips: tier (`Tier 1` / `Tier 2`), urgency, warmth/cooling, SLA / silence — as relevant. |
+| Evidence | Plain-language narrative with quantitative cues where available. |
+| Aside | Short temporal context (e.g. snoozed date, days quiet, due date). |
+| CTAs | Optional; see **I.5**. Rows without CTAs are valid (intel-only). |
+
+#### I.5 CTA dictionary
+
+| Label | Intent | Typical routing |
+|-------|--------|-----------------|
+| **Bring to Today** | Resurface snoozed or deferred work into today's attention queue | `tomo_action_log` / `reminders` resolution per §3.7 |
+| **Draft now** | Open commitment or fulfilment draft | Action Drawer (`§3.9`), `commitments` |
+| **Draft a nudge** | Start outbound for LP delay | Action Drawer draft |
+
+Exact routing is implementation-defined but must land in **Action Drawer** or equivalent approved surface — no auto-send (**§1.2**).
+
+#### I.6 Badge count (entry point)
+
+The **On my radar** control badge displays **`badgeCount`**: the number of **navigable / actionable** rows across sections **1–7** for the current local day (rows with a `link` or CTA that opens a drawer, approval, or draft flow). **Intel-only** rows (no navigation target) may be excluded unless product toggles **include_intel_rows_in_badge** — default **exclude**. Document the chosen rule in release configuration.
+
+#### I.7 Data sources (informative)
+
+| Section | Primary sources (V1 target) |
+|---------|-----------------------------|
+| Returning to you | `reminders` snooze expiry; actions returned from snooze |
+| Your commitments approaching | `commitments`; extracted promises / open loops |
+| Outstanding from your LPs | Inbound obligations; SLA vs stated turnaround |
+| Heating up / Cooling off | `lp_signal_log`; reply velocity; pipeline signals |
+| Quiet beyond cadence | Meaningful-touch cadence vs silence (**§8**) |
+| Next 7 days | Calendar + commitments window |
+
+Snooze-heavy logic depends on reminder infrastructure (**§3.7**, **Story 8.14.4**).
+
+---
+
 **End of TOMO V1 SRS Draft v0.1.**
 
-All ten sections and eight appendices are populated. The document is the formal handoff from the `tomo_crm` mock to V1 production build.
+All ten sections and nine appendices (A–I) are populated. The document is the formal handoff from the `tomo_crm` mock to V1 production build.
 
 **Next steps for the team:**
 
