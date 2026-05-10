@@ -25,6 +25,7 @@ import { CRM_UPDATE_FIELD_REFERENCE } from "@/lib/crmFieldSchema";
 import type { StructuredFilterCriteria } from "@/lib/relationshipFilters";
 import type { TomoAssistance } from "@/lib/mockTomoAssistance";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
+import type { RadarModalPayload } from "@/lib/radarModalTypes";
 import {
   createUserWorkflowInputSchema,
   isUserWorkflowActionComplete,
@@ -82,8 +83,9 @@ export type OrchestratorContext = {
   todayContext?: {
     actions: { id: string; title: string; trigger: string; status: string; type: string }[];
     commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
-    /** Same payload as the Daily Brief modal (built from the same source on the client). */
+    /** Same digest blocks as email/orchestrator legacy path (four sections). */
     dailyBriefBlocks?: DailyBriefBlock[];
+    radarModalPayload?: RadarModalPayload;
     previousAttention?: {
       count: number;
       items: { id: string; title: string; trigger: string; status: string; type: string; group: string }[];
@@ -274,9 +276,31 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       lines.push(``);
     }
 
+    if (tc.radarModalPayload?.sections?.length) {
+      const rm = tc.radarModalPayload;
+      lines.push(
+        ``,
+        `Radar Modal — unified Daily Brief + On my radar (same as the in-app modal). Eyebrow: ${rm.eyebrowLabel}. Narrative: ${rm.narrativeSummaryPlain}`,
+      );
+      for (const sec of rm.sections) {
+        lines.push(``, `${sec.title} — ${sec.countSummary}`);
+        for (const item of sec.items) {
+          const who = item.personLabel ? `${item.lpLabel} · ${item.personLabel}` : item.lpLabel;
+          lines.push(`- ${who}: ${item.evidencePlain}`);
+          if (item.link) {
+            lines.push(`  [nav ${item.link.kind}: ${item.link.id}]`);
+          }
+          for (const cta of item.ctas ?? []) {
+            if (cta.link) lines.push(`  [cta "${cta.label}" → ${cta.link.kind}: ${cta.link.id}]`);
+          }
+        }
+      }
+      lines.push(``);
+    }
+
     lines.push(
       ``,
-      `SCOPE: You only have the Today snapshot above (primary attention list, any "Previous" items listed, commitments, Daily Brief blocks). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Lists for broader lookup, to expand "Previous" on Today if items are in that backlog, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
+      `SCOPE: You only have the Today snapshot above (primary attention list, any "Previous" items listed, commitments, Daily Brief blocks, Radar Modal sections when listed). If the user asks about anything not reflected there — e.g. searching all email, the whole CRM, or facts you cannot derive from this data — say clearly that you do not have access to that. Direct them to Relationships or Lists for broader lookup, to expand "Previous" on Today if items are in that backlog, or to open a specific row's drawer for CRM updates and drafts. Do not invent answers as if you searched a large corpus.`,
     );
   }
 

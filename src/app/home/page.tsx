@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ActionAmendChat } from "@/components/action-amend-chat";
@@ -28,16 +28,16 @@ import {
 import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
 import { TomoUrgencyPill } from "@/components/ui/urgency-pill";
 import { TomoWorkflowTag } from "@/components/ui/workflow-tag";
-import { TomoAiBadge, TomoAiSparkleIcon } from "@/components/tomo-ai-badge";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import {
   buildDailyBriefBlocks,
-  buildOnMyRadarBlocks,
   type DailyBriefBlock,
-  type DailyBriefLine,
   type DailyBriefLink,
 } from "@/lib/dailyBriefFromToday";
+import { buildRadarModalPayload } from "@/lib/radarModalFromToday";
+import type { RadarNavigateLink } from "@/lib/radarModalTypes";
+import { RadarModal } from "@/components/radar-modal";
 import { getStillInTodoActions } from "@/lib/todayEngagement";
 import { useTodayEngagement } from "@/hooks/useTodayEngagement";
 import {
@@ -501,18 +501,18 @@ export default function HomePage() {
     [engagementState],
   );
 
-  const onMyRadarBlocks = useMemo(
-    () => buildOnMyRadarBlocks(sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions),
+  const radarModalPayload = useMemo(
+    () =>
+      buildRadarModalPayload({
+        sortedActions: sortedActionItems,
+        sortedCommitments,
+        allBriefs: filteredBriefs,
+        stillInTodoActions,
+      }),
     [sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions],
   );
 
-  const onMyRadarLineCount = useMemo(() => {
-    let n = 0;
-    for (const b of onMyRadarBlocks) {
-      n += b.items.length + (b.secondaryItems?.length ?? 0);
-    }
-    return n;
-  }, [onMyRadarBlocks]);
+  const radarBadgeCount = radarModalPayload.badgeCount;
 
   const previousAttentionForContext = useMemo(
     () =>
@@ -540,12 +540,22 @@ export default function HomePage() {
     else setSelection({ type: "brief", id: link.id });
   }, []);
 
-  const navigateBriefLineFromRadar = useCallback(
-    (link: DailyBriefLink) => {
+  const navigateRadarLink = useCallback(
+    (link: RadarNavigateLink) => {
+      if (link.kind === "relationship") {
+        router.push(`/relationships?focus=${encodeURIComponent(link.id)}`);
+        setOnMyRadarOpen(false);
+        return;
+      }
+      if (link.kind === "meeting_prep") {
+        setSelection({ type: "brief", id: link.id });
+        setOnMyRadarOpen(false);
+        return;
+      }
       navigateBriefLine(link);
       setOnMyRadarOpen(false);
     },
-    [navigateBriefLine],
+    [navigateBriefLine, router],
   );
 
   const greeting = useMemo(() => {
@@ -680,15 +690,13 @@ export default function HomePage() {
                 }}
                 className="button-primary inline-flex items-center gap-2 rounded-[var(--tomo-radius-md)] px-3.5 py-2 text-[13px] font-medium shadow-none focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tomo-canvas)]"
                 aria-label={
-                  onMyRadarLineCount > 0
-                    ? `On My Radar, ${onMyRadarLineCount} items`
-                    : "On My Radar"
+                  radarBadgeCount > 0 ? `On My Radar, ${radarBadgeCount} actionable` : "On My Radar"
                 }
               >
                 On My Radar
-                {onMyRadarLineCount > 0 ? (
+                {radarBadgeCount > 0 ? (
                   <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-[10px] bg-[rgba(255,255,255,0.18)] px-1.5 font-mono text-[11px] font-normal tabular-nums">
-                    {onMyRadarLineCount}
+                    {radarBadgeCount}
                   </span>
                 ) : null}
               </button>
@@ -856,6 +864,7 @@ export default function HomePage() {
             contactName: c.contactName,
           })),
           dailyBriefBlocks,
+          radarModalPayload,
           previousAttention: previousAttentionForContext,
           raiseStands: raiseStandsBreakdown,
         }}
@@ -1044,225 +1053,15 @@ export default function HomePage() {
           }
         }}
       />
-      <OnMyRadarModal
+      <RadarModal
         key={onMyRadarModalKey}
         open={onMyRadarOpen}
         onClose={() => setOnMyRadarOpen(false)}
-        blocks={onMyRadarBlocks}
-        lineCount={onMyRadarLineCount}
-        onLineNavigate={navigateBriefLineFromRadar}
+        payload={radarModalPayload}
+        onNavigateLink={navigateRadarLink}
       />
       <ToastViewport toasts={toasts} />
     </>
-  );
-}
-
-function dailyBriefLineKey(line: DailyBriefLine, index: number): string {
-  if (line.link) return `${line.link.kind}-${line.link.id}-i${index}`;
-  return `plain-${index}-${line.label.slice(0, 40)}`;
-}
-
-function DailyBriefLineRow({
-  line,
-  onNavigate,
-}: {
-  line: DailyBriefLine;
-  onNavigate: (link: DailyBriefLink) => void;
-}) {
-  return (
-    <li className="flex items-start gap-2">
-      <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-mute)]" aria-hidden />
-      {line.link ? (
-        <button
-          type="button"
-          onClick={() => onNavigate(line.link!)}
-          title={line.label}
-          className="min-w-0 cursor-pointer text-left text-sm leading-snug text-[color:var(--foreground)] underline-offset-2 transition hover:text-[color:var(--tomo-teal)] hover:underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--tomo-card)]"
-          aria-label={`Open details: ${line.label.length > 120 ? `${line.label.slice(0, 120)}…` : line.label}`}
-        >
-          <span className="line-clamp-2 sm:line-clamp-none">{line.label}</span>
-        </button>
-      ) : (
-        <span className="text-sm leading-snug text-[color:var(--foreground)]">{line.label}</span>
-      )}
-    </li>
-  );
-}
-
-/**
- * Tomo insights toggle in the On My Radar modal header (peach icon).
- * Set to `true` to show the control again; insight panels + `showInsights` state stay wired below.
- */
-const SHOW_ON_MY_RADAR_INSIGHTS_HEADER = false;
-
-/** On My Radar — header control opens this modal (not inline accordion). */
-function OnMyRadarModal({
-  open,
-  onClose,
-  blocks,
-  lineCount,
-  onLineNavigate,
-}: {
-  open: boolean;
-  onClose: () => void;
-  blocks: DailyBriefBlock[];
-  lineCount: number;
-  onLineNavigate: (link: DailyBriefLink) => void;
-}) {
-  const [showInsights, setShowInsights] = useState(false);
-  const insightsVisible = SHOW_ON_MY_RADAR_INSIGHTS_HEADER && showInsights;
-
-  if (!open) return null;
-
-  return (
-    <div className="tomo-modal-scrim fixed inset-0 z-[110] flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
-      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="on-my-radar-modal-title"
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <h2 id="on-my-radar-modal-title" className="text-sm font-semibold text-[color:var(--foreground)]">
-              On My Radar
-            </h2>
-            {lineCount > 0 ? (
-              <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-[color:var(--tomo-teal-tint)] px-1.5 text-xs font-semibold text-[color:var(--tomo-teal-muted)] dark:text-[color:var(--tomo-teal)]">
-                {lineCount}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {SHOW_ON_MY_RADAR_INSIGHTS_HEADER ? (
-              <button
-                type="button"
-                onClick={() => setShowInsights((prev) => !prev)}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-[var(--tomo-radius-md)] border transition ${
-                  showInsights
-                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)]"
-                    : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"
-                }`}
-                aria-label={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-                title={showInsights ? "Hide Tomo insights" : "Show Tomo insights"}
-              >
-                <TomoAiSparkleIcon className="inline-block h-4 w-4 shrink-0 align-middle text-[color:var(--tomo-teal)]" />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="tomo-drawer-icon-btn h-9 w-9"
-              aria-label="Close"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <p className="mb-2 text-xs text-[color:var(--tomo-body)]">
-            Priority follow-ups and meetings are in the columns below. On My Radar focuses on momentum, execution
-            loops, and items you haven&apos;t engaged yet.
-          </p>
-          <p className="mb-3 text-xs text-[color:var(--tomo-body)]">Tap a line to open details in the drawer.</p>
-          <div className="space-y-2.5 sm:space-y-3">
-            {blocks.map((block) => (
-              <section
-                key={`${block.icon}-${block.title}`}
-                className="rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-teal-tint)] px-2.5 py-2.5 dark:bg-[color:var(--tomo-navy-soft)] sm:px-3 sm:py-2.5"
-              >
-                <div className={insightsVisible ? "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3" : "block"}>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <BriefSectionIcon kind={block.icon} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[color:var(--foreground)]">{block.title}</p>
-                        <p className="text-xs text-[color:var(--tomo-body)]">{block.subtitle}</p>
-                      </div>
-                    </div>
-                    <ul className="ml-4 mt-1.5 space-y-1 text-sm text-[color:var(--foreground)] sm:mt-2 sm:space-y-1.5">
-                      {block.items.map((item, idx) => (
-                        <DailyBriefLineRow key={dailyBriefLineKey(item, idx)} line={item} onNavigate={onLineNavigate} />
-                      ))}
-                    </ul>
-                    {block.secondarySubtitle ? (
-                      <p className="ml-6 mt-1.5 text-xs font-medium text-[color:var(--tomo-body)]">{block.secondarySubtitle}</p>
-                    ) : null}
-                    {block.secondaryItems?.length ? (
-                      <ul className="ml-4 mt-1 space-y-1 text-sm text-[color:var(--foreground)] sm:space-y-1.5">
-                        {block.secondaryItems.map((item, idx) => (
-                          <DailyBriefLineRow
-                            key={dailyBriefLineKey(item, idx)}
-                            line={item}
-                            onNavigate={onLineNavigate}
-                          />
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-
-                  {insightsVisible ? (
-                    <div className="rounded-[var(--tomo-radius-md)] border tomo-ai-border bg-[color:var(--tomo-card)] px-2.5 py-2 sm:w-56 sm:shrink-0">
-                      <div className="flex items-center justify-start">
-                        <TomoAiBadge label="Tomo insight" />
-                      </div>
-                      <p className="mt-1 text-xs tomo-ai-text">{block.insight}</p>
-                    </div>
-                  ) : null}
-                </div>
-              </section>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BriefSectionIcon({ kind }: { kind: DailyBriefBlock["icon"] }) {
-  const common = "h-4 w-4 shrink-0 text-[color:var(--tomo-teal)]";
-
-  if (kind === "followups") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <path fill="currentColor" d="M7 4h8l4 4v12H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm7 1.5V9h3.5L14 5.5ZM9 11h8v1.5H9V11Zm0 3h8v1.5H9V14Z" />
-      </svg>
-    );
-  }
-  if (kind === "meetings") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M8 3h1.5v2H14V3h1.5v2H18a2 2 0 0 1 2 2v11a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a2 2 0 0 1 2-2h2V3Zm10.5 7.5h-13V18a1.5 1.5 0 0 0 1.5 1.5h10A1.5 1.5 0 0 0 18.5 18v-7.5Z"
-        />
-      </svg>
-    );
-  }
-  if (kind === "momentum") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <path fill="currentColor" d="m4 16 5-5 3 3 6-7 2 1.7-8 9.3-3-3-3.7 3.7L4 16Zm0 4h16v1.5H4V20Z" />
-      </svg>
-    );
-  }
-  if (kind === "todo") {
-    return (
-      <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M9 3h9a2 2 0 0 1 2 2v14l-7-3-7 3V5a2 2 0 0 1 2-2Zm1 4.5v1.5h7V7.5H10Zm0 3v1.5h5v-1.5h-5Z"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" className={common} aria-hidden="true">
-      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-      <path fill="currentColor" d="M12 8.3a1 1 0 0 1 1 1V12h2.2a1 1 0 1 1 0 2H12a1 1 0 0 1-1-1V9.3a1 1 0 0 1 1-1Z" />
-    </svg>
   );
 }
 

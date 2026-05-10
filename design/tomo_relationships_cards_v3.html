@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Relationships · Card View v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.05);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-tint: rgba(201, 147, 58, 0.10);
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.10);
+    --green-soft-bg: rgba(45, 138, 94, 0.06);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.12);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.10);
+
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    --bg-page: var(--canvas);
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-modal: 0 20px 50px rgba(28, 43, 58, 0.18);
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --motion: 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg-page);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* NAV */
+  .nav {
+    width: 72px; background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    margin-bottom: 24px; letter-spacing: -0.02em; line-height: 1;
+    font-variation-settings: "opsz" 36;
+  }
+  .nav-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-md); color: var(--mute); cursor: pointer;
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: var(--navy); color: var(--card); }
+  .nav-spacer { flex: 1; }
+
+  .main { flex: 1; padding: 24px 32px 80px; min-width: 0; }
+
+  /* TOP ROW */
+  .top-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; gap: 16px;
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 500;
+    color: var(--mute); letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .top-utils { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .util-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 7px 12px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all var(--motion);
+    position: relative;
+  }
+  .util-btn:hover { border-color: var(--navy); }
+  .util-btn.primary {
+    background: var(--navy); color: var(--card); border-color: var(--navy);
+  }
+  .util-btn.primary:hover { background: #2A3D52; border-color: #2A3D52; }
+  .btn-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--amber); color: var(--card);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .reset-link {
+    color: var(--mute); font-size: 12px;
+    margin-right: 4px; cursor: pointer;
+    padding: 7px 4px;
+  }
+  .reset-link:hover { color: var(--navy); }
+
+  /* COMPRESSED FILTER PANEL */
+  .filter-panel {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 18px;
+    margin-bottom: 14px;
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .active-chips-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .active-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--teal-evidence-bg);
+    border: 1px solid var(--teal);
+    border-radius: 999px;
+    padding: 4px 6px 4px 12px;
+    font-size: 12px; font-weight: 500;
+    color: var(--teal);
+  }
+  .active-chip .x {
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--teal);
+  }
+  .active-chip .x:hover { background: rgba(14, 124, 124, 0.15); }
+  .clear-link {
+    color: var(--mute); font-size: 11px;
+    cursor: pointer; margin-left: 4px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .clear-link:hover { color: var(--navy); }
+
+  .quick-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .qf-chip {
+    display: inline-flex; align-items: center;
+    background: var(--card); color: var(--body);
+    border: 1px solid var(--rule);
+    border-radius: 999px; padding: 5px 12px;
+    font-size: 12px; font-weight: 400; cursor: pointer;
+    transition: all var(--motion);
+  }
+  .qf-chip:hover { border-color: var(--navy); color: var(--navy); }
+  .qf-chip.active {
+    background: var(--navy); color: var(--card);
+    border-color: var(--navy); font-weight: 500;
+  }
+
+  .ai-input {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 9px 14px;
+    transition: border-color var(--motion);
+  }
+  .ai-input:focus-within { border-color: var(--teal); }
+  .ai-input .ai-icon { color: var(--teal); flex-shrink: 0; }
+  .ai-input input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; color: var(--navy);
+  }
+  .ai-input input::placeholder { color: var(--mute); }
+  .ai-input .v1-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    flex-shrink: 0;
+    background: var(--card-warm);
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .ai-input .send {
+    width: 26px; height: 26px;
+    border-radius: var(--r-sm);
+    background: transparent; border: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--mute); cursor: pointer;
+    transition: all var(--motion);
+  }
+  .ai-input:focus-within .send { color: var(--teal); }
+
+  /* CONTROL BAR */
+  .control-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px; margin-bottom: 14px;
+  }
+  .results-block { display: flex; align-items: center; gap: 12px; }
+  .results-count { font-size: 13px; color: var(--body); }
+  .results-count .num { color: var(--navy); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .results-tomo-line {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 13px; font-style: italic;
+    color: var(--teal);
+    font-variation-settings: "opsz" 16;
+  }
+  .create-list-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; color: var(--teal);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .create-list-btn:hover { background: var(--teal); color: var(--card); }
+
+  .control-right { display: flex; align-items: center; gap: 12px; }
+  .group-by { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
+  .group-by .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .group-by select {
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+  }
+  .view-tabs {
+    display: flex; gap: 2px;
+    background: var(--card-warm);
+    border-radius: var(--r-md); padding: 3px;
+  }
+  .view-tab {
+    background: transparent; border: 0; padding: 6px 10px;
+    font-size: 11px; font-weight: 500; color: var(--mute);
+    cursor: pointer; border-radius: var(--r-sm);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .view-tab:hover { color: var(--navy); }
+  .view-tab.active {
+    background: var(--card); color: var(--navy); box-shadow: var(--shadow-1);
+  }
+
+  /* STAGE SECTIONS */
+  .stage-section { margin-bottom: 28px; }
+  .stage-header {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .stage-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500; color: var(--navy);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .stage-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+  }
+  .stage-line { flex: 1; height: 1px; background: var(--rule); }
+  .stage-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute); letter-spacing: 0.04em;
+  }
+  .stage-meta .num { color: var(--navy); font-weight: 600; }
+
+  /* CARD GRID — 3 columns */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1280px) {
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .lp-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all var(--motion);
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .lp-card:hover {
+    border-color: var(--navy);
+    box-shadow: var(--shadow-1);
+  }
+
+  .card-top {
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .signal-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%; flex-shrink: 0;
+    margin-top: 7px;
+  }
+  .signal-dot.green { background: var(--green); box-shadow: 0 0 0 2px var(--green-bg); }
+  .signal-dot.amber { background: var(--status-amber); box-shadow: 0 0 0 2px var(--status-amber-bg); }
+  .signal-dot.red { background: var(--red); box-shadow: 0 0 0 2px var(--red-bg); }
+
+  .card-firm-block { flex: 1; min-width: 0; }
+  .card-firm-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 16px;
+    color: var(--navy); line-height: 1.2;
+    font-variation-settings: "opsz" 18;
+    margin-bottom: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card-person {
+    font-size: 12px; color: var(--body);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .card-person .role { color: var(--mute); }
+  .card-tier-row {
+    display: flex; align-items: center; gap: 5px;
+    margin-top: 3px;
+  }
+  .tier-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em;
+    padding: 1px 6px; border-radius: 2px;
+  }
+  .tier-mark.t1 { background: var(--teal-evidence-bg); color: var(--teal); }
+  .tier-mark.t2 { background: var(--navy-soft); color: var(--navy); }
+  .tier-mark.t3 { color: var(--mute); border: 1px solid var(--rule); padding: 0 5px; }
+  .prior-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--amber);
+    letter-spacing: 0.06em;
+  }
+
+  .signal-pill {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 3px 8px; border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .signal-pill.heating { background: var(--green-bg); color: var(--green); }
+  .signal-pill.healthy { background: var(--green-soft-bg); color: var(--green); }
+  .signal-pill.cooling { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .signal-pill.quiet { background: var(--card-warm); color: var(--mute); }
+  .signal-pill.drifting { background: var(--red-bg); color: var(--red); }
+  .signal-pill.closing { background: var(--green-bg); color: var(--green); font-weight: 600; }
+
+  .card-touch-block {
+    display: flex; flex-direction: column; gap: 2px;
+    padding-top: 4px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .touch-line {
+    display: flex; gap: 6px; align-items: baseline;
+    font-size: 12px;
+  }
+  .touch-line .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    width: 36px;
+    flex-shrink: 0;
+  }
+  .touch-line .value { color: var(--body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .touch-line .stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .touch-line .stamp.warn { color: var(--status-amber-text); }
+  .touch-line .stamp.danger { color: var(--red); }
+
+  .card-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .card-foot-left { display: flex; align-items: center; gap: 8px; }
+  .ticket-mini {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 500;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+  .ticket-mini.unknown { color: var(--mute); font-weight: 400; }
+  .fit-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 2px;
+  }
+  .fit-pill.confirmed { background: var(--green-bg); color: var(--green); }
+  .fit-pill.potential { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .fit-pill.mismatch { background: var(--red-bg); color: var(--red); }
+  .fit-pill.unknown { color: var(--mute); border: 1px solid var(--rule); }
+
+  .open-loops {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+  }
+  .open-loops .num {
+    color: var(--navy); font-weight: 600;
+    background: var(--card-warm);
+    padding: 1px 6px; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* MODAL — same as list/kanban v3 */
+  .scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -48%);
+    width: 720px;
+    max-height: 85vh;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-modal);
+    z-index: 201;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion), transform var(--motion);
+    display: flex; flex-direction: column;
+  }
+  .modal.open {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 22px 28px 16px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .modal-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    font-variation-settings: "opsz" 26;
+  }
+  .modal-close {
+    width: 28px; height: 28px;
+    background: transparent; border: 0;
+    color: var(--mute); cursor: pointer;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: var(--navy-soft); color: var(--navy); }
+  .modal-body { padding: 22px 28px; overflow-y: auto; flex: 1; }
+  .modal-section { margin-bottom: 22px; }
+  .modal-section:last-child { margin-bottom: 0; }
+  .modal-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500; color: var(--mute);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+  .field-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px 12px; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; }
+  .modal-field-label { font-size: 12px; color: var(--navy); font-weight: 500; }
+  .modal-input, .modal-select {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 8px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; color: var(--navy);
+    width: 100%;
+    transition: border-color var(--motion);
+  }
+  .modal-input:focus, .modal-select:focus { outline: 0; border-color: var(--teal); }
+  .modal-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238898AA' d='M5 6L0 0h10z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    cursor: pointer;
+  }
+  .modal-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 28px;
+    border-top: 1px solid var(--rule);
+    background: var(--card-warm);
+    border-radius: 0 0 var(--r-md) var(--r-md);
+  }
+  .modal-foot-left { display: flex; align-items: center; gap: 16px; }
+  .clear-all {
+    background: transparent; border: 0;
+    color: var(--mute); cursor: pointer;
+    font-size: 12px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 6px 0;
+  }
+  .clear-all:hover { color: var(--navy); }
+  .active-summary { font-size: 12px; color: var(--mute); }
+  .active-summary .num { color: var(--teal); font-weight: 600; }
+  .modal-actions { display: flex; gap: 8px; }
+  .btn-cancel {
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-cancel:hover { border-color: var(--navy); }
+  .btn-confirm {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-confirm:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+
+  .demo-toggle {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--navy); color: var(--card);
+    border: 0; border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  }
+  .demo-toggle:hover { background: #2A3D52; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="nav">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 20H4v-6"/><path d="M4 20l9-9"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </nav>
+
+  <main class="main">
+
+    <div class="top-row">
+      <div class="eyebrow">Relationships</div>
+      <div class="top-utils">
+        <span class="reset-link">Reset demo</span>
+        <button class="util-btn primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Contact</button>
+        <button class="util-btn primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload CSV</button>
+        <button class="util-btn primary" onclick="toggleModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Advanced filters <span class="btn-badge">2</span></button>
+      </div>
+    </div>
+
+    <!-- FILTER PANEL -->
+    <div class="filter-panel">
+      <div class="active-chips-row">
+        <span class="active-chip">Tier 1 <span class="x">×</span></span>
+        <span class="active-chip">No contact 14+ days <span class="x">×</span></span>
+        <span class="clear-link">Clear all</span>
+      </div>
+      <div class="quick-row">
+        <button class="qf-chip">Drifting</button>
+        <button class="qf-chip">Tier 1 LPs</button>
+        <button class="qf-chip">Re-ups not yet contacted</button>
+        <button class="qf-chip">Confirmed mandate fit</button>
+        <button class="qf-chip">Heating up</button>
+        <button class="qf-chip">Quiet — Fat Middle</button>
+        <button class="qf-chip">Stuck in stage</button>
+      </div>
+      <div class="ai-input">
+        <svg class="ai-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Ask Tomo about your relationships…  e.g. Tier 1 LPs with confirmed mandate fit and no meaningful touch in 14+ days">
+        <span class="v1-hint">V1 · Filter</span>
+        <button class="send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+    </div>
+
+    <!-- CONTROL BAR -->
+    <div class="control-bar">
+      <div class="results-block">
+        <div class="results-count"><span class="num">25</span> of 87 LPs</div>
+        <div class="results-tomo-line">Tomo: Tier 1 · no contact in 14+ days</div>
+        <button class="create-list-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create list</button>
+      </div>
+      <div class="control-right">
+        <div class="group-by">
+          <span class="label">Group</span>
+          <select><option>By stage</option><option>By tier</option><option>By owner</option><option>By signal</option><option>None</option></select>
+        </div>
+        <div class="view-tabs">
+          <button class="view-tab"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> List</button>
+          <button class="view-tab active"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Cards</button>
+          <button class="view-tab"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="11" y="3" width="6" height="14" rx="1"/></svg> Kanban</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============== ACTIVE DILIGENCE ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">Active diligence</span>
+        <span class="stage-count">8 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Range <span class="num">$245M – $390M</span></span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot amber"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Lingotto Investment Mgmt</div>
+              <div class="card-person">Edoardo Lanzavecchia <span class="role">· Head of HF Allocations</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill cooling">Cooling ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp warn">9d</span><span class="value">— call w/ Edoardo</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Re-engage with Q1 attribution</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$75M</span>
+              <span class="fit-pill potential">Potential</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">UBS Hedge Fund Solutions</div>
+              <div class="card-person">Charly Malek <span class="role">· Head of Manager Research</span></div>
+              <div class="card-tier-row">
+                <span class="tier-mark t1">Tier 1</span>
+                <span class="prior-mark">PRIOR · F2</span>
+              </div>
+            </div>
+            <span class="signal-pill heating">Heating ↑</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">3d</span><span class="value">— deck reviewed by team</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Re-up call today, 2pm ET</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$50M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">CPPIB</div>
+              <div class="card-person">Frank Ieraci <span class="role">· SMD, External Portfolio</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill heating">Heating ↑</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">6h</span><span class="value">— Frank initiated thread</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Send capacity & risk pack</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$150M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">3</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">PAAMCO Prisma</div>
+              <div class="card-person">Peter Zakowich <span class="role">· Managing Director</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">6h</span><span class="value">— DDQ submitted to ops</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Confirm Mar 18 meeting time</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$60M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot amber"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Brookfield Asset Mgmt</div>
+              <div class="card-person">Lawrence Chiu <span class="role">· Senior VP, Hedge Funds</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill quiet">Quiet ·</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp warn">11d</span><span class="value">— meeting w/ Lawrence</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Send portfolio overlap analysis</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$45M</span>
+              <span class="fit-pill potential">Potential</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Albourne Partners</div>
+              <div class="card-person">James Staltari <span class="role">· Senior Investment Consultant</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">1d</span><span class="value">— follow-up sent</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Awaiting committee feedback</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$100M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============== NURTURING (renamed from second_meeting) ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">Nurturing</span>
+        <span class="stage-count">3 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Range <span class="num">$60M – $130M</span></span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Goldman Sachs AM</div>
+              <div class="card-person">Michel del Buono <span class="role">· MD, Strategic Solutions</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">4d</span><span class="value">— Michel agreed intro</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Awaiting Edmond de R. intro</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$80M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Edmond de Rothschild FO</div>
+              <div class="card-person">Ariane de Rothschild <span class="role">· Chair, Family IC</span></div>
+              <div class="card-tier-row"><span class="tier-mark t2">Tier 2</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">7d</span><span class="value">— intro thread opened</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Schedule discovery call</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$30M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot amber"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">UBS Wealth Mgmt</div>
+              <div class="card-person">Patrick Müller <span class="role">· Head of Alts, EMEA</span></div>
+              <div class="card-tier-row">
+                <span class="tier-mark t2">Tier 2</span>
+                <span class="prior-mark">PRIOR · F2</span>
+              </div>
+            </div>
+            <span class="signal-pill cooling">One-way ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp warn">12d</span><span class="value">— deck sent, no reply</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Soft re-engagement note</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$15M</span>
+              <span class="fit-pill potential">Potential</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============== FIRST MEETING ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">First meeting</span>
+        <span class="stage-count">3 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Range <span class="num">$70M – $150M</span></span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">GIC</div>
+              <div class="card-person">Kwong Hong Huat <span class="role">· SVP, External Managers</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill heating">Heating ↑</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">2d</span><span class="value">— Kwong confirmed call</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Q1 review tomorrow 10am ET</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$75M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">BNF Capital</div>
+              <div class="card-person">Nic Fallows <span class="role">· Managing Partner</span></div>
+              <div class="card-tier-row"><span class="tier-mark t2">Tier 2</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">5d</span><span class="value">— sent strategy deck</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Schedule first call</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$25M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot amber"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Yale University Endowment</div>
+              <div class="card-person">Anne Martin <span class="role">· Director, Absolute Return</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill quiet">No reply ·</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp warn">14d</span><span class="value">— intro email sent</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Soft follow-up</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$50M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============== SOURCED ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">Sourced</span>
+        <span class="stage-count">5 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Range <span class="num">$90M – $230M</span></span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Korea Investment Corp.</div>
+              <div class="card-person">Ji-hoon Park <span class="role">· Director, Alternatives</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill healthy">New →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">3d</span><span class="value">— intro from Stuart Reid</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Send credentials pack</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini unknown">TBD</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Cambridge Associates</div>
+              <div class="card-person">Stuart Reid <span class="role">· Senior Investment Consultant</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">6d</span><span class="value">— quarterly review email</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Confirm IC slot</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$60M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot amber"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Stanford Mgmt Co.</div>
+              <div class="card-person">Daniel Wallace <span class="role">· Director, Absolute Return</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill quiet">No reply ·</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp warn">18d</span><span class="value">— intro email sent</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Try alt contact path</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$60M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Wellcome Trust</div>
+              <div class="card-person">Nick Moakes <span class="role">· CIO</span></div>
+              <div class="card-tier-row"><span class="tier-mark t2">Tier 2</span></div>
+            </div>
+            <span class="signal-pill healthy">Healthy →</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">9d</span><span class="value">— LinkedIn warm intro</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Schedule discovery call</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$40M</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot red"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Gulf Capital Partners</div>
+              <div class="card-person">Karim Al-Mansour <span class="role">· Head of External Inv.</span></div>
+              <div class="card-tier-row"><span class="tier-mark t3">Tier 3</span></div>
+            </div>
+            <span class="signal-pill drifting">No reply ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp danger">28d</span><span class="value">— intro email sent</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Try direct email</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini unknown">TBD</span>
+              <span class="fit-pill unknown">Unknown</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============== SOFT COMMIT ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">Soft commit</span>
+        <span class="stage-count">2 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Range <span class="num">$80M – $130M</span></span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">RBC Capital Markets</div>
+              <div class="card-person">Cathy Wong <span class="role">· MD, Alternative Investments</span></div>
+              <div class="card-tier-row">
+                <span class="tier-mark t1">Tier 1</span>
+                <span class="prior-mark">PRIOR · F2</span>
+              </div>
+            </div>
+            <span class="signal-pill closing">Closing ↑</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">2d</span><span class="value">— side-letter aligned</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Awaiting subscription docs</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$80M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot green"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Future Fund Australia</div>
+              <div class="card-person">David Neal <span class="role">· CEO</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill closing">Closing ↑</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp">3d</span><span class="value">— terms confirmed verbally</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Draft side letter</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$50M</span>
+              <span class="fit-pill confirmed">Confirmed</span>
+            </div>
+            <span class="open-loops"><span class="num">1</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============== ON HOLD ============== -->
+    <div class="stage-section">
+      <div class="stage-header">
+        <span class="stage-title">On hold</span>
+        <span class="stage-count">3 LPs</span>
+        <span class="stage-line"></span>
+        <span class="stage-meta">Stalled — review for re-engagement or close</span>
+      </div>
+      <div class="card-grid">
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot red"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">CalPERS</div>
+              <div class="card-person">Eric Baggesen <span class="role">· MD, Investment Office</span></div>
+              <div class="card-tier-row"><span class="tier-mark t1">Tier 1</span></div>
+            </div>
+            <span class="signal-pill drifting">Drifting ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp danger">52d</span><span class="value">— last meaningful contact</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Decide: re-engage or close</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini">$100M</span>
+              <span class="fit-pill potential">Potential</span>
+            </div>
+            <span class="open-loops"><span class="num">3</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot red"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">TCU Endowment</div>
+              <div class="card-person">Jim Hille <span class="role">· CIO</span></div>
+              <div class="card-tier-row"><span class="tier-mark t3">Tier 3</span></div>
+            </div>
+            <span class="signal-pill drifting">Drifting ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp danger">71d</span><span class="value">— last meaningful contact</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Mark mismatch · close out</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini unknown">—</span>
+              <span class="fit-pill mismatch">Mismatch</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+        <div class="lp-card">
+          <div class="card-top">
+            <span class="signal-dot red"></span>
+            <div class="card-firm-block">
+              <div class="card-firm-name">Sentry Insurance</div>
+              <div class="card-person">Holly Flax <span class="role">· VP, Investments</span></div>
+              <div class="card-tier-row"><span class="tier-mark t3">Tier 3</span></div>
+            </div>
+            <span class="signal-pill drifting">Drifting ↓</span>
+          </div>
+          <div class="card-touch-block">
+            <div class="touch-line"><span class="label">Last</span><span class="stamp danger">88d</span><span class="value">— last meaningful contact</span></div>
+            <div class="touch-line"><span class="label">Next</span><span class="value">Mark mismatch · close out</span></div>
+          </div>
+          <div class="card-foot">
+            <div class="card-foot-left">
+              <span class="ticket-mini unknown">—</span>
+              <span class="fit-pill mismatch">Mismatch</span>
+            </div>
+            <span class="open-loops"><span class="num">2</span> open</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADVANCED FILTERS MODAL -->
+<div class="scrim" id="scrim" onclick="closeModal()"></div>
+<div class="modal" id="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Advanced filters</h2>
+    <button class="modal-close" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="modal-body">
+    <div class="modal-section">
+      <div class="modal-section-label">Text match</div>
+      <div class="field-grid-2">
+        <div class="modal-field">
+          <label class="modal-field-label">Name or firm contains</label>
+          <input class="modal-input" type="text" placeholder="Substring match on name or firm">
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Numeric ranges</div>
+      <div class="field-grid-4">
+        <div class="modal-field"><label class="modal-field-label">Days since touch (min)</label><input class="modal-input" type="text" value="14"></div>
+        <div class="modal-field"><label class="modal-field-label">Days since touch (max)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Days in stage (min)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Days in stage (max)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Open loops (min)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Open loops (max)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Ticket size min ($M)</label><input class="modal-input" type="text" placeholder="—"></div>
+        <div class="modal-field"><label class="modal-field-label">Ticket size max ($M)</label><input class="modal-input" type="text" placeholder="—"></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Pipeline & classification</div>
+      <div class="field-grid-2">
+        <div class="modal-field"><label class="modal-field-label">Stage</label>
+          <select class="modal-select"><option>Any</option><option>Sourced</option><option>First meeting</option><option>Nurturing</option><option>Active diligence</option><option>Soft commit</option><option>Committed</option><option>On hold</option><option>Closed lost</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Signal</label>
+          <select class="modal-select"><option>Any</option><option>Heating up</option><option>Healthy</option><option>Cooling</option><option>Quiet</option><option>Stagnant</option><option>Drifting</option><option>Closing</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Tier</label>
+          <select class="modal-select"><option>Any</option><option selected>Tier 1</option><option>Tier 2</option><option>Tier 3</option><option>Unset</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Mandate fit</label>
+          <select class="modal-select"><option>Any</option><option>Confirmed</option><option>Potential</option><option>Mismatch</option><option>Unknown</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Investor type</label>
+          <select class="modal-select"><option>Any</option><option>Sovereign / pension</option><option>Endowment</option><option>Foundation</option><option>Family office</option><option>Fund-of-funds</option><option>Asset manager</option><option>Allocator / consultant</option><option>Bank / wealth platform</option><option>Insurance</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Geography</label>
+          <select class="modal-select"><option>Any</option><option>North America</option><option>Europe</option><option>APAC</option><option>MENA</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Active investment</label>
+          <select class="modal-select"><option>Any</option><option>Fund I investor</option><option>Fund II investor</option><option>Fund III investor</option><option>Multiple funds</option><option>None yet</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Prior fund</label>
+          <select class="modal-select"><option>Any</option><option>Prior · Fund II</option><option>Prior · Fund I</option><option>Not a prior-fund LP</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Relationship owner</label>
+          <select class="modal-select"><option>Any</option><option>You (Geoffrey)</option><option>IR Team</option><option>Unassigned</option></select>
+        </div>
+        <div class="modal-field"><label class="modal-field-label">Fund being raised against</label>
+          <select class="modal-select"><option>Any</option><option>Fund III (active)</option><option>Fund II</option><option>Fund I</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <div class="modal-foot-left">
+      <button class="clear-all">Clear all fields</button>
+      <span class="active-summary"><span class="num">2</span> filters active</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="closeModal()">Apply filters</button>
+    </div>
+  </div>
+</div>
+
+<button class="demo-toggle" onclick="toggleModal()">Toggle Advanced filters modal</button>
+
+<script>
+  function toggleModal() {
+    document.getElementById('modal').classList.toggle('open');
+    document.getElementById('scrim').classList.toggle('open');
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.getElementById('scrim').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>

@@ -48,6 +48,7 @@ import { NavRailGlyphIcon, type NavRailGlyph } from "@/components/nav-rail-icons
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
 import type { DailyBriefBlock } from "@/lib/dailyBriefFromToday";
+import type { RadarModalPayload } from "@/lib/radarModalTypes";
 
 // IA labels (desktop order): TODAY, RELATIONSHIPS, PIPELINE, WORKFLOWS, INSIGHTS, SETTINGS (Activity + LP Network routes hidden from nav; sections still supported)
 type Section =
@@ -65,8 +66,10 @@ type Section =
 type TodayContext = {
   actions: { id: string; title: string; trigger: string; status: string; type: string }[];
   commitments: { id: string; title: string; datetime: string; lp: string; contactName: string }[];
-  /** Same structure as the Daily Brief modal — keep in sync for Tomo answers. */
+  /** Same structure as the Daily Brief email / orchestrator (four-block digest). */
   dailyBriefBlocks?: DailyBriefBlock[];
+  /** Unified Radar Modal (Daily Brief + On my radar) — SRS Appendix I; same payload as the in-app modal. */
+  radarModalPayload?: RadarModalPayload;
   /** Collapsible “Previous” on Today: prior-day backlog + deferred; same data as the expanded list. */
   previousAttention?: {
     count: number;

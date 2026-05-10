@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · LP Detail Drawer v2 (Peter Zakowich)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.05);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-tint: rgba(201, 147, 58, 0.10);
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.10);
+    --green-soft-bg: rgba(45, 138, 94, 0.06);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.12);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.10);
+
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-drawer: -8px 0 32px rgba(28, 43, 58, 0.14);
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --motion: 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    overflow: hidden;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* PAGE BEHIND (DIMMED) */
+  .page-behind { flex: 1; display: flex; filter: brightness(0.92); }
+  .scrim { position: fixed; inset: 0; background: rgba(28, 43, 58, 0.18); z-index: 90; backdrop-filter: blur(1px); }
+
+  .nav {
+    width: 72px; background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex-shrink: 0; height: 100vh;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    margin-bottom: 24px; letter-spacing: -0.02em; line-height: 1;
+    font-variation-settings: "opsz" 36;
+  }
+  .nav-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-md); color: var(--mute);
+  }
+  .nav-item.active { background: var(--navy); color: var(--card); }
+  .nav-spacer { flex: 1; }
+
+  .main { flex: 1; padding: 24px 32px; overflow: hidden; }
+  .behind-eyebrow {
+    font-size: 11px; font-weight: 500; color: var(--mute);
+    letter-spacing: 0.22em; text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .behind-filter {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 18px 22px; margin-bottom: 16px; height: 168px; opacity: 0.55;
+  }
+  .behind-table {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    flex: 1; opacity: 0.55; height: calc(100vh - 280px);
+    background-image:
+      linear-gradient(0deg, transparent 0px, transparent 47px, var(--rule-soft) 47px, var(--rule-soft) 48px),
+      linear-gradient(0deg, var(--card-warm) 0px, var(--card-warm) 38px, transparent 38px);
+    background-size: 100% 48px, 100% 100%;
+    background-repeat: repeat-y, no-repeat;
+  }
+
+  /* ========================================================================
+     DRAWER
+     ======================================================================== */
+  .drawer {
+    position: fixed;
+    top: 0; right: 0;
+    width: 760px; height: 100vh;
+    background: var(--card);
+    border-left: 1px solid var(--rule);
+    box-shadow: var(--shadow-drawer);
+    z-index: 100;
+    display: flex; flex-direction: column;
+    animation: slideIn 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0.6; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Header */
+  .drawer-header {
+    padding: 22px 32px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-shrink: 0;
+  }
+  .drawer-title-block { min-width: 0; flex: 1; }
+  .drawer-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 28px;
+    color: var(--navy); line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 32;
+    margin-bottom: 8px;
+  }
+  .drawer-subtitle {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 13px; color: var(--body);
+  }
+  .drawer-subtitle .firm { color: var(--mute); }
+  .drawer-subtitle .sep { color: var(--rule); }
+  .tier-badge {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.10em;
+    padding: 2px 7px; border-radius: 2px;
+  }
+  .tier-badge.t1 { background: var(--teal-evidence-bg); color: var(--teal); }
+  .prior-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--amber);
+    letter-spacing: 0.10em;
+    background: var(--amber-tint);
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .drawer-close {
+    width: 32px; height: 32px; background: transparent; border: 0;
+    color: var(--mute); cursor: pointer; border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all var(--motion);
+  }
+  .drawer-close:hover { background: var(--navy-soft); color: var(--navy); }
+
+  /* Body */
+  .drawer-body {
+    flex: 1; overflow-y: auto;
+    padding: 24px 32px 100px;
+  }
+  .drawer-body::-webkit-scrollbar { width: 6px; }
+  .drawer-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+  /* Section label */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label .computed-tag {
+    font-size: 8px; color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 2px 6px; border-radius: 2px;
+    letter-spacing: 0.14em;
+  }
+
+  /* Signal evidence */
+  .signal-evidence {
+    background: var(--teal-evidence-bg);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    padding: 12px 16px; margin-bottom: 24px;
+    font-size: 14px; color: var(--navy); line-height: 1.55;
+  }
+  .signal-evidence .label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500; color: var(--teal);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .signal-evidence .num { color: var(--navy); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* Snapshot */
+  .snapshot-section { margin-bottom: 28px; }
+  .snapshot-text { font-size: 14px; color: var(--navy); line-height: 1.65; margin-bottom: 8px; }
+  .snapshot-attribution { font-size: 11px; color: var(--mute); font-style: italic; }
+
+  /* Section card */
+  .card-section {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+
+  /* ========================================================================
+     INLINE EDIT FIELDS
+     ======================================================================== */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+  }
+  .field-grid.three-col { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500; color: var(--mute);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field-label .computed-mark {
+    font-size: 8px; color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+  }
+
+  /* Editable display field — clean text, hover edit affordance */
+  .field-value {
+    font-size: 14px; color: var(--navy);
+    padding: 6px 8px; margin-left: -8px;
+    border-radius: var(--r-sm);
+    cursor: text;
+    transition: background var(--motion);
+    min-height: 30px;
+    display: flex; align-items: center;
+    border-bottom: 1px dashed transparent;
+    width: 100%;
+  }
+  .field-value:hover {
+    background: var(--card-warm);
+    border-bottom-color: var(--mute);
+  }
+  .field-value.empty { color: var(--mute); font-style: italic; }
+  .field-value.numeric {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  /* Display-only (derived/computed) — no hover, italic style cue */
+  .field-derived {
+    font-size: 14px; color: var(--body);
+    padding: 6px 8px; margin-left: -8px;
+    min-height: 30px;
+    display: flex; align-items: center;
+    cursor: not-allowed;
+  }
+  .field-derived.numeric {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Chip-style fields (pipeline_stage, tier, mandate_fit) — dropdown affordance */
+  .field-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card-warm);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500;
+    color: var(--navy);
+    cursor: pointer;
+    transition: all var(--motion);
+    width: fit-content;
+  }
+  .field-chip:hover { border-color: var(--navy); }
+  .field-chip .chevron { color: var(--mute); }
+
+  /* Pipeline flag pill */
+  .flag-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 3px 8px; border-radius: 999px;
+    width: fit-content;
+  }
+  .flag-pill.green { background: var(--green-bg); color: var(--green); }
+  .flag-pill.amber { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .flag-pill.red { background: var(--red-bg); color: var(--red); }
+
+  /* Mandate fit pill */
+  .fit-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px;
+  }
+  .fit-pill.confirmed { background: var(--green-bg); color: var(--green); }
+  .fit-pill-mini-caption {
+    font-size: 11px; color: var(--mute);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+
+  /* Fund tags */
+  .fund-tags { display: flex; gap: 5px; flex-wrap: wrap; padding: 4px 0; }
+  .fund-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--amber); background: var(--amber-tint);
+    padding: 3px 8px; border-radius: 2px;
+    letter-spacing: 0.04em;
+  }
+  .fund-tag.empty { color: var(--mute); background: transparent; padding: 3px 0; font-style: italic; font-weight: 400; }
+
+  /* Tags (lp_tags) */
+  .tag-chips { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--navy-soft);
+    color: var(--navy);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px; font-weight: 500;
+  }
+  .tag-chip.system { background: var(--teal-evidence-bg); color: var(--teal); }
+  .tag-chip-add {
+    background: transparent;
+    border: 1px dashed var(--rule);
+    color: var(--mute);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .tag-chip-add:hover { color: var(--navy); border-color: var(--navy); }
+
+  /* ========================================================================
+     OPEN LOOPS / COMMITMENTS list
+     ======================================================================== */
+  .loops-list {
+    display: flex; flex-direction: column;
+    gap: 0;
+  }
+  .loop-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: center;
+  }
+  .loop-row:last-child { border-bottom: 0; }
+  .loop-icon {
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .loop-icon.gp { background: var(--navy-soft); color: var(--navy); }
+  .loop-icon.lp { background: var(--amber-tint); color: var(--amber); }
+  .loop-text { font-size: 13px; color: var(--navy); line-height: 1.4; }
+  .loop-text .who {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mute);
+    margin-right: 6px;
+  }
+  .loop-due {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .loop-due.overdue { color: var(--red); }
+  .loop-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .loop-status.open { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .loop-status.fulfilled { background: var(--green-bg); color: var(--green); }
+
+  /* ========================================================================
+     EXPAND TOGGLE + EXPANDED SECTIONS
+     ======================================================================== */
+  .expand-trigger {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+    background: var(--card);
+    border: 1px dashed var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px;
+    margin-bottom: 14px;
+    color: var(--mute);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .expand-trigger:hover {
+    color: var(--navy); border-color: var(--navy);
+    background: var(--card-warm);
+  }
+  .expand-trigger.expanded { display: none; }
+
+  .expanded-zone {
+    display: none;
+  }
+  .expanded-zone.open { display: block; }
+
+  .collapse-section {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .collapse-head {
+    padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--motion);
+  }
+  .collapse-head:hover { background: var(--card-warm); }
+  .collapse-head.has-content { padding-bottom: 14px; }
+  .collapse-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--navy);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .collapse-title .count {
+    color: var(--mute); font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+  .collapse-chevron {
+    color: var(--mute);
+    transition: transform var(--motion);
+  }
+  .collapse-section.open .collapse-chevron { transform: rotate(90deg); }
+  .collapse-body {
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 16px;
+    display: none;
+  }
+  .collapse-section.open .collapse-body { display: block; }
+
+  /* Provenance pills */
+  .prov-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .prov-pill.tomo { background: var(--teal-evidence-bg); color: var(--teal); }
+  .prov-pill.gp { background: var(--navy-soft); color: var(--navy); }
+  .prov-pill.csv { background: var(--card-warm); color: var(--body); }
+
+  /* Notes */
+  .notes-list {
+    display: flex; flex-direction: column;
+    gap: 12px;
+  }
+  .note-item {
+    background: var(--card-warm);
+    border-left: 3px solid var(--rule);
+    padding: 10px 14px;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .note-item.pinned { border-left-color: var(--amber); }
+  .note-body { font-size: 13px; color: var(--navy); line-height: 1.5; }
+  .note-meta {
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .note-meta .pinned-mark {
+    color: var(--amber); margin-right: 8px;
+    font-weight: 500;
+  }
+
+  /* UPDATE WITH TOMO */
+  .update-section { margin-bottom: 24px; }
+  .update-input {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 12px 16px;
+    transition: border-color var(--motion);
+  }
+  .update-input:focus-within { border-color: var(--teal); }
+  .update-input input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; color: var(--navy);
+  }
+  .update-input input::placeholder { color: var(--mute); }
+  .update-input .ai-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .update-input .send {
+    width: 28px; height: 28px;
+    border-radius: var(--r-sm);
+    background: var(--card-warm); border: 1px solid var(--rule);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--mute); cursor: pointer;
+    transition: all var(--motion);
+  }
+  .update-input:focus-within .send {
+    background: var(--teal); border-color: var(--teal); color: var(--card);
+  }
+  .update-help {
+    font-size: 11px; color: var(--mute);
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em;
+  }
+  .update-help .example { color: var(--body); font-style: italic; }
+
+  /* ACTIVITY LOG */
+  .activity-section { margin-top: 28px; }
+  .activity-list { display: flex; flex-direction: column; gap: 0; }
+  .activity-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: start;
+  }
+  .activity-item:last-child { border-bottom: 0; }
+  .activity-marker {
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; font-weight: 600;
+    letter-spacing: 0.08em; flex-shrink: 0;
+  }
+  .activity-marker.tomo { background: var(--teal-evidence-bg); color: var(--teal); }
+  .activity-marker.gp { background: var(--navy-soft); color: var(--navy); }
+  .activity-body { min-width: 0; }
+  .activity-title { font-size: 13px; color: var(--navy); line-height: 1.5; margin-bottom: 3px; }
+  .activity-by {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .activity-by.tomo { color: var(--teal); }
+  .activity-by.gp { color: var(--mute); }
+  .activity-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    font-variant-numeric: tabular-nums;
+    text-align: right; flex-shrink: 0; white-space: nowrap;
+  }
+
+  /* Behavioral signals — derived display */
+  .signals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+  }
+  .sig-row {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .sig-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .sig-val {
+    font-size: 13px;
+    color: var(--navy);
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .sig-val.muted { color: var(--mute); font-style: italic; font-family: 'Inter', sans-serif; }
+  .sig-val .baseline {
+    color: var(--mute); margin-left: 5px; font-size: 11px;
+  }
+  .sig-trend {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+  }
+  .sig-trend.accelerating { color: var(--green); }
+  .sig-trend.decelerating { color: var(--red); }
+  .sig-trend.flat { color: var(--mute); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; animation-duration: 80ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- DIMMED PAGE -->
+  <div class="page-behind">
+    <nav class="nav">
+      <div class="nav-logo">tomo.</div>
+      <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg></div>
+      <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+      <div class="nav-spacer"></div>
+    </nav>
+    <main class="main">
+      <div class="behind-eyebrow">Relationships</div>
+      <div class="behind-filter"></div>
+      <div class="behind-table"></div>
+    </main>
+  </div>
+
+  <div class="scrim"></div>
+
+  <!-- DRAWER -->
+  <aside class="drawer">
+
+    <!-- HEADER -->
+    <div class="drawer-header">
+      <div class="drawer-title-block">
+        <h2 class="drawer-title">Peter Zakowich</h2>
+        <div class="drawer-subtitle">
+          <span>Managing Director</span>
+          <span class="sep">·</span>
+          <span class="firm">PAAMCO Prisma</span>
+          <span class="sep">·</span>
+          <span class="tier-badge t1">Tier 1</span>
+        </div>
+      </div>
+      <button class="drawer-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+
+      <!-- SIGNAL EVIDENCE — pipeline_flag_reason -->
+      <div class="signal-evidence">
+        <span class="label">Pipeline flag · Active engagement detected</span>
+        Last three exchanges with Peter took <span class="num">22h, 14h, 6h</span> against typical <span class="num">18h</span>. DDQ submitted to PAAMCO ops <span class="num">9 days ago</span> — past their stated <span class="num">5–7 day</span> turnaround.
+      </div>
+
+      <!-- SNAPSHOT -->
+      <div class="snapshot-section">
+        <div class="section-label">Snapshot</div>
+        <p class="snapshot-text">
+          Across the five most recent touches, Peter Zakowich at PAAMCO Prisma shows a mix of GP-led meetings and email, with Tomo supporting drafts and signal checks. Activity opened with email — sent performance snapshot and proposed two slots to reconnect. Mid-sequence, meeting — walked through Q4 performance; requested follow-up materials. Most recently, drafted intro note on portfolio questions for Peter Zakowich; pending your send. Net: engagement is ongoing with a few explicit follow-ups still pending on allocator response and materials.
+        </p>
+        <p class="snapshot-attribution">Synthesised from the five most recent interactions.</p>
+      </div>
+
+      <!-- PIPELINE STATE — pipeline_stage, lp_state.days_*, pipeline_flag -->
+      <div class="card-section">
+        <div class="section-label">Pipeline state</div>
+        <div class="field-grid three-col">
+          <div class="field">
+            <label class="field-label">Stage</label>
+            <span class="field-chip">
+              Active diligence
+              <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="field">
+            <label class="field-label">Pipeline flag <span class="computed-mark">DERIVED</span></label>
+            <span class="flag-pill green">● Green · Healthy</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Tier</label>
+            <span class="field-chip">
+              Tier 1
+              <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="field">
+            <label class="field-label">Days in stage <span class="computed-mark">DERIVED</span></label>
+            <span class="field-derived numeric">22d</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Days in prior stage <span class="computed-mark">DERIVED</span></label>
+            <span class="field-derived numeric">47d <span style="color: var(--mute); font-family: Inter; font-size: 12px; font-style: italic; margin-left: 6px;">in second meeting</span></span>
+          </div>
+          <div class="field">
+            <label class="field-label">Owner</label>
+            <span class="field-value">Geoffrey Sloan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIPELINE DATA — mandate_fit, expected_commitment, prior_fund -->
+      <div class="card-section">
+        <div class="section-label">Pipeline data</div>
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label">Mandate fit</label>
+            <span class="fit-pill confirmed">Confirmed</span>
+            <span class="fit-pill-mini-caption">Captured 12 Mar 2026 after Q1 strategy call</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Expected commitment</label>
+            <span class="field-value numeric">$60,000,000</span>
+            <span class="fit-pill-mini-caption">Captured 24 Apr 2026 by Geoffrey</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Prior fund investor</label>
+            <span class="field-value empty">— Not a prior-fund LP</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Active investments <span class="computed-mark">DERIVED</span></label>
+            <span class="field-derived"><span style="color: var(--mute); font-style: italic;">— None yet · derived from prior_fund + commitments</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPEN LOOPS & COMMITMENTS — open_loops + commitments tables -->
+      <div class="card-section">
+        <div class="section-label">Open loops & commitments <span class="computed-tag">3 OPEN</span></div>
+        <div class="loops-list">
+
+          <div class="loop-row">
+            <div class="loop-icon gp">G</div>
+            <div class="loop-text">
+              <span class="who">You promised</span>Send Q1 attribution data to Peter
+            </div>
+            <span class="loop-status open">Open</span>
+            <span class="loop-due overdue">Due Apr 30</span>
+          </div>
+
+          <div class="loop-row">
+            <div class="loop-icon gp">G</div>
+            <div class="loop-text">
+              <span class="who">You promised</span>Confirm March 18 meeting time
+            </div>
+            <span class="loop-status open">Open</span>
+            <span class="loop-due">Due May 8</span>
+          </div>
+
+          <div class="loop-row">
+            <div class="loop-icon lp">L</div>
+            <div class="loop-text">
+              <span class="who">Peter promised</span>Connect you with PAAMCO's risk team
+            </div>
+            <span class="loop-status open">Open</span>
+            <span class="loop-due">Due May 14</span>
+          </div>
+
+          <div class="loop-row">
+            <div class="loop-icon gp">G</div>
+            <div class="loop-text">
+              <span class="who">You promised</span>Share strategy deep-dive deck (Apr 20)
+            </div>
+            <span class="loop-status fulfilled">Fulfilled</span>
+            <span class="loop-due">Apr 22</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- UPDATE WITH TOMO -->
+      <div class="update-section">
+        <div class="section-label">Update with Tomo</div>
+        <div class="update-input">
+          <input type="text" placeholder="How can I help update this CRM record?">
+          <span class="ai-hint">Tomo</span>
+          <button class="send"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+        <div class="update-help">
+          Plain language works. Examples: <span class="example">"Peter sized at $60M"</span> · <span class="example">"Move PAAMCO to verbal"</span> · <span class="example">"Mark mandate fit confirmed after Q1 call"</span>
+        </div>
+      </div>
+
+      <!-- EXPAND TRIGGER -->
+      <button class="expand-trigger" id="expandBtn" onclick="toggleExpand()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        Show full record
+      </button>
+
+      <!-- EXPANDED ZONE -->
+      <div class="expanded-zone" id="expandedZone">
+
+        <!-- IDENTITY & CONTACT -->
+        <div class="collapse-section">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Identity & contact</div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="field-grid">
+              <div class="field">
+                <label class="field-label">First name</label>
+                <span class="field-value">Peter</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Last name</label>
+                <span class="field-value">Zakowich</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Display name</label>
+                <span class="field-value">Peter Zakowich</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Title</label>
+                <span class="field-value">Managing Director</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Seniority</label>
+                <span class="field-chip">
+                  Partner
+                  <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="field">
+                <label class="field-label">Decision maker</label>
+                <span class="field-chip">
+                  Yes
+                  <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="field">
+                <label class="field-label">Primary email</label>
+                <span class="field-value">peter.zakowich@paamcoprisma.com</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Phone</label>
+                <span class="field-value">+1 949 263 1234</span>
+              </div>
+              <div class="field">
+                <label class="field-label">LinkedIn</label>
+                <span class="field-value">linkedin.com/in/peterzakowich</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Additional emails</label>
+                <span class="field-value empty">— None</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIRM DETAILS -->
+        <div class="collapse-section">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Firm details <span class="count">· PAAMCO Prisma</span></div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="field-grid">
+              <div class="field">
+                <label class="field-label">Firm name</label>
+                <span class="field-value">PAAMCO Prisma</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Legal name</label>
+                <span class="field-value">PAAMCO Prisma LLC</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Firm type</label>
+                <span class="field-chip">
+                  Fund-of-funds
+                  <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="field">
+                <label class="field-label">AUM (USD)</label>
+                <span class="field-value numeric">$24,000,000,000</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Region</label>
+                <span class="field-value">North America</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Country / city</label>
+                <span class="field-value">US · Irvine, CA</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Primary domain</label>
+                <span class="field-value">paamcoprisma.com</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Additional domains</label>
+                <span class="field-value empty">— None</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Website</label>
+                <span class="field-value">paamcoprisma.com</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Fund being raised against</label>
+                <span class="field-chip">
+                  Fund III
+                  <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BEHAVIORAL SIGNALS — all 8 derived -->
+        <div class="collapse-section open">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Behavioral signals <span class="count">· all derived nightly</span></div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="signals-grid">
+
+              <div class="sig-row">
+                <span class="sig-name">1 · Silence</span>
+                <span class="sig-val">Last meaningful touch: <span style="color: var(--green);">22h ago</span></span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">2 · Re-engagement</span>
+                <span class="sig-val muted">Not flagged</span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">3 · Reply velocity</span>
+                <span class="sig-val">
+                  6h <span class="baseline">(typical 18h)</span>
+                  <span class="sig-trend accelerating">↑ Accelerating</span>
+                </span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">4 · Reply length</span>
+                <span class="sig-val">
+                  142w <span class="baseline">(typical 95w)</span>
+                  <span class="sig-trend accelerating">↑ Accelerating</span>
+                </span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">5 · LP-initiated exchanges</span>
+                <span class="sig-val">2 of last 5 <span class="baseline">(40%)</span></span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">6 · Stage stagnation</span>
+                <span class="sig-val">22d in active diligence <span class="sig-trend flat">— Healthy</span></span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">7 · Calendar friction</span>
+                <span class="sig-val">Accept latency 4h <span class="sig-trend accelerating">↑ Improving</span></span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">8 · CC expansion</span>
+                <span class="sig-val muted">No new CCs in 14d</span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">9 · One-way contact</span>
+                <span class="sig-val muted">Last contact was bidirectional</span>
+              </div>
+
+              <div class="sig-row">
+                <span class="sig-name">Last batch run</span>
+                <span class="sig-val">Today, 02:00 UTC</span>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TAGS -->
+        <div class="collapse-section">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Tags <span class="count">· 4 assigned</span></div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="tag-chips">
+              <span class="tag-chip system">FoF · core target</span>
+              <span class="tag-chip">north america</span>
+              <span class="tag-chip">absolute return mandate</span>
+              <span class="tag-chip">$50M+ ticket</span>
+              <button class="tag-chip-add">+ Add tag</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOTES -->
+        <div class="collapse-section">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Notes <span class="count">· 3 · 1 pinned</span></div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="notes-list">
+              <div class="note-item pinned">
+                <div class="note-body">Peter prefers Tuesday afternoons for calls. He's a structural skeptic on volatility-of-volatility strategies — lead with downside protection framing, not Sharpe.</div>
+                <div class="note-meta"><span class="pinned-mark">★ Pinned</span> Geoffrey · Mar 12, 2026</div>
+              </div>
+              <div class="note-item">
+                <div class="note-body">PAAMCO's IC meets second Tuesday of each month. Peter has indicated June IC is the realistic target for our allocation.</div>
+                <div class="note-meta">Geoffrey · Apr 16, 2026</div>
+              </div>
+              <div class="note-item">
+                <div class="note-body">Risk team contact: Sarah Linde, Director of Risk Analytics. Peter said he'd connect us — pending.</div>
+                <div class="note-meta">Geoffrey · Apr 24, 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROVENANCE -->
+        <div class="collapse-section">
+          <div class="collapse-head" onclick="toggleCollapse(this)">
+            <div class="collapse-title">Record provenance</div>
+            <svg class="collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="collapse-body">
+            <div class="field-grid">
+              <div class="field">
+                <label class="field-label">Source</label>
+                <span class="prov-pill csv">CRM CSV import</span>
+              </div>
+              <div class="field">
+                <label class="field-label">External ID</label>
+                <span class="field-value">backstop_lp_03491</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Imported via</label>
+                <span class="field-derived">Backstop_export_2026_03_15.csv</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Historical-data only</label>
+                <span class="field-derived">No · live signal tracking active</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Created</label>
+                <span class="field-derived numeric">15 Mar 2026</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Last edit</label>
+                <span class="field-derived">Yesterday by Tomo (mandate_fit)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ACTIVITY LOG -->
+      <div class="activity-section">
+        <div class="section-label" style="margin-bottom: 14px;">Activity log</div>
+        <div class="activity-list">
+
+          <div class="activity-item">
+            <div class="activity-marker tomo">T</div>
+            <div class="activity-body">
+              <div class="activity-title">Drafted intro note on portfolio questions for Peter Zakowich; pending your send.</div>
+              <div class="activity-by tomo">Tomo</div>
+            </div>
+            <div class="activity-time">Yesterday<br>3:45 PM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker gp">G</div>
+            <div class="activity-body">
+              <div class="activity-title">Call — reviewed allocation timeline with PAAMCO Prisma and aligned next steps.</div>
+              <div class="activity-by gp">Geoffrey · GP</div>
+            </div>
+            <div class="activity-time">Yesterday<br>3:20 PM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker gp">G</div>
+            <div class="activity-body">
+              <div class="activity-title">Meeting — walked through Q4 performance; requested follow-up materials.</div>
+              <div class="activity-by gp">Geoffrey · GP</div>
+            </div>
+            <div class="activity-time">Tue<br>11:00 AM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker tomo">T</div>
+            <div class="activity-body">
+              <div class="activity-title">Detected commitment: "Connect you with PAAMCO's risk team" — added to open loops.</div>
+              <div class="activity-by tomo">Tomo</div>
+            </div>
+            <div class="activity-time">Tue<br>11:18 AM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker gp">G</div>
+            <div class="activity-body">
+              <div class="activity-title">Email sent — performance snapshot with two proposed times to reconnect.</div>
+              <div class="activity-by gp">Geoffrey · GP</div>
+            </div>
+            <div class="activity-time">Apr 24<br>9:30 AM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker tomo">T</div>
+            <div class="activity-body">
+              <div class="activity-title">Captured mandate fit as "Confirmed" after Q1 strategy call.</div>
+              <div class="activity-by tomo">Tomo</div>
+            </div>
+            <div class="activity-time">Mar 12<br>2:48 PM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker gp">G</div>
+            <div class="activity-body">
+              <div class="activity-title">Meeting — Q1 strategy call; discussed PAAMCO's risk attribution requirements and capacity questions.</div>
+              <div class="activity-by gp">Geoffrey · GP</div>
+            </div>
+            <div class="activity-time">Mar 12<br>1:30 PM</div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-marker tomo">T</div>
+            <div class="activity-body">
+              <div class="activity-title">LP imported from Backstop CSV (workspace seed).</div>
+              <div class="activity-by tomo">Tomo</div>
+            </div>
+            <div class="activity-time">Mar 15<br>10:24 AM</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  function toggleExpand() {
+    const z = document.getElementById('expandedZone');
+    const btn = document.getElementById('expandBtn');
+    z.classList.toggle('open');
+    btn.classList.toggle('expanded');
+  }
+  function toggleCollapse(headEl) {
+    headEl.parentElement.classList.toggle('open');
+  }
+</script>
+
+</body>
+</html>
