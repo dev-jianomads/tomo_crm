@@ -10,7 +10,7 @@ Refactor `/pipeline` from the current target-list concept (Region, Interest, Sta
 
 - **Pipeline page**: Uses `TargetFilter` / `TargetList` (region, interest, stage, tier) with mock members. Stored in `TARGET_LISTS_STORAGE_KEY`. No connection to relationships.
 - **Relationships page**: Uses `StructuredFilterCriteria` (26+ fields) with `applyFilters()`, `formatFilterSummary()`. No "create pipeline" action.
-- **Stage states** (from `mockData.ts`): `First contact`, `Deck sent`, `Met`, `Active diligence`, `DD`, `Soft circle`, `Closed`, `Pass`.
+- **Stage states** (from `mockData.ts`): `First contact`, `Deck sent`, `Met`, `Nurturing`, `Active diligence`, `DD`, `Soft circle`, `Closed`, `Pass`.
 
 ---
 
@@ -75,8 +75,9 @@ export type Pipeline = {
 │ Pipeline: Q1 Fund III Target List                                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Funnel (horizontal bars, clickable):                                     │
-│ [First contact ███ 3] [Deck sent █████ 5] [Met ██ 2] [Active dil ████ 4] │
-│ [DD █ 1] [Soft circle ██ 2] [Closed ███████ 7] [Pass ███ 3]              │
+│ [First contact ███ 3] [Deck sent █████ 5] [Met ██ 2] [Nurturing ███ 3]   │
+│ [Active dil ████ 4] [DD █ 1] [Soft circle ██ 2] [Closed ███████ 7]       │
+│ [Pass ███ 3]                                                             │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ Stage detail (when section clicked, or default: first non-empty):       │
 │ ▼ Deck sent (5) — [Northwind Capital, Peakline Partners, ...]            │

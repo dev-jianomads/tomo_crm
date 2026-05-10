@@ -425,6 +425,7 @@
   }
   .meeting-state.prep-ready { background: var(--teal-evidence-bg); color: var(--teal); }
   .meeting-state.first-contact { background: var(--navy-soft); color: var(--navy); }
+  .meeting-state.nurturing { background: var(--green-bg); color: var(--green); }
   .meeting-state.commitment-overdue { background: var(--red-bg); color: var(--red); }
 
   .meeting-time {
@@ -498,6 +499,15 @@
   .pipeline-row-count.watch { color: var(--status-amber-text); }
   .pipeline-row-count.act { color: var(--red); }
   .pipeline-row-count.intel { color: var(--teal); }
+
+  .pipeline-stages-hint {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--mute);
+  }
 
   /* ============================================================
      ON MY RADAR MODAL
@@ -772,7 +782,7 @@
       <aside aria-labelledby="up-title">
         <h2 class="col-title" id="up-title">
           Coming up
-          <span class="count">4</span>
+          <span class="count">5</span>
         </h2>
 
         <div class="meeting">
@@ -797,6 +807,14 @@
             <span class="meeting-state first-contact">First contact</span>
           </div>
           <div class="meeting-time">Tomorrow · 10:00 AM ET</div>
+        </div>
+
+        <div class="meeting">
+          <div class="meeting-head">
+            <div class="meeting-title">Albourne Partners · James Staltari · COO prep</div>
+            <span class="meeting-state nurturing">Nurturing</span>
+          </div>
+          <div class="meeting-time">Tomorrow · 3:30 PM ET</div>
         </div>
 
         <div class="meeting">
@@ -838,6 +856,9 @@
             </div>
             <div class="pipeline-row-count act">5</div>
           </div>
+          <p class="pipeline-stages-hint">
+            CRM funnel order: First contact → Deck sent → Met → Nurturing → Active diligence → DD → Soft circle → Closed → Pass
+          </p>
         </div>
 
       </aside>
