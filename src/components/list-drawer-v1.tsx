@@ -121,6 +121,7 @@ export type ListDrawerV1ContentProps = {
   relationships: Relationship[];
   router: ReturnType<typeof useRouter>;
   onOpenAmend: () => void;
+  onOpenLinkWorkflow: () => void;
   onClose: () => void;
 };
 
@@ -128,7 +129,14 @@ export type ListDrawerV1ContentProps = {
  * List detail body for `design/tomo_lists_v1.html`: title block, funnel, LP row table, active workflows.
  * Drawer chrome (close) lives in `ContextDrawer`.
  */
-export function ListDrawerV1Content({ pipeline, relationships, router, onOpenAmend, onClose }: ListDrawerV1ContentProps) {
+export function ListDrawerV1Content({
+  pipeline,
+  relationships,
+  router,
+  onOpenAmend,
+  onOpenLinkWorkflow,
+  onClose,
+}: ListDrawerV1ContentProps) {
   const manual = isManualList(pipeline);
   const members = useMemo(() => sortListMembers(getPipelineMembers(relationships, pipeline)), [relationships, pipeline]);
   const preview = useMemo(() => members.slice(0, LP_PREVIEW_MAX), [members]);
@@ -404,10 +412,7 @@ export function ListDrawerV1Content({ pipeline, relationships, router, onOpenAme
           </button>
           <button
             type="button"
-            onClick={() => {
-              onClose();
-              router.push(`/workflows?openList=${encodeURIComponent(pipeline.id)}&attach=1`);
-            }}
+            onClick={onOpenLinkWorkflow}
             className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3.5 py-2 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
           >
             Create workflow

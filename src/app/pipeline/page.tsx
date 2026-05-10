@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ContextDrawer } from "@/components/context-drawer";
+import { LinkWorkflowModalV1, type PlaybookPipelineOverrides } from "@/components/link-workflow-modal-v1";
 import { ListDrawerV1Content } from "@/components/list-drawer-v1";
 import { ListsIndexV1 } from "@/components/lists-index-v1";
 import { useRequireSession } from "@/lib/auth";
@@ -11,6 +12,8 @@ import { useFunds } from "@/components/fund-provider";
 import { usePipelines } from "@/lib/use-pipelines";
 import { AmendListModal } from "@/components/amend-list-modal";
 import { useRelationships } from "@/components/relationships-provider";
+import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
+import { usePersistentState } from "@/lib/usePersistentState";
 import { toast } from "sonner";
 
 export default function PipelinePage() {
@@ -19,16 +22,23 @@ export default function PipelinePage() {
   const { relationships } = useRelationships();
   const { activeFundId } = useFunds();
   const { pipelines, resetToMock, updatePipeline, ready: pipelinesReady } = usePipelines(activeFundId);
+  const [customPlaybooks] = useCustomPlaybooksPersistentState();
+  const [, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
+    "tomo-playbook-pipeline-overrides",
+    {}
+  );
 
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   /** Opens amend modal; drawer closes so the modal is the only focus */
   const [amendPipelineId, setAmendPipelineId] = useState<string | null>(null);
+  const [linkWorkflowOpen, setLinkWorkflowOpen] = useState(false);
 
   const handlePipelineClick = (id: string) => {
     setActivePipelineId(id);
   };
 
   const handleDrawerClose = () => {
+    setLinkWorkflowOpen(false);
     setActivePipelineId(null);
   };
 
@@ -80,6 +90,7 @@ export default function PipelinePage() {
               relationships={relationships}
               router={router}
               onClose={handleDrawerClose}
+              onOpenLinkWorkflow={() => setLinkWorkflowOpen(true)}
               onOpenAmend={() => {
                 setAmendPipelineId(activePipeline.id);
                 handleDrawerClose();
@@ -107,6 +118,16 @@ export default function PipelinePage() {
           toast.success("List updated");
           setAmendPipelineId(null);
         }}
+      />
+
+      <LinkWorkflowModalV1
+        open={linkWorkflowOpen && activePipeline != null}
+        pipeline={activePipeline ?? null}
+        relationships={relationships}
+        customPlaybooks={customPlaybooks}
+        onClose={() => setLinkWorkflowOpen(false)}
+        setPlaybookOverrides={setPlaybookOverrides}
+        router={router}
       />
     </>
   );
