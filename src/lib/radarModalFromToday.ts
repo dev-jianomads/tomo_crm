@@ -9,6 +9,7 @@ import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
 import {
   countRadarBadgeEligibleRows,
   countRadarModalTotalItems,
+  getRadarModalAppendixISkeletonSections,
   getRadarModalDemoPayload,
 } from "@/lib/radarModalSeed";
 
@@ -22,7 +23,7 @@ export type BuildRadarModalInput = {
 export type BuildRadarModalOptions = {
   /**
    * When true (default), section rows use Appendix-I demo seed (aligned with `radarModalSeed`).
-   * Set false to yield an empty-section stub until backend derivation exists.
+   * Set false to show Appendix I section shells with empty-state copy until backend derivation exists.
    */
   useDemoRadarSections?: boolean;
   /** Fixed clock for tests */
@@ -108,13 +109,15 @@ export function buildRadarModalPayload(
     };
   }
 
+  const sections = getRadarModalAppendixISkeletonSections();
+
   return {
     eyebrowLabel: formatRadarEyebrow(now),
     title: "On my radar",
     narrativeSummaryPlain: buildRadarNarrativeSummary(input.sortedActions, input.sortedCommitments),
     stampLines: [`${formatRadarComputedStamp(now)} · Spans 90-day window`, "0 items surfaced · 0 actionable"],
-    sections: [],
-    footerDeliveryPlain: getRadarModalDemoPayload().footerDeliveryPlain,
+    sections,
+    footerDeliveryPlain: "Daily Brief delivered also via email · Slack DM at 07:30 local (when configured)",
     badgeCount: 0,
   };
 }

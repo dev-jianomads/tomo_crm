@@ -386,3 +386,70 @@ export function getRadarModalDemoPayload(): RadarModalPayload {
 }
 
 export const RADAR_MODAL_DEMO_SECTIONS: readonly RadarModalSection[] = demoSections();
+
+/**
+ * Section shells for `buildRadarModalPayload` when demo rows are off — keeps Appendix I
+ * structure visible until live derivation populates rows (Phase 5).
+ */
+export function getRadarModalAppendixISkeletonSections(): RadarModalSection[] {
+  return [
+    {
+      id: "returning_to_you",
+      title: "Returning to you",
+      countSummary: "0 items · snoozes expired today",
+      defaultCollapsed: false,
+      items: [],
+      emptyMessage: "Nothing returning from snooze today.",
+    },
+    {
+      id: "commitments_yours",
+      title: "Your commitments approaching",
+      countSummary: "0 due in next 3 days",
+      defaultCollapsed: false,
+      items: [],
+      emptyMessage: "No commitments due in the next three days.",
+    },
+    {
+      id: "commitments_theirs",
+      title: "Outstanding from your LPs",
+      countSummary: "0 past their typical turnaround",
+      defaultCollapsed: false,
+      items: [],
+      emptyMessage: "No LP-side items are past typical turnaround.",
+    },
+    {
+      id: "heating_up",
+      title: "Heating up",
+      countSummary: "0 LPs accelerating",
+      defaultCollapsed: false,
+      direction: "positive",
+      items: [],
+      emptyMessage: "No positive momentum signals for today.",
+    },
+    {
+      id: "cooling_off",
+      title: "Cooling off",
+      countSummary: "0 LPs decelerating",
+      defaultCollapsed: true,
+      direction: "negative",
+      items: [],
+      emptyMessage: "No deceleration signals for today.",
+    },
+    {
+      id: "quiet_beyond_cadence",
+      title: "Quiet beyond cadence",
+      countSummary: "0 threads silent past typical",
+      defaultCollapsed: true,
+      items: [],
+      emptyMessage: "No diligence threads are quieter than usual.",
+    },
+    {
+      id: "next_7_days",
+      title: "Next 7 days at a glance",
+      countSummary: "0 items to flag ahead of time",
+      defaultCollapsed: false,
+      items: [],
+      emptyMessage: "Nothing flagged on the calendar horizon.",
+    },
+  ];
+}

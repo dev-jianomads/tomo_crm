@@ -12,6 +12,7 @@
     "qa:v0:headless": "PLAYWRIGHT_BROWSERS_PATH=0 PLAYWRIGHT_HEADLESS=1 playwright test tests/v0-fixes.spec.ts",
     "qa:v0:debug": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v0-fixes.spec.ts --debug",
     "qa:v1": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v1-phase1.spec.ts",
+    "qa:radar": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/radar-modal.spec.ts",
     "qa:stabilization": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/v0-fixes.spec.ts tests/v1-phase1.spec.ts",
     "export:mock-relationships-csv": "npx --yes tsx scripts/export-mock-relationships-csv.ts"
   },

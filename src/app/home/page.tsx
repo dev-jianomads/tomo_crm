@@ -684,6 +684,7 @@ export default function HomePage() {
               </button>
               <button
                 type="button"
+                data-testid="today-open-radar"
                 onClick={() => {
                   setOnMyRadarModalKey((k) => k + 1);
                   setOnMyRadarOpen(true);
