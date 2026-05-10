@@ -74,13 +74,13 @@ export function TomoAssistant({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-md border border-gray-200 bg-white">
+    <div className="flex h-full flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
       {showHeader ? (
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 dark:border-[color:var(--tomo-rule)]">
           <div>
-            <p className="text-sm font-medium text-gray-900">TOMO AI</p>
+            <p className="text-sm font-medium text-[color:var(--foreground)]">TOMO AI</p>
             {contextLabel ? (
-              <p className="whitespace-pre-line text-xs text-gray-500">{contextLabel}</p>
+              <p className="whitespace-pre-line text-xs text-[color:var(--tomo-mute)]">{contextLabel}</p>
             ) : null}
           </div>
         </div>
@@ -88,9 +88,9 @@ export function TomoAssistant({
 
       {/* Quick suggestion chips — collapse when active to give chat more space */}
       {suggestions.length && !(hideSuggestionsWhenActive && messages.length > 0) ? (
-        <div className="border-b border-gray-100 px-4 py-2">
+        <div className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-2 dark:border-[color:var(--tomo-rule)]">
           {suggestionsHeader ? (
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">
               {suggestionsHeader}
             </p>
           ) : null}
@@ -106,7 +106,7 @@ export function TomoAssistant({
               key={chip}
               onClick={() => handleSend(chip)}
               disabled={isStreaming}
-              className={`shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50`}
+              className="shrink-0 rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-navy-soft)] px-3 py-1 text-xs text-[color:var(--foreground)] transition hover:border-[color:var(--tomo-teal)] hover:bg-[color:var(--tomo-teal-tint)] hover:text-[color:var(--foreground)] disabled:opacity-50"
             >
               {chip}
             </button>
@@ -130,8 +130,8 @@ export function TomoAssistant({
               <div
                 className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
                   isUser
-                    ? "border-blue-200 bg-blue-50 text-gray-900"
-                    : "border-gray-200 bg-gray-50 text-gray-900"
+                    ? "border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,transparent)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--foreground)]"
+                    : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] text-[color:var(--foreground)]"
                 }`}
               >
                 <p className="whitespace-pre-line leading-relaxed">{textContent}</p>
@@ -141,11 +141,11 @@ export function TomoAssistant({
         })}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+            <div className="max-w-[85%] rounded-lg border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-3 py-2.5">
               <div className="flex gap-1.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:150ms]" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -155,14 +155,14 @@ export function TomoAssistant({
       </div>
 
       {/* Input area - shrink-0 so prompt stays visible when container is resized */}
-      <div className="shrink-0 border-t border-gray-200 px-3 py-3">
-        <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] px-3 py-3 dark:border-[color:var(--tomo-rule)]">
+        <div className="flex items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-canvas)] px-3 py-2 shadow-[var(--tomo-shadow-1)] transition focus-within:border-[color:var(--tomo-teal)] dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_55%,transparent)] dark:focus-within:border-[color:var(--tomo-teal)]">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholder}
             disabled={isStreaming}
-            className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--tomo-mute)] focus:outline-none disabled:opacity-50"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

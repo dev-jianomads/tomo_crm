@@ -94,6 +94,20 @@ function attentionVisualsForAction(a: ActionItem): {
   return out;
 }
 
+/**
+ * Primary attention column only (design/tomo_today_light_v2.html): first card may be SLA past with
+ * red left accent; all following cards use “Today” + amber accent even when mock due dates overlap.
+ */
+function primaryAttentionVisualForIndex(a: ActionItem, attentionQueueIndex: number): {
+  urgency?: { tone: "red" | "amber"; label: string };
+  accent?: "red" | "amber";
+} {
+  if (attentionQueueIndex > 0) {
+    return { urgency: { tone: "amber", label: "Today" }, accent: "amber" };
+  }
+  return attentionVisualsForAction(a);
+}
+
 type TodayListItem = {
   id: string;
   title: string;
@@ -118,9 +132,12 @@ type TodayListItem = {
 /** Row shape for “What needs your attention” and Previous (action cards). */
 function mapActionToAttentionListItem(
   a: ActionItem,
-  verbLabelForId: (id: string) => string
+  verbLabelForId: (id: string) => string,
+  /** Omit for Previous / unscoped lists — full per-action visuals. Primary queue passes 0-based index. */
+  attentionQueueIndex?: number
 ): TodayListItem {
-  const visuals = attentionVisualsForAction(a);
+  const visuals =
+    attentionQueueIndex !== undefined ? primaryAttentionVisualForIndex(a, attentionQueueIndex) : attentionVisualsForAction(a);
   const attentionWorkflowName =
     (a.workflowPlaybookId && suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
     (a.workflowTomoDefaultId && tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
@@ -565,11 +582,11 @@ export default function HomePage() {
       {/* Resizable top/bottom split — Phase 2: collapsible inline Tomo */}
       <div
         ref={splitContainerRef}
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex min-h-0 flex-1 flex-col bg-[color:var(--tomo-canvas)]"
       >
-        {/* Top: Today header + Tomo */}
+        {/* Top: Today header + Tomo — surface matches canvas; white only on collapsed/expanded prompt (design/*.html). */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden bg-[color:var(--tomo-card)] px-6 py-6 md:px-12 md:py-8"
+          className="flex min-w-0 flex-col overflow-hidden px-6 py-6 md:px-12 md:py-8"
           style={
             todayChatExpanded
               ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
@@ -610,7 +627,7 @@ export default function HomePage() {
                   setOnMyRadarModalKey((k) => k + 1);
                   setOnMyRadarOpen(true);
                 }}
-                className="button-primary inline-flex items-center gap-2 rounded-[var(--tomo-radius-md)] px-3.5 py-2 text-[13px] font-medium shadow-none focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tomo-card)]"
+                className="button-primary inline-flex items-center gap-2 rounded-[var(--tomo-radius-md)] px-3.5 py-2 text-[13px] font-medium shadow-none focus-visible:outline focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tomo-canvas)]"
                 aria-label={
                   onMyRadarLineCount > 0
                     ? `On My Radar, ${onMyRadarLineCount} items`
@@ -627,9 +644,9 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mb-3">
-            <h1 className="text-[clamp(26px,3.8vw,32px)] font-medium leading-[1.25] tracking-[-0.01em] text-[color:var(--tomo-navy)] [font-family:var(--font-newsreader-display)]">
+            <h1 className="text-[clamp(26px,3.8vw,32px)] font-medium leading-[1.25] tracking-[-0.01em] text-[color:var(--foreground)] [font-family:var(--font-newsreader-display)]">
               {greeting}, {userName}.{" "}
-              <span className="text-[color:var(--tomo-navy)]">{greetingIntelLine}</span>
+              <span className="text-[color:var(--foreground)]">{greetingIntelLine}</span>
             </h1>
             <p
               className="mt-2.5 font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]"
@@ -639,7 +656,7 @@ export default function HomePage() {
             </p>
           </div>
           {todayChatExpanded ? (
-            <div className="flex min-h-[200px] flex-1 flex-col overflow-hidden">
+            <div className="mt-8 flex min-h-[200px] flex-1 flex-col overflow-hidden">
               <div className="flex shrink-0 items-center justify-end gap-2 pb-1">
                 <button
                   type="button"
@@ -659,7 +676,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setTodayChatExpanded(true)}
-              className="flex w-full items-center justify-between gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))] px-3 py-2.5 text-left transition hover:border-[color:color-mix(in_srgb,var(--tomo-navy)_18%,var(--tomo-rule))]"
+              className="mt-8 flex w-full items-center justify-between gap-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:color-mix(in_srgb,var(--tomo-navy)_18%,var(--tomo-rule))] focus-visible:border-[color:var(--tomo-teal)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--tomo-teal)_22%,transparent)] focus-visible:outline-none"
               aria-label="Expand Tomo chat"
             >
               <span className="text-sm text-[color:var(--tomo-body)]">Ask Tomo about what&apos;s on Today…</span>
@@ -681,7 +698,7 @@ export default function HomePage() {
 
         {/* Bottom: attention | coming up (On My Radar is header + modal) */}
         <div
-          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-6 py-3 md:px-12"
+          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-6 pb-4 pt-10 md:px-12 md:pt-14"
           style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
@@ -691,7 +708,9 @@ export default function HomePage() {
                   title="What needs your attention"
                   titleCount={attentionActionsVisible.length}
                   emptyHint="All caught up — nothing needs your attention right now."
-                  items={attentionActionsVisible.map((a) => mapActionToAttentionListItem(a, verbPillForAction))}
+                  items={attentionActionsVisible.map((a, idx) =>
+                    mapActionToAttentionListItem(a, verbPillForAction, idx)
+                  )}
                   activeId={selection?.type === "action" ? selection.id : undefined}
                   onSelect={(id) => setSelection({ type: "action", id })}
                   scrollable
