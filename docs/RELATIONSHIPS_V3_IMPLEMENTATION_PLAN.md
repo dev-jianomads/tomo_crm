@@ -79,25 +79,27 @@ Kanban **column chrome and stages** shipped with Phase 3. Remaining polish:
 
 ### Phase 7 — LP drawer (`tomo_relationships_lp_drawer_v2.html`)
 
-- [ ] Drawer width, header (Newsreader-style title, subtitle row, tier/prior marks).
-- [ ] **Signal evidence** block (`pipeline_flag_reason`).
-- [ ] **Snapshot** (existing snapshot section, copy/styling alignment).
-- [ ] **Pipeline state** grid (stage, pipeline flag, tier, days in stage/prior, owner).
-- [ ] **Pipeline data** (mandate fit + captions, expected commitment, prior fund, active investments line).
-- [ ] **Open loops & commitments** list (reuse commitments/open-loops mock sources).
-- [ ] **Update with Tomo** row (align with `RelationshipDrawerTomoRow`).
-- [ ] **Show full record** expand: collapsibles for Identity, Firm details (**fund being raised against** bound to active fund), **Behavioural signals** grid (nine signals), CRM long tail.
-- [ ] **Activity log** styling (markers, typography) per v2.
-- [ ] Integrate with existing `ContextDrawer` API — slide-over from right, scrim optional per design.
+- [x] Drawer panel **`max-w-[760px]`**, `hideChromeHeader`, **`listContextDrawerLayout`** — scrollable Section 1 (`ContextDrawer`).
+- [x] Custom header in **`RelationshipDrawerV2`**: Newsreader title, firm row, tier badge, optional prior-LP mark, close control (Esc still closes via `ContextDrawer`).
+- [x] **Signal evidence** (`buildSignalEvidence` in `relationshipDrawerMocks.ts`) — pipeline-flag narrative; enriched provenance from **`GET /api/lp-contacts?id=`** when available.
+- [x] **Snapshot** — paragraph + “Computed” tag + attribution (demo synthesis unchanged).
+- [x] **Pipeline state** — stage, derived pipeline flag pill (`derivePipelineFlagMock`), tier, days in stage / prior stage (mock), owner.
+- [x] **Pipeline data** — mandate fit pill, typical check as commitment surrogate, prior fund / active investment tags, **fund raised against** (`activeFundLabel`), geography.
+- [x] **Open loops** — deterministic rows from CRM (`buildMockOpenLoopRows`).
+- [x] **Update with Tomo** — **`RelationshipDrawerTomoRow`** between Section 1 and activity (`hideSection2`); styling aligned to mock tokens.
+- [x] **Show full record** — collapsible CRM (**`RelationshipCrmForm`**); separate collapsible **Behavioural signals** grid (nine derived rows).
+- [x] **Activity log** — **`DrawerSection3ActivityLog`** `variant="relationships"` (marker column grid); **`activityLogVariant`** prop on **`ContextDrawer`**.
 
 ### Phase 8 — Filters & advanced modal
 
-- [ ] Advanced modal field parity with v3 HTML (numeric ranges, pipeline, investor_type, geography, prior fund, owner, fund raised against).
-- [ ] Tomo filter hint **V1 · Filter** behaviour unchanged.
+- [x] **Advanced filters** — existing numeric ranges + full enum parity; added **`fundId`** workspace cohort (`StructuredFilterCriteria.fundId`) with **`Workspace cohort`** dropdown (`workspaceFunds` prop). **`removeCriteriaTag`** / chips support **`fundId`**.
+- [x] **LLM parse** (`parseFilterPrompt`) — schema includes optional **`fundId`**.
+- [x] Tomo compressed panel (**`RelationshipsFilterChat`**) unchanged by design.
 
-### Phase 9 — Production wiring (post-mock)
+### Phase 9 — Production wiring (mock-first)
 
-- [ ] `/api/lp-contacts`, real `lp_state`, provenance-on-hover, **AC-3.10.1** performance.
+- [x] **`GET /api/lp-contacts`** — list + optional **`fundId`** query; **`GET /api/lp-contacts?id=`** single contact. Payload: **`LpContactRecord`** (`lp_state`, **`provenance`** for hover/title hints). **`Cache-Control`** on responses (short private cache — demo AC-3.10.1 posture).
+- [ ] Replace mock generator with **`/api/lp-contacts` → Postgres** `lp_state`, live provenance, and cited AC-3.10.1 latency targets in production.
 
 ---
 

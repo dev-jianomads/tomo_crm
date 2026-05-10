@@ -35,12 +35,15 @@ export function DrawerSection3ActivityLog({
   entries,
   defaultExpanded = false,
   expandSignal,
+  variant = "default",
 }: {
   entries: ActivityLogEntry[];
   /** When false (default), only the header row is visible until expanded. */
   defaultExpanded?: boolean;
   /** Increment (e.g. from parent state) to expand programmatically — meeting prep “View full history”. */
   expandSignal?: number;
+  /** `relationships` — marker column layout per `tomo_relationships_lp_drawer_v2.html`. */
+  variant?: "default" | "relationships";
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -80,27 +83,57 @@ export function DrawerSection3ActivityLog({
         }`}
       >
         <div className="max-h-[min(20rem,50vh)] space-y-3 overflow-y-auto px-4 pb-3 pt-0">
-          {display.map((entry, i) => (
-            <div
-              key={entry.id ?? `log-${i}`}
-              className="flex items-start justify-between gap-3 border-b border-[color:var(--tomo-rule-soft)] pb-3 last:border-b-0 last:pb-0"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-xs leading-snug text-[color:var(--foreground)]">
-                  <ActorBadge actor={entry.actor} />
-                  {entry.summary}
-                </p>
-                {entry.detail ? (
-                  <p className="mt-1 text-[11px] leading-relaxed text-[color:var(--tomo-body)]">
-                    <span className="italic text-[color:var(--tomo-mute)]">{entry.detail}</span>
+          {display.map((entry, i) =>
+            variant === "relationships" ? (
+              <div
+                key={entry.id ?? `log-${i}`}
+                className="grid grid-cols-[24px_1fr_auto] gap-3 border-b border-[color:var(--tomo-rule-soft)] pb-3 last:border-b-0 last:pb-0"
+              >
+                <span
+                  className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full font-mono text-[8px] font-semibold uppercase tracking-[0.08em] ${
+                    entry.actor === "TOMO"
+                      ? "bg-[color:var(--tomo-teal-evidence-bg)] text-[color:var(--tomo-teal)]"
+                      : "bg-[color:var(--tomo-navy-soft)] text-[color:var(--tomo-navy)]"
+                  }`}
+                  aria-hidden
+                >
+                  {entry.actor === "TOMO" ? "AI" : "GP"}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] leading-snug text-[color:var(--tomo-navy)]">{entry.summary}</p>
+                  {entry.detail ? (
+                    <p className="mt-1 text-[11px] leading-relaxed italic text-[color:var(--tomo-body)]">{entry.detail}</p>
+                  ) : null}
+                  <p className="mt-1 font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[color:var(--tomo-teal)]">
+                    {entry.actor === "TOMO" ? "Tomo" : "GP"}
                   </p>
-                ) : null}
+                </div>
+                <span className="shrink-0 whitespace-pre-line text-right font-mono text-[11px] leading-snug tabular-nums text-[color:var(--tomo-mute)]">
+                  {entry.ts}
+                </span>
               </div>
-              <span className="shrink-0 whitespace-pre-line text-right font-mono text-[10px] leading-snug text-[color:var(--tomo-mute)]">
-                {entry.ts}
-              </span>
-            </div>
-          ))}
+            ) : (
+              <div
+                key={entry.id ?? `log-${i}`}
+                className="flex items-start justify-between gap-3 border-b border-[color:var(--tomo-rule-soft)] pb-3 last:border-b-0 last:pb-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs leading-snug text-[color:var(--foreground)]">
+                    <ActorBadge actor={entry.actor} />
+                    {entry.summary}
+                  </p>
+                  {entry.detail ? (
+                    <p className="mt-1 text-[11px] leading-relaxed text-[color:var(--tomo-body)]">
+                      <span className="italic text-[color:var(--tomo-mute)]">{entry.detail}</span>
+                    </p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 whitespace-pre-line text-right font-mono text-[10px] leading-snug text-[color:var(--tomo-mute)]">
+                  {entry.ts}
+                </span>
+              </div>
+            )
+          )}
         </div>
       </div>
     </div>

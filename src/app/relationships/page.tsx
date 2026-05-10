@@ -15,8 +15,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
-import { RelationshipCrmForm } from "@/components/relationship-crm-form";
-import { RelationshipDrawerSnapshotSection } from "@/components/relationship-drawer-snapshot";
+import { RelationshipDrawerV2 } from "@/components/relationship-drawer-v2";
 import { RelationshipDrawerTomoRow } from "@/components/relationship-drawer-tomo-row";
 import { getTomoAssistance } from "@/lib/mockTomoAssistance";
 import {
@@ -59,6 +58,7 @@ import { filterRelationshipsByFund, resolveEffectiveFundId } from "@/lib/relatio
 import { derivePipelineFlagMock } from "@/lib/todayRaiseStands";
 import { usePipelines } from "@/lib/use-pipelines";
 import { toast } from "sonner";
+import type { LpContactRecord } from "@/lib/lpContactApi";
 
 type SortColumn =
   | "lp"
@@ -194,6 +194,7 @@ export default function RelationshipsPage() {
     "stage"
   );
 
+  const [lpDrawerProvenance, setLpDrawerProvenance] = useState<LpContactRecord["provenance"] | undefined>(undefined);
   const visibleColumns = useMemo(
     () =>
       TABLE_COLUMNS.filter((col) => columnVisibility[col.key] !== false),
@@ -423,6 +424,23 @@ export default function RelationshipsPage() {
     () => (activeId ? { type: "relationship" as const, id: activeId } : undefined),
     [activeId]
   );
+
+  useEffect(() => {
+    if (!activeId) {
+      setLpDrawerProvenance(undefined);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/lp-contacts?id=${encodeURIComponent(activeId)}`)
+      .then((res) => (res.ok ? res.json() : Promise.resolve(null)))
+      .then((data: { contact?: LpContactRecord } | null) => {
+        if (!cancelled && data?.contact?.provenance) setLpDrawerProvenance(data.contact.provenance);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
   const handleCrmUpdate = useCallback(
     (payload: {
@@ -919,25 +937,28 @@ export default function RelationshipsPage() {
       <ContextDrawer
         open={Boolean(activeId)}
         onClose={() => setActiveId(null)}
+        hideChromeHeader
+        drawerAriaLabel={active ? `LP detail · ${active.name}` : "LP detail"}
         title={active?.name ?? "Relationship"}
-        panelMaxWidthClassName="max-w-5xl"
+        panelMaxWidthClassName="max-w-[760px]"
+        listContextDrawerLayout
+        section1PaddingClassName="px-5 py-5 md:px-8"
         section1Content={
-          active && snapshotParagraph ? (
-            <RelationshipDrawerSnapshotSection summaryText={snapshotParagraph} />
-          ) : (
-            <div className="text-sm text-[color:var(--tomo-mute)]">Select a relationship</div>
-          )
-        }
-        section2MinHeightClassName="min-h-0"
-        section2Content={
           active ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <RelationshipCrmForm relationship={active} onFieldChange={handleRelationshipManualField} />
-              </div>
-            </div>
-          ) : undefined
+            <RelationshipDrawerV2
+              relationship={active}
+              snapshotParagraph={
+                snapshotParagraph || "No recent interaction history for this LP (demo)."
+              }
+              activeFundLabel={activeFundLabel}
+              onClose={() => setActiveId(null)}
+              onFieldChange={handleRelationshipManualField}
+              provenance={lpDrawerProvenance}
+            />
+          ) : null
         }
+        hideSection2
+        section2MinHeightClassName="min-h-0"
         sectionBetween2AndActivity={
           activeId && drawerSelection ? (
             <RelationshipDrawerTomoRow
@@ -950,6 +971,7 @@ export default function RelationshipsPage() {
           ) : undefined
         }
         section3Entries={drawerActivityEntries}
+        activityLogVariant="relationships"
       />
       {createPipelineModalOpen && (
         <CreatePipelineModal
@@ -990,6 +1012,7 @@ export default function RelationshipsPage() {
         <RelationshipsAdvancedFiltersModal
           key={advancedFiltersSession}
           initialCriteria={filterCriteria}
+          workspaceFunds={funds}
           onClose={() => setAdvancedFiltersOpen(false)}
           onConfirm={(criteria) => setFilterCriteria(criteria)}
         />

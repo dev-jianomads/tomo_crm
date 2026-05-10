@@ -78,6 +78,7 @@ const llmFilterSchema = z.object({
     .nullable(),
   openLoops: rangeSchema.nullable(),
   query: z.string().nullable(),
+  fundId: z.string().nullable(),
 });
 
 const llmWrappedSchema = z.object({

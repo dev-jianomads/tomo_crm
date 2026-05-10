@@ -25,6 +25,7 @@ import {
   FISCAL_YEAR_END_OPTIONS,
   CONSULTANT_DEPENDENT_OPTIONS,
   ESG_REQUIRED_OPTIONS,
+  DEFAULT_RELATIONSHIP_FUND_ID,
 } from "./mockData";
 
 // ── Zod schemas for enum values ─────────────────────────────────────────────
@@ -87,6 +88,8 @@ export const relationshipFilterSchema = z
     band: z.union([bandSchema, z.array(bandSchema), z.literal("All")]).optional(),
     openLoops: z.union([rangeSchema, z.literal("all")]).optional(),
     query: z.string().optional(),
+    /** Workspace fund cohort (`lp_contacts.fund_id`) — advanced filters / lists */
+    fundId: z.string().optional(),
   })
   .strict();
 
@@ -119,11 +122,19 @@ function matchesSubstring(value: string | undefined, search: string | undefined)
   return value.toLowerCase().includes(search.toLowerCase());
 }
 
+function effectiveRelationshipFundId(rel: Relationship): string {
+  return rel.fundId ?? DEFAULT_RELATIONSHIP_FUND_ID;
+}
+
 export function applyFilters(
   relationships: Relationship[],
   criteria: StructuredFilterCriteria
 ): Relationship[] {
   return relationships.filter((rel) => {
+    if (criteria.fundId?.trim()) {
+      if (effectiveRelationshipFundId(rel) !== criteria.fundId.trim()) return false;
+    }
+
     if (criteria.query?.trim()) {
       const q = criteria.query.trim().toLowerCase();
       const matchesQuery =
@@ -344,6 +355,9 @@ export function formatFilterSummary(criteria: StructuredFilterCriteria): string 
     const s = Array.isArray(criteria.stage) ? criteria.stage.join(", ") : criteria.stage;
     parts.push(s);
   }
+  if (criteria.fundId?.trim()) {
+    parts.push(`fund ${criteria.fundId}`);
+  }
 
   if (parts.length === 0) return "";
   return `Tomo: ${parts.join(" • ")}`;
@@ -393,6 +407,9 @@ export function criteriaToFilterTags(criteria: StructuredFilterCriteria): Filter
     const s = Array.isArray(criteria.stage) ? criteria.stage.join(", ") : criteria.stage;
     tags.push({ id: "stage", label: s });
   }
+  if (criteria.fundId?.trim()) {
+    tags.push({ id: "fundId", label: `Fund ${criteria.fundId.trim()}` });
+  }
 
   return tags;
 }
@@ -427,6 +444,9 @@ export function removeCriteriaTag(criteria: StructuredFilterCriteria, tagId: str
       break;
     case "stage":
       delete next.stage;
+      break;
+    case "fundId":
+      delete next.fundId;
       break;
     default:
       break;

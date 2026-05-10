@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { toast } from "sonner";
+import type { Fund } from "@/components/fund-provider";
 import {
   BAND_OPTIONS,
   STAGE_OPTIONS,
@@ -24,6 +24,7 @@ import {
   ESG_REQUIRED_OPTIONS,
 } from "@/lib/mockData";
 import { relationshipFilterSchema, type StructuredFilterCriteria } from "@/lib/relationshipFilters";
+import { toast } from "sonner";
 
 type AdvancedFilterDraft = {
   band: string;
@@ -51,6 +52,7 @@ type AdvancedFilterDraft = {
   daysMax: string;
   openLoopsMin: string;
   openLoopsMax: string;
+  fundId: string;
 };
 
 const EMPTY_DRAFT: AdvancedFilterDraft = {
@@ -79,6 +81,7 @@ const EMPTY_DRAFT: AdvancedFilterDraft = {
   daysMax: "",
   openLoopsMin: "",
   openLoopsMax: "",
+  fundId: "",
 };
 
 function enumFromCriteria<T extends string>(v: T | T[] | "All" | undefined): string {
@@ -118,6 +121,7 @@ function draftFromCriteria(c: StructuredFilterCriteria): AdvancedFilterDraft {
       loops && loops !== "all" && loops.min != null ? String(loops.min) : "",
     openLoopsMax:
       loops && loops !== "all" && loops.max != null ? String(loops.max) : "",
+    fundId: c.fundId?.trim() ?? "",
   };
 }
 
@@ -177,6 +181,8 @@ function rawCriteriaFromDraft(d: AdvancedFilterDraft): Record<string, unknown> {
     if (olMax !== undefined) range.max = olMax;
     out.openLoops = range;
   }
+
+  if (d.fundId.trim()) out.fundId = d.fundId.trim();
 
   return out;
 }
@@ -274,12 +280,15 @@ export type RelationshipsAdvancedFiltersModalProps = {
   onClose: () => void;
   /** Replaces existing filter state (Tomo + manual). */
   onConfirm: (criteria: StructuredFilterCriteria) => void;
+  /** Workspace funds — cohort filter (`lp_contacts.fund_id`). */
+  workspaceFunds?: Fund[];
 };
 
 export function RelationshipsAdvancedFiltersModal({
   initialCriteria,
   onClose,
   onConfirm,
+  workspaceFunds,
 }: RelationshipsAdvancedFiltersModalProps) {
   const [draft, setDraft] = useState(() => draftFromCriteria(initialCriteria));
 
@@ -416,6 +425,29 @@ export function RelationshipsAdvancedFiltersModal({
               </label>
             </div>
           </section>
+
+          {workspaceFunds?.length ? (
+            <section className="mb-4">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">
+                Workspace cohort
+              </h3>
+              <label className="block max-w-md">
+                <span className="mb-1 block tomo-field-label">Fund raised against (LP cohort)</span>
+                <select
+                  value={draft.fundId}
+                  onChange={(e) => setField("fundId", e.target.value)}
+                  className="tomo-input py-1.5 text-sm shadow-[var(--tomo-shadow-1)]"
+                >
+                  <option value="">Any fund</option>
+                  {workspaceFunds.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </section>
+          ) : null}
 
           <section>
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Fields</h3>

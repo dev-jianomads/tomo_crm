@@ -157,6 +157,8 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 | **Metric** | An aggregate number rendered on the Insights page. Ten metrics in V1. |
 | **Reminder** | An item the GP must act on (open loop, missed reply, commitment). Distinct from a signal. |
 | **Action Drawer** | The right-hand panel where TOMO surfaces drafts, captures, and approvals for GP review. |
+| **Live list** | A saved cohort whose membership is computed from **structured filter criteria** against current LP data (§3.11). UI label **LPs matching**. |
+| **Manual list** | A saved cohort with **no structured filter**; membership is exactly the set of explicitly selected LPs (§3.11). UI label **LPs in list**. |
 | **Day 1 Gap** | The count of LPs the GP's CRM lists as active but for whom TOMO finds no meaningful touch in 60+ days. Surfaced after initial sync (Home / Insights; not a Document B wizard screen — see §3.2, §3.6). |
 | **Tomo** | The product name and the in-app AI agent. The agent appears as inline chat (Today, Workflows) or as a floating dock / mobile sheet (other surfaces). |
 | **Tone calibration** | The per-user model TOMO trains on the user's sent-mail history after the workspace bundle is connected (typically post–Step 2) to make drafts sound like the user. |
@@ -278,7 +280,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 7. **Reminders engine** — open loops, missed replies, commitments; tier-aware thresholds; Action Drawer routing.
 8. **Today / Daily Brief** — daily-rhythm landing surface with attention queue, commitments, brief, and inline Tomo chat. Daily Brief delivered also via email and Slack push at user-selected time.
 9. **Action Drawer and approvals** — drafts, post-meeting capture, scheduling threads, follow-up reminders, meeting prep briefs; human-in-the-loop on every outbound.
-10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema), Lists primary table with named filters, workflow editor with default playbooks plus F7 Three-Touch.
+10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow editor with default playbooks plus F7 Three-Touch.
 11. **Meeting lifecycle** — prep brief, transcript ingestion (Teams + Meet) with AI recap fallback, post-meeting capture (~10 fields, <60 seconds), follow-up draft.
 12. **Tomo agent orchestration** — surface-gated tool calls; CRM updates, draft replies, filter relationships, workflow editing, post-meeting capture. All mutations require user confirmation.
 
@@ -979,13 +981,14 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 ### 3.11. Lists and named filters
 
-**Description.** Lists (`/lists`) is the audience and list-building surface. Same underlying data as `/relationships` but optimised for cohort work — saved lists, named filters, bulk-action seed for workflows.
+**Description.** Lists (`/lists`, canonical route; mock repository may still mount the same surface at `/pipeline` pending redirect) is the audience and list-building surface. Same underlying LP rows as `/relationships` but optimised for cohort work — saved lists, named filters, bulk-action seed for workflows. **Normative UI / information architecture (mock repository `tomo_crm`):** `design/tomo_lists_v1.html` — Lists index (page chrome, eyebrow, title + aggregate meta line, subtitle, flat **Your lists** grid with **Live** vs **Manual** semantics, per-row counts and workflow activity, dashed **Create list** affordance) and **list detail** (drawer: header block, funnel-by-stage viz, **LP row table** as the primary membership view, active workflows, footer actions). V1 does **not** ship a separate **Tomo defaults** section nor any Tomo-owned **system-preloaded** saved list on the Lists index.
 
 **Inputs / triggers.**
 
 - User loads `/lists`.
-- User creates / edits a filter combination.
-- User saves a filter as a list.
+- User creates / edits a filter combination (Relationships) or manages explicit list membership (manual lists).
+- User saves a filter combination or explicit selection as a list.
+- User opens a saved list (list detail / drawer).
 - User triggers a workflow run from a list.
 
 **Processing.**
@@ -1000,9 +1003,12 @@ Closing the browser preserves state and resumes after the last completed step. M
    - **Confirmed mandate fit** — `lp_contacts.mandate_fit='confirmed_fit'`.
    - **Re-ups · Fund N** — `lp_contacts.prior_fund_investor=true AND prior_fund_identifier=N`.
    - **Close proximity detected** — `lp_state.cc_expansion=true OR lp_state.close_proximity_flag=true`.
-   - **The single most valuable query** (Section 8 §8.4) — Tier 1 + confirmed mandate fit + drifting + not in active diligence or later. **Saved-list-able from day one.**
-2. **Filter combinator.** AND logic across selected filters. Free-text query added on top.
-3. **Saved lists.** GP saves a filter combination as a named list (`workflows.target_list_filter_jsonb` when the list is being prepared for a workflow; otherwise an `lp_lists` table — but in V1 saved lists live alongside workflows since the primary purpose is workflow seeding). For V1, saved lists are stored as named JSONB filters on `user_preferences.saved_filter_jsonb` (an array of `{name, filter_json}`); a dedicated `lp_lists` table is V1.5.
+   - **The single most valuable query** (Section 8 §8.4) — Tier 1 + confirmed mandate fit + drifting + not in active diligence or later. Available as a **named filter** and **saveable as a user list**; **not** auto-materialised as a Tomo default list (see BR-3.11.3).
+2. **Filter combinator.** AND logic across selected filters. Free-text query added on top. Applies to **live** lists only (see item 3).
+3. **Saved lists — live vs manual.**
+   - **Live list** — Membership is the set of LPs matching **structured filter criteria** (same combinator as Relationships), recomputed on read/write as data changes. UI shows **LPs matching** (per `tomo_lists_v1.html`).
+   - **Manual list** — **No structured filter:** filter criteria are empty / null / explicitly marked non-applicable at the API layer; membership is **exactly** the persisted set of explicit `lp_contact` ids the GP chose (add/remove). UI shows a free-text **description** line (italic / muted treatment per mock) and count label **LPs in list**. Amend-list flows add or remove explicit ids without introducing structured criteria.
+   - Persistence note: GP saves a live list as named JSONB on `user_preferences.saved_filter_jsonb` (array of `{name, filter_json, list_mode}`) or equivalent until `lp_lists` lands in V1.5; `workflows.target_list_filter_jsonb` continues to carry the filter applied at workflow run time for live lists. Manual lists persist explicit member ids alongside the same list record shape engineering adopts (ids array / join table).
 4. **Bulk actions.** From a list, the GP can: trigger a workflow on the cohort (creates one `workflow_runs` per LP), export to CSV, or open a Tomo chat scoped to the cohort.
 
 **Outputs.**
@@ -1013,15 +1019,17 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 **Business rules.**
 
-- BR-3.11.1 — All filters are computed against current `lp_state` and `lp_contacts`. No stale snapshots.
+- BR-3.11.1 — **Live lists:** membership is computed from structured criteria against current `lp_state` and `lp_contacts`. No stale snapshots. **Manual lists:** membership is the explicit id set only; structured criteria are not evaluated for inclusion.
 - BR-3.11.2 — A workflow triggered on a list de-dupes against `outbound_safety_log` (§3.12) — an LP currently in another active workflow run is skipped with a notice.
-- BR-3.11.3 — The "single most valuable query" filter is pre-loaded as a saved list at workspace creation.
+- BR-3.11.3 — V1 **does not** seed a Tomo-owned default saved list, **nor** surface a **Tomo defaults** section on the Lists index. Any high-value named filter (including the "single most valuable query") is user-saveable from Relationships / Lists flows but is not auto-created at workspace creation.
 
 **Acceptance criteria.**
 
 - AC-3.11.1 — Selecting "Re-engaged" filter on a workspace with 500 LPs returns the result in ≤ 600ms.
 - AC-3.11.2 — Triggering the F7 Three-Touch workflow on a "Quiet — Fat Middle" cohort of 29 LPs creates 29 `workflow_runs` rows, minus any LPs already in another active workflow run.
-- AC-3.11.3 — The "Tier 1 + confirmed fit + drifting + not in diligence" saved list is present at first sign-in to a fresh workspace.
+- AC-3.11.3 — Opening any saved list shows **list detail** whose **primary membership presentation** is a **scrollable LP row table** (columns / hierarchy per `design/tomo_lists_v1.html`: signal indicator, firm / LP name line, meta line, stage, right-aligned stamp) above or beside the funnel section as in the mock; stage-grouped chip-only views **do not** satisfy this criterion alone.
+- AC-3.11.4 — The Lists index shows **New list** and **Import cohort** in the top utility row with **visual parity** to `design/tomo_lists_v1.html`; both controls are **disabled placeholders** in V1 (no navigation, no modal, `aria-disabled` or equivalent) until their flows ship.
+- AC-3.11.5 — A **manual** saved list persists with **no structured filter** and renders the **Manual** / **LPs in list** copy pattern from the mock; a **live** list renders **Live** / **LPs matching** and a human-readable filter summary line.
 
 ---
 
@@ -1366,6 +1374,7 @@ This section specifies the contracts between TOMO V1 and the systems and humans 
 
 **Interaction patterns.**
 
+- **Lists surface (index + list detail).** Follow `design/tomo_lists_v1.html` for layout, section structure, list row geometry (icon column, filter / description block, live–manual pill, counts, workflow line), drawer IA (funnel, **LP row table**, workflows, footer actions), and disabled **New list** / **Import cohort** placeholders (§3.11 AC-3.11.3–AC-3.11.5).
 - **Manual Update Principle.** GP edits CRM fields by talking to Tomo in plain language ("Peter sized at $25M") OR by direct field-edit on the LP card. Tomo's proposal always renders a confirm/cancel before write. Per Tomo MVP3 / Section 8 §3.10 / §3.14.
 - **Single-prompt rule.** Post-meeting capture surfaces once per meeting. No re-nag.
 - **Confirmation gates.** Every mutation requires explicit user click. No auto-send, no auto-mutate.
@@ -3758,7 +3767,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 - AC — Filters available: Drifting, Quiet — Fat Middle, Re-engaged, One-Way, Stuck in stage, Slow to advance from [stage], Confirmed mandate fit, Re-ups · Fund N, Close proximity detected, the framework's "single most valuable query" (Tier 1 + confirmed fit + drifting + not in diligence).
 - AC — Each filter renders the matching LPs within 600ms for a 500-LP workspace.
-- AC — The "single most valuable query" filter is pre-loaded as a saved list at workspace creation.
+- AC — The "single most valuable query" is available as a filter and may be **saved by the user**; it is **not** present as a Tomo-seeded default list on first sign-in.
 
 **Story 8.6.2 — Filter combinator.**
 *As a GP, I can stack filters with AND logic and add a free-text query on top.*
@@ -3767,10 +3776,16 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — A free-text query against name and firm narrows the result further.
 
 **Story 8.6.3 — Saved lists.**
-*As a GP, I can save a filter combination as a named list for quick re-use.*
+*As a GP, I can save a cohort as a named list for quick re-use — either from structured filters (**live**) or from explicit LP selection with no structured criteria (**manual**).*
 
 - AC — Saved lists persist on the user record and re-render on page load.
 - AC — A saved list is selectable as the seed for a workflow run.
+
+**Story 8.6.3b — Manual lists (no structured filter).**
+*As a GP, I can maintain a hand-built cohort without structured criteria.*
+
+- AC — Creating a **manual** list stores **only** explicit `lp_contact` membership; structured filter criteria are empty / not applied.
+- AC — The Lists index and list detail use **Manual** / **LPs in list** presentation per `design/tomo_lists_v1.html`.
 
 **Story 8.6.4 — Trigger workflow on a list.**
 *As a GP, I can trigger a workflow (e.g. F7 Three-Touch) on a filtered cohort.*
@@ -3783,6 +3798,13 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 - AC — Export contains LP name, firm, stage, tier, mandate fit, days-since-touch, expected commitment.
 - AC — Export honours RLS; no cross-workspace data leaks.
+
+**Story 8.6.6 — Lists v1 layout and list detail.**
+*As a GP, I work in a Lists experience that matches the v1 cohort design.*
+
+- AC — The Lists **index** matches `design/tomo_lists_v1.html` for page chrome (eyebrow, title + aggregate meta, subtitle), flat list grid (no **Tomo defaults** section), row card layout, live/manual pills, counts, and workflow-activity line.
+- AC — **New list** and **Import cohort** appear as in the mock but are **disabled placeholders** in V1 (§3.11 AC-3.11.4).
+- AC — **List detail** (drawer or equivalent) includes funnel-by-stage **and** the **LP row table** as the primary membership view per the same mock.
 
 ---
 
@@ -4328,6 +4350,7 @@ Extends §1.3. Alphabetical.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 - `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 8).
+- `design/tomo_lists_v1.html` — normative visual / IA reference for the **Lists** index and list-detail drawer (including LP row table, live vs manual semantics, disabled top-row CTAs in V1) — §3.11, §8.6.
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
 

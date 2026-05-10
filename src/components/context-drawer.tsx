@@ -44,6 +44,8 @@ export type ContextDrawerProps = {
   section1PaddingClassName?: string;
   /** Bump to expand the bottom activity accordion (e.g. meeting prep “View full history”). */
   activityLogExpandSignal?: number;
+  /** Activity log row layout (Relationships LP drawer v2). */
+  activityLogVariant?: "default" | "relationships";
 };
 
 /**
@@ -69,6 +71,7 @@ export function ContextDrawer({
   hideChromeHeader = false,
   section1PaddingClassName = "px-4 py-3",
   activityLogExpandSignal,
+  activityLogVariant = "default",
 }: ContextDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -158,7 +161,7 @@ export function ContextDrawer({
           </div>
         ) : (
           <div id="tomo-drawer-activity-log" className="shrink-0 scroll-mt-4">
-            <DrawerSection3ActivityLog entries={section3Entries} expandSignal={activityLogExpandSignal} />
+            <DrawerSection3ActivityLog entries={section3Entries} expandSignal={activityLogExpandSignal} variant={activityLogVariant} />
           </div>
         )}
       </aside>
