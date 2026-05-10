@@ -133,11 +133,14 @@ export function RelationshipsKanbanBoard({
   activeId,
   onSelect,
   onMoveToStage,
+  fundRaiseLabel,
 }: {
   columns: Column[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onMoveToStage: (relationshipId: string, targetStage: Stage) => void;
+  /** Shown in region aria-label — active fund / current raise (v3 Kanban context). */
+  fundRaiseLabel?: string;
 }) {
   const [activeDrag, setActiveDrag] = useState<Relationship | null>(null);
   const sensors = useSensors(
@@ -177,7 +180,11 @@ export function RelationshipsKanbanBoard({
       <div
         className="flex min-h-0 min-w-0 flex-1 gap-1 overflow-x-hidden"
         role="region"
-        aria-label="Relationships by stage"
+        aria-label={
+          fundRaiseLabel
+            ? `Relationships by stage · current raise · ${fundRaiseLabel}`
+            : "Relationships by stage"
+        }
       >
         {columns.map(({ stage, items }) => (
           <KanbanColumn key={stage} stage={stage} items={items} activeId={activeId} onSelect={onSelect} />

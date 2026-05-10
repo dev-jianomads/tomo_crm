@@ -25,7 +25,6 @@ import {
 } from "@/lib/relationshipDrawerMockActivity";
 import {
   Relationship,
-  DEFAULT_RELATIONSHIP_FUND_ID,
   formatDaysSinceContact,
   STAGE_OPTIONS,
 } from "@/lib/mockData";
@@ -53,6 +52,7 @@ import { buildMockRelationshipFromCsvImport } from "@/lib/buildManualRelationshi
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
+import { filterRelationshipsByFund, resolveEffectiveFundId } from "@/lib/relationshipFundScope";
 import { usePipelines } from "@/lib/use-pipelines";
 import { toast } from "sonner";
 
@@ -180,7 +180,7 @@ export default function RelationshipsPage() {
   const { ready } = useRequireSession();
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
-  const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
+  const effectiveFundId = useMemo(() => resolveEffectiveFundId(activeFundId, funds), [activeFundId, funds]);
   const activeFundLabel = useMemo(
     () => funds.find((f) => f.id === effectiveFundId)?.name ?? "Fund",
     [funds, effectiveFundId]
@@ -301,12 +301,9 @@ export default function RelationshipsPage() {
     [relationships, relationshipOverrides]
   );
 
-  /** Phase 0 — when header fund is "All", `effectiveFundId` is the primary fund; LPs match `fundId`. */
+  /** LP rows for the active (or resolved) fund — matches SRS `fund_id` cohort. */
   const relationshipsScopedFund = useMemo(
-    () =>
-      relationshipsWithOverrides.filter(
-        (r) => (r.fundId ?? DEFAULT_RELATIONSHIP_FUND_ID) === effectiveFundId
-      ),
+    () => filterRelationshipsByFund(relationshipsWithOverrides, effectiveFundId),
     [relationshipsWithOverrides, effectiveFundId]
   );
 
@@ -628,18 +625,37 @@ export default function RelationshipsPage() {
         <div className="mb-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
             <p className="shrink-0 text-[13px] text-[color:var(--tomo-body)]">
-              <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">{filtered.length}</span>
-              {" "}of{" "}
-              <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">
-                {relationshipsScopedFund.length}
-              </span>{" "}
-              LPs
-              <span className="text-[color:var(--tomo-mute)]"> · {activeFundLabel}</span>
-              {activeFundId === "all" ? (
-                <span className="sr-only">
-                  Workspace fund selector is All; this list uses the primary fund ({activeFundLabel}) for the cohort.
-                </span>
-              ) : null}
+              {viewMode === "kanban" ? (
+                <>
+                  <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">{filtered.length}</span>
+                  {" "}
+                  LPs
+                  <span className="text-[color:var(--tomo-mute)]">
+                    {" "}
+                    · current raise · {activeFundLabel}
+                  </span>
+                  {activeFundId === "all" ? (
+                    <span className="sr-only">
+                      Workspace fund selector is All; cohort uses the primary fund ({activeFundLabel}) for this raise.
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">{filtered.length}</span>
+                  {" "}of{" "}
+                  <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">
+                    {relationshipsScopedFund.length}
+                  </span>{" "}
+                  LPs
+                  <span className="text-[color:var(--tomo-mute)]"> · {activeFundLabel}</span>
+                  {activeFundId === "all" ? (
+                    <span className="sr-only">
+                      Workspace fund selector is All; this list uses the primary fund ({activeFundLabel}) for the cohort.
+                    </span>
+                  ) : null}
+                </>
+              )}
             </p>
             {(() => {
               const summary = formatFilterSummary(filterCriteria);
@@ -859,6 +875,7 @@ export default function RelationshipsPage() {
               activeId={activeId}
               onSelect={(id) => setActiveId(id)}
               onMoveToStage={handleKanbanMoveToStage}
+              fundRaiseLabel={activeFundLabel}
             />
           )}
         </div>

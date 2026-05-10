@@ -48,8 +48,8 @@
 
 ### Phase 2 — Fund-scoped data (mock)
 
-- [x] Filter `relationships` (or provider output) by **`fund_id` ↔ activeFundId** from `useFunds()` (implemented on Relationships page via `relationshipsScopedFund`).
-- [ ] Surface **current raise** / fund label in Kanban control bar copy using active fund metadata (fund name shown in shared control bar; Kanban-specific copy TBD).
+- [x] Filter `relationships` (or provider output) by **`fund_id` ↔ activeFundId** from `useFunds()` (`filterRelationshipsByFund` / `resolveEffectiveFundId` in `src/lib/relationshipFundScope.ts`; Relationships page + header fund selector).
+- [x] Surface **current raise** / fund label in Kanban control bar copy (`{n} LPs · current raise · {fund}`) and Kanban board **`aria-label`** (`RelationshipsKanbanBoard` `fundRaiseLabel`).
 
 ### Phase 3 — Canonical stages & migration
 

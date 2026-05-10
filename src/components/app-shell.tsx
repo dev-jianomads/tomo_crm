@@ -358,8 +358,8 @@ export function AppShell({ section, listContent, detailContent, contextTitle, as
       {/* Header */}
       <header className="flex h-14 items-center justify-end border-b border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-4 dark:bg-[color:var(--tomo-card)]">
         <div className="flex min-w-0 items-center gap-3">
-          {/* LP Network (Phase 6): global fund selector drives mandate filtering via `useFunds` */}
-          {section === "lp_network" ? (
+          {/* Fund selector: LP Network + Relationships cohort (`fund_id` / mock `fundId`) */}
+          {section === "lp_network" || section === "relationships" ? (
             <div className="flex flex-col text-left">
               <span className="text-[11px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Fund</span>
               <select
