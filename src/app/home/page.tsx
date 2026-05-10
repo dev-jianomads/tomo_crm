@@ -501,15 +501,24 @@ export default function HomePage() {
     [engagementState],
   );
 
+  const radarDerived = process.env.NEXT_PUBLIC_TOMO_RADAR_DERIVED === "1";
+
   const radarModalPayload = useMemo(
     () =>
-      buildRadarModalPayload({
-        sortedActions: sortedActionItems,
-        sortedCommitments,
-        allBriefs: filteredBriefs,
-        stillInTodoActions,
-      }),
-    [sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions],
+      buildRadarModalPayload(
+        {
+          sortedActions: sortedActionItems,
+          sortedCommitments,
+          allBriefs: filteredBriefs,
+          stillInTodoActions,
+          relationships,
+        },
+        {
+          useDemoRadarSections: !radarDerived,
+          useDerivedRadarSections: radarDerived,
+        },
+      ),
+    [sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions, relationships],
   );
 
   const radarBadgeCount = radarModalPayload.badgeCount;

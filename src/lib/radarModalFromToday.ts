@@ -3,9 +3,10 @@
  * Demo sections come from {@link ./radarModalSeed} until production derivation ships (SRS Appendix I).
  */
 
-import type { Brief, ActionItem, Commitment } from "@/lib/mockData";
+import type { Brief, ActionItem, Commitment, Relationship } from "@/lib/mockData";
 import type { RadarModalPayload } from "@/lib/radarModalTypes";
 import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
+import { deriveRadarModalSectionsFromToday } from "@/lib/radarModalDeriveFromToday";
 import {
   countRadarBadgeEligibleRows,
   countRadarModalTotalItems,
@@ -18,14 +19,21 @@ export type BuildRadarModalInput = {
   sortedCommitments: Commitment[];
   allBriefs: Brief[];
   stillInTodoActions: ActionItem[];
+  /** CRM rows — required when {@link BuildRadarModalOptions.useDerivedRadarSections} is true */
+  relationships?: Relationship[];
 };
 
 export type BuildRadarModalOptions = {
   /**
    * When true (default), section rows use Appendix-I demo seed (aligned with `radarModalSeed`).
-   * Set false to show Appendix I section shells with empty-state copy until backend derivation exists.
+   * Set false to skip demo rows (see `useDerivedRadarSections`).
    */
   useDemoRadarSections?: boolean;
+  /**
+   * When true (and demo is off), Appendix I rows are derived from Today + relationships (`radarModalDeriveFromToday`).
+   * Enable in builds with `NEXT_PUBLIC_TOMO_RADAR_DERIVED=1`.
+   */
+  useDerivedRadarSections?: boolean;
   /** Fixed clock for tests */
   now?: Date;
 };
@@ -87,10 +95,8 @@ export function buildRadarModalPayload(
   input: BuildRadarModalInput,
   options: BuildRadarModalOptions = {},
 ): RadarModalPayload {
-  void input.allBriefs;
-  void input.stillInTodoActions;
-
   const useDemo = options.useDemoRadarSections !== false;
+  const useDerived = options.useDerivedRadarSections === true;
   const now = options.now ?? new Date();
 
   if (useDemo) {
@@ -105,6 +111,28 @@ export function buildRadarModalPayload(
       eyebrowLabel: formatRadarEyebrow(now),
       narrativeSummaryPlain: narrative,
       stampLines: [`${formatRadarComputedStamp(now)} · Spans 90-day window`, `${totalItems} items surfaced · ${badgeCount} actionable`],
+      badgeCount,
+    };
+  }
+
+  if (useDerived) {
+    const sections = deriveRadarModalSectionsFromToday({
+      sortedActions: input.sortedActions,
+      sortedCommitments: input.sortedCommitments,
+      allBriefs: input.allBriefs,
+      stillInTodoActions: input.stillInTodoActions,
+      relationships: input.relationships ?? [],
+    });
+    const badgeCount = countRadarBadgeEligibleRows(sections);
+    const totalItems = countRadarModalTotalItems(sections);
+
+    return {
+      eyebrowLabel: formatRadarEyebrow(now),
+      title: "On my radar",
+      narrativeSummaryPlain: buildRadarNarrativeSummary(input.sortedActions, input.sortedCommitments),
+      stampLines: [`${formatRadarComputedStamp(now)} · Spans 90-day window`, `${totalItems} items surfaced · ${badgeCount} actionable`],
+      sections,
+      footerDeliveryPlain: "Daily Brief delivered also via email · Slack DM at 07:30 local (when configured)",
       badgeCount,
     };
   }
