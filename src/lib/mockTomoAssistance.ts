@@ -236,7 +236,7 @@ export const tomoAssistanceByEntity: Record<string, TomoAssistance> = {
     initialMessage: {
       text: "Albourne — James Staltari. Post-meeting execution loop is open; SLA note is on Today.",
       blocks: [
-        { kind: "snapshot", text: "Consultant path; Met / active-stable. COO call is the next structural step." },
+        { kind: "snapshot", text: "Consultant path; Nurturing / active-stable. COO call is the next structural step." },
         { kind: "workflow_link", playbookId: "pb-post-meeting", name: "Post-Meeting Follow-Up", description: "Pull transcript, draft follow-up, require human approval before sending." },
       ],
     },

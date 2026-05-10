@@ -6,6 +6,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { ActionItem } from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { usePersistentState } from "@/lib/usePersistentState";
+import { DrawerCommitmentsCaptured, DrawerDraftMeta, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
 
 export type ActionResolution = "approved" | "later" | "dismissed" | null;
 
@@ -261,6 +262,9 @@ export function ActionDrawerPanel({
 
   return (
     <div className="space-y-4">
+      {action.drawerWhySurfaced ? (
+        <DrawerWhySurfaced body={action.drawerWhySurfaced.body} stamp={action.drawerWhySurfaced.stamp} />
+      ) : null}
       <div className="space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 flex-1 text-sm font-semibold accent-title">
@@ -301,14 +305,41 @@ export function ActionDrawerPanel({
         {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
 
         {preview.draftBody ? (
-          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                Drafted by Tomo
-              </span>
-              <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
-            </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--tomo-body)]">{preview.draftBody}</p>
+          <div className="overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]">
+            {action.drawerDraftMeta ? (
+              <>
+                <div className="flex items-center justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
+                    Drafted by Tomo
+                  </span>
+                  <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
+                </div>
+                <DrawerDraftMeta
+                  to={action.drawerDraftMeta.to}
+                  ccPlaceholder={action.drawerDraftMeta.ccPlaceholder}
+                  subject={action.drawerDraftMeta.subject}
+                  footnote={undefined}
+                />
+                <p className="whitespace-pre-line px-3 py-2.5 text-sm leading-relaxed text-[color:var(--tomo-body)]">
+                  {preview.draftBody}
+                </p>
+                {action.drawerDraftMeta.footnote ? (
+                  <p className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-3 py-2 text-right font-mono text-[9px] uppercase tracking-wide text-[color:var(--tomo-mute)] dark:bg-[color:var(--tomo-navy-soft)]">
+                    {action.drawerDraftMeta.footnote}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <div className="px-3 py-2.5">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
+                    Drafted by Tomo
+                  </span>
+                  <span className="text-[11px] text-[color:var(--tomo-mute)]">{preview.draftType === "invite" ? "Invite" : "Email"}</span>
+                </div>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--tomo-body)]">{preview.draftBody}</p>
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -318,6 +349,10 @@ export function ActionDrawerPanel({
           </p>
         ) : null}
       </div>
+
+      {action.drawerCommitments && action.drawerCommitments.length > 0 ? (
+        <DrawerCommitmentsCaptured items={action.drawerCommitments} />
+      ) : null}
 
       {showCtas ? (
         <div className="flex flex-wrap gap-2">

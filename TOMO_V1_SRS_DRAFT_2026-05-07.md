@@ -151,7 +151,7 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 | **Workspace** | The unit of multi-tenancy in TOMO. Multiple workspace members share data, integrations, and signal state within a workspace (no fixed member-count cap). Equivalent to a "team" in SaaS terminology. |
 | **Fund** | A specific raise within a workspace (e.g. "Fund III"). A workspace may contain multiple funds. |
 | **Meaningful Touch** | A two-way LP interaction satisfying the formal definition in §3.5.1 (lifted from Section 8 §8.2). The unit of measurement for "have we recently connected with this LP." |
-| **Pipeline stage** | One of the eight canonical LP stages (`sourced`, `first_meeting`, `second_meeting`, `active_diligence`, `soft_commit`, `committed`, `closed_lost`, `on_hold`) per Section 8 §8.2. |
+| **Pipeline stage** | One of the eight canonical LP stages (`sourced`, `first_meeting`, `nurturing`, `active_diligence`, `soft_commit`, `committed`, `closed_lost`, `on_hold`) per Section 8 §8.2. |
 | **Pipeline flag** | The G/A/R (Green / Amber / Red) state computed per LP per the locked algorithm in Section 8 §8.7. |
 | **Signal** | A behavioural observation computed from email and calendar metadata that contributes to flag state, fires an action, or appears as a named filter. Nine signals in V1. |
 | **Metric** | An aggregate number rendered on the Insights page. Ten metrics in V1. |
@@ -935,7 +935,7 @@ Closing the browser preserves state and resumes after the last completed step. M
    - **Status bar:** G/A/R dot + plain-English `pipeline_flag_reason`.
    - **Open emails:** unread / awaiting-reply summary.
    - **Key changes:** signal callouts ("Reply time has slowed: last 4 days, typical 18 hours.").
-   - **Stage:** current stage + days-in-stage + days-in-prior-stage line ("In active diligence 22 days. Spent 47 days in second_meeting.").
+   - **Stage:** current stage + days-in-stage + days-in-prior-stage line ("In active diligence 22 days. Spent 47 days in nurturing.").
    - **Sizing line:** `expected_commitment_amount` and `expected_commitment_captured_at`.
    - **Three sections (per APP_SUMMARY mock baseline):**
      - Section 1 — Snapshot (signals, status, open emails, key changes).
@@ -967,7 +967,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 **Acceptance criteria.**
 
 - AC-3.10.1 — Loading the Relationships list with 500 LPs renders in ≤ 1.5 seconds.
-- AC-3.10.2 — Dragging an LP from `first_meeting` to `second_meeting` on the board writes a `lp_stage_transitions` row and updates `lp_state.days_in_current_stage` within 5 seconds.
+- AC-3.10.2 — Dragging an LP from `first_meeting` to `nurturing` on the board writes a `lp_stage_transitions` row and updates `lp_state.days_in_current_stage` within 5 seconds.
 - AC-3.10.3 — Typing "Peter sized at $25M" in the LP-card chat surfaces a confirm dialog with the proposed `expected_commitment_amount=25000000`, and writing applies on confirm.
 - AC-3.10.4 — The LP card surfaces every Section 8 §8.3–§8.4 surface element listed in §8.8.
 
@@ -2502,7 +2502,7 @@ LP person record. Foreign key to `lp_organizations` (every LP belongs to a firm)
 | `is_decision_maker` | boolean | null | | | Tri-state: null = unknown |
 | `is_gatekeeper` | boolean | null | | | |
 | **Pipeline state (Section 8 §8.2):** | | | | | |
-| `pipeline_stage` | text | not null | `'sourced'` | check in (`'sourced'`, `'first_meeting'`, `'second_meeting'`, `'active_diligence'`, `'soft_commit'`, `'committed'`, `'closed_lost'`, `'on_hold'`) | Single canonical taxonomy |
+| `pipeline_stage` | text | not null | `'sourced'` | check in (`'sourced'`, `'first_meeting'`, `'nurturing'`, `'active_diligence'`, `'soft_commit'`, `'committed'`, `'closed_lost'`, `'on_hold'`) | Single canonical taxonomy |
 | `tier` | text | null | | check in (`'tier_1'`, `'tier_2'`, `'tier_3'`, `'unset'`) | GP-set priority |
 | **Captured attributes (Section 8 §8.4):** | | | | | |
 | `mandate_fit` | text | not null | `'unknown'` | check in (`'confirmed_fit'`, `'potential_fit'`, `'mandate_mismatch'`, `'unknown'`) | Drives the framework's "single most valuable query" |
@@ -2818,7 +2818,7 @@ Per Section 8 §8.6. Global defaults per stage; per-workspace override deferred 
 | `red_threshold_days` | int | null | | | |
 | `notes` | text | null | | | |
 
-**Seed values (V1):** `sourced` (60/90), `first_meeting` (21/35), `second_meeting` (14/28), `active_diligence` (10/21), `soft_commit` (21/35), `committed` (21/35), `on_hold` (90/null), `closed_lost` (null/null).
+**Seed values (V1):** `sourced` (60/90), `first_meeting` (21/35), `nurturing` (14/28), `active_diligence` (10/21), `soft_commit` (21/35), `committed` (21/35), `on_hold` (90/null), `closed_lost` (null/null).
 
 ##### Table: `daily_pipeline_summary`
 
@@ -3716,7 +3716,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Header strip shows tier badge, prior-fund badge, mandate-fit pill, and seniority.
 - AC — Status row shows the G/A/R dot and the plain-English `pipeline_flag_reason`.
 - AC — Key changes section surfaces signal callouts ("Reply time has slowed: last 4 days, typical 18 hours").
-- AC — Stage row shows current and prior-stage days ("In active diligence 22 days. Spent 47 days in second_meeting").
+- AC — Stage row shows current and prior-stage days ("In active diligence 22 days. Spent 47 days in nurturing").
 - AC — Per-LP Tomo chat receives that LP as scope context and answers grounded in their record.
 
 **Story 8.5.4 — Inline editing via Tomo (Manual Update Principle).**
@@ -4622,7 +4622,7 @@ Lifted from Section 8 §8.3 / §8.6 / §8.7 / §8.9 — concise engineering refe
 |---|---|---|
 | sourced | 60 | 90 |
 | first_meeting | 21 | 35 |
-| second_meeting | 14 | 28 |
+| nurturing | 14 | 28 |
 | active_diligence | 10 | 21 |
 | soft_commit | 21 | 35 |
 | committed | 21 | 35 |
@@ -4874,7 +4874,7 @@ Lifted from Section 9 §9.3 — concise engineering reference. Each metric per S
 ```
 total_committed   = SUM(lp_contacts.expected_commitment_amount) WHERE pipeline_stage = 'committed'
 total_soft        = SUM(...) WHERE pipeline_stage = 'soft_commit'
-total_pipeline    = SUM(...) WHERE pipeline_stage IN ('first_meeting','second_meeting','active_diligence')
+total_pipeline    = SUM(...) WHERE pipeline_stage IN ('first_meeting','nurturing','active_diligence')
 target_gap        = funds.raise_target - total_committed - total_soft
 
 bar_segments = {
@@ -4891,7 +4891,7 @@ Refresh: nightly + on stage transition + on `expected_commitment_amount` change.
 
 ```
 current_gap_count = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  pipeline_stage IN ('first_meeting','nurturing','active_diligence','soft_commit')
   AND lp_state.days_since_meaningful_touch > 60
 
 trend_30d = SELECT day_1_gap_count, snapshot_date
@@ -4909,7 +4909,7 @@ Refresh: nightly. Click-through filters Relationships to the same N LPs.
 
 ```
 moveability_count = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  pipeline_stage IN ('first_meeting','nurturing','active_diligence','soft_commit')
   AND lp_state.pipeline_flag IN ('green','amber')   -- explicitly NOT red
   AND EXISTS (lp_signal_log row of any directional warming type in last 30 days)
   AND lp_state.days_since_meaningful_touch <= amber_threshold(pipeline_stage)
@@ -5013,7 +5013,7 @@ with_direction = COUNT(...) WHERE
 mandate_fit_subset = COUNT(...) WHERE
   same as with_direction
   AND mandate_fit = 'confirmed_fit'
-  AND pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  AND pipeline_stage IN ('first_meeting','nurturing','active_diligence','soft_commit')
 ```
 
 Refresh: nightly.
@@ -5022,7 +5022,7 @@ Refresh: nightly.
 
 ```
 warm_stage_lps = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting','second_meeting','active_diligence','soft_commit')
+  pipeline_stage IN ('first_meeting','nurturing','active_diligence','soft_commit')
 
 three_plus_touches = COUNT(lp_contacts) WHERE
   pipeline_stage IN warm_stages
@@ -5082,7 +5082,7 @@ score(lp) = stage_weight + intent_weight + signal_weight - silence_penalty
 stage_weight:
   soft_commit:       40
   active_diligence:  30
-  second_meeting:    20
+  nurturing:    20
   first_meeting:     10
   sourced:            5
 

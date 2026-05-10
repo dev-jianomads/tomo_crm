@@ -83,7 +83,7 @@ Each of the ten is documented below with the same structure: what it shows the G
 | Raise target (single number) | New field on `funds` table, captured at onboarding |
 | Committed sum | Sum of `lp_contacts.expected_commitment_amount` WHERE `pipeline_stage = 'committed'` |
 | Soft commit sum | Sum of `lp_contacts.expected_commitment_amount` WHERE `pipeline_stage = 'soft_commit'` |
-| Active pipeline sum | Sum of `lp_contacts.expected_commitment_amount` WHERE `pipeline_stage IN (first_meeting, second_meeting, active_diligence)` |
+| Active pipeline sum | Sum of `lp_contacts.expected_commitment_amount` WHERE `pipeline_stage IN (first_meeting, nurturing, active_diligence)` |
 | Target gap | `raise_target − (committed_sum + soft_commit_sum)` |
 
 **Computation:**
@@ -91,7 +91,7 @@ Each of the ten is documented below with the same structure: what it shows the G
 ```
 total_committed = SUM(expected_commitment_amount) WHERE pipeline_stage = 'committed'
 total_soft = SUM(expected_commitment_amount) WHERE pipeline_stage = 'soft_commit'
-total_pipeline = SUM(expected_commitment_amount) WHERE pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence')
+total_pipeline = SUM(expected_commitment_amount) WHERE pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence')
 
 target_gap = raise_target - total_committed - total_soft
 
@@ -119,7 +119,7 @@ bar_segments = {
 
 | Input | Source |
 |---|---|
-| Active pipeline LPs | `lp_contacts` WHERE `pipeline_stage IN (first_meeting, second_meeting, active_diligence, soft_commit)` |
+| Active pipeline LPs | `lp_contacts` WHERE `pipeline_stage IN (first_meeting, nurturing, active_diligence, soft_commit)` |
 | Days since meaningful touch | `lp_state.days_since_meaningful_touch` (Section 8 Signal 1) |
 | Historical snapshots for trend line | NEW: `daily_pipeline_summary.day_1_gap_count` |
 
@@ -127,7 +127,7 @@ bar_segments = {
 
 ```
 current_gap_count = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence', 'soft_commit')
+  pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence', 'soft_commit')
   AND days_since_meaningful_touch > 60
 
 # Trend line: query daily snapshots from daily_pipeline_summary
@@ -165,7 +165,7 @@ trend_30d = SELECT day_1_gap_count, snapshot_date
 
 ```
 moveability_count = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence', 'soft_commit')
+  pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence', 'soft_commit')
   AND lp_state.pipeline_flag IN ('green', 'amber')  -- explicitly NOT red
   AND EXISTS (lp_signal_log entry of any directional warming type in last 30 days)
   AND lp_state.days_since_meaningful_touch <= amber_threshold(pipeline_stage)
@@ -375,7 +375,7 @@ avg_efficiency_days = AVG(resolution_days)
 | Active LPs | `lp_contacts.pipeline_stage NOT IN ('closed_lost')` |
 | Directional signal in last 30d | `lp_signal_log` WHERE signal indicates acceleration, deceleration, LP-initiated event, or close-proximity event (per Section 8 §8.7 fat middle definition) |
 | Mandate fit | `lp_contacts.mandate_fit = 'confirmed_fit'` (Section 8 §8.4) |
-| Warm-stage placement | `pipeline_stage IN (first_meeting, second_meeting, active_diligence, soft_commit)` |
+| Warm-stage placement | `pipeline_stage IN (first_meeting, nurturing, active_diligence, soft_commit)` |
 
 **Computation:**
 
@@ -389,7 +389,7 @@ with_direction = COUNT(lp_contacts) WHERE
 mandate_fit_subset = COUNT WHERE
   same as with_direction
   AND mandate_fit = 'confirmed_fit'
-  AND pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence', 'soft_commit')
+  AND pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence', 'soft_commit')
 ```
 
 **Refresh cadence:** nightly batch.
@@ -406,17 +406,17 @@ mandate_fit_subset = COUNT WHERE
 
 | Input | Source |
 |---|---|
-| Warm-stage LPs | `lp_contacts.pipeline_stage IN (first_meeting, second_meeting, active_diligence, soft_commit)` |
+| Warm-stage LPs | `lp_contacts.pipeline_stage IN (first_meeting, nurturing, active_diligence, soft_commit)` |
 | Meaningful touches in last 6 months | `lp_interactions` filtered by Meaningful Touch definition (Section 8 §8.2) |
 
 **Computation:**
 
 ```
 warm_stage_lps = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence', 'soft_commit')
+  pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence', 'soft_commit')
 
 three_plus_touches = COUNT(lp_contacts) WHERE
-  pipeline_stage IN ('first_meeting', 'second_meeting', 'active_diligence', 'soft_commit')
+  pipeline_stage IN ('first_meeting', 'nurturing', 'active_diligence', 'soft_commit')
   AND COUNT(lp_interactions matching Meaningful Touch in last 6 months) >= 3
 
 fat_middle_ratio = three_plus_touches / warm_stage_lps
@@ -533,7 +533,7 @@ score(lp) = stage_weight + intent_weight + signal_weight - silence_penalty
 stage_weight:
   soft_commit:       40
   active_diligence:  30
-  second_meeting:    20
+  nurturing:    20
   first_meeting:     10
   sourced:            5
 

@@ -4,6 +4,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { Commitment } from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
+import { DrawerCommitmentsCaptured, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
 
 function blockBrief(blocks: TomoMessageBlock[] | undefined): Extract<TomoMessageBlock, { kind: "brief" }> | null {
   const b = blocks?.find((x): x is Extract<TomoMessageBlock, { kind: "brief" }> => x.kind === "brief");
@@ -73,6 +74,11 @@ export function CommitmentDrawerPanel({
   const showCtas = resolution === null;
   const pillIsSent = verbLabel === "Prep sent" || resolution === "approved";
 
+  const commitmentLines =
+    commitment.drawerMeetingCommitments && commitment.drawerMeetingCommitments.length > 0
+      ? commitment.drawerMeetingCommitments
+      : preview.commitments.map((label) => ({ label }));
+
   const timeLine = commitmentDayTime(commitment.datetime);
 
   const commitmentStatusPillClass =
@@ -86,6 +92,9 @@ export function CommitmentDrawerPanel({
 
   return (
     <div className="space-y-4">
+      {commitment.drawerWhySurfaced ? (
+        <DrawerWhySurfaced body={commitment.drawerWhySurfaced.body} stamp={commitment.drawerWhySurfaced.stamp} />
+      ) : null}
       <div className="space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -135,7 +144,7 @@ export function CommitmentDrawerPanel({
         <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>
         {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
 
-        {preview.summary || preview.agenda.length > 0 || preview.commitments.length > 0 || preview.snapshotFallback ? (
+        {preview.summary || preview.agenda.length > 0 || preview.snapshotFallback ? (
           <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
             {preview.summary ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.summary}</p> : null}
             {preview.snapshotFallback && !preview.summary ? (
@@ -155,23 +164,11 @@ export function CommitmentDrawerPanel({
                 </ul>
               </div>
             ) : null}
-
-            {preview.commitments.length > 0 ? (
-              <div className="mt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Commitments</p>
-                <ul className="mt-1 space-y-1 text-sm text-[color:var(--foreground)]">
-                  {preview.commitments.map((line) => (
-                    <li key={line} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal-muted)]" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </div>
+
+      {commitmentLines.length > 0 ? <DrawerCommitmentsCaptured items={commitmentLines} /> : null}
 
       {showCtas ? (
         <>

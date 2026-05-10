@@ -342,13 +342,41 @@ export default function HomePage() {
     if (!selection) return [];
     if (selection.type === "action") {
       const a = actions.find((x) => x.id === selection.id);
-      return (a?.activityLog ?? []).map((e) => ({ id: e.id, ts: e.ts, actor: e.actor, summary: e.summary }));
+      return (a?.activityLog ?? []).map((e) => ({
+        id: e.id,
+        ts: e.ts,
+        actor: e.actor,
+        summary: e.summary,
+        detail: e.detail,
+      }));
     }
     if (selection.type === "commitment") {
+      const c = commitments.find((x) => x.id === selection.id);
+      if (c?.activityLog?.length) {
+        return c.activityLog.map((e) => ({
+          id: e.id,
+          ts: e.ts,
+          actor: e.actor,
+          summary: e.summary,
+          detail: e.detail,
+        }));
+      }
       return [
-        { ts: "Yesterday 3:20 PM", actor: "User" as const, summary: "Call — Discussed allocation timing and next steps." },
-        { ts: "Tue 11:00 AM", actor: "User" as const, summary: "Meeting — Reviewed Q4 results; asked for updated deck." },
-        { ts: "Mon 9:05 AM", actor: "User" as const, summary: "Email — Shared performance snapshot + follow-up agenda." },
+        {
+          ts: "Yesterday 3:20 PM",
+          actor: "User" as const,
+          summary: "Call — Discussed allocation timing and next steps.",
+        },
+        {
+          ts: "Tue 11:00 AM",
+          actor: "User" as const,
+          summary: "Meeting — Reviewed Q4 results; asked for updated deck.",
+        },
+        {
+          ts: "Mon 9:05 AM",
+          actor: "User" as const,
+          summary: "Email — Shared performance snapshot + follow-up agenda.",
+        },
       ];
     }
     if (selection.type === "brief") return [];

@@ -7,7 +7,7 @@ export type MomentumTrend = "up" | "flat" | "down";
 export type Velocity = "Fast" | "Moderate" | "Slow";
 
 // ── Relationship enum constants (Tier 1–4 schema) ───────────────────────────
-export const STAGE_OPTIONS = ["First contact", "Deck sent", "Met", "Active diligence", "DD", "Soft circle", "Closed", "Pass"] as const;
+export const STAGE_OPTIONS = ["First contact", "Deck sent", "Met", "Nurturing", "Active diligence", "DD", "Soft circle", "Closed", "Pass"] as const;
 export const MOMENTUM_DIRECTION_OPTIONS = ["Heating up", "Stable", "Cooling"] as const;
 export const TIER_OPTIONS = ["Tier 1", "Tier 2", "Tier 3"] as const;
 export const RELATIONSHIP_OWNER_OPTIONS = ["You", "IR Person", "Placement Agent", "Unassigned"] as const;
@@ -34,6 +34,7 @@ export const STAGE_COLORS: Record<Stage, string> = {
   "First contact": "#c8e6c9",
   "Deck sent": "#a5d6a7",
   Met: "#81c784",
+  Nurturing: "#aed581",
   "Active diligence": "#ffeb3b",
   DD: "#ffb74d",
   "Soft circle": "#ff8a65",
@@ -171,6 +172,25 @@ export type ActionAttentionCard = {
   workSubject: string;
 };
 
+/** Today drawer — activity log row (optional detail line for richer layout). */
+export type ActivityLogEntry = {
+  id: string;
+  ts: string;
+  actor: "TOMO" | "User";
+  summary: string;
+  detail?: string;
+};
+
+/** Today drawer — optional “why surfaced” + email meta + meeting commitments (mock / static). */
+export type DrawerWhySurfaced = { body: string; stamp?: string };
+export type DrawerDraftMeta = {
+  to?: string;
+  ccPlaceholder?: string;
+  subject?: string;
+  footnote?: string;
+};
+export type DrawerCommitmentLine = { label: string; badge?: string };
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -183,7 +203,11 @@ export type ActionItem = {
   suggestedUpdates?: string[];
   draft?: string;
   autoApproveType?: boolean; // UI preference only (mock)
-  activityLog: { id: string; ts: string; actor: "TOMO" | "User"; summary: string }[];
+  activityLog: ActivityLogEntry[];
+  drawerWhySurfaced?: DrawerWhySurfaced;
+  drawerDraftMeta?: DrawerDraftMeta;
+  /** Shown below draft / Tomo surface; static extraction narrative. */
+  drawerCommitments?: DrawerCommitmentLine[];
   /** ISO date string (YYYY-MM-DD) for overdue detection */
   dueDate?: string;
   /** Link to workflow playbook — shows "View workflow" in drawer */
@@ -223,6 +247,11 @@ export type Commitment = {
   calendarUrl?: string;
   /** Mock / enrichment: public LinkedIn profile URL for pre-call research */
   linkedInUrl?: string;
+  /** Today drawer — same blocks as action drawer where applicable */
+  drawerWhySurfaced?: DrawerWhySurfaced;
+  activityLog?: ActivityLogEntry[];
+  /** Optional badges for prep commitments list; falls back to brief commitments as plain lines. */
+  drawerMeetingCommitments?: DrawerCommitmentLine[];
 };
 
 export type Brief = {
@@ -246,13 +275,6 @@ export type Material = {
   engagement: "High" | "Mixed" | "Ignored";
   momentumImpact: MomentumTrend;
   followUpSignal: string;
-};
-
-export type ActivityLogEntry = {
-  id: string;
-  ts: string;
-  actor: "TOMO" | "User";
-  summary: string;
 };
 
 /** Seed data for relationship generator */
@@ -430,7 +452,7 @@ function generateRelationships(): Relationship[] {
       name: "James Staltari",
       firm: "Albourne Partners",
       daysSinceLastMeaningfulContact: 1,
-      stage: "Met",
+      stage: "Nurturing",
       momentumDirection: "Stable",
       tier: "Tier 1",
       relationshipOwner: "You",
@@ -548,7 +570,7 @@ function generateRelationships(): Relationship[] {
   }
 
   // r10–r150: Generated with realistic distribution (50 original + 100 extended)
-  const stages: Stage[] = ["First contact", "Deck sent", "Met", "Active diligence", "DD", "Soft circle", "Closed", "Pass"];
+  const stages: Stage[] = ["First contact", "Deck sent", "Met", "Nurturing", "Active diligence", "DD", "Soft circle", "Closed", "Pass"];
   const momentumDirs: MomentumDirection[] = ["Heating up", "Stable", "Cooling"];
   const tiers: RelationshipTier[] = ["Tier 1", "Tier 2", "Tier 3"];
   const owners: RelationshipOwner[] = ["You", "IR Person", "Placement Agent", "Unassigned"];
@@ -592,7 +614,7 @@ function generateRelationships(): Relationship[] {
       name,
       firm,
       daysSinceLastMeaningfulContact: days,
-      stage: pick(stages, [10, 15, 12, 8, 6, 5, 3, 5], rng),
+      stage: pick(stages, [10, 14, 10, 8, 8, 6, 5, 3, 5], rng),
       momentumDirection: momentumDir,
       tier: pick(tiers, [20, 50, 30], rng),
       relationshipOwner: pick(owners, [40, 30, 20, 10], rng),
@@ -648,14 +670,59 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Peter — thanks for reaching out. I'm free March 18 at 9:00am or 11:00am ET for 30 minutes. Please let me know which works best and I'll send a calendar invite.\n\nBest regards,",
     dueDate: "2025-03-17",
-    activityLog: [
-      { id: "al-a1-1", ts: "Today 07:15", actor: "TOMO", summary: "Detected meeting request in overnight email" },
-      { id: "al-a1-2", ts: "Today 07:16", actor: "TOMO", summary: "Checked calendar — 9am & 11am ET open on March 18" },
-      { id: "al-a1-3", ts: "Today 07:17", actor: "TOMO", summary: "Drafted reply with both times" },
-    ],
     workflowTomoDefaultId: "td-email-scheduling",
     emailSourceUrl:
       "mailto:peter.zakowich@example.com?subject=Re%3A%20March%2018%20meeting%20request",
+    drawerWhySurfaced: {
+      body: "Peter emailed asking for time on March 18 to discuss allocation timeline and manager-comparison materials. He has been in active diligence 22 days. Your calendar shows 9am and 11am ET free — Tomo drafted a reply proposing both. Reply target is end-of-day to keep the meeting in the same week.",
+      stamp: "Computed 07:16 · From inbound + calendar",
+    },
+    drawerDraftMeta: {
+      to: "peter.zakowich@paamcoprisma.com",
+      subject: "RE: PAAMCO allocation review — March 18",
+      footnote: "94 words · drafted 07:16 today · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Bring manager-comparison spread from last week’s discussion", badge: "WITH REPLY" },
+      { label: "Include allocation timeline against Q2 close", badge: "WITH REPLY" },
+    ],
+    activityLog: [
+      {
+        id: "al-a1-1",
+        ts: "Today 06:42",
+        actor: "User",
+        summary: "Email · Asked for March 18 meeting",
+        detail: "“Could we find time on March 18 to walk through the allocation timeline and the manager-comparison spread…”",
+      },
+      {
+        id: "al-a1-2",
+        ts: "Today 07:16",
+        actor: "TOMO",
+        summary: "Detected meeting request, drafted reply with two open slots",
+        detail: "Checked calendar for March 18 ET. Selected 9am and 11am from four available slots, weighted toward earlier in the day per Peter’s stated preference window.",
+      },
+      {
+        id: "al-a1-3",
+        ts: "Wed 15:20",
+        actor: "User",
+        summary: "Call · Reviewed allocation timeline with PAAMCO Prisma and aligned next steps",
+        detail: "30 min · Peter walked through their Q2 review process. Promised manager-comparison spread by today. Logged manually.",
+      },
+      {
+        id: "al-a1-4",
+        ts: "Tue 11:00",
+        actor: "User",
+        summary: "Meeting · Walked through Q4 performance, requested follow-up materials",
+        detail: "60 min in person, San Francisco. Peter requested attribution detail and the manager-comparison spread.",
+      },
+      {
+        id: "al-a1-5",
+        ts: "Mon 10:30",
+        actor: "TOMO",
+        summary: "Signal change · Reply velocity tightened",
+        detail: "Last 3 exchanges: 22h, 14h, 6h. Typical for this LP is 18h. Pattern starting to emerge — early sign of acceleration.",
+      },
+    ],
   },
   {
     id: "a2",
@@ -678,12 +745,38 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Michel — great to meet you, and thank you Liyen for the introduction.\n\nBrief context: we had a strong Q4 and are speaking with a small set of aligned allocator relationships. I'd welcome a short intro call at your convenience.\n\nBest regards,",
     dueDate: "2025-03-26",
-    activityLog: [
-      { id: "al-a2-1", ts: "2d ago", actor: "User", summary: "Intro email received (CC Liyen Chow)" },
-      { id: "al-a2-2", ts: "Today 08:00", actor: "TOMO", summary: "Flagged unresponded intro — drafted reply" },
-    ],
     workflowPlaybookId: "pb-intro-tracker",
     emailSourceUrl: "mailto:michel.delbuono@example.com?subject=Introduction%20from%20Liyen",
+    drawerWhySurfaced: {
+      body: "Liyen Chow connected you to Michel two days ago regarding Edmond de Rothschild Family Office. No reply yet — intro responses within 24h protect the warm path. Tomo drafted a reply that thanks Liyen, sets brief context, and proposes a short intro call.",
+      stamp: "Computed 08:00 · From intro thread + CRM",
+    },
+    drawerDraftMeta: {
+      to: "michel.delbuono@edrfamilyoffice.com",
+      ccPlaceholder: "Liyen Chow",
+      subject: "Re: Introduction from Liyen — great to connect",
+      footnote: "112 words · drafted 08:00 today · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Acknowledge Liyen on the thread", badge: "IN REPLY" },
+      { label: "Propose two intro-call windows this month", badge: "THIS WEEK" },
+    ],
+    activityLog: [
+      {
+        id: "al-a2-1",
+        ts: "2d ago",
+        actor: "User",
+        summary: "Email · Intro from Liyen Chow (CC’d)",
+        detail: "Michel introduced as head of private investments; interested in allocator reads timing.",
+      },
+      {
+        id: "al-a2-2",
+        ts: "Today 08:00",
+        actor: "TOMO",
+        summary: "Flagged unresponded intro — drafted reply",
+        detail: "References Q4 performance line from your investor update; tone matches your default intro template.",
+      },
+    ],
   },
   {
     id: "a3",
@@ -711,14 +804,61 @@ export const actions: ActionItem[] = [
     draft:
       "Hi James — thank you for yesterday's time. Quick recap: we covered portfolio positioning, liquidity terms, and next steps toward Q2 allocator reads. I'll follow up with the materials we discussed and propose times for a call with our COO.\n\nBest regards,",
     dueDate: "2025-03-25",
-    activityLog: [
-      { id: "al-a3-1", ts: "Yesterday 16:00", actor: "User", summary: "Meeting — Albourne (James Staltari)" },
-      { id: "al-a3-2", ts: "Yesterday 16:45", actor: "TOMO", summary: "Drafted thank-you + summary + next steps" },
-      { id: "al-a3-3", ts: "Today 09:00", actor: "TOMO", summary: "SLA reminder — still awaiting approval to send" },
-    ],
     workflowPlaybookId: "pb-post-meeting",
     workflowPillOverride: "Tomo",
     emailSourceUrl: "mailto:james.staltari@albourne.com?subject=Post-meeting%20follow-up",
+    drawerWhySurfaced: {
+      body: "Yesterday’s 90-minute meeting ended at 16:00. Your Post-Meeting Follow-Up workflow has a 2-hour SLA on summary notes; the draft has been waiting on your approval since 16:45 yesterday. James asked for portfolio-positioning materials and a call with your COO — both are open commitments and should be acknowledged in the reply.",
+      stamp: "Computed 09:00 · From meeting recap + 14d activity",
+    },
+    drawerDraftMeta: {
+      to: "james.staltari@albourne.com",
+      ccPlaceholder: "",
+      subject: "Yesterday’s discussion — materials and next steps",
+      footnote: "217 words · drafted 16:45 yesterday · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Send portfolio positioning deck + Q1 attribution", badge: "DUE FRI" },
+      { label: "Include Fund III side-letter language as reference", badge: "WITH DECK" },
+      { label: "Propose two times for COO call next week", badge: "THIS WEEK" },
+    ],
+    activityLog: [
+      {
+        id: "al-a3-1",
+        ts: "Yesterday 14:30",
+        actor: "User",
+        summary: "Meeting · Albourne Partners (in person, London)",
+        detail: "90 min. Walked through portfolio positioning, liquidity terms, side-letter precedents. James pressed on gate provision rationale; agreed to follow up with reference to Fund III. Scoped a COO call for Q2 allocator reads.",
+      },
+      {
+        id: "al-a3-2",
+        ts: "Yesterday 16:45",
+        actor: "TOMO",
+        summary: "Drafted post-meeting follow-up from Teams transcript + recap",
+        detail: "Recap path: Microsoft 365 Copilot. Captured three commitments, drafted reply against your tone profile. “Useful conversation, and I appreciated the directness…”",
+      },
+      {
+        id: "al-a3-3",
+        ts: "Today 09:00",
+        actor: "TOMO",
+        summary: "SLA reminder — still awaiting your approval",
+        detail: "Post-Meeting Follow-Up workflow target is 2 hours. Currently past target.",
+      },
+      {
+        id: "al-a3-4",
+        ts: "Tue 11:42",
+        actor: "User",
+        summary: "Email · “Confirming tomorrow at 14:30, looking forward.”",
+        detail: "Reply length 14 words. Reply velocity 6h, typical 18h for this LP — pre-meeting engagement was strong.",
+      },
+      {
+        id: "al-a3-5",
+        ts: "Mon 09:15",
+        actor: "User",
+        summary: "Email · Sent meeting agenda + portfolio one-pager",
+        detail: "Pre-read materials shared 24h before meeting. James acknowledged within 6 hours.",
+      },
+    ],
   },
   {
     id: "a4",
@@ -741,12 +881,38 @@ export const actions: ActionItem[] = [
     draft:
       "Dear Mr. Kwong — following up on my note from two days ago regarding the new fund launch discussion. Still very keen to find time that works for you. Copying your EA for scheduling convenience.\n\nKind regards,",
     dueDate: "2025-03-27",
-    activityLog: [
-      { id: "al-a4-1", ts: "2d ago", actor: "User", summary: "Sent proposed meeting times to GIC" },
-      { id: "al-a4-2", ts: "Today 08:30", actor: "TOMO", summary: "No reply — drafted follow-up to Kwong + EA" },
-    ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:kwong.hong.huat@gic.com.sg?subject=Re%3A%20New%20fund%20launch%20discussion",
+    drawerWhySurfaced: {
+      body: "You proposed times for the new fund launch discussion two days ago; Kwong has not confirmed. Copying his EA keeps scheduling friction low. Tomo drafted a polite bump that preserves optionality and references the prior thread.",
+      stamp: "Computed 08:30 · From outbound thread + silence window",
+    },
+    drawerDraftMeta: {
+      to: "kwong.hong.huat@gic.com.sg",
+      ccPlaceholder: "EA (scheduling)",
+      subject: "Re: New fund launch discussion — following up",
+      footnote: "86 words · drafted 08:30 today · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Offer two alternate weeks if March slots stall", badge: "OPTIONAL" },
+      { label: "Attach one-pager link already shared", badge: "IN THREAD" },
+    ],
+    activityLog: [
+      {
+        id: "al-a4-1",
+        ts: "2d ago",
+        actor: "User",
+        summary: "Email · Proposed three slots for new fund launch discussion",
+        detail: "Kwong acknowledged receipt same day; no calendar hold yet.",
+      },
+      {
+        id: "al-a4-2",
+        ts: "Today 08:30",
+        actor: "TOMO",
+        summary: "No reply — drafted follow-up to Kwong + EA",
+        detail: "Tone: light touch; references EA for logistics; no new asks beyond scheduling.",
+      },
+    ],
   },
   {
     id: "a5",
@@ -768,12 +934,33 @@ export const actions: ActionItem[] = [
     ],
     type: "outreach",
     dueDate: "2025-03-28",
-    activityLog: [
-      { id: "al-a5-1", ts: "Today 06:30", actor: "TOMO", summary: "Ingested latest newsletter open/click data" },
-      { id: "al-a5-2", ts: "Today 06:45", actor: "TOMO", summary: "Built momentum deltas vs trailing 3 months" },
-    ],
     workflowPlaybookId: "pb-update-followup",
     emailSourceUrl: "mailto:ir-newsletter@example.com?subject=Monthly%20Momentum%20Report",
+    drawerWhySurfaced: {
+      body: "This send’s open/click data is ingested; deltas vs the trailing three months are computed. Review highlights before you push follow-ups — top openers and cooling names are called out in the evidence block.",
+      stamp: "Computed 06:45 · From newsletter analytics",
+    },
+    drawerCommitments: [
+      { label: "Confirm top 5 risers for proactive outreach", badge: "TODAY" },
+      { label: "Queue follow-up drafts for cooling tier-1 LPs", badge: "THIS WEEK" },
+      { label: "Sync narrative with Daily Brief — Momentum Signals", badge: "OPTIONAL" },
+    ],
+    activityLog: [
+      {
+        id: "al-a5-1",
+        ts: "Today 06:30",
+        actor: "TOMO",
+        summary: "Ingested latest newsletter open/click data",
+        detail: "PAAMCO Prisma, GIC, and Edelweiss Endowment lead open depth; attach rates within normal band.",
+      },
+      {
+        id: "al-a5-2",
+        ts: "Today 06:45",
+        actor: "TOMO",
+        summary: "Built momentum deltas vs trailing 3 months",
+        detail: "Segmented risers vs fallers; flagged LPs who dropped out of the top-engaged tier.",
+      },
+    ],
   },
   {
     id: "a6",
@@ -796,12 +983,37 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Camille — hope you're well. Wanted to check in ahead of your Q2 process and see if a short call would be helpful on our side. Happy to work around your schedule.\n\nBest regards,",
     dueDate: "2025-03-29",
-    activityLog: [
-      { id: "al-a6-1", ts: "18d ago", actor: "User", summary: "Last call — Amundi FoF (positive tone)" },
-      { id: "al-a6-2", ts: "Today 07:00", actor: "TOMO", summary: "Cooling signal — drafted check-in email" },
-    ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:camille.durand@amundi.com?subject=Check-in%20ahead%20of%20Q2",
+    drawerWhySurfaced: {
+      body: "Eighteen days without a meaningful touch while Q2 allocation read approaches. Last call tone was positive — a short check-in reduces stall risk without forcing a decision.",
+      stamp: "Computed 07:00 · From silence window + stage context",
+    },
+    drawerDraftMeta: {
+      to: "camille.durand@amundi.com",
+      subject: "Re: Quick check-in ahead of Q2",
+      footnote: "68 words · drafted 07:00 today · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Offer two specific call windows", badge: "IN REPLY" },
+      { label: "Reference last positive call in one line", badge: "DONE" },
+    ],
+    activityLog: [
+      {
+        id: "al-a6-1",
+        ts: "18d ago",
+        actor: "User",
+        summary: "Call · Amundi FoF (positive tone)",
+        detail: "Discussed pacing to Q2 IC; Camille asked for materials when the DDQ index updates.",
+      },
+      {
+        id: "al-a6-2",
+        ts: "Today 07:00",
+        actor: "TOMO",
+        summary: "Cooling signal — drafted check-in email",
+        detail: "Uses soft ask; no attachment pressure; aligns with Silence → Re-engage playbook.",
+      },
+    ],
   },
   {
     id: "a7",
@@ -824,12 +1036,37 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Jamie — quick note following up on the materials from last week. Let me know if you’d like a short call to walk the DDQ index or if anything is blocking on your side.\n\nBest regards,",
     dueDate: "2025-03-20",
-    activityLog: [
-      { id: "al-a7-1", ts: "2d ago", actor: "User", summary: "Sent Q2 read materials + check-in" },
-      { id: "al-a7-2", ts: "Yesterday 4:00 PM", actor: "TOMO", summary: "Surfaced for attention — no reply" },
-    ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:jamie.chen@example.com?subject=Re%3A%20Q2%20read%20materials",
+    drawerWhySurfaced: {
+      body: "Carried from yesterday’s queue: Jamie’s team re-opened the risk stack but has not replied to your check-in after the UBS call. Q2 read is six weeks out — a concise nudge keeps Peakline in the active set.",
+      stamp: "Computed 4:00 PM · From engagement signals + backlog",
+    },
+    drawerDraftMeta: {
+      to: "jamie.chen@peakline.com",
+      subject: "Re: Q2 read materials — quick follow-up",
+      footnote: "74 words · drafted yesterday · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Offer 20m call to walk DDQ index", badge: "IN REPLY" },
+      { label: "Confirm if anything blocks their side", badge: "IN REPLY" },
+    ],
+    activityLog: [
+      {
+        id: "al-a7-1",
+        ts: "2d ago",
+        actor: "User",
+        summary: "Email · Sent Q2 read materials + check-in",
+        detail: "Attached risk stack + DDQ index; asked for timing on allocator read.",
+      },
+      {
+        id: "al-a7-2",
+        ts: "Yesterday 4:00 PM",
+        actor: "TOMO",
+        summary: "Surfaced for attention — no reply",
+        detail: "Deck opened twice since send; no thread response — matches playbook threshold.",
+      },
+    ],
   },
   {
     id: "a8",
@@ -852,12 +1089,37 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Priya — circling back on the open items from the consultant review. I’ve attached the clarifications; happy to find 20 minutes this week if helpful.\n\nBest regards,",
     dueDate: "2025-03-24",
-    activityLog: [
-      { id: "al-a8-1", ts: "4d ago", actor: "User", summary: "Shared data room + index" },
-      { id: "al-a8-2", ts: "Yesterday 8:00 AM", actor: "TOMO", summary: "Flagged stall — combined reply ready" },
-    ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:priya.desai@example.com?subject=Re%3A%20Consultant%20follow-up",
+    drawerWhySurfaced: {
+      body: "Consultant asked for two clarifications on the data room index; neither thread has a reply in four days. A single combined reply reduces back-and-forth and assigns one owner on your side.",
+      stamp: "Computed 08:00 · From thread stall detection",
+    },
+    drawerDraftMeta: {
+      to: "priya.desai@lumenlp.com",
+      subject: "Re: Consultant review — clarifications",
+      footnote: "92 words · drafted yesterday · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "Attach consultant clarifications (pending upload)", badge: "BEFORE SEND" },
+      { label: "Propose 20 minutes this week if questions remain", badge: "IN REPLY" },
+    ],
+    activityLog: [
+      {
+        id: "al-a8-1",
+        ts: "4d ago",
+        actor: "User",
+        summary: "Email · Shared data room + index",
+        detail: "Consultant CC’d; two numbered questions in thread.",
+      },
+      {
+        id: "al-a8-2",
+        ts: "Yesterday 8:00 AM",
+        actor: "TOMO",
+        summary: "Flagged stall — combined reply ready",
+        detail: "Merged answers into one draft; suggests single IR owner for continuity.",
+      },
+    ],
   },
   {
     id: "a9",
@@ -880,11 +1142,37 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Samir — I’m sharing a short Q4 performance snapshot in case it’s useful for your files. No action needed; here if a conversation becomes timely.\n\nBest regards,",
     dueDate: "2025-03-19",
-    activityLog: [
-      { id: "al-a9-1", ts: "1w ago", actor: "TOMO", summary: "Suggested re-engagement (optional)" },
-    ],
     workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:samir.patel@example.com?subject=Performance%20snapshot%20%28Q4%29",
+    drawerWhySurfaced: {
+      body: "Relationship is marked Pass; allocator desk noted they may re-open if returns stabilize. This is an optional, low-commitment one-pager — dismiss if you prefer no outbound.",
+      stamp: "Computed 1w ago · From re-engagement rules (older queue)",
+    },
+    drawerDraftMeta: {
+      to: "samir.patel@harborlight.com",
+      subject: "Q4 performance snapshot (for your files)",
+      footnote: "58 words · draft on file · sending from geoffrey@tomosolutions.ai",
+    },
+    drawerCommitments: [
+      { label: "No meeting ask unless they reply", badge: "POLICY" },
+      { label: "Attach one-pager v1 only", badge: "OPTIONAL" },
+    ],
+    activityLog: [
+      {
+        id: "al-a9-1",
+        ts: "1w ago",
+        actor: "TOMO",
+        summary: "Suggested re-engagement (optional)",
+        detail: "Passes low-confidence revive test; surfaced in older queue per playbook.",
+      },
+      {
+        id: "al-a9-2",
+        ts: "3d ago",
+        actor: "User",
+        summary: "CRM · Confirmed Pass + allocator desk note",
+        detail: "File may re-open if returns stabilize — keep touch minimal.",
+      },
+    ],
   },
 ];
 
@@ -899,6 +1187,37 @@ export const commitments: Commitment[] = [
     window: "today",
     prepStatus: "ready",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
+    drawerWhySurfaced: {
+      body: "Quarterly hedge fund update is today at 2:00 PM ET. Allocator engagement on your January pack is tracking above peer median — Charly’s team re-opened risk and attribution twice last week. Prep pack is locked; send agenda after you approve.",
+      stamp: "Computed this morning · From brief b3 + calendar",
+    },
+    drawerMeetingCommitments: [
+      { label: "Send one-pager after call", badge: "POST CALL" },
+      { label: "Confirm data room access renewal", badge: "THIS WEEK" },
+    ],
+    activityLog: [
+      {
+        id: "al-c1-1",
+        ts: "Today 07:00",
+        actor: "TOMO",
+        summary: "Brief finalized — agenda and open loops synced",
+        detail: "Locked lines from last email thread with Charly’s allocator desk.",
+      },
+      {
+        id: "al-c1-2",
+        ts: "Yesterday 15:30",
+        actor: "User",
+        summary: "Email · Charly confirmed attendance + one question on capacity",
+        detail: "Reply within 4h; capacity question flagged for opening segment.",
+      },
+      {
+        id: "al-c1-3",
+        ts: "Mon 09:00",
+        actor: "TOMO",
+        summary: "Engagement signal · Pack re-opens",
+        detail: "Risk + attribution sections opened twice; typical read pattern for UBS allocator team.",
+      },
+    ],
   },
   {
     id: "c2",
@@ -911,6 +1230,37 @@ export const commitments: Commitment[] = [
     prepStatus: "ready",
     relationshipId: "r6",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
+    drawerWhySurfaced: {
+      body: "Investment update at 4:00 PM ET. Frank’s reply velocity has tightened over the last three exchanges — treat as acceleration. Liquidity terms and co-invest were open from last touch; brief reflects transcript notes.",
+      stamp: "Computed this morning · From brief b4 + signals (stub)",
+    },
+    drawerMeetingCommitments: [
+      { label: "Follow up on co-invest deck (promised 8d ago)", badge: "OVERDUE" },
+      { label: "Share updated DDQ index", badge: "TODAY" },
+    ],
+    activityLog: [
+      {
+        id: "al-c2-1",
+        ts: "Yesterday 16:20",
+        actor: "User",
+        summary: "Email · Frank confirmed 4pm + forwarded materials request",
+        detail: "Asked for co-invest deck path and DDQ index refresh.",
+      },
+      {
+        id: "al-c2-2",
+        ts: "Yesterday 09:00",
+        actor: "TOMO",
+        summary: "Signal change · Reply velocity tightened (stub)",
+        detail: "Last 3 exchanges: 5d → 3d → 1d vs 5d baseline for this LP.",
+      },
+      {
+        id: "al-c2-3",
+        ts: "Last week",
+        actor: "User",
+        summary: "Meeting · Liquidity terms + co-invest scope",
+        detail: "Notes captured to brief; open loop on co-invest pack.",
+      },
+    ],
   },
   {
     id: "c3",
@@ -924,6 +1274,30 @@ export const commitments: Commitment[] = [
     relationshipId: "r8",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/kwong-hong-huat-mock",
+    drawerWhySurfaced: {
+      body: "First live intro tomorrow at 10:00 AM ET. Light CRM history — prep focuses on mandate fit, pacing, and what GIC needs before deeper diligence. LinkedIn and calendar links are on this card for quick context.",
+      stamp: "Computed today · From brief b5 + onboarding context",
+    },
+    drawerMeetingCommitments: [
+      { label: "Circulate short deck after call", badge: "POST CALL" },
+      { label: "Propose two follow-up slots", badge: "POST CALL" },
+    ],
+    activityLog: [
+      {
+        id: "al-c3-1",
+        ts: "Today 08:00",
+        actor: "TOMO",
+        summary: "Prep pack assembled — first-contact template",
+        detail: "Credentials, strategy summary, and sizing guardrails included.",
+      },
+      {
+        id: "al-c3-2",
+        ts: "2d ago",
+        actor: "User",
+        summary: "Email · Kwong accepted intro window",
+        detail: "Tomorrow 10am ET confirmed; EA on copy.",
+      },
+    ],
   },
   {
     id: "c4",
@@ -936,6 +1310,30 @@ export const commitments: Commitment[] = [
     commitmentOverdue: true,
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/nic-fallows-mock",
+    drawerWhySurfaced: {
+      body: "Intro call Thursday 3:00 PM ET. One prep commitment is overdue — circulate the short deck and propose follow-up slots as soon as you close this drawer. First-contact playbook applies.",
+      stamp: "Computed today · From commitment state + stub checklist",
+    },
+    drawerMeetingCommitments: [
+      { label: "Circulate short deck after scheduling confirmed", badge: "OVERDUE" },
+      { label: "Propose two follow-up slots", badge: "DUE" },
+    ],
+    activityLog: [
+      {
+        id: "al-c4-1",
+        ts: "Yesterday",
+        actor: "TOMO",
+        summary: "Reminder — prep deliverables incomplete",
+        detail: "Deck circulation not logged; follow-up slots not proposed.",
+      },
+      {
+        id: "al-c4-2",
+        ts: "3d ago",
+        actor: "User",
+        summary: "Call · Nic confirmed Thu 3pm ET",
+        detail: "Intro scope: mandate fit and pacing only.",
+      },
+    ],
   },
 ];
 

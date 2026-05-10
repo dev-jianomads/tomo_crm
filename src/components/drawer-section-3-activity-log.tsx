@@ -8,11 +8,23 @@ export type ActivityLogEntry = {
   ts: string;
   actor: "TOMO" | "User";
   summary: string;
+  /** Second line — quotes, metrics, or extra context */
+  detail?: string;
 };
 
-function displayActor(actor: ActivityLogEntry["actor"]) {
-  if (actor === "User") return "GP";
-  return actor;
+function ActorBadge({ actor }: { actor: ActivityLogEntry["actor"] }) {
+  const isTomo = actor === "TOMO";
+  return (
+    <span
+      className={
+        isTomo
+          ? "mr-1.5 inline align-middle font-mono text-[10px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] px-1 py-0.5 rounded-sm"
+          : "mr-1.5 inline align-middle font-mono text-[10px] font-medium uppercase tracking-wide text-[color:var(--foreground)] bg-[color:var(--tomo-navy-soft)] px-1 py-0.5 rounded-sm dark:bg-[color:var(--tomo-card-warm)]"
+      }
+    >
+      {isTomo ? "Tomo" : "GP"}
+    </span>
+  );
 }
 
 /**
@@ -42,7 +54,7 @@ export function DrawerSection3ActivityLog({
         aria-controls="activity-log-content"
       >
         <p className="tomo-field-label text-[11px] tracking-wide">
-          Activity log {entries.length > 5 ? "(5 most recent)" : ""}
+          Recent activity {entries.length > 5 ? "(5 most recent)" : ""}
         </p>
         <span className="text-[color:var(--tomo-mute)]">
           {expanded ? (
@@ -57,20 +69,29 @@ export function DrawerSection3ActivityLog({
         role="region"
         aria-label="Activity log entries"
         className={`overflow-hidden transition-all duration-200 ease-out ${
-          expanded ? "max-h-40" : "max-h-0"
+          expanded ? "max-h-[min(22rem,55vh)]" : "max-h-0"
         }`}
       >
-        <div className="max-h-32 space-y-2 overflow-y-auto px-4 pb-3 pt-0">
+        <div className="max-h-[min(20rem,50vh)] space-y-3 overflow-y-auto px-4 pb-3 pt-0">
           {display.map((entry, i) => (
             <div
               key={entry.id ?? `log-${i}`}
-              className="flex items-start justify-between gap-3 text-xs"
+              className="flex items-start justify-between gap-3 border-b border-[color:var(--tomo-rule-soft)] pb-3 last:border-b-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-[color:var(--foreground)]">{entry.summary}</p>
-                <span className="text-[11px] text-[color:var(--tomo-mute)]">{displayActor(entry.actor)}</span>
+                <p className="text-xs leading-snug text-[color:var(--foreground)]">
+                  <ActorBadge actor={entry.actor} />
+                  {entry.summary}
+                </p>
+                {entry.detail ? (
+                  <p className="mt-1 text-[11px] leading-relaxed text-[color:var(--tomo-body)]">
+                    <span className="italic text-[color:var(--tomo-mute)]">{entry.detail}</span>
+                  </p>
+                ) : null}
               </div>
-              <span className="shrink-0 whitespace-nowrap text-[11px] text-[color:var(--tomo-mute)]">{entry.ts}</span>
+              <span className="shrink-0 whitespace-pre-line text-right font-mono text-[10px] leading-snug text-[color:var(--tomo-mute)]">
+                {entry.ts}
+              </span>
             </div>
           ))}
         </div>

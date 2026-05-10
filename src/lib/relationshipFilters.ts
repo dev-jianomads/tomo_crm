@@ -194,6 +194,7 @@ export function parseFilterPromptHeuristic(text: string): Partial<StructuredFilt
   // Stage
   if (/\b(first\s+contact|initial)\b/.test(t)) criteria.stage = "First contact";
   else if (/\b(deck\s+sent|sent\s+deck)\b/.test(t)) criteria.stage = "Deck sent";
+  else if (/\b(second\s+meeting|nurturing)\b/.test(t)) criteria.stage = "Nurturing";
   else if (/\b(met|meeting)\b/.test(t)) criteria.stage = "Met";
   else if (/\b(active\s+diligence|diligence)\b/.test(t)) criteria.stage = "Active diligence";
   else if (/\b(dd|due\s+diligence)\b/.test(t)) criteria.stage = "DD";

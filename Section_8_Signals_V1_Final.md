@@ -26,7 +26,7 @@ In addition to the eight signals, V1 captures three qualitative attributes that 
 
 - **Mandate fit** — confirmed_fit / potential_fit / mandate_mismatch / unknown. Captured via the post-meeting prompt after the GP has had a substantive conversation about whether the LP's mandate matches the fund's strategy.
 - **Prior fund investor** — yes/no plus prior fund identifier. Captured at LP onboarding when the GP imports their existing LP base. Re-up LPs are the highest-probability closes in any new raise and need to be filterable from day one.
-- **Days in prior stage** — derived automatically from the stage transition history. An LP who was in *first_meeting* for 8 weeks before moving to *second_meeting* yesterday looks healthy on current-stage time alone but their prior-stage history is part of how senior fundraisers read the relationship.
+- **Days in prior stage** — derived automatically from the stage transition history. An LP who was in *first_meeting* for 8 weeks before moving to *nurturing* yesterday looks healthy on current-stage time alone but their prior-stage history is part of how senior fundraisers read the relationship.
 
 What V1 explicitly does not include: any NLP-derived signal (question type, commitment language, objection recurrence), any composite momentum score, any document-engagement signal that requires DocSend or DealRoom integration. These are explicitly V3 (NLP) or V2 (integrations).
 
@@ -83,7 +83,7 @@ The eight stages, lifted from the Signals Framework v4 (Section 4.6) and adopted
 
 - **sourced** — LP identified. No contact made yet, or one-way intro with no response.
 - **first_meeting** — at least one substantive two-way conversation has occurred. LP has not declined.
-- **second_meeting** — second substantive meeting has occurred.
+- **nurturing** — LP is in active nurturing after the first meeting (before active diligence).
 - **active_diligence** — LP actively reviewing materials, asking substantive questions, or has requested DDQ / data room access.
 - **soft_commit** — LP has verbally indicated intent to invest. No legal documents signed.
 - **committed** — subscription agreement received or legally binding commitment made.
@@ -275,7 +275,7 @@ last_lp_initiated_at = most recent timestamp where truly_lp_initiated == true
 
 ### Signal 6 — Stage stagnation (with prior-stage history)
 
-**What it detects:** has the LP been at their current pipeline stage longer than typical for that stage, *and* how long did they spend in the prior stage before getting here. *"You're 22 days into active diligence with PAAMCO. Typical at this stage is 5-10 days. They spent 47 days in second_meeting before moving here."*
+**What it detects:** has the LP been at their current pipeline stage longer than typical for that stage, *and* how long did they spend in the prior stage before getting here. *"You're 22 days into active diligence with PAAMCO. Typical at this stage is 5-10 days. They spent 47 days in nurturing before moving here."*
 
 **Why surfaced:** stage stagnation is a *different problem* from going silent. An LP can be communicating regularly but stuck — making no forward progress through the funnel. Surfacing this lets the GP distinguish "this LP is dormant" from "this LP is engaged but not advancing." Different problems, different actions.
 
@@ -287,7 +287,7 @@ The prior-stage history matters because Framework v4.1 Appendix A3 ranks "pipeli
 Stage cadence benchmarks (V1 starting values, recalibrate after Founding Circle Month 1):
   sourced:           amber 60 days, red 90 days
   first_meeting:     amber 21 days, red 35 days
-  second_meeting:    amber 14 days, red 28 days
+  nurturing:    amber 14 days, red 28 days
   active_diligence:  amber 10 days, red 21 days
   soft_commit:       amber 21 days, red 35 days
 
@@ -313,7 +313,7 @@ For each LP:
 **Where it appears in the UI:**
 - Pipeline filter — "Stuck in stage" named filter (driven by current-stage stagnation)
 - Pipeline filter — "Slow to advance from [prior stage]" named filter (driven by days_in_prior_stage > stage benchmark for that prior stage)
-- LP Card — current and prior stage shown together: *"In active diligence 22 days (typical: 10-21). Spent 47 days in second_meeting before that."*
+- LP Card — current and prior stage shown together: *"In active diligence 22 days (typical: 10-21). Spent 47 days in nurturing before that."*
 - Pipeline list — small JetBrains Mono badge "stuck 22d" when LP exceeds amber threshold on current stage
 
 **Engineering note:** `lp_stage_transitions` already captures `transitioned_at` and `to_stage`. `days_in_prior_stage` is a window function over that table. No schema change required — only a query addition.
@@ -499,7 +499,7 @@ Used by Signal 1 (silence). Captured at LP creation by setting the pipeline stag
 |---|---|---|
 | sourced | 60 days | 90 days |
 | first_meeting | 21 days | 35 days |
-| second_meeting | 14 days | 28 days |
+| nurturing | 14 days | 28 days |
 | active_diligence | 10 days | 21 days |
 | soft_commit | 21 days | 35 days |
 | committed | 21 days | 35 days |

@@ -21,7 +21,7 @@ const llmFilterSchema = z.object({
   daysSinceLastMeaningfulContact: rangeSchema.nullable(),
   stage: z
     .array(z.enum([
-      "First contact", "Deck sent", "Met", "Active diligence",
+      "First contact", "Deck sent", "Met", "Nurturing", "Active diligence",
       "DD", "Soft circle", "Closed", "Pass",
     ]))
     .nullable(),
