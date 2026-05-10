@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { Pipeline } from "@/lib/pipelines";
 import { getPipelineMembers, isManualList } from "@/lib/pipelines";
 import {
@@ -14,6 +15,7 @@ import {
 import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { suggestedPlaybooks, type Playbook } from "@/lib/mockPlaybooks";
 import { derivePipelineFlagMock, type PipelineFlagGar } from "@/lib/todayRaiseStands";
+import { downloadListMembersCsv } from "@/lib/listCsvExport";
 
 /** Funnel bar fill + top accent — `design/tomo_lists_v1.html` stage palette */
 const FUNNEL_STAGE_STYLE: Record<
@@ -401,22 +403,66 @@ export function ListDrawerV1Content({
         </div>
         </div>
 
-        {/* Inline actions (mock drawer-actions, before shell footer duplicate) */}
-        <div className="flex flex-wrap gap-2 border-t border-[color:var(--tomo-rule-soft)] pt-6" data-testid="list-drawer-actions">
-          <button
-            type="button"
-            onClick={onOpenAmend}
-            className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3.5 py-2 text-xs font-medium text-[color:var(--tomo-navy)] shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--tomo-navy)] dark:text-[color:var(--foreground)]"
-          >
-            Amend list
-          </button>
-          <button
-            type="button"
-            onClick={onOpenLinkWorkflow}
-            className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3.5 py-2 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
-          >
-            Create workflow
-          </button>
+        {/* Actions bar — `design/tomo_lists_v1.html` `.drawer-actions` */}
+        <div
+          className="-mx-6 mt-6 border-t border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card-warm)] px-6 py-3.5 sm:-mx-8 sm:px-8"
+          data-testid="list-drawer-actions"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenLinkWorkflow}
+              className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3.5 py-2 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Run workflow
+            </button>
+            <button
+              type="button"
+              data-testid="list-drawer-export-csv"
+              onClick={() => {
+                downloadListMembersCsv(pipeline.name, members);
+                toast.success(`Exported ${members.length} LP${members.length === 1 ? "" : "s"} to CSV`);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3.5 py-2 text-xs font-medium text-[color:var(--tomo-navy)] shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--tomo-navy)] dark:text-[color:var(--foreground)]"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export CSV
+            </button>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-transparent px-3.5 py-2 text-xs font-medium text-[color:var(--tomo-teal)] opacity-60"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              Ask Tomo about this cohort
+            </button>
+            <button
+              type="button"
+              onClick={onOpenAmend}
+              className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3.5 py-2 text-xs font-medium text-[color:var(--tomo-navy)] shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--tomo-navy)] dark:text-[color:var(--foreground)]"
+            >
+              Amend list
+            </button>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="ms-auto inline-flex cursor-not-allowed items-center rounded-[var(--tomo-radius-md)] border border-transparent bg-transparent px-3.5 py-2 text-xs font-medium text-[color:var(--tomo-mute)] opacity-60"
+            >
+              Delete list
+            </button>
+          </div>
         </div>
       </div>
     </div>

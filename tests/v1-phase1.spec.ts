@@ -31,7 +31,7 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByPlaceholder("Name your list here")).toHaveCount(0);
   });
 
-  test("Lists drawer: funnel, companies by stage, workflows, CTAs; no tile Use in workflow (L3)", async ({
+  test("Lists drawer: funnel, LP table, workflows, action bar + export; no tile Use in workflow (L3)", async ({
     page,
   }) => {
     await page.goto("/pipeline");
@@ -42,16 +42,24 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByTestId("list-drawer-workflows")).toBeVisible();
     await expect(page.getByTestId("list-drawer-actions")).toBeVisible();
     await expect(page.getByRole("button", { name: "Amend list" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create workflow" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Run workflow" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ask Tomo about this cohort" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Delete list" })).toBeDisabled();
     await expect(page.getByText("Use in workflow")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Create workflow" }).click();
+    await page.getByRole("button", { name: "Run workflow" }).click();
     await expect(page.getByTestId("list-link-workflow-modal")).toBeVisible();
     await expect(page.getByText("Run workflow on this list")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pick a workflow" })).toBeVisible();
     await expect(page.getByRole("tab", { name: /System defaults/ })).toBeVisible();
     await page.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByTestId("list-link-workflow-modal")).toHaveCount(0);
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("list-drawer-export-csv").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/_lps\.csv$/);
 
     await page.getByRole("button", { name: "Amend list" }).click();
     await expect(page.getByTestId("amend-list-modal")).toBeVisible();

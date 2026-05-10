@@ -981,7 +981,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 
 ### 3.11. Lists and named filters
 
-**Description.** Lists (`/lists`, canonical route; mock repository may still mount the same surface at `/pipeline` pending redirect) is the audience and list-building surface. Same underlying LP rows as `/relationships` but optimised for cohort work — saved lists, named filters, bulk-action seed for workflows. **Normative UI / information architecture (mock repository `tomo_crm`):** `design/tomo_lists_v1.html` — Lists index (page chrome, eyebrow, title + aggregate meta line, subtitle, flat **Your lists** grid with **Live** vs **Manual** semantics, per-row counts and workflow activity, dashed **Create list** affordance) and **list detail** (drawer: header block, funnel-by-stage viz, **LP row table** as the primary membership view, active workflows, footer actions). V1 does **not** ship a separate **Tomo defaults** section nor any Tomo-owned **system-preloaded** saved list on the Lists index.
+**Description.** Lists (`/lists`, canonical route; mock repository may still mount the same surface at `/pipeline` pending redirect) is the audience and list-building surface. Same underlying LP rows as `/relationships` but optimised for cohort work — saved lists, named filters, bulk-action seed for workflows. **Normative UI / information architecture (mock repository `tomo_crm`):** `design/tomo_lists_v1.html` — Lists index (page chrome, eyebrow, title + aggregate meta line, subtitle, flat **Your lists** grid with **Live** vs **Manual** semantics, per-row counts and workflow activity, dashed **Create list** affordance) and **list detail** (drawer: header block, funnel-by-stage viz, **LP row table** as the primary membership view, active workflows, **drawer actions** row, **link workflow** modal opened from **Run workflow**). V1 does **not** ship a separate **Tomo defaults** section nor any Tomo-owned **system-preloaded** saved list on the Lists index.
 
 **Inputs / triggers.**
 
@@ -1030,6 +1030,8 @@ Closing the browser preserves state and resumes after the last completed step. M
 - AC-3.11.3 — Opening any saved list shows **list detail** whose **primary membership presentation** is a **scrollable LP row table** (columns / hierarchy per `design/tomo_lists_v1.html`: signal indicator, firm / LP name line, meta line, stage, right-aligned stamp) above or beside the funnel section as in the mock; stage-grouped chip-only views **do not** satisfy this criterion alone.
 - AC-3.11.4 — The Lists index shows **New list** and **Import cohort** in the top utility row with **visual parity** to `design/tomo_lists_v1.html`; both controls are **disabled placeholders** in V1 (no navigation, no modal, `aria-disabled` or equivalent) until their flows ship.
 - AC-3.11.5 — A **manual** saved list persists with **no structured filter** and renders the **Manual** / **LPs in list** copy pattern from the mock; a **live** list renders **Live** / **LPs matching** and a human-readable filter summary line.
+- AC-3.11.6 — **List detail** shows a **drawer actions** row per `design/tomo_lists_v1.html`: primary **Run workflow**, **Export CSV** where cohort export is implemented in the build, **Amend list**; **Ask Tomo about this cohort** and **Delete list** are **disabled placeholders** in V1 (visual parity to the mock, no navigation) until those flows ship.
+- AC-3.11.7 — **Run workflow** opens the **link workflow** modal in the same document: eyebrow *Run workflow on this list*, title *Pick a workflow*, **System defaults** and **Custom** tabs (with counts), selectable playbook option cards (trigger kind, summary, supporting meta), cohort / dedupe context in the footer, **Cancel**, and continuation into **Workflows** after the GP confirms a playbook **linked to the current list** for configuration or run setup. Roadmap-only system playbooks remain **non-selectable** in the picker.
 
 ---
 
@@ -1374,7 +1376,7 @@ This section specifies the contracts between TOMO V1 and the systems and humans 
 
 **Interaction patterns.**
 
-- **Lists surface (index + list detail).** Follow `design/tomo_lists_v1.html` for layout, section structure, list row geometry (icon column, filter / description block, live–manual pill, counts, workflow line), drawer IA (funnel, **LP row table**, workflows, footer actions), and disabled **New list** / **Import cohort** placeholders (§3.11 AC-3.11.3–AC-3.11.5).
+- **Lists surface (index + list detail).** Follow `design/tomo_lists_v1.html` for layout, section structure, list row geometry (icon column, filter / description block, live–manual pill, counts, workflow line), drawer IA (funnel, **LP row table**, workflows, **drawer actions**, **link workflow** modal), and disabled **New list** / **Import cohort** placeholders (§3.11 AC-3.11.3–AC-3.11.7).
 - **Manual Update Principle.** GP edits CRM fields by talking to Tomo in plain language ("Peter sized at $25M") OR by direct field-edit on the LP card. Tomo's proposal always renders a confirm/cancel before write. Per Tomo MVP3 / Section 8 §3.10 / §3.14.
 - **Single-prompt rule.** Post-meeting capture surfaces once per meeting. No re-nag.
 - **Confirmation gates.** Every mutation requires explicit user click. No auto-send, no auto-mutate.
@@ -3792,12 +3794,14 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 - AC — Triggering F7 on a 29-LP Fat Middle cohort creates 29 `workflow_runs` rows.
 - AC — LPs already in another active workflow run are skipped with a notice.
+- AC — From **list detail**, **Run workflow** opens the link-workflow picker (§3.11 AC-3.11.7); after the GP picks a playbook and continues, **Workflows** opens with that playbook and list context so runs (and dedupe per BR-3.11.2) can proceed in the workflow product surface.
 
 **Story 8.6.5 — Export to CSV.**
 *As a GP, I can export a filtered cohort to CSV for sharing or analysis.*
 
 - AC — Export contains LP name, firm, stage, tier, mandate fit, days-since-touch, expected commitment.
 - AC — Export honours RLS; no cross-workspace data leaks.
+- AC — **Mock repository / early V1:** a **browser-local** CSV of the list cohort may satisfy the column AC before a **server-side**, RLS-enforced export API exists; production remains bound by the RLS AC above.
 
 **Story 8.6.6 — Lists v1 layout and list detail.**
 *As a GP, I work in a Lists experience that matches the v1 cohort design.*
@@ -3805,6 +3809,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — The Lists **index** matches `design/tomo_lists_v1.html` for page chrome (eyebrow, title + aggregate meta, subtitle), flat list grid (no **Tomo defaults** section), row card layout, live/manual pills, counts, and workflow-activity line.
 - AC — **New list** and **Import cohort** appear as in the mock but are **disabled placeholders** in V1 (§3.11 AC-3.11.4).
 - AC — **List detail** (drawer or equivalent) includes funnel-by-stage **and** the **LP row table** as the primary membership view per the same mock.
+- AC — **List detail** includes **drawer actions** and the **link workflow** modal behaviour in §3.11 AC-3.11.6–AC-3.11.7.
 
 ---
 
@@ -4350,7 +4355,7 @@ Extends §1.3. Alphabetical.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 - `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 8).
-- `design/tomo_lists_v1.html` — normative visual / IA reference for the **Lists** index and list-detail drawer (including LP row table, live vs manual semantics, disabled top-row CTAs in V1) — §3.11, §8.6.
+- `design/tomo_lists_v1.html` — normative visual / IA reference for the **Lists** index and list-detail drawer (including LP row table, live vs manual semantics, **drawer actions**, **link workflow** modal, disabled top-row and secondary CTAs in V1) — §3.11, §8.6.
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
 
