@@ -27,6 +27,9 @@ export const ESG_REQUIRED_OPTIONS = ["Yes", "No", "Unknown"] as const;
 export const BAND_OPTIONS = ["Heating Up", "Active-Stable", "Cooling", "Stalled"] as const;
 export const CONTACT_SENIORITY_OPTIONS = ["CIO", "Director", "Analyst", "Other"] as const;
 
+/** Default LP fund in mock data — Fund III / current raise (`design/` demos align with `fund-3`). */
+export const DEFAULT_RELATIONSHIP_FUND_ID = "fund-3";
+
 export type Stage = (typeof STAGE_OPTIONS)[number];
 
 /** Funnel / Kanban — pale green → red spectrum; Pass = black (matches pipeline UI) */
@@ -89,6 +92,8 @@ export type Relationship = {
   id: string;
   name: string;
   firm: string;
+  /** Workspace fund this LP is associated with (`useFunds` ids). Defaults to Fund III in demos. */
+  fundId?: string;
   // Tier 1 — Prioritisation
   daysSinceLastMeaningfulContact: number;
   stage: Stage;
@@ -482,6 +487,7 @@ function generateRelationships(): Relationship[] {
       nextMove: p.nextMove!,
       openLoops: p.openLoops!,
       band: p.band!,
+      fundId: DEFAULT_RELATIONSHIP_FUND_ID,
     });
     usedNames.add(p.name!);
     usedFirms.add(p.firm!);
@@ -659,6 +665,7 @@ function generateRelationships(): Relationship[] {
       nextMove: p.nextMove!,
       openLoops: p.openLoops!,
       band: p.band!,
+      fundId: DEFAULT_RELATIONSHIP_FUND_ID,
     });
     usedNames.add(p.name!);
     usedFirms.add(p.firm!);
@@ -734,6 +741,7 @@ function generateRelationships(): Relationship[] {
       nextMove: pick(nextMoves, undefined, rng),
       openLoops: Math.floor(rng() * 4),
       band,
+      fundId: pick(["fund-1", "fund-2", "fund-3"], [15, 15, 70], rng),
     });
   }
 

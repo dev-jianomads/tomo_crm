@@ -23,7 +23,12 @@ import {
   buildMockRelationshipSnapshotParagraph,
   getMockRelationshipActivityEntries,
 } from "@/lib/relationshipDrawerMockActivity";
-import { Relationship, formatDaysSinceContact, STAGE_OPTIONS } from "@/lib/mockData";
+import {
+  Relationship,
+  DEFAULT_RELATIONSHIP_FUND_ID,
+  formatDaysSinceContact,
+  STAGE_OPTIONS,
+} from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
 import type { MomentumDirection, Stage } from "@/lib/mockData";
 import {
@@ -78,6 +83,9 @@ type SortColumn =
 type SortDirection = "asc" | "desc";
 
 type RelationshipsViewMode = "list" | "card" | "kanban";
+
+/** v3 control bar — grouping applies to list/cards only (Kanban is always by stage). */
+type RelationshipsGroupBy = "stage" | "tier" | "owner" | "signal" | "none";
 
 /** Primary columns (left) → secondary (scroll right) */
 const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
@@ -173,6 +181,10 @@ export default function RelationshipsPage() {
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = activeFundId === "all" ? funds[0]?.id ?? "fund-1" : activeFundId;
+  const activeFundLabel = useMemo(
+    () => funds.find((f) => f.id === effectiveFundId)?.name ?? "Fund",
+    [funds, effectiveFundId]
+  );
   const { addPipeline } = usePipelines(activeFundId);
   const [filterCriteria, setFilterCriteria] = usePersistentState<StructuredFilterCriteria>(
     "tomo-relationships-filters-v3",
@@ -206,6 +218,10 @@ export default function RelationshipsPage() {
   const [relationshipOverrides, setRelationshipOverrides] = usePersistentState<
     Record<string, Partial<Relationship>>
   >("tomo-relationship-overrides-v1", {});
+  const [groupBy, setGroupBy] = usePersistentState<RelationshipsGroupBy>(
+    "tomo-relationships-group-by-v1",
+    "stage"
+  );
 
   const visibleColumns = useMemo(
     () =>
@@ -285,9 +301,18 @@ export default function RelationshipsPage() {
     [relationships, relationshipOverrides]
   );
 
+  /** Phase 0 — when header fund is "All", `effectiveFundId` is the primary fund; LPs match `fundId`. */
+  const relationshipsScopedFund = useMemo(
+    () =>
+      relationshipsWithOverrides.filter(
+        (r) => (r.fundId ?? DEFAULT_RELATIONSHIP_FUND_ID) === effectiveFundId
+      ),
+    [relationshipsWithOverrides, effectiveFundId]
+  );
+
   const filtered = useMemo(
-    () => applyFilters(relationshipsWithOverrides, filterCriteria),
-    [relationshipsWithOverrides, filterCriteria]
+    () => applyFilters(relationshipsScopedFund, filterCriteria),
+    [relationshipsScopedFund, filterCriteria]
   );
 
   const DESC_DEFAULT_COLS: SortColumn[] = ["days", "momentum", "openLoops"];
@@ -535,8 +560,9 @@ export default function RelationshipsPage() {
   }, [resetRelationshipsDemo, setRelationshipOverrides]);
 
   const listContent = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[color:var(--tomo-canvas)]">
       <PageListHeader
+        className="sticky top-0 z-10 shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-canvas)] px-4 pb-4 pt-5 md:px-8"
         label="Relationships"
         titleRight={
           <>
@@ -590,7 +616,7 @@ export default function RelationshipsPage() {
         }
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
+      <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-canvas)] px-4 pb-3 pt-3 md:px-8">
         <RelationshipsFilterChat
           currentFilters={filterCriteria}
           onFiltersChange={setFilterCriteria}
@@ -598,32 +624,66 @@ export default function RelationshipsPage() {
         />
       </div>
 
-      <div className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3">
-        <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="shrink-0 text-xs text-[color:var(--tomo-mute)]">
-              {Object.keys(filterCriteria).length > 0
-                ? `Showing ${filtered.length} of ${relationshipsWithOverrides.length} relationship${relationshipsWithOverrides.length !== 1 ? "s" : ""}`
-                : `${filtered.length} relationship${filtered.length !== 1 ? "s" : ""}`}
-            </span>
+      <div className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 py-3 md:px-8">
+        <div className="mb-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="shrink-0 text-[13px] text-[color:var(--tomo-body)]">
+              <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">{filtered.length}</span>
+              {" "}of{" "}
+              <span className="font-semibold tabular-nums text-[color:var(--tomo-navy)]">
+                {relationshipsScopedFund.length}
+              </span>{" "}
+              LPs
+              <span className="text-[color:var(--tomo-mute)]"> · {activeFundLabel}</span>
+              {activeFundId === "all" ? (
+                <span className="sr-only">
+                  Workspace fund selector is All; this list uses the primary fund ({activeFundLabel}) for the cohort.
+                </span>
+              ) : null}
+            </p>
             {(() => {
               const summary = formatFilterSummary(filterCriteria);
               return summary ? (
-                <span className="min-w-0 max-w-[min(100%,28rem)] truncate text-xs font-medium peach-text" title={summary}>
-                  {summary}
-                </span>
+                <p
+                  className="min-w-0 max-w-[min(100%,36rem)] font-[family-name:ui-serif,Georgia,'Newsreader',serif] text-[13px] italic leading-snug text-[color:var(--tomo-teal)]"
+                  title={summary}
+                >
+                  Tomo: {summary}
+                </p>
               ) : null;
             })()}
-            {Object.keys(filterCriteria).length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setCreatePipelineModalOpen(true)}
-                className="button-primary inline-flex shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-              >
-                Create list
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setCreatePipelineModalOpen(true)}
+              disabled={activeFilterFieldCount === 0}
+              title={
+                activeFilterFieldCount === 0
+                  ? "Apply at least one filter to create a list from this cohort"
+                  : "Save current filters as a list"
+              }
+              className="inline-flex shrink-0 items-center gap-1 rounded-[2px] border border-[color:var(--tomo-teal)] bg-transparent px-2.5 py-1 text-[11px] font-medium text-[color:var(--tomo-teal)] transition hover:bg-[color:var(--tomo-teal)] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[color:var(--tomo-teal)]"
+            >
+              Create list
+            </button>
           </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {viewMode !== "kanban" ? (
+              <label className="flex items-center gap-2 text-[12px] text-[color:var(--tomo-mute)]">
+                <span className="font-mono text-[9px] uppercase tracking-[0.18em]">Group</span>
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as RelationshipsGroupBy)}
+                  className="rounded-[2px] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--tomo-navy)] shadow-sm focus:border-[color:var(--tomo-teal)] focus:outline-none focus:ring-1 focus:ring-[color:var(--tomo-teal)]"
+                  aria-label="Group relationships by"
+                >
+                  <option value="stage">By stage</option>
+                  <option value="tier">By tier</option>
+                  <option value="owner">By owner</option>
+                  <option value="signal">By signal</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+            ) : null}
           <div className="relative flex shrink-0 items-center gap-1" ref={columnsPopoverRef}>
             {viewMode === "list" ? (
               <>
@@ -730,8 +790,10 @@ export default function RelationshipsPage() {
               <TableCellsIcon className="h-4 w-4" />
             </button>
           </div>
+          </div>
         </div>
         <div
+          data-relationships-group={groupBy}
           className={`min-w-0 flex-1 ${viewMode === "kanban" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-auto"}`}
         >
           {viewMode === "list" ? (
@@ -883,6 +945,7 @@ export default function RelationshipsPage() {
       <NewContactModal
         open={newContactOpen}
         onClose={() => setNewContactOpen(false)}
+        fundId={effectiveFundId}
         onConfirm={(r) => {
           addRelationship(r);
           setActiveId(r.id);
@@ -905,7 +968,7 @@ export default function RelationshipsPage() {
         autoOpenFilePicker
         onConfirm={({ file, preview, mapping }) => {
           const summary = summarizeMapping(preview.headers, mapping);
-          const r = buildMockRelationshipFromCsvImport(file.name, summary);
+          const r = buildMockRelationshipFromCsvImport(file.name, summary, effectiveFundId);
           addRelationship(r);
           setActiveId(r.id);
           toast.success(`Import queued — ${file.name} (${summary.slice(0, 120)}${summary.length > 120 ? "…" : ""})`);

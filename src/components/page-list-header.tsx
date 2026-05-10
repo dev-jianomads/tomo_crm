@@ -13,18 +13,33 @@ type PageListHeaderProps = {
   titleRight?: ReactNode;
   /** Filters, search field, buttons—rendered below the description */
   children?: ReactNode;
+  /** Wraps the sticky header surface (Relationships v3 uses warm canvas). */
+  className?: string;
 };
 
 /**
  * List-pane header: uppercase label, optional body copy, optional accent link—matches /workflows.
  */
-export function PageListHeader({ label, description, action, titleRight, children }: PageListHeaderProps) {
+export function PageListHeader({
+  label,
+  description,
+  action,
+  titleRight,
+  children,
+  className,
+}: PageListHeaderProps) {
   const labelSlug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page";
   return (
-    <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white p-4" data-testid="page-list-header">
+    <div
+      className={
+        className ??
+        "sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-white p-4"
+      }
+      data-testid="page-list-header"
+    >
       <div className={`flex items-start gap-3 ${titleRight ? "justify-between" : ""}`}>
         <p
-          className="min-w-0 text-xs uppercase tracking-wide text-gray-500"
+          className="min-w-0 text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]"
           data-testid={`page-header-title-${labelSlug}`}
         >
           {label}

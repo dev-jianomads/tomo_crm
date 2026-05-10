@@ -33,13 +33,15 @@ type NewContactModalProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: (relationship: Relationship) => void;
+  /** Workspace fund (`useFunds`); new rows default to this fund. */
+  fundId?: string;
 };
 
 const inputClass =
   "tomo-input mt-1 text-sm text-[color:var(--foreground)] focus-visible:border-[color:var(--tomo-teal)]";
 const labelClass = "tomo-field-label block";
 
-export function NewContactModal({ open, onClose, onConfirm }: NewContactModalProps) {
+export function NewContactModal({ open, onClose, onConfirm, fundId }: NewContactModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [step1, setStep1] = useState<ManualContactStep1>({
     name: "",
@@ -78,7 +80,7 @@ export function NewContactModal({ open, onClose, onConfirm }: NewContactModalPro
 
   const handleConfirm = () => {
     if (!step1Valid) return;
-    onConfirm(buildRelationshipFromManualContact(step1, step2));
+    onConfirm(buildRelationshipFromManualContact(step1, step2, { fundId }));
     onClose();
   };
 

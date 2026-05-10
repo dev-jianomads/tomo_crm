@@ -20,7 +20,7 @@ import type {
   StrategyType,
   TypicalCheckSize,
 } from "@/lib/mockData";
-import { CONTACT_SENIORITY_OPTIONS } from "@/lib/mockData";
+import { CONTACT_SENIORITY_OPTIONS, DEFAULT_RELATIONSHIP_FUND_ID } from "@/lib/mockData";
 
 export function deriveBand(daysSince: number, momentum: MomentumDirection): Band {
   if (daysSince >= 45 && momentum === "Cooling") return "Stalled";
@@ -83,7 +83,8 @@ export function defaultStep2(): ManualContactStep2 {
 
 export function buildRelationshipFromManualContact(
   step1: ManualContactStep1,
-  step2: ManualContactStep2
+  step2: ManualContactStep2,
+  options?: { fundId?: string }
 ): Relationship {
   const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const days = Math.max(0, Math.floor(step2.daysSinceLastMeaningfulContact));
@@ -94,6 +95,7 @@ export function buildRelationshipFromManualContact(
     id,
     name: step1.name.trim(),
     firm: step1.firm.trim(),
+    fundId: options?.fundId ?? DEFAULT_RELATIONSHIP_FUND_ID,
     daysSinceLastMeaningfulContact: days,
     stage: step1.stage,
     momentumDirection: step2.momentumDirection,
@@ -122,7 +124,11 @@ export function buildRelationshipFromManualContact(
 }
 
 /** Demo CSV import: one LP row derived from the uploaded file name (no server parse). */
-export function buildMockRelationshipFromCsvImport(fileName: string, mappingNotes?: string): Relationship {
+export function buildMockRelationshipFromCsvImport(
+  fileName: string,
+  mappingNotes?: string,
+  fundId?: string
+): Relationship {
   const stem = fileName.replace(/\.[^/.]+$/, "").trim() || "import";
   const firm = stem.slice(0, 120);
   return buildRelationshipFromManualContact(
@@ -138,6 +144,7 @@ export function buildMockRelationshipFromCsvImport(fileName: string, mappingNote
       source: "Direct",
       lastFundHistory: "New prospect",
       nextMove: mappingNotes ? `Review import (${mappingNotes.slice(0, 80)}${mappingNotes.length > 80 ? "…" : ""})` : "Review CSV import",
-    }
+    },
+    { fundId }
   );
 }

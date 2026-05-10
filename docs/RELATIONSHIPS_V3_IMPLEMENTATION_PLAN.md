@@ -37,19 +37,19 @@
 
 ### Phase 0 — Preconditions
 
-- [ ] Map each v3 **quick filter** chip to §3.11 named-filter predicates (or mark demo-only).
-- [ ] Define **`activeFundId === "all"`** behaviour for Relationships (recommended: treat as primary fund for counts until multi-fund UX exists).
+- [x] Map each v3 **quick filter** chip to §3.11 named-filter predicates (or mark demo-only).
+- [x] Define **`activeFundId === "all"`** behaviour for Relationships (recommended: treat as primary fund for counts until multi-fund UX exists).
 
 ### Phase 1 — Shell & tokens
 
-- [ ] Align page chrome with v3: eyebrow, action cluster (Reset demo, New Contact, Upload CSV, Advanced filters + badge), warm canvas/card tokens.
-- [ ] **Filter panel:** chips row → quick filters → Tomo line (`RelationshipsFilterChat` refactor or wrapper).
-- [ ] **Control bar:** “X of Y LPs”, Tomo interpretation line, **Create list** (disabled until filters), **Group**, view tabs.
+- [x] Align page chrome with v3: eyebrow, action cluster (Reset demo, New Contact, Upload CSV, Advanced filters + badge), warm canvas/card tokens.
+- [x] **Filter panel:** chips row → quick filters → Tomo line (`RelationshipsFilterChat` refactor or wrapper).
+- [x] **Control bar:** “X of Y LPs”, Tomo interpretation line, **Create list** (disabled until filters), **Group**, view tabs.
 
 ### Phase 2 — Fund-scoped data (mock)
 
-- [ ] Filter `relationships` (or provider output) by **`fund_id` ↔ activeFundId** from `useFunds()`.
-- [ ] Surface **current raise** / fund label in Kanban control bar copy using active fund metadata.
+- [x] Filter `relationships` (or provider output) by **`fund_id` ↔ activeFundId** from `useFunds()` (implemented on Relationships page via `relationshipsScopedFund`).
+- [ ] Surface **current raise** / fund label in Kanban control bar copy using active fund metadata (fund name shown in shared control bar; Kanban-specific copy TBD).
 
 ### Phase 3 — Canonical stages & migration
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import {
   criteriaEqual,
@@ -9,7 +9,7 @@ import {
   removeCriteriaTag,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
-import { RELATIONSHIP_FILTER_SUGGESTIONS } from "@/lib/relationshipFilterSuggestions";
+import { RELATIONSHIP_QUICK_FILTERS } from "@/lib/relationshipQuickFilters";
 
 type FilterRelationshipsResponse = {
   outcome: "success" | "partial" | "failure";
@@ -33,10 +33,8 @@ export function RelationshipsFilterChat({
   const [input, setInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const selectedSuggestionId = useMemo(() => {
-    const match = RELATIONSHIP_FILTER_SUGGESTIONS.find((s) =>
-      criteriaEqual(currentFilters, s.criteria)
-    );
+  const selectedQuickFilterId = useMemo(() => {
+    const match = RELATIONSHIP_QUICK_FILTERS.find((s) => criteriaEqual(currentFilters, s.criteria));
     return match?.id ?? null;
   }, [currentFilters]);
 
@@ -52,15 +50,19 @@ export function RelationshipsFilterChat({
     toast.success("Filter applied", { description: label });
   };
 
+  const handleClearAll = () => {
+    onClearFilters();
+    setInput("");
+    toast.success("Filters cleared");
+  };
+
   const handleNlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || submitting) return;
 
     if (/\b(clear|reset|show\s+all)\b/i.test(trimmed)) {
-      onClearFilters();
-      setInput("");
-      toast.success("Filters cleared");
+      handleClearAll();
       return;
     }
 
@@ -98,84 +100,74 @@ export function RelationshipsFilterChat({
   };
 
   return (
-    <div className="flex flex-col gap-2 px-3 py-2">
-      <div className="flex min-h-0 flex-wrap items-center gap-2">
-        <p className="shrink-0 tomo-field-label">Filter</p>
-        {filterTags.length > 0 ? (
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1" data-testid="relationships-active-filter-tags">
-            {filterTags.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => removeTag(t.id)}
-                className="inline-flex max-w-[200px] items-center gap-0.5 truncate rounded-full border border-[color:color-mix(in_srgb,var(--accent)_35%,var(--tomo-rule))] bg-[color:var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--foreground)] transition hover:opacity-90"
-                title={`Remove: ${t.label}`}
-              >
-                <span className="truncate">{t.label}</span>
-                <span className="text-[color:var(--tomo-mute)]" aria-hidden>
-                  ×
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <span className="text-xs text-[color:var(--tomo-mute)]">No active filters</span>
-        )}
-      </div>
-
-      <div>
-        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">Quick filters</p>
-        <div className="flex flex-wrap gap-1.5" data-testid="relationships-filter-suggestion-chips">
-          {RELATIONSHIP_FILTER_SUGGESTIONS.map((s) => {
-            const selected = selectedSuggestionId === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => applyChip(s.criteria, s.label)}
-                disabled={submitting}
-                className={`rounded-full border px-2.5 py-1 text-xs transition disabled:opacity-50 ${
-                  selected
-                    ? "border-[color:var(--accent)] bg-[color:var(--accent)] text-white"
-                    : "border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_48%,var(--tomo-card))] text-[color:var(--tomo-body)] hover:border-[color:color-mix(in_srgb,var(--accent)_35%,var(--tomo-rule))] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--foreground)]"
-                }`}
-              >
-                {s.label}
-              </button>
-            );
-          })}
+    <div className="flex flex-col gap-2.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-[18px] py-3.5 shadow-[var(--tomo-shadow-1)]">
+      {filterTags.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2" data-testid="relationships-active-filter-tags">
+          {filterTags.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => removeTag(t.id)}
+              className="inline-flex max-w-[220px] items-center gap-1 truncate rounded-full border border-[color:color-mix(in_srgb,var(--tomo-teal)_65%,var(--tomo-rule))] bg-[color:color-mix(in_srgb,var(--tomo-teal)_8%,transparent)] px-3 py-1 text-[12px] font-medium text-[color:var(--tomo-teal)] transition hover:opacity-90"
+              title={`Remove: ${t.label}`}
+            >
+              <span className="truncate">{t.label}</span>
+              <span className="text-[color:var(--tomo-teal)] opacity-80" aria-hidden>
+                ×
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="text-[11px] text-[color:var(--tomo-mute)] underline underline-offset-2 transition hover:text-[color:var(--foreground)]"
+          >
+            Clear all
+          </button>
         </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2" data-testid="relationships-filter-suggestion-chips">
+        {RELATIONSHIP_QUICK_FILTERS.map((s) => {
+          const selected = selectedQuickFilterId === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => applyChip(s.criteria, s.label)}
+              disabled={submitting}
+              title={s.srsNote}
+              className={`rounded-full border px-3 py-1.5 text-[12px] font-normal transition disabled:opacity-50 ${
+                selected
+                  ? "border-[color:var(--tomo-navy)] bg-[color:var(--tomo-navy)] font-medium text-white"
+                  : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-navy)] hover:text-[color:var(--tomo-navy)]"
+              }`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
       </div>
 
       <form
         onSubmit={handleNlSubmit}
-        className="flex flex-wrap items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2 py-1.5 shadow-[var(--tomo-shadow-1)]"
+        className="flex flex-wrap items-center gap-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-canvas)] px-3 py-2 shadow-[var(--tomo-shadow-1)] transition focus-within:border-[color:var(--tomo-teal)] dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_55%,transparent)]"
       >
+        <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0 text-[color:var(--tomo-teal)]" aria-hidden />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Build your custom filter here ..."
+          placeholder="Ask Tomo about your relationships… e.g. Tier 1 LPs with confirmed mandate fit and no meaningful touch in 14+ days"
           disabled={submitting}
-          className="min-w-0 flex-1 basis-[min(100%,12rem)] border-0 bg-transparent text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--tomo-mute)] disabled:opacity-50"
+          className="min-w-0 flex-1 basis-[min(100%,12rem)] border-0 bg-transparent text-[13px] text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--tomo-mute)] disabled:opacity-50"
         />
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => {
-              onClearFilters();
-              setInput("");
-              toast.success("Filters cleared");
-            }}
-            disabled={submitting}
-            className="shrink-0 text-xs font-medium text-[color:var(--tomo-teal-muted)] hover:text-[color:var(--tomo-teal)] hover:underline disabled:opacity-50"
-          >
-            Clear filters
-          </button>
-        ) : null}
+        <span className="hidden shrink-0 rounded-[2px] bg-[color:var(--tomo-card-warm)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)] sm:inline">
+          V1 · Filter
+        </span>
         <button
           type="submit"
           disabled={!input.trim() || submitting}
-          className="shrink-0 rounded-[var(--tomo-radius-md)] bg-[color:var(--accent)] p-1.5 text-white transition hover:opacity-90 disabled:opacity-50"
+          className="shrink-0 rounded-[2px] p-1.5 text-[color:var(--tomo-mute)] transition hover:text-[color:var(--tomo-teal)] disabled:opacity-40"
           aria-label="Apply filter"
         >
           <PaperAirplaneIcon className="h-4 w-4" />

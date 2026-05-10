@@ -9,6 +9,7 @@ import {
   CONSULTANT_DEPENDENT_OPTIONS,
   CONTACT_SENIORITY_OPTIONS,
   DECISION_TIMELINE_OPTIONS,
+  DEFAULT_RELATIONSHIP_FUND_ID,
   ESG_REQUIRED_OPTIONS,
   FISCAL_YEAR_END_OPTIONS,
   FUND_SIZE_PREFERENCE_OPTIONS,
@@ -125,6 +126,7 @@ const COL_KEYS = [
   "nextMove",
   "openLoops",
   "band",
+  "fundId",
 ] as const;
 
 type ColKey = (typeof COL_KEYS)[number];
@@ -177,11 +179,14 @@ function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relations
   const nextMove = g("nextMove") || "";
   const openLoops = parseNum(g("openLoops"), 0);
   const band = pick(g("band"), BAND_OPTIONS, "Active-Stable");
+  const fundIdRaw = g("fundId").trim();
+  const fundId = fundIdRaw || DEFAULT_RELATIONSHIP_FUND_ID;
 
   return {
     id,
     name,
     firm,
+    fundId,
     daysSinceLastMeaningfulContact,
     stage,
     momentumDirection,
