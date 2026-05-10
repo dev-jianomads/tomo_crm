@@ -15,12 +15,16 @@ test.describe("Phase 1 — safety + demo-critical", () => {
     await expect(page.getByRole("link", { name: "Pipeline" })).toHaveCount(0);
   });
 
-  test("Lists page is browse-only: title-only header, no create/filter strip (L2)", async ({ page }) => {
+  test("Lists page matches v1 index: chrome, Your lists, disabled CTAs; no legacy filter strip (L2)", async ({ page }) => {
     await page.goto("/pipeline");
 
-    await expect(page.getByTestId("page-header-title-lists")).toHaveText("Lists");
-    const header = page.getByTestId("page-list-header");
-    await expect(header).not.toContainText("Refine the CRM with natural-language filters");
+    await expect(page.getByTestId("lists-index-v1")).toBeVisible();
+    await expect(page.getByTestId("lists-eyebrow")).toHaveText("Lists");
+    await expect(page.getByRole("heading", { level: 1, name: "Your lists" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New list" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Import cohort" })).toBeDisabled();
+    await expect(page.getByTestId("page-list-header")).toHaveCount(0);
+    await expect(page.getByTestId("page-header-title-lists")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /View workflows/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /LP Network/ })).toHaveCount(0);
     await expect(page.getByTestId("lists-quick-filters")).toHaveCount(0);

@@ -539,6 +539,7 @@ export default function RelationshipsPage() {
     addPipeline({
       name: trimmed,
       fundId: effectiveFundId,
+      listMode: "live",
       filterCriteria: { ...filterCriteria },
     });
     setCreatePipelineName("");

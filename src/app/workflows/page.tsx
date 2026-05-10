@@ -17,7 +17,7 @@ import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
-import { getPipelineMembers } from "@/lib/pipelines";
+import { getPipelineMembers, isManualList } from "@/lib/pipelines";
 import { useRequireSession } from "@/lib/auth";
 import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -252,7 +252,9 @@ function WorkflowsPageContent() {
       return { kind: "missing" as const, pipelineId };
     }
     const count = getPipelineMembers(relationships, pipeline).length;
-    const filterSummary = formatFilterSummary(pipeline.filterCriteria);
+    const filterSummary = isManualList(pipeline)
+      ? (pipeline.manualDescription ?? "Manual list")
+      : formatFilterSummary(pipeline.filterCriteria);
     return {
       kind: "ok" as const,
       name: pipeline.name,

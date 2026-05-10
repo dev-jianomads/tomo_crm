@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { usePersistentState } from "./usePersistentState";
 import {
   PIPELINES_STORAGE_KEY,
   generateMockPipelines,
   getInitialPipelines,
+  migratePipelineShape,
   type Pipeline,
 } from "./pipelines";
 
@@ -19,6 +21,8 @@ export type UsePipelinesResult = {
         Pipeline,
         | "name"
         | "filterCriteria"
+        | "listMode"
+        | "manualDescription"
         | "excludedRelationshipIds"
         | "addedRelationshipIds"
       >
@@ -40,8 +44,10 @@ export function usePipelines(fundId: string): UsePipelinesResult {
     getInitialPipelines()
   );
 
+  const normalizedPipelines = useMemo(() => allPipelines.map(migratePipelineShape), [allPipelines]);
+
   const pipelines =
-    fundId === "all" ? allPipelines : allPipelines.filter((p) => p.fundId === fundId);
+    fundId === "all" ? normalizedPipelines : normalizedPipelines.filter((p) => p.fundId === fundId);
 
   const addPipeline = (p: Omit<Pipeline, "id" | "createdAt">) => {
     const newPipeline: Pipeline = {
@@ -59,6 +65,8 @@ export function usePipelines(fundId: string): UsePipelinesResult {
         Pipeline,
         | "name"
         | "filterCriteria"
+        | "listMode"
+        | "manualDescription"
         | "excludedRelationshipIds"
         | "addedRelationshipIds"
       >

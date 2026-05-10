@@ -2,10 +2,9 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
-import { PageListHeader } from "@/components/page-list-header";
 import { ContextDrawer } from "@/components/context-drawer";
+import { ListsIndexV1 } from "@/components/lists-index-v1";
 import { useRequireSession } from "@/lib/auth";
 import { useFunds } from "@/components/fund-provider";
 import { usePipelines } from "@/lib/use-pipelines";
@@ -14,7 +13,6 @@ import type { Pipeline } from "@/lib/pipelines";
 import { getPipelineMembers } from "@/lib/pipelines";
 import { STAGE_COLORS, STAGE_OPTIONS, type Relationship, type Stage } from "@/lib/mockData";
 import { useRelationships } from "@/components/relationships-provider";
-import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { suggestedPlaybooks } from "@/lib/mockPlaybooks";
 import { toast } from "sonner";
 
@@ -42,71 +40,17 @@ export default function PipelinePage() {
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <PageListHeader label="Lists" />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <div className="border-b border-gray-100 px-4 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold accent-title">Your lists</p>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-500">
-                  {pipelines.length} {activeFundId === "all" ? "total" : "in fund"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetToMock();
-                    setActivePipelineId(null);
-                    toast.success("Reset to 3 demo lists");
-                  }}
-                  className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                  title="Reset to 3 demo lists"
-                  aria-label="Reset to demo"
-                >
-                  <ArrowPathIcon className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2 px-4 py-3">
-            {pipelines.length ? (
-              pipelines.map((pipeline) => {
-                const count = getPipelineMembers(relationships, pipeline).length;
-                const summary = formatFilterSummary(pipeline.filterCriteria);
-                const isSelected = activePipelineId === pipeline.id;
-                return (
-                  <button
-                    key={pipeline.id}
-                    type="button"
-                    onClick={() => handlePipelineClick(pipeline.id)}
-                    className={`w-full rounded-md border px-3 py-2 text-left transition ${
-                      isSelected
-                        ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-gray-900">{pipeline.name}</p>
-                      <span className="text-xs text-gray-600">{count} relationships</span>
-                    </div>
-                    {summary ? (
-                      <p className="mt-0.5 truncate text-xs text-gray-600" title={summary}>
-                        {summary}
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-xs text-gray-500">No filters</p>
-                    )}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-600">
-                No lists yet. Save a filtered view as a list from Relationships, or reset demo for sample lists.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <ListsIndexV1
+        pipelines={pipelines}
+        relationships={relationships}
+        selectedId={activePipelineId}
+        onSelect={handlePipelineClick}
+        onResetDemo={() => {
+          resetToMock();
+          setActivePipelineId(null);
+          toast.success("Reset to 3 demo lists");
+        }}
+      />
     </div>
   );
 

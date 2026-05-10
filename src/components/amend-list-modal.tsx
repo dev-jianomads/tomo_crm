@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import type { Relationship } from "@/lib/mockData";
 import type { Pipeline } from "@/lib/pipelines";
-import { getPipelineMembers } from "@/lib/pipelines";
+import { getPipelineMembers, isManualList } from "@/lib/pipelines";
 import { applyFilters } from "@/lib/relationshipFilters";
 
 type AmendListModalProps = {
@@ -84,6 +84,11 @@ export function AmendListModal({
 
   const addMember = (id: string) => {
     setExcluded((prev) => prev.filter((x) => x !== id));
+    if (pipeline && isManualList(pipeline)) {
+      setAdded((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setShowAddPicker(false);
+      return;
+    }
     const matchesFilter = applyFilters(relationships, pipeline.filterCriteria).some((r) => r.id === id);
     if (!matchesFilter) {
       setAdded((prev) => (prev.includes(id) ? prev : [...prev, id]));
