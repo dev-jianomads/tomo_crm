@@ -284,6 +284,10 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       );
       for (const sec of rm.sections) {
         lines.push(``, `${sec.title} — ${sec.countSummary}`);
+        if (sec.items.length === 0) {
+          if (sec.emptyMessage) lines.push(`- (empty — ${sec.emptyMessage})`);
+          continue;
+        }
         for (const item of sec.items) {
           const who = item.personLabel ? `${item.lpLabel} · ${item.personLabel}` : item.lpLabel;
           lines.push(`- ${who}: ${item.evidencePlain}`);

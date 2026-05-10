@@ -45,7 +45,15 @@ import {
   previousAttentionCount,
   type PreviousAttentionGroup,
 } from "@/lib/todayPreviousAttention";
-import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
+import { getLocalYmd, isTodayAttentionSlot } from "@/lib/todayAttentionDates";
+import {
+  RADAR_AUTO_OPEN_STORAGE_KEY,
+  RADAR_LAST_AUTO_OPEN_DATE_KEY,
+  RADAR_SECTION_SOURCE_STORAGE_KEY,
+  type RadarAutoOpenPreference,
+  type RadarSectionSourcePreference,
+  resolveRadarPayloadOptions,
+} from "@/lib/radarPreferences";
 import { WhereRaiseStandsCard } from "@/components/where-raise-stands-card";
 import { useRelationships } from "@/components/relationships-provider";
 import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem } from "@/lib/mockData";
@@ -217,6 +225,14 @@ export default function HomePage() {
     "tomo-today-inline-chat-expanded",
     false
   );
+  const [radarSectionSource] = usePersistentState<RadarSectionSourcePreference>(
+    RADAR_SECTION_SOURCE_STORAGE_KEY,
+    "env",
+  );
+  const [radarAutoOpenPrefs, , radarAutoPrefsReady] = usePersistentState<RadarAutoOpenPreference>(
+    RADAR_AUTO_OPEN_STORAGE_KEY,
+    { enabled: true },
+  );
   const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
   /** Remount radar modal on each open so internal UI state resets without effects. */
   const [onMyRadarModalKey, setOnMyRadarModalKey] = useState(0);
@@ -264,6 +280,21 @@ export default function HomePage() {
       document.body.style.overflow = prev;
     };
   }, [onMyRadarOpen]);
+
+  /** SRS §3.8 — auto-open Radar Modal once per local calendar day on first Today visit */
+  useEffect(() => {
+    if (!ready || !radarAutoPrefsReady) return;
+    if (!radarAutoOpenPrefs.enabled) return;
+    const today = getLocalYmd(new Date());
+    try {
+      if (localStorage.getItem(RADAR_LAST_AUTO_OPEN_DATE_KEY) === today) return;
+      localStorage.setItem(RADAR_LAST_AUTO_OPEN_DATE_KEY, today);
+      setOnMyRadarModalKey((k) => k + 1);
+      setOnMyRadarOpen(true);
+    } catch {
+      // storage quota / private mode
+    }
+  }, [ready, radarAutoPrefsReady, radarAutoOpenPrefs.enabled]);
 
   const addToast = (message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -501,8 +532,6 @@ export default function HomePage() {
     [engagementState],
   );
 
-  const radarDerived = process.env.NEXT_PUBLIC_TOMO_RADAR_DERIVED === "1";
-
   const radarModalPayload = useMemo(
     () =>
       buildRadarModalPayload(
@@ -513,12 +542,16 @@ export default function HomePage() {
           stillInTodoActions,
           relationships,
         },
-        {
-          useDemoRadarSections: !radarDerived,
-          useDerivedRadarSections: radarDerived,
-        },
+        resolveRadarPayloadOptions(radarSectionSource),
       ),
-    [sortedActionItems, sortedCommitments, filteredBriefs, stillInTodoActions, relationships],
+    [
+      sortedActionItems,
+      sortedCommitments,
+      filteredBriefs,
+      stillInTodoActions,
+      relationships,
+      radarSectionSource,
+    ],
   );
 
   const radarBadgeCount = radarModalPayload.badgeCount;

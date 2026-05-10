@@ -9,5 +9,6 @@ export const QA_SESSION_SEED = {
 export async function applyQaSession(page: Page): Promise<void> {
   await page.addInitScript((session: typeof QA_SESSION_SEED) => {
     window.localStorage.setItem("tomo-session", JSON.stringify(session));
+    window.localStorage.setItem("tomo-radar-auto-open-v1", JSON.stringify({ enabled: false }));
   }, QA_SESSION_SEED);
 }

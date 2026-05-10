@@ -1,6 +1,12 @@
 "use client";
 
 import { IntegrationRow } from "@/components/settings/settings-widgets";
+import {
+  RADAR_AUTO_OPEN_STORAGE_KEY,
+  RADAR_SECTION_SOURCE_STORAGE_KEY,
+  type RadarAutoOpenPreference,
+  type RadarSectionSourcePreference,
+} from "@/lib/radarPreferences";
 import { resetTodayEngagement } from "@/lib/todayEngagement";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { defaultOnboardingState, OnboardingState } from "@/lib/types";
@@ -17,6 +23,15 @@ export default function SettingsNotificationsPage() {
     slackDigest: false,
     preferredLocalHour: 7,
   });
+
+  const [radarSectionSource, setRadarSectionSource] = usePersistentState<RadarSectionSourcePreference>(
+    RADAR_SECTION_SOURCE_STORAGE_KEY,
+    "env",
+  );
+  const [radarAutoOpenPrefs, setRadarAutoOpenPrefs] = usePersistentState<RadarAutoOpenPreference>(
+    RADAR_AUTO_OPEN_STORAGE_KEY,
+    { enabled: true },
+  );
 
   return (
     <div className="space-y-4">
@@ -101,6 +116,35 @@ export default function SettingsNotificationsPage() {
           <span className="font-mono">CRON_SECRET</span> in Vercel; the platform sends it as{" "}
           <span className="font-mono">Authorization: Bearer</span> to the cron route.
         </p>
+      </div>
+
+      <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Radar Modal (Today)</h3>
+        <p className="mt-1 text-xs text-[color:var(--tomo-body)]">
+          In-app Daily Brief + On my radar (SRS Appendix I). Row source defaults to your build (
+          <span className="font-mono">NEXT_PUBLIC_TOMO_RADAR_DERIVED</span>) unless overridden here.
+        </p>
+        <div className="mt-3 space-y-2">
+          <label className="block text-xs font-medium text-[color:var(--tomo-mute)]">Appendix I rows</label>
+          <select
+            className="tomo-input max-w-md py-1.5 text-sm shadow-none"
+            value={radarSectionSource}
+            onChange={(e) => setRadarSectionSource(e.target.value as RadarSectionSourcePreference)}
+          >
+            <option value="env">Auto — follow environment flag</option>
+            <option value="demo">Demo seed (design reference)</option>
+            <option value="derived">CRM + Today derivation</option>
+          </select>
+        </div>
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[color:var(--foreground)]">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-[color:var(--tomo-rule)] text-[color:var(--accent)] focus:ring-[color:var(--tomo-teal)]"
+            checked={radarAutoOpenPrefs.enabled}
+            onChange={(e) => setRadarAutoOpenPrefs((p) => ({ ...p, enabled: e.target.checked }))}
+          />
+          Open Radar Modal automatically once each day on Today
+        </label>
       </div>
 
       <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_45%,var(--tomo-card))] px-4 py-3">
