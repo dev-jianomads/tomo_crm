@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Lists v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.05);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-tint: rgba(201, 147, 58, 0.10);
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.10);
+    --green-soft-bg: rgba(45, 138, 94, 0.06);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.12);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+    --red-bg: rgba(217, 79, 79, 0.10);
+
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    --bg-page: var(--canvas);
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-drawer: -8px 0 32px rgba(28, 43, 58, 0.14);
+    --shadow-modal: 0 20px 50px rgba(28, 43, 58, 0.18);
+
+    /* Stage palette — same as kanban v3, used inside funnel viz */
+    --stage-sourced-bg: #E6ECEA;
+    --stage-sourced-text: #4A6B5A;
+    --stage-first-bg: #DCE8E1;
+    --stage-first-text: #2F6045;
+    --stage-nurturing-bg: #D2E5DA;
+    --stage-nurturing-text: #1F5238;
+    --stage-active-bg: #F0E5D1;
+    --stage-active-text: #8A6B2E;
+    --stage-soft-bg: #DDE8DC;
+    --stage-soft-text: #2D6E45;
+    --stage-committed-bg: #1C2B3A;
+    --stage-committed-text: #F0F2F5;
+    --stage-onhold-bg: #EFD5D5;
+    --stage-onhold-text: #7A2D2D;
+    --stage-closed-bg: #E8E8EC;
+    --stage-closed-text: #6B6F77;
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --motion: 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg-page);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* NAV */
+  .nav {
+    width: 72px; background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh; z-index: 50;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    margin-bottom: 24px; letter-spacing: -0.02em; line-height: 1;
+    font-variation-settings: "opsz" 36;
+  }
+  .nav-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-md); color: var(--mute); cursor: pointer;
+    transition: all var(--motion);
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: var(--navy); color: var(--card); }
+  .nav-spacer { flex: 1; }
+
+  .main { flex: 1; padding: 24px 32px 80px; min-width: 0; }
+
+  /* TOP ROW */
+  .top-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18px; gap: 16px;
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 500;
+    color: var(--mute); letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .top-utils { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .util-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md); padding: 7px 12px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all var(--motion);
+  }
+  .util-btn:hover { border-color: var(--navy); }
+  .util-btn.primary {
+    background: var(--navy); color: var(--card); border-color: var(--navy);
+  }
+  .util-btn.primary:hover { background: #2A3D52; border-color: #2A3D52; }
+  .util-btn.teal {
+    background: var(--teal); color: var(--card); border-color: var(--teal);
+  }
+  .util-btn.teal:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+
+  /* PAGE HEADING */
+  .page-heading {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .page-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 30px;
+    color: var(--navy); line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 36;
+  }
+  .page-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .page-meta .num { color: var(--navy); font-weight: 600; }
+  .page-subtitle {
+    font-size: 14px; color: var(--body);
+    line-height: 1.5; max-width: 720px;
+    margin-bottom: 24px;
+  }
+  .page-subtitle .accent { color: var(--teal); font-weight: 500; }
+
+  /* SECTION HEADERS WITHIN LIST */
+  .section-divider {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 28px 0 12px;
+  }
+  .section-divider:first-of-type { margin-top: 8px; }
+  .section-divider-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500; color: var(--navy);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .section-divider-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+  }
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* LIST CARDS */
+  .list-grid {
+    display: flex; flex-direction: column;
+    gap: 8px;
+  }
+  .list-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: all var(--motion);
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .list-card:hover {
+    border-color: var(--navy);
+    box-shadow: var(--shadow-1);
+  }
+
+  .list-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--r-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .list-icon.system {
+    background: var(--teal-evidence-bg);
+    color: var(--teal);
+  }
+  .list-icon.live {
+    background: var(--card-warm);
+    color: var(--navy);
+  }
+  .list-icon.manual {
+    background: var(--navy-soft);
+    color: var(--mute);
+  }
+
+  .list-body { min-width: 0; }
+  .list-name-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .list-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 17px;
+    color: var(--navy); line-height: 1.25;
+    font-variation-settings: "opsz" 20;
+  }
+  .system-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 2px 6px; border-radius: 2px;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .list-filter-desc {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.45;
+  }
+  .list-filter-desc .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  /* List type indicator */
+  .list-type {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+    flex-shrink: 0;
+  }
+  .list-type-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+    white-space: nowrap;
+  }
+  .list-type-pill.live { background: var(--green-bg); color: var(--green); }
+  .list-type-pill.manual { color: var(--mute); border: 1px solid var(--rule); padding: 1px 5px; }
+  .list-type-pill .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  .list-type-pill.manual .dot {
+    background: var(--mute);
+  }
+
+  /* Count + workflows */
+  .list-count-block {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 110px;
+  }
+  .list-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+  .list-count-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .list-workflows {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .list-workflows.has-active { color: var(--teal); }
+  .list-workflows .wf-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--teal);
+  }
+  .list-workflows.no-active .wf-dot {
+    background: var(--rule);
+  }
+
+  /* CREATE LIST CARD */
+  .create-list-card {
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: var(--r-md);
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 14px;
+    color: var(--mute);
+    transition: all var(--motion);
+  }
+  .create-list-card:hover {
+    border-color: var(--navy); color: var(--navy);
+    border-style: solid;
+  }
+  .create-list-card .icon {
+    width: 36px; height: 36px;
+    border-radius: var(--r-md);
+    background: var(--card-warm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .create-list-card .text {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 15px; font-style: italic;
+    font-variation-settings: "opsz" 18;
+  }
+  .create-list-card .text .strong {
+    color: var(--teal); font-style: normal; font-weight: 500;
+  }
+
+  /* ========================================================================
+     LIST DETAIL DRAWER
+     ======================================================================== */
+  .scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.18);
+    backdrop-filter: blur(1px);
+    z-index: 90;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed;
+    top: 0; right: 0;
+    width: 760px; height: 100vh;
+    background: var(--card);
+    border-left: 1px solid var(--rule);
+    box-shadow: var(--shadow-drawer);
+    z-index: 100;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform var(--motion);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    padding: 22px 32px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-shrink: 0;
+    gap: 16px;
+  }
+  .drawer-title-block { min-width: 0; flex: 1; }
+  .drawer-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 26px;
+    color: var(--navy); line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 30;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .drawer-subtitle {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    font-size: 13px; color: var(--body);
+  }
+  .drawer-subtitle .filter-desc { color: var(--body); }
+  .drawer-subtitle .filter-desc .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-right: 6px;
+  }
+  .drawer-subtitle .sep { color: var(--rule); }
+  .drawer-meta-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 8px;
+  }
+  .drawer-meta-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.06em;
+  }
+  .drawer-meta-pill .strong { color: var(--navy); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .drawer-close {
+    width: 32px; height: 32px; background: transparent; border: 0;
+    color: var(--mute); cursor: pointer; border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .drawer-close:hover { background: var(--navy-soft); color: var(--navy); }
+
+  .drawer-body {
+    flex: 1; overflow-y: auto;
+    padding: 24px 32px 24px;
+  }
+  .drawer-body::-webkit-scrollbar { width: 6px; }
+  .drawer-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label .count {
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  /* ========================================================================
+     FUNNEL BY STAGE — horizontal bar viz
+     ======================================================================== */
+  .funnel-section { margin-bottom: 28px; }
+  .funnel {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    height: 110px;
+    padding: 0 4px 0 4px;
+    margin-bottom: 12px;
+  }
+  .funnel-bar-wrap {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .funnel-bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    transition: opacity var(--motion);
+    cursor: pointer;
+  }
+  .funnel-bar:hover { opacity: 0.85; }
+  .funnel-bar.sourced   { background: var(--stage-sourced-bg); border-top: 2px solid var(--stage-sourced-text); }
+  .funnel-bar.first     { background: var(--stage-first-bg); border-top: 2px solid var(--stage-first-text); }
+  .funnel-bar.nurturing { background: var(--stage-nurturing-bg); border-top: 2px solid var(--stage-nurturing-text); }
+  .funnel-bar.active    { background: var(--stage-active-bg); border-top: 2px solid var(--stage-active-text); }
+  .funnel-bar.soft      { background: var(--stage-soft-bg); border-top: 2px solid var(--stage-soft-text); }
+  .funnel-bar.committed { background: var(--stage-committed-bg); }
+  .funnel-bar.onhold    { background: var(--stage-onhold-bg); border-top: 2px solid var(--stage-onhold-text); }
+  .funnel-bar.closed    { background: var(--stage-closed-bg); border-top: 2px solid var(--stage-closed-text); }
+  .funnel-bar-empty {
+    width: 100%;
+    height: 4px;
+    background: var(--rule-soft);
+    border-radius: 2px;
+  }
+
+  .funnel-labels {
+    display: flex;
+    gap: 4px;
+    padding: 0 4px;
+  }
+  .funnel-label-wrap {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+  .funnel-label-stage {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .funnel-label-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+  .funnel-label-count.zero { color: var(--mute); font-weight: 400; }
+
+  /* ========================================================================
+     LP LIST inside drawer
+     ======================================================================== */
+  .lp-rows {
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .lp-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 12px;
+    padding: 10px 14px;
+    align-items: center;
+    border-bottom: 1px solid var(--rule-soft);
+    cursor: pointer;
+    transition: background var(--motion);
+  }
+  .lp-row:last-child { border-bottom: 0; }
+  .lp-row:hover { background: var(--card-warm); }
+  .lp-signal-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .lp-signal-dot.green { background: var(--green); }
+  .lp-signal-dot.amber { background: var(--status-amber); }
+  .lp-signal-dot.red { background: var(--red); }
+  .lp-text { min-width: 0; }
+  .lp-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 14px;
+    color: var(--navy); line-height: 1.25;
+    font-variation-settings: "opsz" 16;
+    margin-bottom: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lp-meta {
+    font-size: 11px; color: var(--body);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .lp-stage {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.06em;
+  }
+  .lp-stamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    min-width: 36px;
+  }
+  .lp-stamp.warn { color: var(--status-amber-text); }
+  .lp-stamp.danger { color: var(--red); }
+
+  .lp-list-foot {
+    background: var(--card-warm);
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--mute);
+    text-align: center;
+    cursor: pointer;
+    border-top: 1px solid var(--rule);
+  }
+  .lp-list-foot:hover { color: var(--navy); }
+
+  /* ========================================================================
+     ACTIVE WORKFLOWS
+     ======================================================================== */
+  .workflow-section { margin-bottom: 24px; }
+  .workflow-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all var(--motion);
+    margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+  }
+  .workflow-card:hover {
+    border-color: var(--navy);
+    box-shadow: var(--shadow-1);
+  }
+  .workflow-card-body { min-width: 0; flex: 1; }
+  .workflow-card-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 14px;
+    color: var(--navy); line-height: 1.3;
+    font-variation-settings: "opsz" 16;
+    margin-bottom: 3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .workflow-card-flow {
+    font-size: 12px;
+    color: var(--body);
+    line-height: 1.4;
+  }
+  .workflow-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .workflow-status.active { background: var(--green-bg); color: var(--green); }
+  .workflow-status.draft  { color: var(--mute); border: 1px solid var(--rule); }
+  .workflow-status .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  .workflow-card .system-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
+  /* ========================================================================
+     ACTIONS FOOTER
+     ======================================================================== */
+  .drawer-actions {
+    border-top: 1px solid var(--rule);
+    padding: 14px 32px;
+    background: var(--card-warm);
+    display: flex; gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 8px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .action-btn:hover { border-color: var(--navy); }
+  .action-btn.primary {
+    background: var(--teal); color: var(--card);
+    border-color: var(--teal);
+  }
+  .action-btn.primary:hover {
+    background: var(--teal-strong); border-color: var(--teal-strong);
+  }
+  .action-btn.tomo-chat {
+    color: var(--teal);
+    border-color: var(--teal);
+  }
+  .action-btn.tomo-chat:hover {
+    background: var(--teal-evidence-bg);
+  }
+  .action-btn.danger {
+    color: var(--mute);
+    margin-left: auto;
+  }
+  .action-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+  /* ========================================================================
+     LINK WORKFLOW MODAL
+     ======================================================================== */
+  .modal-scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .modal-scrim.open { opacity: 1; pointer-events: auto; }
+
+  .modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -48%);
+    width: 720px;
+    max-height: 85vh;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-modal);
+    z-index: 201;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion), transform var(--motion);
+    display: flex; flex-direction: column;
+  }
+  .modal.open {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  .modal-head {
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+  }
+  .modal-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .modal-head-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px;
+  }
+  .modal-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 26;
+  }
+  .modal-context {
+    font-size: 12px;
+    color: var(--body);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .modal-context .filter-desc {
+    color: var(--mute);
+  }
+  .modal-context .filter-desc .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .modal-close {
+    width: 28px; height: 28px;
+    background: transparent; border: 0;
+    color: var(--mute); cursor: pointer;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { background: var(--navy-soft); color: var(--navy); }
+
+  /* Tabs in modal */
+  .modal-tabs {
+    display: flex; gap: 0;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .modal-tab {
+    background: transparent; border: 0;
+    padding: 10px 14px;
+    font-size: 12px; font-weight: 500;
+    color: var(--mute); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all var(--motion);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .modal-tab:hover { color: var(--navy); }
+  .modal-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--teal);
+  }
+  .modal-tab .tab-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    background: var(--card-warm);
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+
+  .modal-body {
+    padding: 18px 28px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-body-section { margin-bottom: 18px; }
+  .modal-body-section:last-child { margin-bottom: 0; }
+  .modal-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Workflow option cards in modal */
+  .wf-options { display: flex; flex-direction: column; gap: 8px; }
+  .wf-option {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .wf-option:hover { border-color: var(--navy); }
+  .wf-option.selected {
+    border-color: var(--teal);
+    background: var(--teal-evidence-bg);
+  }
+  .wf-option-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .wf-option-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 15px;
+    color: var(--navy); line-height: 1.25;
+    font-variation-settings: "opsz" 18;
+  }
+  .wf-option-trigger {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .wf-option-trigger.event   { background: rgba(14, 124, 124, 0.10); color: var(--teal); }
+  .wf-option-trigger.signal  { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .wf-option-trigger.manual  { background: var(--navy-soft); color: var(--navy); }
+  .wf-option-trigger.scheduled { background: var(--card-warm); color: var(--mute); }
+  .wf-option-flow {
+    font-size: 12px; color: var(--body);
+    line-height: 1.45;
+    margin-bottom: 6px;
+  }
+  .wf-option-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .wf-option-meta .num { color: var(--navy); font-weight: 600; }
+
+  .modal-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 28px;
+    border-top: 1px solid var(--rule);
+    background: var(--card-warm);
+    flex-shrink: 0;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+  }
+  .modal-foot-context {
+    font-size: 11px; color: var(--mute);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .modal-foot-context .num { color: var(--teal); font-weight: 600; }
+  .modal-actions { display: flex; gap: 8px; }
+  .btn-cancel {
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-cancel:hover { border-color: var(--navy); }
+  .btn-confirm {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-confirm:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+
+  /* Demo toggles */
+  .demo-bar {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--navy); color: var(--card);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex; gap: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  }
+  .demo-toggle {
+    background: transparent; color: rgba(255, 255, 255, 0.7);
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .demo-toggle:hover { color: var(--card); }
+  .demo-toggle.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--card);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; animation-duration: 80ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="nav">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg></div>
+    <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 20H4v-6"/><path d="M4 20l9-9"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </nav>
+
+  <main class="main">
+
+    <div class="top-row">
+      <div class="eyebrow">Lists</div>
+      <div class="top-utils">
+        <button class="util-btn primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New list</button>
+        <button class="util-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Import cohort</button>
+      </div>
+    </div>
+
+    <div class="page-heading">
+      <h1 class="page-title">Your lists</h1>
+      <span class="page-meta"><span class="num">11</span> total · <span class="num">8</span> live · <span class="num">3</span> manual</span>
+    </div>
+    <p class="page-subtitle">
+      Lists are <span class="accent">cohorts you act on</span>. Define a filter or build a manual set, then attach a workflow that runs across every LP in it. Lists update automatically as LPs match the criteria.
+    </p>
+
+    <!-- ============== TOMO DEFAULT ============== -->
+    <div class="section-divider">
+      <span class="section-divider-label">Tomo defaults</span>
+      <span class="section-divider-count">1 list · always present</span>
+      <span class="section-divider-line"></span>
+    </div>
+
+    <div class="list-grid">
+
+      <!-- The "single most valuable query" — pre-loaded per BR-3.11.3 -->
+      <div class="list-card" onclick="openDrawer()">
+        <div class="list-icon system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row">
+            <span class="list-name">Tier 1 · Confirmed fit · Drifting</span>
+            <span class="system-mark">Tomo default</span>
+          </div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>Tier 1 · mandate fit confirmed · drifting · not in active diligence or later
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">7</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>2 workflows active</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============== YOUR LISTS ============== -->
+    <div class="section-divider">
+      <span class="section-divider-label">Your lists</span>
+      <span class="section-divider-count">10 lists</span>
+      <span class="section-divider-line"></span>
+    </div>
+
+    <div class="list-grid">
+
+      <div class="list-card" onclick="openDrawer()">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Active diligence focus</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>Tier 1, Tier 2 · stage = active diligence, soft commit
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">29</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>3 workflows active</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Re-ups · Fund II investors</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>prior_fund_investor = true · prior_fund_identifier = Fund II · not yet contacted about Fund III
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">14</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>1 workflow active</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Family offices · North America</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>investor type = family office · region = North America · all stages
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">23</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows no-active"><span class="wf-dot"></span>No workflows</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Quiet · Fat Middle</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>warm-stage LPs · no directional signal in last 30 days
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">18</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>1 workflow active</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon manual">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="3" cy="18" r="1.5"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Q1 Target List</span></div>
+          <div class="list-filter-desc" style="color: var(--mute); font-style: italic;">Hand-picked 33 LPs for Q1 outreach push</div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill manual"><span class="dot"></span>Manual</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">33</span>
+          <span class="list-count-label">LPs in list</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>1 workflow active</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Cooling relationships</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>signal = cooling · all tiers · all stages
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">37</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows has-active"><span class="wf-dot"></span>2 workflows active</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon manual">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="3" cy="18" r="1.5"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">North America roadshow · May</span></div>
+          <div class="list-filter-desc" style="color: var(--mute); font-style: italic;">Hand-picked 5 LPs for May trip · NYC, Boston</div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill manual"><span class="dot"></span>Manual</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">5</span>
+          <span class="list-count-label">LPs in list</span>
+          <span class="list-workflows no-active"><span class="wf-dot"></span>No workflows</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">North America endowments</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>investor type = endowment · region = North America · no contact in 14+ days
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">4</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows no-active"><span class="wf-dot"></span>No workflows</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon live">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Stuck in stage</span></div>
+          <div class="list-filter-desc">
+            <span class="label">Filter</span>stage_stagnation_flag = amber or red
+          </div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill live"><span class="dot"></span>Live</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">9</span>
+          <span class="list-count-label">LPs matching</span>
+          <span class="list-workflows no-active"><span class="wf-dot"></span>No workflows</span>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-icon manual">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="3" cy="18" r="1.5"/></svg>
+        </div>
+        <div class="list-body">
+          <div class="list-name-row"><span class="list-name">Tier 1 LP focus list · Q2</span></div>
+          <div class="list-filter-desc" style="color: var(--mute); font-style: italic;">Hand-picked 6 LPs · personal Geoff outreach</div>
+        </div>
+        <div class="list-type">
+          <span class="list-type-pill manual"><span class="dot"></span>Manual</span>
+        </div>
+        <div class="list-count-block">
+          <span class="list-count">6</span>
+          <span class="list-count-label">LPs in list</span>
+          <span class="list-workflows no-active"><span class="wf-dot"></span>No workflows</span>
+        </div>
+      </div>
+
+      <!-- CREATE LIST CARD -->
+      <div class="create-list-card">
+        <div class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <span class="text"><span class="strong">Create a new list</span> &mdash; describe a filter, or hand-pick LPs</span>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ====================================================================
+     LIST DETAIL DRAWER
+     ==================================================================== -->
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+
+  <div class="drawer-header">
+    <div class="drawer-title-block">
+      <h2 class="drawer-title">Active diligence focus</h2>
+      <div class="drawer-subtitle">
+        <span class="filter-desc"><span class="label">Filter</span>Tier 1, Tier 2 · stage = active diligence, soft commit</span>
+      </div>
+      <div class="drawer-meta-row">
+        <span class="drawer-meta-pill"><span class="strong">29</span> LPs matching</span>
+        <span class="drawer-meta-pill" style="color: var(--green);">● Live · auto-updating</span>
+        <span class="drawer-meta-pill">Last refresh: just now</span>
+      </div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- FUNNEL BY STAGE -->
+    <div class="funnel-section">
+      <div class="section-label">Funnel by stage</div>
+
+      <div class="funnel">
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar active" style="height: 100px;"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar soft" style="height: 70px;"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar-empty"></div>
+        </div>
+      </div>
+
+      <div class="funnel-labels">
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Sourced</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">First mtg</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Nurturing</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Active dilig.</div>
+          <div class="funnel-label-count">17</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Soft commit</div>
+          <div class="funnel-label-count">12</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Committed</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">On hold</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+        <div class="funnel-label-wrap">
+          <div class="funnel-label-stage">Closed lost</div>
+          <div class="funnel-label-count zero">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LPs IN THIS LIST -->
+    <div class="section-label">
+      LPs in this list <span class="count">· top 8 of 29 · sorted by tier then signal urgency</span>
+    </div>
+    <div class="lp-rows">
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">CPPIB</div>
+          <div class="lp-meta">Frank Ieraci · Tier 1 · $150M ticket</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp">6h</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">UBS Hedge Fund Solutions</div>
+          <div class="lp-meta">Charly Malek · Tier 1 · $50M · prior F2</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp">3d</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot amber"></span>
+        <div class="lp-text">
+          <div class="lp-name">Lingotto Investment Mgmt</div>
+          <div class="lp-meta">Edoardo Lanzavecchia · Tier 1 · $75M</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp warn">9d</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">PAAMCO Prisma</div>
+          <div class="lp-meta">Peter Zakowich · Tier 1 · $60M</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp">6h</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">Albourne Partners</div>
+          <div class="lp-meta">James Staltari · Tier 1 · $100M</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp">1d</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">RBC Capital Markets</div>
+          <div class="lp-meta">Cathy Wong · Tier 1 · $80M · prior F2</div>
+        </div>
+        <span class="lp-stage">Soft commit</span>
+        <span class="lp-stamp">2d</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot green"></span>
+        <div class="lp-text">
+          <div class="lp-name">Future Fund Australia</div>
+          <div class="lp-meta">David Neal · Tier 1 · $50M</div>
+        </div>
+        <span class="lp-stage">Soft commit</span>
+        <span class="lp-stamp">3d</span>
+      </div>
+
+      <div class="lp-row">
+        <span class="lp-signal-dot amber"></span>
+        <div class="lp-text">
+          <div class="lp-name">Brookfield Asset Mgmt</div>
+          <div class="lp-meta">Lawrence Chiu · Tier 1 · $45M</div>
+        </div>
+        <span class="lp-stage">Active dilig.</span>
+        <span class="lp-stamp warn">11d</span>
+      </div>
+
+      <div class="lp-list-foot">View all 29 LPs in Relationships →</div>
+    </div>
+
+    <!-- ACTIVE WORKFLOWS -->
+    <div class="workflow-section">
+      <div class="section-label">
+        Active workflows <span class="count">· 3 attached to this list</span>
+      </div>
+
+      <div class="workflow-card">
+        <div class="workflow-card-body">
+          <div class="workflow-card-name">
+            Post-Meeting Follow-Up
+            <span class="system-mark">System default</span>
+          </div>
+          <div class="workflow-card-flow">Post-meeting · extract transcript → draft follow-up → human approval → send & monitor</div>
+        </div>
+        <span class="workflow-status active"><span class="pulse"></span>Active</span>
+      </div>
+
+      <div class="workflow-card">
+        <div class="workflow-card-body">
+          <div class="workflow-card-name">Commitment → Close</div>
+          <div class="workflow-card-flow">Threshold on commitment + IC date → 14d nudge → 7d nudge → escalate if unconfirmed</div>
+        </div>
+        <span class="workflow-status active"><span class="pulse"></span>Active</span>
+      </div>
+
+      <div class="workflow-card">
+        <div class="workflow-card-body">
+          <div class="workflow-card-name">DDQ Response Engine</div>
+          <div class="workflow-card-flow">DDQ received → parse & match → draft responses → human review → finalize & track</div>
+        </div>
+        <span class="workflow-status draft">Paused</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ACTIONS FOOTER -->
+  <div class="drawer-actions">
+    <button class="action-btn primary" onclick="openModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Run workflow
+    </button>
+    <button class="action-btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+    <button class="action-btn tomo-chat">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Ask Tomo about this cohort
+    </button>
+    <button class="action-btn">
+      Amend list
+    </button>
+    <button class="action-btn danger">
+      Delete list
+    </button>
+  </div>
+
+</aside>
+
+<!-- ====================================================================
+     LINK WORKFLOW MODAL
+     ==================================================================== -->
+<div class="modal-scrim" id="modalScrim" onclick="closeModal()"></div>
+<div class="modal" id="modal">
+
+  <div class="modal-head">
+    <div class="modal-eyebrow">Run workflow on this list</div>
+    <div class="modal-head-row">
+      <h2 class="modal-title">Pick a workflow</h2>
+      <button class="modal-close" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-context">
+      <div><strong>Active diligence focus</strong> · 29 LPs · <span class="filter-desc"><span class="label">Filter</span>Tier 1, Tier 2 · stage = active diligence, soft commit</span></div>
+    </div>
+  </div>
+
+  <div class="modal-tabs">
+    <button class="modal-tab active">System defaults <span class="tab-count">5</span></button>
+    <button class="modal-tab">Custom <span class="tab-count">3</span></button>
+  </div>
+
+  <div class="modal-body">
+    <div class="wf-options">
+
+      <div class="wf-option selected">
+        <div class="wf-option-head">
+          <span class="wf-option-name">Post-Meeting Execution</span>
+          <span class="wf-option-trigger event">Event-triggered</span>
+        </div>
+        <div class="wf-option-flow">Triggered when meeting ends → generates prep brief in advance → post-meeting capture form within minutes after → follow-up draft within 30 minutes</div>
+        <div class="wf-option-meta">
+          <span><span class="num">4</span> steps</span>
+          <span>Human approval before send</span>
+          <span>De-duped against active runs</span>
+        </div>
+      </div>
+
+      <div class="wf-option">
+        <div class="wf-option-head">
+          <span class="wf-option-name">Three-Touch Qualification (F7)</span>
+          <span class="wf-option-trigger scheduled">Scheduled</span>
+        </div>
+        <div class="wf-option-flow">Touch 1 insight → Touch 2 (day 5–7) → Touch 3 (day 12–14). All drafts, GP approval each send. Auto-suggests when Fat Middle filter contains LPs.</div>
+        <div class="wf-option-meta">
+          <span><span class="num">3</span> touches over 14 days</span>
+          <span>GP approval each send</span>
+        </div>
+      </div>
+
+      <div class="wf-option">
+        <div class="wf-option-head">
+          <span class="wf-option-name">Update → Follow-Up</span>
+          <span class="wf-option-trigger scheduled">Scheduled</span>
+        </div>
+        <div class="wf-option-flow">After update sent: segment by tier → track opens → auto-draft follow-up after 5 days. Draft only.</div>
+        <div class="wf-option-meta">
+          <span><span class="num">3</span> steps</span>
+          <span>Draft only · no auto-send</span>
+        </div>
+      </div>
+
+      <div class="wf-option">
+        <div class="wf-option-head">
+          <span class="wf-option-name">DDQ Response Engine</span>
+          <span class="wf-option-trigger event">Event-triggered</span>
+        </div>
+        <div class="wf-option-flow">DDQ received → parse questionnaire sections → match historical answers with citations → draft responses → human review → finalize & track</div>
+        <div class="wf-option-meta">
+          <span><span class="num">5</span> steps</span>
+          <span>Human review on flagged sections</span>
+        </div>
+      </div>
+
+      <div class="wf-option">
+        <div class="wf-option-head">
+          <span class="wf-option-name">Warm Intro Tracker</span>
+          <span class="wf-option-trigger event">Event-triggered</span>
+        </div>
+        <div class="wf-option-flow">Detects warm-intro emails (GP CC'd alongside other parties) → creates / suggests LP record → prepares draft reply → escalates if silent for 24h</div>
+        <div class="wf-option-meta">
+          <span><span class="num">4</span> steps</span>
+          <span>Draft only · GP sends</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-foot">
+    <span class="modal-foot-context"><span class="num">29</span> LPs will receive this workflow · <span class="num">3</span> already in active runs will be skipped</span>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="closeModal()">Run on 26 LPs</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEMO BAR -->
+<div class="demo-bar">
+  <button class="demo-toggle active" onclick="showLanding()">Landing</button>
+  <button class="demo-toggle" onclick="showDrawer()">+ Detail drawer</button>
+  <button class="demo-toggle" onclick="showModal()">+ Run workflow modal</button>
+</div>
+
+<script>
+  function openDrawer() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('scrim').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('scrim').classList.remove('open');
+    closeModal();
+  }
+  function openModal() {
+    document.getElementById('modal').classList.add('open');
+    document.getElementById('modalScrim').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.getElementById('modalScrim').classList.remove('open');
+  }
+  function showLanding() {
+    closeDrawer();
+    setActiveToggle(0);
+  }
+  function showDrawer() {
+    openDrawer();
+    closeModal();
+    setActiveToggle(1);
+  }
+  function showModal() {
+    openDrawer();
+    openModal();
+    setActiveToggle(2);
+  }
+  function setActiveToggle(idx) {
+    document.querySelectorAll('.demo-toggle').forEach((b, i) => {
+      b.classList.toggle('active', i === idx);
+    });
+  }
+</script>
+
+</body>
+</html>

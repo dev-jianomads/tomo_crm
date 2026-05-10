@@ -182,14 +182,70 @@ export type ActivityLogEntry = {
 };
 
 /** Today drawer — optional “why surfaced” + email meta + meeting commitments (mock / static). */
-export type DrawerWhySurfaced = { body: string; stamp?: string };
+export type DrawerWhySurfaced = {
+  body: string;
+  stamp?: string;
+  /** Meeting prep: e.g. “What changed since you last spoke” (`design/tomo_drawer_meetingprep_light_v3.html`). */
+  label?: string;
+};
 export type DrawerDraftMeta = {
   to?: string;
   ccPlaceholder?: string;
   subject?: string;
   footnote?: string;
 };
-export type DrawerCommitmentLine = { label: string; badge?: string };
+export type DrawerCommitmentPrepState = "delivered" | "for_today" | "queued" | "open";
+
+export type DrawerCommitmentLine = {
+  label: string;
+  badge?: string;
+  /** Meeting prep — provenance line under the commitment text */
+  source?: string;
+  prepState?: DrawerCommitmentPrepState;
+};
+
+/** `design/tomo_drawer_meetingprep_light_v3.html` — time band under drawer title */
+export type DrawerPrepTimeStrip = {
+  rangeLabel: string;
+  whereLabel?: string;
+  joinUrl?: string;
+};
+
+export type DrawerPrepAttendee = {
+  initials: string;
+  name: string;
+  role?: string;
+  context: string;
+  linkedInUrl?: string;
+};
+
+export type DrawerLastTouchSegment =
+  | { kind: "text"; text: string }
+  | { kind: "quote"; text: string };
+
+export type DrawerLastTouchParagraph = { segments: DrawerLastTouchSegment[] };
+
+export type DrawerPrepFocusItem = {
+  num: string;
+  lead: string;
+  rest: string;
+  evidence?: string;
+};
+
+export type DrawerPrepMaterial = {
+  name: string;
+  meta: string;
+  href: string;
+};
+
+export type DrawerPrepSectionLabels = {
+  attendees?: string;
+  lastTouch?: string;
+  openCommitments?: string;
+  focus?: string;
+  materials?: string;
+  activityPreview?: string;
+};
 
 /** design/tomo_drawer_draft_light_v3.html — drawer head status + quick links */
 export type DrawerSpecHeaderPill = { tone: "red" | "amber" | "teal" | "navy"; label: string };
@@ -271,6 +327,23 @@ export type Commitment = {
   /** Optional badges for prep commitments list; falls back to brief commitments as plain lines. */
   drawerMeetingCommitments?: DrawerCommitmentLine[];
   drawerSpecHeader?: DrawerSpecHeader;
+  /**
+   * Meeting prep drawer — `design/tomo_drawer_meetingprep_light_v3.html`.
+   * Mock-only structured brief; production hydrates from briefs + calendar + interactions.
+   */
+  drawerPrepEyebrow?: string;
+  /** Overrides default `${lp} · ${contactName}` drawer title */
+  drawerPrepTitle?: string;
+  drawerTimeStrip?: DrawerPrepTimeStrip;
+  /** Shown in header link row (e.g. latest email thread) */
+  drawerThreadLink?: { href: string; label: string };
+  drawerAttendees?: DrawerPrepAttendee[];
+  drawerLastTouch?: DrawerLastTouchParagraph[];
+  drawerSuggestedFocus?: DrawerPrepFocusItem[];
+  drawerPrepMaterials?: DrawerPrepMaterial[];
+  drawerPrepLabels?: DrawerPrepSectionLabels;
+  /** Total count for “View full history” microcopy (mock) */
+  drawerActivityHistoryTotal?: number;
 };
 
 export type Brief = {
@@ -1314,46 +1387,192 @@ export const commitments: Commitment[] = [
     window: "today",
     prepStatus: "ready",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
-    drawerWhySurfaced: {
-      body: "Quarterly hedge fund update is today at 2:00 PM ET. Allocator engagement on your January pack is tracking above peer median — Charly’s team re-opened risk and attribution twice last week. Prep pack is locked; send agenda after you approve.",
-      stamp: "Computed this morning · From brief b3 + calendar",
+    drawerPrepEyebrow: "Meeting prep · Quarterly HF Update",
+    drawerPrepTitle: "UBS Hedge Fund Solutions · Charly Malek",
+    drawerTimeStrip: {
+      rangeLabel: "Today · 2:00 — 2:45 PM ET",
+      whereLabel: "Zoom",
+      joinUrl: "https://zoom.us/j/0000000000",
     },
-    drawerMeetingCommitments: [
-      { label: "Send one-pager after call", badge: "POST CALL" },
-      { label: "Confirm data room access renewal", badge: "THIS WEEK" },
+    drawerThreadLink: {
+      href: "mailto:charly.malek@ubs.com?subject=Re%3A%20HF%20Update",
+      label: "Latest thread (3d ago)",
+    },
+    drawerWhySurfaced: {
+      label: "What changed since you last spoke",
+      body: "Charly's team re-opened the risk attribution and capacity sections of your January investor pack twice this week — the second visit was at 11pm Zurich time, longer than 12 minutes. UBS is in active diligence on three other managers in your strategy bucket. The re-up window for Fund III closes Q3; Charly has not yet confirmed Fund III interest in writing, but allocator behaviour suggests they are pricing it.",
+      stamp: "Computed 09:00 · From email metadata + portal access logs (mock)",
+    },
+    drawerAttendees: [
+      {
+        initials: "CM",
+        name: "Charly Malek",
+        role: "Head of Manager Research, UBS HFS",
+        context:
+          "Decision-maker on UBS HFS hedge fund allocations. Typically does not commit on a single call. Last met in person at the Zurich roadshow 4 months ago. Her note from that meeting flagged \"attribution clarity\" as the open question.",
+        linkedInUrl: "https://www.linkedin.com/in/charly-malek-mock",
+      },
+      {
+        initials: "DR",
+        name: "Daniel Roth",
+        role: "Senior Investment Analyst",
+        context:
+          "New on the UBS HFS team since January. Authored the internal capacity memo that accessed your portal last week. Likely to drive the technical questions today.",
+        linkedInUrl: "https://www.linkedin.com/in/daniel-roth-mock",
+      },
     ],
+    drawerLastTouch: [
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "Last call with Charly was the Q4 update on January 21 (45 min, Zoom). You walked through 2025 attribution and the capacity outlook. Charly asked two pointed questions: how the strategy performed in the August vol spike specifically, and whether the soft-close timeline allowed for a Fund III increase from existing LPs.",
+          },
+        ],
+      },
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "You committed to two things: ",
+          },
+          {
+            kind: "quote",
+            text: "send the August attribution detail by end of week",
+          },
+          {
+            kind: "text",
+            text: " (delivered Jan 24) and ",
+          },
+          {
+            kind: "quote",
+            text: "come back with a capacity view for existing LPs ahead of Q2 close",
+          },
+          {
+            kind: "text",
+            text: " — that's what today is for.",
+          },
+        ],
+      },
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "Tone of last meeting: warm, technical, no concerns flagged on people or process. The diligence question is sizing, not whether.",
+          },
+        ],
+      },
+    ],
+    drawerMeetingCommitments: [
+      {
+        label: "August vol-spike attribution detail",
+        source: "Promised on Jan 21 call · sent Jan 24",
+        prepState: "delivered",
+      },
+      {
+        label: "Fund III capacity view for existing LPs",
+        source: "Promised on Jan 21 call · today's discussion",
+        prepState: "for_today",
+      },
+      {
+        label: "Side-letter terms summary (Fund II precedent)",
+        source: "Charly raised in Mar 4 email · not yet sent",
+        prepState: "queued",
+      },
+    ],
+    drawerSuggestedFocus: [
+      {
+        num: "01",
+        lead: "Get Fund III on the record.",
+        rest: "Charly has not committed in writing. Today is the call to ask directly:",
+        evidence: "\"Are you tracking a Fund III ticket from UBS HFS, and if so, in what range?\" The capacity ask is the natural opening — they need a number from you to size theirs.",
+      },
+      {
+        num: "02",
+        lead: "Address the attribution sections directly.",
+        rest: "Daniel Roth re-opened risk attribution and capacity twice in the last week. Pre-empt the technical questions; don't wait for them.",
+      },
+      {
+        num: "03",
+        lead: "Be explicit on the Q3 close timeline.",
+        rest: "If UBS wants to size up, they need to know the gating dates.",
+        evidence: "Fund III soft-close: July 31. Hard close: September 30.",
+      },
+      {
+        num: "04",
+        lead: "Note the side-letter ask is open.",
+        rest: "If it doesn't come up naturally, surface it before they do — getting ahead of it signals diligence on your side.",
+      },
+    ],
+    drawerPrepMaterials: [
+      {
+        name: "Q1 Investor Pack — UBS edition",
+        meta: "PDF · sent to Charly Apr 15 · she opened twice this week",
+        href: "/materials",
+      },
+      {
+        name: "August vol-spike attribution memo",
+        meta: "PDF · sent Jan 24 in response to Charly's question",
+        href: "/materials",
+      },
+      {
+        name: "Fund III capacity model — existing LPs",
+        meta: "XLSX · prepared for today · not yet sent",
+        href: "/materials",
+      },
+    ],
+    drawerPrepLabels: {
+      attendees: "Who's on the call",
+      lastTouch: "Where you left things",
+      openCommitments: "Open commitments to UBS",
+      focus: "What to push on",
+      materials: "Materials at hand",
+      activityPreview: "Recent activity (last 30 days)",
+    },
+    drawerActivityHistoryTotal: 84,
     drawerSpecHeader: {
-      subtitle: "Allocator desk · UBS",
+      subtitle: "Head of Manager Research · Tier 1 · Existing investor since Fund II",
       statusPills: [
-        { tone: "teal", label: "Prep ready" },
-        { tone: "navy", label: "HF update · today" },
+        { tone: "teal", label: "Existing investor" },
+        { tone: "amber", label: "Re-up window — Fund III closing Q3" },
       ],
-      links: [
-        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
-        { href: "/relationships", label: "Open LP record", icon: "clock" },
-      ],
+      links: [{ href: "/relationships", label: "Open LP record", icon: "clock" }],
     },
     activityLog: [
       {
         id: "al-c1-1",
-        ts: "Today 07:00",
+        ts: "This week",
         actor: "TOMO",
-        summary: "Brief finalized — agenda and open loops synced",
-        detail: "Locked lines from last email thread with Charly’s allocator desk.",
+        summary: "Investor pack re-opened twice this week",
+        detail: "Sections accessed: risk attribution, capacity. Second visit 11pm Zurich time.",
       },
       {
         id: "al-c1-2",
-        ts: "Yesterday 15:30",
+        ts: "3d ago",
         actor: "User",
-        summary: "Email · Charly confirmed attendance + one question on capacity",
-        detail: "Reply within 4h; capacity question flagged for opening segment.",
+        summary: "Email · Confirmed today's call agenda focus on capacity",
+        detail: "\"Looking forward to the conversation Thursday — particularly the capacity view…\"",
       },
       {
         id: "al-c1-3",
-        ts: "Mon 09:00",
-        actor: "TOMO",
-        summary: "Engagement signal · Pack re-opens",
-        detail: "Risk + attribution sections opened twice; typical read pattern for UBS allocator team.",
+        ts: "3w ago",
+        actor: "User",
+        summary: "Email · Sent Q1 investor pack with capacity preview",
+        detail: "Sent Apr 15. Charly acknowledged within 4 hours.",
+      },
+      {
+        id: "al-c1-4",
+        ts: "Mar 4",
+        actor: "User",
+        summary: "Email · Side-letter terms ask raised by Charly",
+        detail: "\"On Fund III, would the Fund II side-letter terms carry over for existing LPs?\" Awaiting response — flagged as open commitment.",
+      },
+      {
+        id: "al-c1-5",
+        ts: "Jan 21",
+        actor: "User",
+        summary: "Q4 Update call · 45 min, Zoom",
+        detail: "Walked through 2025 attribution, August vol-spike Q&A, Fund III timeline. Two open commitments captured.",
       },
     ],
   },
@@ -1368,24 +1587,91 @@ export const commitments: Commitment[] = [
     prepStatus: "ready",
     relationshipId: "r6",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
+    drawerPrepEyebrow: "Meeting prep · Investment Update",
+    drawerTimeStrip: {
+      rangeLabel: "Today · 4:00 — 4:45 PM ET",
+      whereLabel: "Zoom",
+      joinUrl: "https://zoom.us/j/0000000001",
+    },
+    drawerThreadLink: {
+      href: "mailto:frank.ieraci@cppib.com?subject=Re%3A%20Investment%20Update",
+      label: "Latest thread (yesterday)",
+    },
     drawerWhySurfaced: {
-      body: "Investment update at 4:00 PM ET. Frank’s reply velocity has tightened over the last three exchanges — treat as acceleration. Liquidity terms and co-invest were open from last touch; brief reflects transcript notes.",
+      label: "What changed since you last spoke",
+      body: "Frank's reply time shortened from ~5 days to ~1 day across the last three exchanges — relationship accelerating. Co-invest deck is still outstanding from last week's commitment; DDQ index refresh is on today's ask list.",
       stamp: "Computed this morning · From brief b4 + signals (stub)",
     },
-    drawerMeetingCommitments: [
-      { label: "Follow up on co-invest deck (promised 8d ago)", badge: "OVERDUE" },
-      { label: "Share updated DDQ index", badge: "TODAY" },
+    drawerAttendees: [
+      {
+        initials: "FI",
+        name: "Frank Ieraci",
+        role: "Managing Director, Investment Management",
+        context:
+          "Leads allocator-side diligence for your sleeve. Last touch focused on liquidity terms and co-invest mechanics; expects concrete follow-through on materials.",
+      },
     ],
+    drawerLastTouch: [
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "Last week you aligned on IC path and timing for Fund III reads. Frank asked for the co-invest pack and an updated DDQ index — the deck is the overdue item on your side.",
+          },
+        ],
+      },
+    ],
+    drawerMeetingCommitments: [
+      {
+        label: "Co-invest deck + path to IC",
+        source: "Promised last week · not yet sent",
+        prepState: "open",
+      },
+      {
+        label: "Updated DDQ index",
+        source: "Raised in materials request thread",
+        prepState: "for_today",
+      },
+    ],
+    drawerSuggestedFocus: [
+      {
+        num: "01",
+        lead: "Close the co-invest loop first.",
+        rest: "Acknowledge the delay, send or schedule send today, and offer a 10-minute walkthrough if helpful.",
+      },
+      {
+        num: "02",
+        lead: "Anchor liquidity terms.",
+        rest: "Confirm whether last week's framing still holds for their IC narrative.",
+      },
+      {
+        num: "03",
+        lead: "Ask for the next gating date.",
+        rest: "CPPIB runs process-heavy committees — get the realistic decision window on the record.",
+      },
+    ],
+    drawerPrepMaterials: [
+      {
+        name: "DDQ index — CPPIB (draft v2)",
+        meta: "PDF · refreshed yesterday · not sent",
+        href: "/materials",
+      },
+    ],
+    drawerPrepLabels: {
+      lastTouch: "Where you left things",
+      openCommitments: "Open commitments to CPPIB",
+      focus: "What to push on",
+      materials: "Materials at hand",
+      activityPreview: "Recent activity",
+    },
+    drawerActivityHistoryTotal: 36,
     drawerSpecHeader: {
       subtitle: "Investment management · CPPIB",
       statusPills: [
         { tone: "teal", label: "Prep ready" },
         { tone: "amber", label: "Open loops · 2" },
       ],
-      links: [
-        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
-        { href: "/relationships?focus=r6", label: "Open LP record", icon: "clock" },
-      ],
+      links: [{ href: "/relationships?focus=r6", label: "Open LP record", icon: "clock" }],
     },
     activityLog: [
       {
@@ -1423,23 +1709,100 @@ export const commitments: Commitment[] = [
     relationshipId: "r8",
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/kwong-hong-huat-mock",
-    drawerWhySurfaced: {
-      body: "First live intro tomorrow at 10:00 AM ET. Light CRM history — prep focuses on mandate fit, pacing, and what GIC needs before deeper diligence. LinkedIn and calendar links are on this card for quick context.",
-      stamp: "Computed today · From brief b5 + onboarding context",
+    drawerPrepEyebrow: "Meeting prep · First contact · Intro call",
+    drawerPrepTitle: "GIC · Kwong Hong Huat",
+    drawerTimeStrip: {
+      rangeLabel: "Tomorrow · 10:00 — 10:30 AM ET",
+      whereLabel: "Zoom",
+      joinUrl: "https://zoom.us/j/0000000002",
     },
+    drawerThreadLink: {
+      href: "mailto:kwong@gic.com.sg?subject=Intro%20call%20%E2%80%94%20follow-up",
+      label: "Intro thread",
+    },
+    drawerWhySurfaced: {
+      label: "What you're walking into",
+      body: "First live conversation with Kwong, introduced by Stuart Reid at Cambridge Associates last Wednesday. GIC is a Tier 1 sovereign — long evaluation cycles, structured process. Kwong is on the External Managers team specifically; intro context was about your strategy fit, not a specific allocation. Tomorrow is qualification: are they actively looking at this strategy, what's their process, who else gets involved, and what's a realistic timeline.",
+      stamp: "Computed 09:00 · From intro thread + public sources (mock)",
+    },
+    drawerAttendees: [
+      {
+        initials: "KH",
+        name: "Kwong Hong Huat",
+        role: "SVP, External Managers, GIC",
+        context:
+          "Singapore-based. 11 years at GIC, prior to that at Temasek. External Managers team covers all third-party manager relationships across asset classes. Stuart's intro line: \"Geoff — Kwong is one of the sharpest people on the GIC bench. Worth the time.\"",
+        linkedInUrl: "https://www.linkedin.com/in/kwong-hong-huat-mock",
+      },
+    ],
+    drawerLastTouch: [
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "GIC manages over $700bn for the Singapore government. External Managers are part of their public markets and alternatives allocation framework. Their hedge fund book sits within the alternatives sleeve and tends toward larger, established managers — but the External Managers team has historically taken meetings with emerging managers at the strategy-fit stage.",
+          },
+        ],
+      },
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "GIC's process is multi-stage and slow by design: initial conversation, then internal sponsor identification, then a formal RFI, then due diligence, then committee. From first call to close is typically 9–14 months for managers they end up sizing.",
+          },
+        ],
+      },
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "Stuart's intro suggested strategy fit but did not specify a fund or allocation pool. Don't assume Fund III; ask which fund cycle they'd be evaluating.",
+          },
+        ],
+      },
+    ],
     drawerMeetingCommitments: [
       { label: "Circulate short deck after call", badge: "POST CALL" },
       { label: "Propose two follow-up slots", badge: "POST CALL" },
     ],
+    drawerSuggestedFocus: [
+      {
+        num: "01",
+        lead: "Earn nurturing.",
+        rest: "First calls with sovereigns are not allocation conversations. They are",
+        evidence: "\"do you want to learn more about us, and do we have a reason to keep talking.\"",
+      },
+      {
+        num: "02",
+        lead: "Map their process and timeline.",
+        rest: "Where does External Managers sit in the GIC org chart? Who sponsors a manager internally? What does the early diligence look like?",
+      },
+      {
+        num: "03",
+        lead: "Test mandate fit honestly.",
+        rest: "Don't oversell. If their strategy bucket isn't a fit, surface that directly — sovereigns remember managers who waste their time and managers who don't.",
+      },
+      {
+        num: "04",
+        lead: "Close with a specific next step.",
+        rest: "Either (a) a follow-up with a written fund overview and a proposed second call window, or (b) an honest park if the fit isn't there.",
+      },
+    ],
+    drawerPrepLabels: {
+      attendees: "Who's on the call",
+      lastTouch: "What we know going in",
+      openCommitments: "Post-call commitments (template)",
+      focus: "Goals for the 30 minutes",
+      activityPreview: "Recent activity",
+    },
+    drawerActivityHistoryTotal: 12,
     drawerSpecHeader: {
-      subtitle: "Sovereign wealth fund · Singapore",
+      subtitle: "Senior Vice President, External Managers · Tier 1 · No prior contact",
       statusPills: [
         { tone: "navy", label: "First contact" },
-        { tone: "teal", label: "Intro call · tomorrow" },
+        { tone: "teal", label: "Intro from Stuart Reid (Cambridge Associates) (mock)" },
       ],
       links: [
-        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
-        { href: "https://www.linkedin.com/in/kwong-hong-huat-mock", label: "LinkedIn", icon: "linkedin" },
         { href: "/relationships?focus=r8", label: "Open LP record", icon: "clock" },
       ],
     },
@@ -1471,14 +1834,61 @@ export const commitments: Commitment[] = [
     commitmentOverdue: true,
     calendarUrl: "https://calendar.google.com/calendar/u/0/r/week",
     linkedInUrl: "https://www.linkedin.com/in/nic-fallows-mock",
+    drawerPrepEyebrow: "Meeting prep · First contact · Intro call",
+    drawerTimeStrip: {
+      rangeLabel: "Thu · 3:00 — 3:30 PM ET",
+      whereLabel: "Zoom",
+      joinUrl: "https://zoom.us/j/0000000003",
+    },
+    drawerThreadLink: {
+      href: "mailto:nic.fallows@bnf.example?subject=Intro%20%E2%80%94%20BNF",
+      label: "Scheduling thread",
+    },
     drawerWhySurfaced: {
-      body: "Intro call Thursday 3:00 PM ET. One prep commitment is overdue — circulate the short deck and propose follow-up slots as soon as you close this drawer. First-contact playbook applies.",
+      label: "What you're walking into",
+      body: "First intro with BNF Capital — light CRM context. One prep deliverable is overdue; use the chip bar to mark progress after you send the short deck and propose follow-up slots.",
       stamp: "Computed today · From commitment state + stub checklist",
     },
+    drawerAttendees: [
+      {
+        initials: "NF",
+        name: "Nic Fallows",
+        role: "Principal, BNF Capital",
+        context: "Family office allocator covering alternatives sleeve. Meeting confirmed for Thursday; expects a tight credentials + mandate-fit arc.",
+        linkedInUrl: "https://www.linkedin.com/in/nic-fallows-mock",
+      },
+    ],
+    drawerLastTouch: [
+      {
+        segments: [
+          {
+            kind: "text",
+            text: "No prior meeting history in TOMO — treat as a clean first touch. Keep one proof point, one clear ask, and two proposed times only.",
+          },
+        ],
+      },
+    ],
     drawerMeetingCommitments: [
       { label: "Circulate short deck after scheduling confirmed", badge: "OVERDUE" },
       { label: "Propose two follow-up slots", badge: "DUE" },
     ],
+    drawerSuggestedFocus: [
+      {
+        num: "01",
+        lead: "Ship the overdue deck today.",
+        rest: "Short PDF or link is enough — don't wait for perfect polish.",
+      },
+      {
+        num: "02",
+        lead: "Offer two windows only.",
+        rest: "Reduces back-and-forth and signals respect for their time.",
+      },
+    ],
+    drawerPrepLabels: {
+      focus: "What to push on",
+      activityPreview: "Recent activity",
+    },
+    drawerActivityHistoryTotal: 8,
     drawerSpecHeader: {
       subtitle: "Family office · BNF Capital",
       statusPills: [
@@ -1486,7 +1896,6 @@ export const commitments: Commitment[] = [
         { tone: "navy", label: "First contact" },
       ],
       links: [
-        { href: "https://calendar.google.com/calendar/u/0/r/week", label: "Open calendar", icon: "calendar" },
         { href: "https://www.linkedin.com/in/nic-fallows-mock", label: "LinkedIn", icon: "linkedin" },
         { href: "/relationships", label: "Open LP record", icon: "clock" },
       ],

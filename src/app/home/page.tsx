@@ -234,6 +234,8 @@ export default function HomePage() {
     { enabled: true },
   );
   const [onMyRadarOpen, setOnMyRadarOpen] = useState(false);
+  /** Meeting prep drawer — “View full history” expands bottom activity accordion */
+  const [commitmentActivityExpandSignal, setCommitmentActivityExpandSignal] = useState(0);
   /** Remount radar modal on each open so internal UI state resets without effects. */
   const [onMyRadarModalKey, setOnMyRadarModalKey] = useState(0);
   /** Collapsible “Previous” under What needs your attention (closed by default). */
@@ -303,6 +305,13 @@ export default function HomePage() {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 5000);
   };
+
+  const expandCommitmentActivityLog = useCallback(() => {
+    setCommitmentActivityExpandSignal((n) => n + 1);
+    window.setTimeout(() => {
+      document.getElementById("tomo-drawer-activity-log")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
+  }, []);
 
   const closeDrawerAndReset = () => {
     if (selection?.type === "commitment") {
@@ -922,6 +931,7 @@ export default function HomePage() {
         hideChromeHeader={Boolean(todayV3SpecDrawer)}
         section1PaddingClassName={todayV3SpecDrawer ? "px-6 pt-5 pb-4" : "px-4 py-3"}
         panelMaxWidthClassName={todayV3SpecDrawer ? "max-w-[min(720px,92vw)]" : "max-w-2xl"}
+        activityLogExpandSignal={selection?.type === "commitment" ? commitmentActivityExpandSignal : undefined}
         drawerAriaLabel={
           selection?.type === "action" && selectedAction?.attentionCard
             ? `${selectedAction.attentionCard.company} — ${selectedAction.attentionCard.workKind}`
@@ -932,9 +942,7 @@ export default function HomePage() {
         section1Content={
           selection?.type === "action" && actionDrawerPhase === "amend"
             ? null
-            : selection?.type === "commitment" && commitmentDrawerPhase === "amend"
-              ? null
-              : selection?.type === "action" && selectedAction ? (
+            : selection?.type === "action" && selectedAction ? (
             <ActionDrawerPanel
               action={selectedAction}
               assistance={effectiveTomoAssistanceForSelectedAction ?? getTomoAssistance(selection.id)}
@@ -996,6 +1004,8 @@ export default function HomePage() {
               onAttachDocument={() => setAttachDocumentOpen(true)}
               onClose={closeDrawerAndReset}
               finalApproveLabel="Approve and Send"
+              onExpandFullActivity={expandCommitmentActivityLog}
+              onMeetingPrepNotify={addToast}
             />
           ) : selection?.type === "brief" ? (
             selectedBrief ? (

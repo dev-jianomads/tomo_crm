@@ -49,7 +49,11 @@ export function BriefDrawerPanel({ brief, onClose, onCreateAction }: BriefDrawer
       />
 
       {brief.drawerWhySurfaced ? (
-        <DrawerWhySurfaced body={brief.drawerWhySurfaced.body} stamp={brief.drawerWhySurfaced.stamp} />
+        <DrawerWhySurfaced
+          label={brief.drawerWhySurfaced.label}
+          body={brief.drawerWhySurfaced.body}
+          stamp={brief.drawerWhySurfaced.stamp}
+        />
       ) : null}
 
       <div className="tomo-card tomo-hint-banner space-y-3 px-3 py-2.5">

@@ -42,6 +42,8 @@ export type ContextDrawerProps = {
   hideChromeHeader?: boolean;
   /** Tailwind padding classes for section 1 inner wrapper (default `px-4 py-3`). */
   section1PaddingClassName?: string;
+  /** Bump to expand the bottom activity accordion (e.g. meeting prep “View full history”). */
+  activityLogExpandSignal?: number;
 };
 
 /**
@@ -66,6 +68,7 @@ export function ContextDrawer({
   listContextDrawerLayout = false,
   hideChromeHeader = false,
   section1PaddingClassName = "px-4 py-3",
+  activityLogExpandSignal,
 }: ContextDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -154,7 +157,9 @@ export function ContextDrawer({
             {section3Custom}
           </div>
         ) : (
-          <DrawerSection3ActivityLog entries={section3Entries} />
+          <div id="tomo-drawer-activity-log" className="shrink-0 scroll-mt-4">
+            <DrawerSection3ActivityLog entries={section3Entries} expandSignal={activityLogExpandSignal} />
+          </div>
         )}
       </aside>
     </>

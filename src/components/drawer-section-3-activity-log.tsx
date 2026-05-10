@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 
 export type ActivityLogEntry = {
@@ -34,12 +34,19 @@ function ActorBadge({ actor }: { actor: ActivityLogEntry["actor"] }) {
 export function DrawerSection3ActivityLog({
   entries,
   defaultExpanded = false,
+  expandSignal,
 }: {
   entries: ActivityLogEntry[];
   /** When false (default), only the header row is visible until expanded. */
   defaultExpanded?: boolean;
+  /** Increment (e.g. from parent state) to expand programmatically — meeting prep “View full history”. */
+  expandSignal?: number;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    if (expandSignal != null && expandSignal > 0) setExpanded(true);
+  }, [expandSignal]);
 
   const display = entries.slice(0, 5);
   if (!display.length) return null;

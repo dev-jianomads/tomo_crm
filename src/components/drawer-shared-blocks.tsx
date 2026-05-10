@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { EnvelopeIcon, CalendarIcon, ClockIcon } from "@heroicons/react/24/outline";
 import type {
   DrawerCommitmentLine,
@@ -62,6 +63,7 @@ export function DrawerSpecV3Head({
   spec,
   onClose,
   extraPills,
+  afterSubtitle,
 }: {
   eyebrow: string;
   title: string;
@@ -71,6 +73,8 @@ export function DrawerSpecV3Head({
   onClose: () => void;
   /** Appended after spec.statusPills (e.g. Approved / Dismissed) */
   extraPills?: DrawerSpecHeaderPill[];
+  /** e.g. meeting prep time strip — `design/tomo_drawer_meetingprep_light_v3.html` */
+  afterSubtitle?: ReactNode;
 }) {
   const pills = [...spec.statusPills, ...(extraPills ?? [])];
   const links = spec.links ?? [];
@@ -101,6 +105,8 @@ export function DrawerSpecV3Head({
           Esc
         </button>
       </div>
+
+      {afterSubtitle}
 
       {pills.length > 0 || links.length > 0 ? (
         <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -142,13 +148,16 @@ export function DrawerSpecV3Head({
 export function DrawerWhySurfaced({
   body,
   stamp,
+  label = "Why this is here",
 }: {
   body: string;
   stamp?: string;
+  /** Meeting prep copy, e.g. “What changed since you last spoke” */
+  label?: string;
 }) {
   return (
     <div className="rounded-r-[var(--tomo-radius-md)] border-l-[3px] border-[color:var(--tomo-teal)] bg-[color:var(--tomo-canvas)] px-3 py-2.5 dark:bg-[color:var(--tomo-navy-soft)]">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">Why this is here</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">{label}</p>
       <p className="mt-1.5 text-sm leading-relaxed text-[color:var(--foreground)]">{body}</p>
       {stamp ? (
         <p className="mt-2 font-mono text-[9px] uppercase tracking-wide text-[color:var(--tomo-mute)]">{stamp}</p>

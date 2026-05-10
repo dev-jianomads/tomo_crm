@@ -813,7 +813,7 @@ Closing the browser preserves state and resumes after the last completed step. M
    - Greeting: time-of-day-aware, personalised ("Good morning, Geoffrey").
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
-   - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow.
+   - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow. Selecting a row opens the **meeting prep drawer** (see §3.9 meeting prep layout; visual reference `design/tomo_drawer_meetingprep_light_v3.html`).
    - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. CTA links to Insights (`/insights`). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
    - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal.
 2. **Radar Modal (Daily Brief + On my radar).**
@@ -887,6 +887,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 5. **Owner routing.** Cards inherit `assigned_user_id` from the underlying reminder or LP `relationship_owner_user_id`. A workspace member sees only their own cards by default; "Show team" toggle shows everyone's.
 6. **Success state.** After approve+send, the card collapses into a single confirmation line ("Sent to Frank · 2 min ago"), counted in Time Recovered (Metric 5).
 7. **Confirmation gate.** Every mutation (send draft, update CRM, mark resolved) requires explicit GP confirmation. No auto-send, ever (per §1.2).
+8. **Meeting prep drawer (Today — Coming up).** When the GP opens a **Coming up** commitment or calendar-backed meeting row on Today, the context drawer SHALL support the **meeting prep layout** (normative visual reference: `design/tomo_drawer_meetingprep_light_v3.html` in `tomo_crm`). The layout includes: header (meeting-type eyebrow, LP / contact title, relationship subtitle, Esc); **time strip** (scheduled range, location e.g. video link, open-in-calendar, join-meeting when available); **status pills** and contextual quick links (LP record, latest email / intro thread); a configurable narrative block (e.g. *What changed since you last spoke* vs *What you're walking into*) with evidence stamp; **attendees** (initials, role, context, LinkedIn); **last-touch / background synthesis** (multi-paragraph, including quoted commitments where applicable); **open commitments** with provenance lines and state badges (delivered / for today / queued / open); **numbered suggested focus**; **materials at hand** (name, meta, open); **compact activity preview** with affordance to expand the full drawer activity log; **prep action bar** (mark reviewed, print prep, send to phone, add note, draft message before call — mock may no-op or toast); **Approve and send** / amend / attach document / dismiss for distributing the prep pack and closing the drawer. The mock implementation MAY use static JSON on the commitment entity; production SHALL hydrate fields from `briefs` (prep phase), `lp_calendar_events`, `lp_interactions`, `commitments`, open loops, and materials index per §3.13.
 
 **Outputs.**
 
@@ -903,6 +904,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 - BR-3.9.4 — Edit-level classification uses Levenshtein-derived character ratio against the originally-generated draft text. Comparison is body-only (subject and signature excluded).
 - BR-3.9.5 — Snoozing a draft sets the action `outcome='snoozed'` and re-queues it for the snooze time.
 - BR-3.9.6 — A draft addressed to multiple LPs (e.g. fund update batch) is treated as N separate `tomo_action_log` rows.
+- BR-3.9.7 — Meeting prep drawer content SHALL remain human-in-the-loop: no auto-send of prep materials; **Approve and send** (or equivalent) is the explicit send path. Optional chips (mark reviewed, print, send to phone) SHALL NOT bypass confirmation for outbound communications.
 
 **Acceptance criteria.**
 
@@ -911,47 +913,44 @@ Closing the browser preserves state and resumes after the last completed step. M
 - AC-3.9.3 — A draft edited from 248 characters to 580 characters (~134% change) is classified `edited_substantially` and does not count as approval for Metric 6b.
 - AC-3.9.4 — An approved scheduling reply with proposed times creates a calendar invite via the connected calendar API (when the GP confirms the time).
 - AC-3.9.5 — Drafts to LPs are sent from the GP's authenticated mailbox (visible in their Sent folder), never from a TOMO-managed mailbox.
+- AC-3.9.6 — A GP opening a **Coming up** row with meeting prep data sees the time strip, narrative block, attendees when present, open commitments with state badges when present, suggested focus when present, materials list when present, activity preview, prep action bar, and **Approve and send** / dismiss controls consistent with `design/tomo_drawer_meetingprep_light_v3.html` (order and section labels may vary by template e.g. first-contact vs existing investor).
+- AC-3.9.7 — **View full history** (or equivalent) from the compact activity preview expands the drawer activity log and scrolls it into view without losing the prep content above.
 
 ---
 
 ### 3.10. Relationships / LP record
 
-**Description.** The Relationships surface (`/relationships`) is the GP's working CRM view. List, board, and detail layouts. The LP card shows the full Section 8 §8.4 schema (header strip with tier and prior-fund badge, mandate fit, signals row, evidence line, narrative). Inline editing happens via Tomo chat (Manual Update Principle from Tomo MVP3) — the GP types in plain language ("Peter sized at $25M"), Tomo proposes the field change with confirmation gate.
+**Description.** The Relationships surface (`/relationships`) is the GP's working CRM view. **Normative visual references (mock repository `tomo_crm`):** list, cards, and Kanban layouts — `design/tomo_relationships_list_v3.html`, `design/tomo_relationships_cards_v3.html`, `design/tomo_relationships_kanban_v3.html`. **LP detail** opens as a **right-hand drawer** (desktop); full-screen sheet on narrow viewports. **Normative drawer layout:** `design/tomo_relationships_lp_drawer_v2.html` (header, signal-evidence block, snapshot, pipeline state, pipeline data, open loops & commitments, Update with Tomo, expandable full record with identity, firm details including fund raised against, behavioural signals grid, activity log). The LP record still satisfies Section 8 §8.4 for surfaced fields; inline editing follows the Manual Update Principle (Tomo MVP3) — the GP types in plain language ("Peter sized at $25M"), Tomo proposes the field change with confirmation gate.
+
+**Product decisions (Relationships page behaviour).**
+
+- **Authoritative UI:** The v3 Relationships HTML mocks above are authoritative for column sets, control bar, filter panel composition, and drawer IA. If this SRS previously listed fewer columns, **the v3 mocks win**; schema additions needed to persist new facets appear in §6.2 (`lp_contacts` and notes below).
+- **Create list:** The **Create list** control is **disabled until at least one filter** (structured filter, advanced filter, or equivalent Tomo-applied filter) is active — saving an unfiltered “all LPs” cohort from this surface is out of scope for the control’s enabled state.
+- **Group by:** **List** and **Cards** views honour **Group** (`By stage`, `By tier`, `By owner`, `By signal`, `None`). **Kanban** does **not** use Group by — columns are always **pipeline stage**; switching view to Kanban ignores the Group control.
+- **Fund context:** The Relationships working set is **scoped to the active fund** in the workspace (`lp_contacts.fund_id` matches the UI’s selected fund; mock app: tie to active fund from funds context). Copy such as “current raise” and “Fund being raised against” refer to that fund.
 
 **Inputs / triggers.**
 
-- User loads `/relationships`.
-- User selects an LP — opens detail panel (right pane on desktop, full screen on mobile).
-- User types in the inline Tomo chat dock or FAB sheet to update fields.
+- User loads `/relationships` (cohort = LPs for **active** `fund_id` unless “all funds” is explicitly a future product mode).
+- User selects an LP — opens **detail drawer** from the right (see `design/tomo_relationships_lp_drawer_v2.html`).
+- User types in **Update with Tomo** (drawer) or other Tomo surfaces to update fields.
 
 **Processing.**
 
-1. **List view.**
-   - Columns: name + firm, stage, days-since-touch with G/A/R dot, tier, mandate fit, days-in-stage, expected commitment.
-   - Sortable per column. Default sort: pipeline_flag (red → amber → green) then days_since_meaningful_touch desc.
-   - Reply-velocity arrow icon next to days-since-touch (Section 8 §8.3 Signal 3 surface).
-   - "Stuck Nd" badge when stage_stagnation_flag is amber/red.
-   - Re-up indicator dot (subtle, not flag-coloured) when `prior_fund_investor=true`.
-2. **Board view.**
-   - Kanban columns per pipeline stage. Drag-and-drop to change stage (writes `lp_stage_transitions`).
-3. **Detail view (LP card).**
-   - **Header strip:** name, role, firm, tier badge, prior-fund badge ("Prior: Fund II"), mandate-fit pill ("confirmed · captured 12 Mar").
-   - **Status bar:** G/A/R dot + plain-English `pipeline_flag_reason`.
-   - **Open emails:** unread / awaiting-reply summary.
-   - **Key changes:** signal callouts ("Reply time has slowed: last 4 days, typical 18 hours.").
-   - **Stage:** current stage + days-in-stage + days-in-prior-stage line ("In active diligence 22 days. Spent 47 days in nurturing.").
-   - **Sizing line:** `expected_commitment_amount` and `expected_commitment_captured_at`.
-   - **Three sections (per APP_SUMMARY mock baseline):**
-     - Section 1 — Snapshot (signals, status, open emails, key changes).
-     - Section 2 — Tomo chat scoped to this LP.
-     - Section 3 — Activity log scoped to this LP.
-4. **Inline editing via Tomo chat (Manual Update Principle).**
+1. **List view (v3 authoritative column set, in addition to §8.5 sort/search behaviour).**
+   - **Stage group rows:** When Group includes stage, render section headers with LP counts and, where data exists, **expected commitment range** for that section (per v3 mocks).
+   - **Columns (default set):** **LP** (firm + primary contact name & role); **Tier**; **Type** (`lp_contacts.investor_type` — allocator category); **Geography** (derived display from `lp_organizations.region` / country / city); **Active investments** (derived tags from `prior_fund_investor`, `prior_fund_identifier`, `pipeline_stage`, and workspace `funds` labels — no extra persisted column); **Mandate fit**; **Signal** (directional band / narrative label from `lp_state` + Section 8 signals); **Ticket** (`expected_commitment_amount`); **Last touch** (days since meaningful touch + G/A/R dot; reply-velocity arrow per Signal 3); **Loops** (open loop count); **Next move** (GP-facing next step string); **Owner** (`relationship_owner_user_id`); row actions.
+   - **Also required from §3.10 / §8.5:** sortable columns; default sort **pipeline_flag** (red → amber → green) then **days_since_meaningful_touch** desc; “Stuck Nd” when `stage_stagnation_flag` is amber/red; subtle re-up dot when `prior_fund_investor=true`.
+2. **Cards view.** Same grouping rules as list; **LP cards** per v3 (`design/tomo_relationships_cards_v3.html`) — signal dot, tier / prior badge, signal pill, last/next touch, ticket, mandate fit, open loops.
+3. **Board (Kanban) view.** Columns = canonical pipeline stages (order and chrome per `design/tomo_relationships_kanban_v3.html`). Drag-and-drop writes `lp_stage_transitions`. **Group by is ignored** in this view.
+4. **Detail drawer (LP record).** Follow section order and interaction patterns in **`design/tomo_relationships_lp_drawer_v2.html`:** drawer header (Newsreader title, role · firm · tier); **Signal evidence** (`pipeline_flag_reason` narrative); **Snapshot** (synthesised narrative); **Pipeline state** (stage, pipeline flag, tier, days in stage / prior stage, owner); **Pipeline data** (mandate fit, expected commitment, prior fund, active investments summary); **Open loops & commitments**; **Update with Tomo**; **Show full record** expanding to identity & contact, firm details (**fund being raised against** = active `fund_id`), **behavioural signals** (nine signals + derived rows per §3.5), CRM extended fields as needed; **Activity log** (chronological). Mobile: full-height drawer / sheet equivalent.
+5. **Inline editing via Tomo chat (Manual Update Principle).**
    - GP types: "Peter sized at $25M" → Tomo proposes `lp_contacts.expected_commitment_amount=25000000` → confirmation gate → write + `activity_log` row.
-   - Direct field editing in the LP card is also available for power users (chip selectors for stage, tier, mandate fit; numeric input for sizing).
+   - Direct field editing remains available for power users (chip selectors, numeric sizing) with the same audit rules.
    - Free-text notes go to `lp_notes`.
-5. **Filters.**
-   - Same named filters as Lists (§3.11), plus full-text search on name and firm.
-6. **Engineering note.** The mock has `src/components/relationship-drawer-snapshot.tsx`, `relationship-drawer-tomo-row.tsx`, `relationship-crm-form.tsx`, `relationships-kanban-board.tsx` — V1 production reuses these components and wires real data via `/api/crm/relationships`.
+6. **Filters.**
+   - Same named filters as Lists (§3.11), plus full-text search on name and firm; **advanced filters** field set aligned with `design/tomo_relationships_list_v3.html` modal (pipeline, numeric ranges, classification).
+7. **Engineering note.** Prototype components live under `src/components/` (e.g. relationship drawer, Kanban). V1 production wires real data via `/api/crm/relationships` (mock) transitioning to `/api/lp-contacts` per §4.2.9 / Appendix migration notes.
 
 **Outputs.**
 
@@ -974,6 +973,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 - AC-3.10.2 — Dragging an LP from `first_meeting` to `nurturing` on the board writes a `lp_stage_transitions` row and updates `lp_state.days_in_current_stage` within 5 seconds.
 - AC-3.10.3 — Typing "Peter sized at $25M" in the LP-card chat surfaces a confirm dialog with the proposed `expected_commitment_amount=25000000`, and writing applies on confirm.
 - AC-3.10.4 — The LP card surfaces every Section 8 §8.3–§8.4 surface element listed in §8.8.
+- AC-3.10.5 — The LP **detail drawer** implements the section order and primary interactions of `design/tomo_relationships_lp_drawer_v2.html` (signal evidence, snapshot, pipeline state, pipeline data, open loops & commitments, Update with Tomo, expandable full record including behavioural signals grid and activity log).
 
 ---
 
@@ -1094,7 +1094,7 @@ Closing the browser preserves state and resumes after the last completed step. M
 1. 30 min before meeting: read recent context (`lp_meeting_recaps` from prior meetings, last 5 `lp_interactions`, `lp_state`, open `commitments`, `open_loops`).
 2. Generate prep brief using LLM with structured prompt: unanswered questions, missed/promised materials, relationship context, suggested focus, recent documents exchanged.
 3. Write `briefs` row with `brief_phase='prep'`, `generated_by='tomo_llm'`.
-4. Surface in Action Drawer as `action_type='meeting_prep'`. GP viewing the brief sets `briefs.viewed_at` and writes `tomo_action_log` outcome `viewed`.
+4. Surface in Action Drawer as `action_type='meeting_prep'`. GP viewing the brief sets `briefs.viewed_at` and writes `tomo_action_log` outcome `viewed`. The same prep payload SHOULD power the **Coming up meeting prep drawer** on Today (§3.9 item 8) when the row references the same meeting / brief.
 
 **Processing — transcript ingestion.**
 
@@ -2508,6 +2508,7 @@ LP person record. Foreign key to `lp_organizations` (every LP belongs to a firm)
 | **Pipeline state (Section 8 §8.2):** | | | | | |
 | `pipeline_stage` | text | not null | `'sourced'` | check in (`'sourced'`, `'first_meeting'`, `'nurturing'`, `'active_diligence'`, `'soft_commit'`, `'committed'`, `'closed_lost'`, `'on_hold'`) | Single canonical taxonomy |
 | `tier` | text | null | | check in (`'tier_1'`, `'tier_2'`, `'tier_3'`, `'unset'`) | GP-set priority |
+| `investor_type` | text | null | | check in (`'sovereign_pension'`, `'endowment'`, `'foundation'`, `'family_office'`, `'fund_of_funds'`, `'asset_manager'`, `'allocator_consultant'`, `'bank_wealth'`, `'insurance'`, `'other'`) | Allocator / LP **Type** column on Relationships list (v3 UI); advanced filters and CSV mapping |
 | **Captured attributes (Section 8 §8.4):** | | | | | |
 | `mandate_fit` | text | not null | `'unknown'` | check in (`'confirmed_fit'`, `'potential_fit'`, `'mandate_mismatch'`, `'unknown'`) | Drives the framework's "single most valuable query" |
 | `mandate_fit_captured_at` | timestamptz | null | | | When the GP last confirmed |
@@ -2525,7 +2526,7 @@ LP person record. Foreign key to `lp_organizations` (every LP belongs to a firm)
 | `csv_import_id` | uuid | null | | fk → `csv_imports.id` | The import that created this row |
 | `historical_data_only` | boolean | not null | `false` | | True when LP has only metadata-tier data per §3.3 |
 
-**Indexes:** unique `(workspace_id, lower(primary_email))`; `lp_contacts(workspace_id, lp_organization_id)`; `lp_contacts(workspace_id, pipeline_stage)`; `lp_contacts(workspace_id, mandate_fit)`; `lp_contacts(workspace_id, prior_fund_investor)`; `lp_contacts(workspace_id, relationship_owner_user_id)`; `lp_contacts(workspace_id, fund_id)`.
+**Indexes:** unique `(workspace_id, lower(primary_email))`; `lp_contacts(workspace_id, lp_organization_id)`; `lp_contacts(workspace_id, pipeline_stage)`; `lp_contacts(workspace_id, mandate_fit)`; `lp_contacts(workspace_id, prior_fund_investor)`; `lp_contacts(workspace_id, relationship_owner_user_id)`; `lp_contacts(workspace_id, fund_id)`; `lp_contacts(workspace_id, investor_type)` partial where `investor_type IS NOT NULL`.
 
 **Audit trigger:** every change is captured to `activity_log`.
 
@@ -4326,6 +4327,7 @@ Extends §1.3. Alphabetical.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
+- `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 8).
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
 

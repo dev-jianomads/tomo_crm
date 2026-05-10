@@ -1,10 +1,26 @@
 "use client";
 
+import { useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import type { Commitment, DrawerSpecHeader, DrawerSpecHeaderLink, DrawerSpecHeaderPill } from "@/lib/mockData";
+import type {
+  Commitment,
+  DrawerSpecHeader,
+  DrawerSpecHeaderLink,
+  DrawerSpecHeaderPill,
+} from "@/lib/mockData";
 import type { TomoAssistance, TomoMessageBlock } from "@/lib/mockTomoAssistance";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
-import { DrawerCommitmentsCaptured, DrawerSpecV3Head, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
+import { DrawerSpecV3Head, DrawerWhySurfaced } from "@/components/drawer-shared-blocks";
+import {
+  DrawerLastTouchBlock,
+  DrawerOpenCommitmentsPrepBlock,
+  DrawerPrepActionBar,
+  DrawerPrepActivityPreview,
+  DrawerPrepAttendeesBlock,
+  DrawerPrepMaterialsBlock,
+  DrawerSuggestedFocusBlock,
+  MeetingPrepTimeStrip,
+} from "@/components/meeting-prep-drawer-blocks";
 
 function blockBrief(blocks: TomoMessageBlock[] | undefined): Extract<TomoMessageBlock, { kind: "brief" }> | null {
   const b = blocks?.find((x): x is Extract<TomoMessageBlock, { kind: "brief" }> => x.kind === "brief");
@@ -63,24 +79,35 @@ function commitmentResolutionSpecPills(resolution: CommitmentResolution): Drawer
   return [];
 }
 
+function mergeHeaderSpec(commitment: Commitment, spec: DrawerSpecHeader): DrawerSpecHeader {
+  const thread = commitment.drawerThreadLink;
+  const base = spec.links ?? [];
+  const links: DrawerSpecHeaderLink[] = thread
+    ? [{ href: thread.href, label: thread.label, icon: "envelope" }, ...base]
+    : [...base];
+  return { ...spec, links };
+}
+
 type CommitmentDrawerPanelProps = {
   commitment: Commitment;
   assistance: TomoAssistance | null | undefined;
-  /** Right-hand status pill */
   verbLabel: string;
   resolution: CommitmentResolution;
   onApproveAndSend: () => void;
   onAmend: () => void;
   onAttachDocument: () => void;
   onClose: () => void;
-  /** Mock: attached filenames shown above CTAs; each row can be removed. */
   attachedFiles?: string[];
   onDetachFile?: (index: number) => void;
   finalApproveLabel?: string;
+  /** Meeting prep — scroll + expand full activity accordion */
+  onExpandFullActivity?: () => void;
+  /** Toasts for prep chip row (mock) */
+  onMeetingPrepNotify?: (message: string) => void;
 };
 
 /**
- * Today “Coming up” drawer — section 1: commitment header, Tomo agenda preview, primary CTAs (mirrors ActionDrawerPanel).
+ * Today “Coming up” — `design/tomo_drawer_meetingprep_light_v3.html` when `drawerTimeStrip` / prep fields are set.
  */
 export function CommitmentDrawerPanel({
   commitment,
@@ -94,9 +121,12 @@ export function CommitmentDrawerPanel({
   attachedFiles = [],
   onDetachFile,
   finalApproveLabel = "Approve and Send",
+  onExpandFullActivity,
+  onMeetingPrepNotify,
 }: CommitmentDrawerPanelProps) {
   const preview = getCommitmentDrawerAgendaPreview(assistance);
   const showCtas = resolution === null;
+  const notify = onMeetingPrepNotify ?? (() => {});
 
   const commitmentLines =
     commitment.drawerMeetingCommitments && commitment.drawerMeetingCommitments.length > 0
@@ -104,57 +134,140 @@ export function CommitmentDrawerPanel({
       : preview.commitments.map((label) => ({ label }));
 
   const timeLine = commitmentDayTime(commitment.datetime);
-  const spec = commitment.drawerSpecHeader ?? fallbackCommitmentDrawerSpec(commitment);
+  const rawSpec = commitment.drawerSpecHeader ?? fallbackCommitmentDrawerSpec(commitment);
+  const spec = mergeHeaderSpec(commitment, rawSpec);
   const subtitle =
     spec.subtitle ?? [commitment.title, timeLine].filter(Boolean).join(" · ");
+
+  const eyebrow = commitment.drawerPrepEyebrow ?? commitmentDrawerEyebrow(commitment);
+  const title = commitment.drawerPrepTitle ?? `${commitment.lp} · ${commitment.contactName}`;
+
+  const labels = commitment.drawerPrepLabels ?? {};
+  const activityEntries = commitment.activityLog ?? [];
+  const hasMeetingPrepChrome = Boolean(commitment.drawerTimeStrip);
+
+  useEffect(() => {
+    if (!hasMeetingPrepChrome || !showCtas) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "r" || e.key === "R") {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        e.preventDefault();
+        notify("Marked as reviewed (demo).");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hasMeetingPrepChrome, showCtas, notify]);
+
+  const timeStripNode =
+    commitment.drawerTimeStrip != null ? (
+      <MeetingPrepTimeStrip
+        rangeLabel={commitment.drawerTimeStrip.rangeLabel}
+        whereLabel={commitment.drawerTimeStrip.whereLabel}
+        calendarUrl={commitment.calendarUrl}
+        joinUrl={commitment.drawerTimeStrip.joinUrl}
+      />
+    ) : null;
+
+  const showTomoBrief =
+    !hasMeetingPrepChrome &&
+    Boolean(preview.leadText || preview.summary || preview.agenda.length > 0 || preview.snapshotFallback);
 
   return (
     <div className="space-y-5">
       <DrawerSpecV3Head
-        eyebrow={commitmentDrawerEyebrow(commitment)}
-        title={`${commitment.lp} · ${commitment.contactName}`}
+        eyebrow={eyebrow}
+        title={title}
         subtitle={subtitle}
         spec={spec}
         onClose={onClose}
         extraPills={commitmentResolutionSpecPills(resolution)}
+        afterSubtitle={timeStripNode}
       />
 
       {commitment.drawerWhySurfaced ? (
-        <DrawerWhySurfaced body={commitment.drawerWhySurfaced.body} stamp={commitment.drawerWhySurfaced.stamp} />
+        <DrawerWhySurfaced
+          label={commitment.drawerWhySurfaced.label}
+          body={commitment.drawerWhySurfaced.body}
+          stamp={commitment.drawerWhySurfaced.stamp}
+        />
       ) : null}
 
-      <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
-        <p className="tomo-field-label text-[11px] tracking-wide">Tomo</p>
-        {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
+      {commitment.drawerAttendees && commitment.drawerAttendees.length > 0 ? (
+        <DrawerPrepAttendeesBlock label={labels.attendees ?? "Who's on the call"} attendees={commitment.drawerAttendees} />
+      ) : null}
 
-        {preview.summary || preview.agenda.length > 0 || preview.snapshotFallback ? (
-          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
-            {preview.summary ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.summary}</p> : null}
-            {preview.snapshotFallback && !preview.summary ? (
-              <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.snapshotFallback}</p>
-            ) : null}
+      {commitment.drawerLastTouch && commitment.drawerLastTouch.length > 0 ? (
+        <DrawerLastTouchBlock
+          label={labels.lastTouch ?? "Where you left things"}
+          paragraphs={commitment.drawerLastTouch}
+        />
+      ) : null}
 
-            {preview.agenda.length > 0 ? (
-              <div className={preview.summary || preview.snapshotFallback ? "mt-3" : ""}>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Agenda</p>
-                <ul className="mt-1 space-y-1 text-sm text-[color:var(--foreground)]">
-                  {preview.agenda.map((line) => (
-                    <li key={line} className="flex items-start gap-2">
-                      <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      {commitmentLines.length > 0 ? (
+        <DrawerOpenCommitmentsPrepBlock
+          label={labels.openCommitments ?? "Open commitments"}
+          rows={commitmentLines}
+        />
+      ) : null}
 
-      {commitmentLines.length > 0 ? <DrawerCommitmentsCaptured items={commitmentLines} /> : null}
+      {commitment.drawerSuggestedFocus && commitment.drawerSuggestedFocus.length > 0 ? (
+        <DrawerSuggestedFocusBlock label={labels.focus ?? "What to push on"} items={commitment.drawerSuggestedFocus} />
+      ) : null}
+
+      {commitment.drawerPrepMaterials && commitment.drawerPrepMaterials.length > 0 ? (
+        <DrawerPrepMaterialsBlock label={labels.materials ?? "Materials at hand"} materials={commitment.drawerPrepMaterials} />
+      ) : null}
+
+      {activityEntries.length > 0 ? (
+        <DrawerPrepActivityPreview
+          label={labels.activityPreview ?? "Recent activity"}
+          entries={activityEntries}
+          historyTotal={commitment.drawerActivityHistoryTotal}
+          onViewFullHistory={onExpandFullActivity}
+        />
+      ) : null}
+
+      {showTomoBrief ? (
+        <div className="tomo-card tomo-hint-banner space-y-2 px-3 py-2.5">
+          <p className="tomo-field-label text-[11px] tracking-wide">Tomo briefing</p>
+          {preview.leadText ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.leadText}</p> : null}
+          {preview.summary || preview.agenda.length > 0 || preview.snapshotFallback ? (
+            <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2.5">
+              {preview.summary ? <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.summary}</p> : null}
+              {preview.snapshotFallback && !preview.summary ? (
+                <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{preview.snapshotFallback}</p>
+              ) : null}
+              {preview.agenda.length > 0 ? (
+                <div className={preview.summary || preview.snapshotFallback ? "mt-3" : ""}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Agenda</p>
+                  <ul className="mt-1 space-y-1 text-sm text-[color:var(--foreground)]">
+                    {preview.agenda.map((line) => (
+                      <li key={line} className="flex items-start gap-2">
+                        <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {showCtas ? (
         <>
+          {hasMeetingPrepChrome ? (
+            <DrawerPrepActionBar
+              onMarkReviewed={() => notify("Marked as reviewed (demo).")}
+              onPrintPrep={() => notify("Print prep (demo).")}
+              onSendToPhone={() => notify("Send to phone (demo).")}
+              onAddNote={() => notify("Note saved locally (demo).")}
+              onDraftMessage={onAmend}
+            />
+          ) : null}
+
           {attachedFiles.length > 0 ? (
             <div className="tomo-card px-3 py-2.5">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Attached</p>
@@ -180,6 +293,7 @@ export function CommitmentDrawerPanel({
               </ul>
             </div>
           ) : null}
+
           <div className="flex flex-wrap gap-2">
             <button type="button" className="button-primary tomo-ai-bg min-w-[7rem]" onClick={onApproveAndSend}>
               {finalApproveLabel}
@@ -191,7 +305,7 @@ export function CommitmentDrawerPanel({
               Attach Document
             </button>
             <button type="button" className="button-secondary" onClick={onClose}>
-              Close
+              {hasMeetingPrepChrome ? "Dismiss" : "Close"}
             </button>
           </div>
         </>
