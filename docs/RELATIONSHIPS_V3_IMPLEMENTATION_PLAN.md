@@ -9,7 +9,7 @@
 | Kanban | `tomo_relationships_kanban_v3.html` |
 | LP detail drawer | `tomo_relationships_lp_drawer_v2.html` |
 
-**SRS:** `TOMO_V1_SRS_DRAFT_2026-05-10.md` §3.10 (updated to cite these mocks and LP drawer IA), §6.2 `lp_contacts` including `investor_type`.
+**SRS:** `TOMO_V1_SRS_DRAFT_2026-05-11.md` §3.10 (updated to cite these mocks and LP drawer IA), §6.2 `lp_contacts` including `investor_type`.
 
 ---
 

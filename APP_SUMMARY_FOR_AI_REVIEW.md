@@ -153,7 +153,7 @@ Per product decisions, **momentum sections have been removed** from the app. Som
 ### Storage (localStorage)
 
 - **Auth:** `tomo-session`
-- **Onboarding:** `tomo-onboarding`
+- **Onboarding:** `tomo-onboarding-v2` (eight-screen wizard; see `Document_B_Onboarding_Flow_Specification.md`)
 - **UI:** `tomo-pane-width`, `tomo-workflows-split-height`, `tomo-playbook-target-overrides`
 - **Target lists:** `tomo-target-lists`
 

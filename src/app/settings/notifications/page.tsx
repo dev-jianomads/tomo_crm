@@ -9,10 +9,10 @@ import {
 } from "@/lib/radarPreferences";
 import { resetTodayEngagement } from "@/lib/todayEngagement";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { defaultOnboardingState, OnboardingState } from "@/lib/types";
+import { ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsNotificationsPage() {
-  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", defaultOnboardingState);
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>(ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState);
 
   const [dailyDigestPrefs, setDailyDigestPrefs] = usePersistentState<{
     emailDigest: boolean;

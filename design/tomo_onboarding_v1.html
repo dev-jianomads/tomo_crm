@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOMO · Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #FAFAF7;
+    --canvas-warm: #F4F1EA;
+    --card: #FFFFFF;
+    --card-warm: #F8F5EE;
+    --navy: #1C2B3A;
+    --navy-soft: #E8ECF1;
+    --body: #4A5868;
+    --mute: #8898AA;
+    --rule: #E1E4E8;
+    --rule-soft: #EDEFF2;
+    --teal: #0E7C7C;
+    --teal-strong: #0A6363;
+    --teal-evidence-bg: rgba(14, 124, 124, 0.06);
+    --amber: #C9962F;
+    --amber-tint: #FBF4E2;
+    --green: #4A7C5A;
+    --green-bg: rgba(74, 124, 90, 0.10);
+    --red: #B33A3A;
+    --red-bg: rgba(179, 58, 58, 0.08);
+    --r-sm: 4px;
+    --r-md: 6px;
+    --motion: 0.18s ease-out;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--canvas);
+    color: var(--navy);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Top progress chrome */
+  .ob-chrome {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(250, 250, 247, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--rule-soft);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+  }
+  .ob-brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+    font-variation-settings: "opsz" 24;
+  }
+  .ob-progress {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .ob-progress-step {
+    width: 24px; height: 2px;
+    background: var(--rule);
+    border-radius: 1px;
+    transition: background var(--motion);
+  }
+  .ob-progress-step.done { background: var(--teal); }
+  .ob-progress-step.current { background: var(--navy); }
+  .ob-step-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-left: 12px;
+  }
+
+  /* Background indexing ticker — small, lower-right */
+  .ob-ticker {
+    position: fixed;
+    bottom: 24px; right: 32px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 8px 16px;
+    z-index: 50;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(28, 43, 58, 0.04);
+    transition: opacity var(--motion);
+  }
+  .ob-ticker .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .ob-ticker.hidden { opacity: 0; pointer-events: none; }
+
+  /* Screen container */
+  .ob-screen-wrap {
+    min-height: 100vh;
+    padding-top: 56px;
+    padding-bottom: 80px;
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+  }
+  .ob-screen-wrap.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ob-screen {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 80px 32px 48px;
+  }
+  .ob-screen.wide { max-width: 1040px; }
+
+  /* Eyebrows / kickers */
+  .ob-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--teal);
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  /* Headlines */
+  .ob-headline {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 48px;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    color: var(--navy);
+    margin-bottom: 24px;
+    font-variation-settings: "opsz" 60;
+  }
+  .ob-headline em {
+    font-style: italic;
+    font-family: 'Newsreader', serif;
+    font-weight: 300;
+    color: var(--teal);
+  }
+  .ob-headline.smaller { font-size: 38px; line-height: 1.12; }
+
+  .ob-lede {
+    font-family: 'Newsreader', serif;
+    font-weight: 300;
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--body);
+    max-width: 580px;
+    margin-bottom: 40px;
+    font-variation-settings: "opsz" 22;
+  }
+
+  /* CTAs */
+  .ob-cta-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 48px;
+  }
+  .ob-cta {
+    background: var(--navy);
+    color: var(--canvas);
+    border: 0;
+    border-radius: var(--r-sm);
+    padding: 14px 28px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: all var(--motion);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ob-cta:hover { background: #0E1A26; transform: translateY(-1px); }
+  .ob-cta.primary {
+    background: var(--teal);
+  }
+  .ob-cta.primary:hover { background: var(--teal-strong); }
+  .ob-cta.secondary {
+    background: transparent;
+    color: var(--navy);
+    border: 1px solid var(--rule);
+  }
+  .ob-cta.secondary:hover { border-color: var(--navy); }
+  .ob-cta-link {
+    color: var(--mute);
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 14px 4px;
+    transition: color var(--motion);
+  }
+  .ob-cta-link:hover { color: var(--navy); }
+
+  /* Forms */
+  .ob-field {
+    margin-bottom: 24px;
+  }
+  .ob-field-label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--mute);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .ob-field-input,
+  .ob-field-select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 14px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    color: var(--navy);
+    transition: border-color var(--motion);
+  }
+  .ob-field-input:focus,
+  .ob-field-select:focus {
+    outline: 0; border-color: var(--teal);
+  }
+  .ob-field-textarea {
+    min-height: 110px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .ob-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .ob-field-row.three {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .ob-field-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--mute);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* Connector cards (screen 2) */
+  .conn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .conn-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 22px 22px 20px;
+    cursor: pointer;
+    transition: all var(--motion);
+    position: relative;
+  }
+  .conn-card:hover {
+    border-color: var(--navy);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(28, 43, 58, 0.06);
+  }
+  .conn-card.connected {
+    border-color: var(--teal);
+    background: var(--teal-evidence-bg);
+  }
+  .conn-card.required::before {
+    content: 'Required';
+    position: absolute;
+    top: 14px; right: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    color: var(--amber);
+    text-transform: uppercase;
+  }
+  .conn-card-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    background: var(--card-warm);
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    color: var(--navy);
+    font-size: 16px;
+  }
+  .conn-card.connected .conn-card-icon {
+    background: var(--teal);
+    color: var(--card);
+  }
+  .conn-card-name {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--navy);
+    margin-bottom: 4px;
+    font-variation-settings: "opsz" 18;
+  }
+  .conn-card-desc {
+    font-size: 12px;
+    color: var(--body);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .conn-card-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+  .conn-card.connected .conn-card-status { color: var(--teal); }
+  .conn-card-status .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mute);
+  }
+  .conn-card.connected .conn-card-status .dot { background: var(--teal); }
+
+  /* Tone capture options (screen 6) */
+  .tone-option {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 22px 24px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .tone-option:hover { border-color: var(--navy); }
+  .tone-option.selected {
+    border-color: var(--teal);
+    background: var(--teal-evidence-bg);
+  }
+  .tone-option-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .tone-option-title {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 20;
+  }
+  .tone-option-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--card-warm);
+    color: var(--mute);
+  }
+  .tone-option.selected .tone-option-tag {
+    background: var(--teal);
+    color: var(--card);
+  }
+  .tone-option-desc {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.55;
+  }
+
+  /* Tomo notices cards (screen 7) */
+  .notice-card {
+    background: var(--card);
+    border-left: 3px solid var(--teal);
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .notice-card-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 8px;
+  }
+  .notice-card-text {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--navy);
+    font-variation-settings: "opsz" 20;
+  }
+  .notice-card-text .highlight {
+    background: var(--amber-tint);
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-style: italic;
+    color: var(--navy);
+  }
+  .notice-card-text strong {
+    font-weight: 500;
+    color: var(--navy);
+  }
+
+  /* Day 1 Gap preview metrics (screen 8) */
+  .gap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule);
+    margin: 32px 0 24px;
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .gap-cell {
+    background: var(--card);
+    padding: 28px 28px 26px;
+  }
+  .gap-cell.span-2 { grid-column: span 2; }
+  .gap-cell-num {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 56px;
+    color: var(--navy);
+    line-height: 1;
+    font-variation-settings: "opsz" 96;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .gap-cell-num .unit {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mute);
+  }
+  .gap-cell-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .gap-cell-desc {
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .gap-cell-desc strong { color: var(--navy); font-weight: 500; }
+
+  .gap-disclaimer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+    padding: 14px 16px;
+    background: var(--card-warm);
+    border-radius: var(--r-sm);
+    margin-bottom: 24px;
+    border-left: 2px solid var(--amber);
+  }
+  .gap-disclaimer strong { color: var(--navy); font-weight: 500; }
+
+  .gap-coming {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 24px 28px;
+    margin-bottom: 32px;
+  }
+  .gap-coming-title {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--navy);
+    margin-bottom: 14px;
+    font-variation-settings: "opsz" 22;
+  }
+  .gap-coming-list {
+    list-style: none;
+    padding: 0;
+  }
+  .gap-coming-list li {
+    padding: 8px 0 8px 24px;
+    position: relative;
+    font-size: 14px;
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .gap-coming-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--teal);
+    font-weight: 500;
+  }
+  .gap-coming-list li strong {
+    color: var(--navy); font-weight: 500;
+  }
+
+  /* Welcome screen — special treatment */
+  .ob-welcome {
+    text-align: left;
+    max-width: 620px;
+  }
+  .ob-welcome .ob-headline {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 32px;
+  }
+  .ob-welcome .ob-headline em {
+    display: block;
+  }
+
+  /* Identity card (screen 1 element) */
+  .ob-identity-strip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--rule);
+    margin-top: 48px;
+  }
+  .ob-identity-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 16px;
+  }
+  .ob-identity-info {
+    flex: 1;
+  }
+  .ob-identity-name {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--navy);
+    line-height: 1.3;
+    font-variation-settings: "opsz" 18;
+  }
+  .ob-identity-email {
+    font-size: 12px; color: var(--mute);
+  }
+
+  /* Team members list (screen 5) */
+  .team-list {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 24px;
+  }
+  .team-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 18px;
+  }
+  .team-row.you { border-color: var(--teal); }
+  .team-row-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--navy-soft);
+    color: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 12px;
+  }
+  .team-row.you .team-row-avatar {
+    background: var(--teal); color: var(--card);
+  }
+  .team-row-info { flex: 1; min-width: 0; }
+  .team-row-name {
+    font-weight: 500; font-size: 14px;
+    color: var(--navy);
+  }
+  .team-row-meta {
+    font-size: 11px; color: var(--mute);
+  }
+  .team-row-role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--mute);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--card-warm);
+  }
+  .team-row.you .team-row-role {
+    color: var(--teal); background: var(--teal-evidence-bg);
+  }
+  .team-add-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card);
+    border: 1px dashed var(--rule);
+    border-radius: var(--r-md);
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--mute);
+    cursor: pointer;
+    transition: all var(--motion);
+    width: 100%;
+    text-align: left;
+  }
+  .team-add-btn:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+    border-style: solid;
+  }
+
+  /* Demo navigator — bottom of screen */
+  .ob-nav {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--navy);
+    color: var(--card);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 4px 20px rgba(28, 43, 58, 0.12);
+    display: flex;
+    gap: 2px;
+  }
+  .ob-nav-btn {
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    background: transparent;
+    border: 0;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ob-nav-btn:hover { color: var(--card); }
+  .ob-nav-btn.active {
+    background: var(--card);
+    color: var(--navy);
+  }
+
+  /* Step navigation arrows (mid-flow) */
+  .ob-step-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .ob-step-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: 0;
+    color: var(--mute);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 8px 0;
+    transition: color var(--motion);
+  }
+  .ob-step-back:hover { color: var(--navy); }
+
+  /* Diagonal accent — used sparingly for moments of weight */
+  .ob-accent {
+    display: inline-block;
+    width: 32px; height: 1px;
+    background: var(--navy);
+    margin: 0 14px 6px 0;
+    vertical-align: middle;
+  }
+
+  /* Sample email previews (screen 6 alt) */
+  .sample-emails {
+    margin-bottom: 28px;
+  }
+  .sample-email {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 18px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .sample-email-from {
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .sample-email-subject {
+    color: var(--body);
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .sample-email-snippet {
+    color: var(--mute);
+    font-size: 12px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- TOP CHROME -->
+<div class="ob-chrome">
+  <div class="ob-brand">tomo</div>
+  <div class="ob-progress">
+    <div class="ob-progress-step current" data-step="1"></div>
+    <div class="ob-progress-step" data-step="2"></div>
+    <div class="ob-progress-step" data-step="3"></div>
+    <div class="ob-progress-step" data-step="4"></div>
+    <div class="ob-progress-step" data-step="5"></div>
+    <div class="ob-progress-step" data-step="6"></div>
+    <div class="ob-progress-step" data-step="7"></div>
+    <div class="ob-progress-step" data-step="8"></div>
+    <span class="ob-step-label" id="stepLabel">01 / 08 · Welcome</span>
+  </div>
+  <div></div>
+</div>
+
+<!-- BACKGROUND INDEXING TICKER — appears after screen 2 (data connection) -->
+<div class="ob-ticker hidden" id="ticker">
+  <span class="pulse"></span>
+  <span id="tickerText">Reading 2,847 emails so far · 73% indexed</span>
+</div>
+
+<!-- ====================================================================
+     SCREEN 1 — Welcome
+     ==================================================================== -->
+<div class="ob-screen-wrap active" data-screen="1">
+  <div class="ob-screen ob-welcome">
+    <div class="ob-kicker">Welcome to Tomo</div>
+
+    <h1 class="ob-headline">
+      The capital formation
+      <em>operating system.</em>
+    </h1>
+
+    <p class="ob-lede">
+      Tomo isn't a CRM replacement. It's the operational layer that does the work alongside your existing pipeline tools — drafting outreach, surfacing drift, executing the disciplined patterns that move a raise forward.
+    </p>
+
+    <p class="ob-lede" style="margin-bottom: 0;">
+      The next few minutes will set you up. Tomo will start reading your inbox in the background while you work, so by the time you finish you'll already have a baseline read on where your raise stands.
+    </p>
+
+    <div class="ob-cta-row">
+      <button class="ob-cta primary" onclick="goToScreen(2)">
+        Begin setup
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <span class="ob-cta-link">About 12 minutes</span>
+    </div>
+
+    <div class="ob-identity-strip">
+      <div class="ob-identity-avatar">G</div>
+      <div class="ob-identity-info">
+        <div class="ob-identity-name">Geoff Robinson</div>
+        <div class="ob-identity-email">geoff@yourfund.com · signed in via Google</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 2 — Connect data sources
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="2">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 1 · Connect</div>
+
+    <h1 class="ob-headline">Connect your <em>communication</em> and <em>pipeline</em> tools.</h1>
+
+    <p class="ob-lede">
+      Tomo reads your sent email and calendar to understand who you talk to, how often, and how. It pairs this with your CRM to ground every signal in your actual pipeline. Nothing is ever sent or modified without your approval.
+    </p>
+
+    <div class="conn-grid">
+
+      <div class="conn-card connected required">
+        <div class="conn-card-icon">G</div>
+        <div class="conn-card-name">Google Workspace</div>
+        <div class="conn-card-desc">Email (sent + received) and calendar. Read-only initially; sending is opt-in per workflow.</div>
+        <div class="conn-card-status"><span class="dot"></span>Connected</div>
+      </div>
+
+      <div class="conn-card required">
+        <div class="conn-card-icon">B</div>
+        <div class="conn-card-name">Backstop</div>
+        <div class="conn-card-desc">Bi-directional sync. Tomo reads your pipeline; updates flow back when you confirm.</div>
+        <div class="conn-card-status"><span class="dot"></span>Connect →</div>
+      </div>
+
+      <div class="conn-card">
+        <div class="conn-card-icon">A</div>
+        <div class="conn-card-name">Affinity</div>
+        <div class="conn-card-desc">Bi-directional sync available. Use if Affinity is your primary pipeline.</div>
+        <div class="conn-card-status"><span class="dot"></span>Connect →</div>
+      </div>
+
+      <div class="conn-card">
+        <div class="conn-card-icon">F</div>
+        <div class="conn-card-name">Foliometrics</div>
+        <div class="conn-card-desc">CSV import only in V1. Useful for one-time enrichment.</div>
+        <div class="conn-card-status"><span class="dot"></span>Connect →</div>
+      </div>
+
+      <div class="conn-card">
+        <div class="conn-card-icon">H</div>
+        <div class="conn-card-name">HubSpot</div>
+        <div class="conn-card-desc">CSV import only in V1. Bi-directional sync coming in V1.5.</div>
+        <div class="conn-card-status"><span class="dot"></span>Connect →</div>
+      </div>
+
+      <div class="conn-card">
+        <div class="conn-card-icon">·</div>
+        <div class="conn-card-name">CSV upload</div>
+        <div class="conn-card-desc">For LP records you keep in spreadsheets. Tomo will help you map columns.</div>
+        <div class="conn-card-status"><span class="dot"></span>Upload →</div>
+      </div>
+
+    </div>
+
+    <p class="ob-field-hint" style="margin-bottom: 0;">
+      You need at least one CRM connection or CSV upload to continue. Google Workspace is required for the email and calendar baseline.
+    </p>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(1)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(3)">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 3 — About your fund
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="3">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 2 · Your fund</div>
+
+    <h1 class="ob-headline smaller">Tell us about your <em>fund</em>.</h1>
+
+    <p class="ob-lede">
+      This calibrates everything Tomo does — the signals it computes, the drafts it generates, the cohorts it surfaces. Be specific. We can change any of this later.
+    </p>
+
+    <div class="ob-field">
+      <label class="ob-field-label">Fund or firm name</label>
+      <input class="ob-field-input" type="text" value="Robinson Capital Partners">
+    </div>
+
+    <div class="ob-field-row">
+      <div class="ob-field">
+        <label class="ob-field-label">Strategy</label>
+        <select class="ob-field-select">
+          <option>Hedge fund · long/short equity</option>
+          <option>Hedge fund · credit</option>
+          <option>Hedge fund · multi-strategy</option>
+          <option>Hedge fund · macro</option>
+          <option>Private equity · buyout</option>
+          <option>Private equity · growth</option>
+          <option>Venture capital · early stage</option>
+          <option>Venture capital · growth stage</option>
+          <option>Real estate</option>
+          <option>Infrastructure</option>
+          <option>Hybrid / multi-strategy</option>
+        </select>
+      </div>
+      <div class="ob-field">
+        <label class="ob-field-label">Current firm AUM</label>
+        <input class="ob-field-input" type="text" placeholder="e.g. $850M" value="$850M">
+      </div>
+    </div>
+
+    <div class="ob-field">
+      <label class="ob-field-label">What's distinctive about your strategy?</label>
+      <textarea class="ob-field-textarea ob-field-input" placeholder="A few sentences. The angle, the mandate, what wins.">Concentrated long/short equity across European mid-caps with a structural bias toward credit-cycle inflection points. Run by a team of three with 15 years of partnership.</textarea>
+      <span class="ob-field-hint">Tomo uses this to ground its drafts. Imagine you're explaining it to a new IR analyst who needs to write your first pitch.</span>
+    </div>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(2)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(4)">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 4 — About your raise
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="4">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 3 · Your raise</div>
+
+    <h1 class="ob-headline smaller">What are you <em>raising</em> right now?</h1>
+
+    <p class="ob-lede">
+      The current campaign — its target, its timing, what's already in motion. This shapes how Tomo prioritises which LPs to surface and which workflows to run.
+    </p>
+
+    <div class="ob-field">
+      <label class="ob-field-label">Vehicle / vintage</label>
+      <input class="ob-field-input" type="text" placeholder="e.g. Fund III · 2026 vintage" value="Fund III · 2026 vintage">
+    </div>
+
+    <div class="ob-field-row three">
+      <div class="ob-field">
+        <label class="ob-field-label">Target raise</label>
+        <input class="ob-field-input" type="text" placeholder="$500M" value="$500M">
+      </div>
+      <div class="ob-field">
+        <label class="ob-field-label">Soft-circled so far</label>
+        <input class="ob-field-input" type="text" placeholder="$120M" value="$120M">
+      </div>
+      <div class="ob-field">
+        <label class="ob-field-label">Target close date</label>
+        <input class="ob-field-input" type="text" placeholder="Q1 2027" value="Q1 2027">
+      </div>
+    </div>
+
+    <div class="ob-field-row">
+      <div class="ob-field">
+        <label class="ob-field-label">LPs in active diligence</label>
+        <input class="ob-field-input" type="text" placeholder="e.g. 12" value="14">
+      </div>
+      <div class="ob-field">
+        <label class="ob-field-label">LPs you're targeting overall</label>
+        <input class="ob-field-input" type="text" placeholder="e.g. 80" value="120">
+      </div>
+    </div>
+
+    <div class="ob-field">
+      <label class="ob-field-label">Are you launching anything new — or aspirations beyond this raise?</label>
+      <textarea class="ob-field-textarea ob-field-input" placeholder="A new strategy in 18 months, a co-investment program, an evergreen vehicle, additional capacity targets…">Considering a credit sleeve as a 2027 launch ($200–300M target). Long-term aspiration: $3B platform across the long/short and credit sides.</textarea>
+      <span class="ob-field-hint">Even forward-looking ambitions help Tomo. LPs interested in the credit sleeve aren't relevant to Fund III, but Tomo will track them for you.</span>
+    </div>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(3)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(5)">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 5 — Your team
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="5">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 4 · Your team</div>
+
+    <h1 class="ob-headline smaller">Who else is on the <em>raise team</em>?</h1>
+
+    <p class="ob-lede">
+      Tomo separates internal correspondents from LPs based on this list. Anyone here will be treated as "team" rather than as an LP, even if they appear frequently in your inbox. Add team members now or later.
+    </p>
+
+    <div class="team-list">
+      <div class="team-row you">
+        <div class="team-row-avatar">G</div>
+        <div class="team-row-info">
+          <div class="team-row-name">Geoff Robinson</div>
+          <div class="team-row-meta">geoff@yourfund.com · admin · sees all LPs</div>
+        </div>
+        <span class="team-row-role">You · Admin</span>
+      </div>
+
+      <div class="team-row">
+        <div class="team-row-avatar">SC</div>
+        <div class="team-row-info">
+          <div class="team-row-name">Sarah Chen</div>
+          <div class="team-row-meta">sarah@yourfund.com · senior partner · joining May</div>
+        </div>
+        <span class="team-row-role">Partner</span>
+      </div>
+
+      <div class="team-row">
+        <div class="team-row-avatar">MD</div>
+        <div class="team-row-info">
+          <div class="team-row-name">Marcus Demoulin</div>
+          <div class="team-row-meta">marcus@yourfund.com · IR head · sees all LPs</div>
+        </div>
+        <span class="team-row-role">IR head</span>
+      </div>
+
+      <div class="team-row">
+        <div class="team-row-avatar">PJ</div>
+        <div class="team-row-info">
+          <div class="team-row-name">Priya Joshi</div>
+          <div class="team-row-meta">priya@yourfund.com · IR analyst · sees Tier 1 + Tier 2</div>
+        </div>
+        <span class="team-row-role">IR analyst</span>
+      </div>
+    </div>
+
+    <button class="team-add-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add a team member
+    </button>
+
+    <p class="ob-field-hint" style="margin-top: 24px;">
+      Tomo also identified <strong style="color: var(--navy);">3 frequent internal correspondents</strong> in your inbox (counsel, fund admin, prime broker). You can mark these as "service providers" later — they won't be confused with LPs.
+    </p>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(4)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(6)">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 6 — Tone capture
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="6">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 5 · Your voice</div>
+
+    <h1 class="ob-headline smaller">Tomo writes in <em>your voice</em>, not its own.</h1>
+
+    <p class="ob-lede">
+      Every draft Tomo produces is calibrated against the way you actually write. We need a small sample to anchor the tone. You can refine this any time from settings.
+    </p>
+
+    <div class="tone-option selected" onclick="selectTone(this)">
+      <div class="tone-option-head">
+        <span class="tone-option-title">Sample from my sent email</span>
+        <span class="tone-option-tag">Recommended</span>
+      </div>
+      <div class="tone-option-desc">
+        Tomo will read your last 90 days of LP-facing emails and build a tone model automatically. We'll show you the result on the next screen so you can confirm it sounds right.
+      </div>
+    </div>
+
+    <div class="tone-option" onclick="selectTone(this)">
+      <div class="tone-option-head">
+        <span class="tone-option-title">Paste 3–5 representative emails</span>
+        <span class="tone-option-tag">Manual</span>
+      </div>
+      <div class="tone-option-desc">
+        If you'd rather curate the sample yourself — useful if your LP-facing voice is very different from your internal voice.
+      </div>
+    </div>
+
+    <div class="tone-option" onclick="selectTone(this)">
+      <div class="tone-option-head">
+        <span class="tone-option-title">Skip for now</span>
+        <span class="tone-option-tag">Default</span>
+      </div>
+      <div class="tone-option-desc">
+        Tomo will use a generic institutional voice until you provide samples. Drafts will be functional but not specifically yours.
+      </div>
+    </div>
+
+    <p class="ob-field-hint" style="margin-top: 24px;">
+      Tomo never generates drafts in someone else's voice without permission. Tone capture is local to your workspace.
+    </p>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(5)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(7)">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 7 — Tomo notices (confidence-building)
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="7">
+  <div class="ob-screen">
+    <div class="ob-kicker">Step 6 · A first read</div>
+
+    <h1 class="ob-headline smaller">While you've been here, <em>Tomo has been reading.</em></h1>
+
+    <p class="ob-lede">
+      A partial sample so far — about 30 days of email. Not enough for the full report yet, but enough to confirm the system is working correctly. A few things Tomo has already noticed:
+    </p>
+
+    <div style="margin-bottom: 28px;">
+
+      <div class="notice-card">
+        <div class="notice-card-eyebrow">Identified</div>
+        <div class="notice-card-text">
+          <strong>187 LP-like correspondents</strong> in your inbox so far, across <strong>71 institutions</strong>. Tomo will continue refining this list as the full 12-month read completes — expect the final number to be higher.
+        </div>
+      </div>
+
+      <div class="notice-card">
+        <div class="notice-card-eyebrow">Most active recent thread</div>
+        <div class="notice-card-text">
+          <span class="highlight">Edoardo Lanzavecchia at Lingotto Investment Management</span> — 14 emails in the last 6 weeks, all on <strong>Italian credit</strong>. Last contact 3 days ago. Tomo flagged this as a high-engagement thread.
+        </div>
+      </div>
+
+      <div class="notice-card">
+        <div class="notice-card-eyebrow">Tone calibration</div>
+        <div class="notice-card-text">
+          Your voice came through as <strong>direct, market-aware, brief</strong>. You favour empirical framings over emotional ones. Drafts will mirror that. <span style="color: var(--mute); font-size: 13px;">→ adjust on next screen if this sounds off</span>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="ob-field-hint">
+      Full report — including 12-month engagement patterns, mandate-fit gaps, and drifting LPs — will land in your <strong style="color: var(--navy);">Briefings</strong> section in a few hours. We'll preview the highlights on the next screen.
+    </p>
+
+    <div class="ob-step-nav">
+      <button class="ob-step-back" onclick="goToScreen(6)">← Back</button>
+      <button class="ob-cta" onclick="goToScreen(8)">
+        See the preview
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     SCREEN 8 — First-Read Briefing preview (the gap reveal)
+     ==================================================================== -->
+<div class="ob-screen-wrap" data-screen="8">
+  <div class="ob-screen wide">
+    <div class="ob-kicker">Step 7 · First-Read Briefing · Preview</div>
+
+    <h1 class="ob-headline">Your <em>First-Read Briefing</em>, in five numbers.</h1>
+
+    <p class="ob-lede">
+      Based on what Tomo has read of your inbox so far. These are the headlines — the full briefing, including 12-month patterns and mandate-fit analysis, will land in <strong style="color: var(--navy);">Briefings</strong> in a few hours.
+    </p>
+
+    <div class="gap-grid">
+
+      <div class="gap-cell">
+        <div class="gap-cell-label">LPs in your inbox</div>
+        <div class="gap-cell-num">187 <span class="unit">people · 71 firms</span></div>
+        <div class="gap-cell-desc">
+          Tomo identified these as LP-like correspondents based on email patterns. <strong>Final number after 12-month read will likely be 240–280.</strong>
+        </div>
+      </div>
+
+      <div class="gap-cell">
+        <div class="gap-cell-label">No contact in 30+ days</div>
+        <div class="gap-cell-num">62 <span class="unit">LPs</span></div>
+        <div class="gap-cell-desc">
+          No email, calendar event, or recorded meeting in the last 30 days. <strong>Some will be in-person or phone-only — Tomo will let you mark those.</strong>
+        </div>
+      </div>
+
+      <div class="gap-cell">
+        <div class="gap-cell-label">Active engagement (last 14d)</div>
+        <div class="gap-cell-num">31 <span class="unit">LPs</span></div>
+        <div class="gap-cell-desc">
+          Two-way email or recent meeting. Your most engaged conversations right now — Tomo will surface these on Today.
+        </div>
+      </div>
+
+      <div class="gap-cell">
+        <div class="gap-cell-label">Estimated Fat Middle</div>
+        <div class="gap-cell-num">≈ 18 <span class="unit">LPs</span></div>
+        <div class="gap-cell-desc">
+          Warm-stage LPs going quiet. <strong>The single most valuable cohort to re-engage.</strong> Three-Touch Qualification is preset for this list.
+        </div>
+      </div>
+
+      <div class="gap-cell span-2">
+        <div class="gap-cell-label">Last meeting captured</div>
+        <div class="gap-cell-num">9 <span class="unit">days ago · CPPIB · Frank Ieraci</span></div>
+        <div class="gap-cell-desc">
+          The last LP meeting on your calendar. <strong>You sent a follow-up 2 days later.</strong> Tomo will start drafting these within 30 minutes from your next meeting onward.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="gap-disclaimer">
+      <strong>Why these numbers might shift.</strong> Tomo's full read is still in progress — about 18% of your 12-month inbox so far. Some "no contact in 30 days" LPs may turn out to be active off-channel (phone or in-person); Tomo will surface a verification flow on the Relationships page so you can correct any false positives. Final First-Read Briefing arrives in your Briefings section in roughly 3 hours.
+    </div>
+
+    <div class="gap-coming">
+      <div class="gap-coming-title">What's coming in the full briefing</div>
+      <ul class="gap-coming-list">
+        <li><strong>12-month engagement patterns</strong> — which LPs heat up before you raise vs. respond only after closes</li>
+        <li><strong>Mandate-fit gaps</strong> — LPs in your inbox whose mandate doesn't match your strategy, plus mandates you should be in front of but aren't</li>
+        <li><strong>Drifting Tier 1 LPs</strong> — the highest-conviction LPs whose engagement has cooled in the last 90 days</li>
+        <li><strong>Response cadence baselines</strong> — typical reply times per LP, so Tomo can flag genuine drift vs normal slow responders</li>
+      </ul>
+    </div>
+
+    <div class="ob-cta-row">
+      <button class="ob-cta primary" onclick="completeOnboarding()">
+        Take me to the app
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="ob-cta secondary" onclick="alert('You\\'ll get an in-app notification when the full briefing is ready. Until then, Today and Relationships will populate as Tomo finishes indexing.')">I'll wait for the full briefing</button>
+    </div>
+
+    <p class="ob-field-hint" style="margin-top: 32px;">
+      <strong style="color: var(--navy);">A note on what Tomo sees and doesn't.</strong> Tomo only flags drift when email, calendar, and CRM all show no activity — so an LP you've been calling won't get flagged as "quiet" just because you haven't emailed. If you do see a flag that's wrong, the Relationships page has an "Actually I'm in touch (off-channel)" affordance — Tomo learns from your correction.
+    </p>
+  </div>
+</div>
+
+<!-- DEMO NAVIGATOR -->
+<div class="ob-nav">
+  <button class="ob-nav-btn active" onclick="goToScreen(1)">1</button>
+  <button class="ob-nav-btn" onclick="goToScreen(2)">2</button>
+  <button class="ob-nav-btn" onclick="goToScreen(3)">3</button>
+  <button class="ob-nav-btn" onclick="goToScreen(4)">4</button>
+  <button class="ob-nav-btn" onclick="goToScreen(5)">5</button>
+  <button class="ob-nav-btn" onclick="goToScreen(6)">6</button>
+  <button class="ob-nav-btn" onclick="goToScreen(7)">7</button>
+  <button class="ob-nav-btn" onclick="goToScreen(8)">8</button>
+</div>
+
+<script>
+  const stepLabels = {
+    1: '01 / 08 · Welcome',
+    2: '02 / 08 · Connect data',
+    3: '03 / 08 · Your fund',
+    4: '04 / 08 · Your raise',
+    5: '05 / 08 · Your team',
+    6: '06 / 08 · Your voice',
+    7: '07 / 08 · A first read',
+    8: '08 / 08 · Briefing preview'
+  };
+
+  const tickerStates = {
+    2: 'Reading 142 emails so far · 4% indexed',
+    3: 'Reading 1,284 emails so far · 18% indexed',
+    4: 'Reading 2,847 emails so far · 41% indexed',
+    5: 'Reading 4,612 emails so far · 56% indexed',
+    6: 'Reading 6,238 emails so far · 73% indexed',
+    7: 'Reading 7,891 emails so far · 84% indexed',
+    8: 'Reading 8,427 emails so far · 91% indexed · meetings indexed'
+  };
+
+  function goToScreen(n) {
+    document.querySelectorAll('.ob-screen-wrap').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.screen) === n);
+    });
+    document.querySelectorAll('.ob-progress-step').forEach(s => {
+      const stepNum = parseInt(s.dataset.step);
+      s.classList.toggle('done', stepNum < n);
+      s.classList.toggle('current', stepNum === n);
+    });
+    document.querySelectorAll('.ob-nav-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i + 1) === n);
+    });
+    document.getElementById('stepLabel').textContent = stepLabels[n];
+
+    // Ticker visibility & state
+    const ticker = document.getElementById('ticker');
+    const tickerText = document.getElementById('tickerText');
+    if (n >= 2 && tickerStates[n]) {
+      ticker.classList.remove('hidden');
+      tickerText.textContent = tickerStates[n];
+    } else {
+      ticker.classList.add('hidden');
+    }
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function selectTone(el) {
+    document.querySelectorAll('.tone-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function completeOnboarding() {
+    alert('In production: routes to Today as the first surface, with the briefing ticker still pulsing in the corner until the full report lands.');
+  }
+</script>
+
+</body>
+</html>

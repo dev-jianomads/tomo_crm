@@ -1,0 +1,4402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TOMO · Workflows v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C7C;
+    --teal-tint: rgba(14, 124, 124, 0.06);
+    --teal-evidence-bg: rgba(14, 124, 124, 0.05);
+    --teal-strong: #0B6868;
+    --navy: #1C2B3A;
+    --navy-soft: rgba(28, 43, 58, 0.06);
+    --amber: #C9933A;
+    --amber-tint: rgba(201, 147, 58, 0.10);
+    --green: #2D8A5E;
+    --green-bg: rgba(45, 138, 94, 0.10);
+    --green-soft-bg: rgba(45, 138, 94, 0.06);
+    --status-amber: #E8A838;
+    --status-amber-bg: rgba(232, 168, 56, 0.12);
+    --status-amber-text: #B87A0A;
+    --red: #D94F4F;
+
+    --canvas: #F9F6EF;
+    --card-warm: #F4EFE4;
+    --card: #FFFFFF;
+    --rule: #D5D9E0;
+    --rule-soft: #E8ECF0;
+    --body: #4A5568;
+    --mute: #8898AA;
+
+    --shadow-1: 0 1px 2px rgba(28, 43, 58, 0.04);
+    --shadow-2: 0 2px 6px rgba(28, 43, 58, 0.06);
+    --shadow-drawer: -8px 0 32px rgba(28, 43, 58, 0.14);
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --motion: 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* NAV */
+  .nav {
+    width: 72px; background: var(--card-warm);
+    border-right: 1px solid var(--rule);
+    padding: 20px 0 16px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh; z-index: 5;
+  }
+  .nav-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 22px; color: var(--navy);
+    margin-bottom: 24px; letter-spacing: -0.02em; line-height: 1;
+    font-variation-settings: "opsz" 36;
+  }
+  .nav-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-md); color: var(--mute); cursor: pointer;
+  }
+  .nav-item:hover { background: var(--navy-soft); color: var(--navy); }
+  .nav-item.active { background: var(--navy); color: var(--card); }
+  .nav-spacer { flex: 1; }
+
+  .workspace {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+    height: 100vh;
+  }
+
+  /* ========================================================================
+     LEFT RAIL — Lists navigation
+     ======================================================================== */
+  .lists-rail {
+    width: 300px; flex-shrink: 0;
+    background: var(--card);
+    border-right: 1px solid var(--rule);
+    display: flex; flex-direction: column;
+    height: 100vh;
+  }
+  .rail-head {
+    padding: 22px 22px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+  }
+  .rail-eyebrow {
+    font-size: 10px; font-weight: 500;
+    color: var(--mute); letter-spacing: 0.20em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .rail-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px;
+    color: var(--navy); line-height: 1.15;
+    font-variation-settings: "opsz" 26;
+  }
+
+  /* Rail search */
+  .rail-search {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 6px 10px;
+    transition: border-color var(--motion);
+  }
+  .rail-search:focus-within { border-color: var(--teal); }
+  .rail-search-icon { color: var(--mute); flex-shrink: 0; }
+  .rail-search input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; color: var(--navy);
+  }
+  .rail-search input::placeholder { color: var(--mute); }
+
+  /* List item tooltip */
+  .list-item { position: relative; }
+  .list-item[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--navy);
+    color: var(--card);
+    font-size: 11px;
+    line-height: 1.45;
+    padding: 8px 12px;
+    border-radius: var(--r-md);
+    width: 240px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(28, 43, 58, 0.18);
+    pointer-events: none;
+    white-space: normal;
+  }
+  .rail-body {
+    flex: 1; overflow-y: auto;
+    padding: 6px 12px 16px;
+  }
+  .rail-body::-webkit-scrollbar { width: 4px; }
+  .rail-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+  .rail-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 14px 10px 6px;
+  }
+
+  .list-item {
+    padding: 10px 12px;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    margin-bottom: 1px;
+    transition: background var(--motion);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .list-item:hover { background: var(--card-warm); }
+  .list-item.active {
+    background: var(--navy-soft);
+  }
+  .list-item-row1 {
+    display: flex; align-items: center; gap: 6px;
+    min-width: 0;
+  }
+  .list-item-name {
+    font-size: 13px; font-weight: 500;
+    color: var(--navy); line-height: 1.3;
+    flex: 1; min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .list-item.active .list-item-name { color: var(--navy); font-weight: 600; }
+  .list-item-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .list-item.active .list-item-count { color: var(--navy); }
+  .list-item-row2 {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .list-type-tag {
+    font-size: 9px;
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .list-type-tag.live { color: var(--green); }
+  .list-type-tag.manual { color: var(--mute); }
+  .list-type-tag.system {
+    background: var(--teal-evidence-bg);
+    color: var(--teal);
+  }
+  .wf-running-mark {
+    font-size: 9px; color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ========================================================================
+     RIGHT PANE
+     ======================================================================== */
+  .main-pane {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .pane-head {
+    padding: 22px 36px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+    background: var(--card);
+  }
+  .pane-eyebrow {
+    font-size: 10px; font-weight: 500;
+    color: var(--mute); letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pane-title-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+  .pane-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 26px;
+    color: var(--navy); line-height: 1.15;
+    font-variation-settings: "opsz" 30;
+  }
+  .pane-meta {
+    display: flex; align-items: center; gap: 14px;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .pane-meta .num { color: var(--navy); font-weight: 600; }
+  .pane-meta .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--green); border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .pane-body {
+    flex: 1; overflow-y: auto;
+    padding: 24px 36px 140px;
+    position: relative;
+  }
+  .pane-body::-webkit-scrollbar { width: 6px; }
+  .pane-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+  /* Section dividers */
+  .section-divider {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 24px 0 12px;
+  }
+  .section-divider:first-of-type { margin-top: 4px; }
+  .section-divider-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500; color: var(--navy);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .section-divider-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--mute);
+  }
+  .section-divider-line {
+    flex: 1; height: 1px; background: var(--rule);
+  }
+
+  /* ========================================================================
+     WORKFLOW CARD (collapsed state)
+     ======================================================================== */
+  .wf-stack { display: flex; flex-direction: column; gap: 10px; }
+
+  .wf-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    transition: all var(--motion);
+    overflow: hidden;
+  }
+  .wf-card.expanded {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-evidence-bg);
+  }
+  .wf-card.inactive {
+    background: var(--card-warm);
+    opacity: 0.85;
+  }
+
+  .wf-card-head {
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer;
+  }
+  .wf-card-head:hover {
+    background: var(--card-warm);
+  }
+  .wf-card.expanded .wf-card-head {
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--card);
+  }
+
+  .wf-card-toggle-wrap {
+    flex-shrink: 0;
+    display: flex; align-items: center;
+  }
+
+  /* Toggle switch */
+  .toggle {
+    position: relative;
+    width: 38px; height: 22px;
+    border-radius: 999px;
+    background: var(--rule);
+    cursor: pointer;
+    transition: background var(--motion);
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--card);
+    transition: transform var(--motion);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  .wf-card-body {
+    flex: 1; min-width: 0;
+  }
+  .wf-card-name-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 3px;
+  }
+  .wf-card-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 16px;
+    color: var(--navy); line-height: 1.25;
+    font-variation-settings: "opsz" 18;
+  }
+  .wf-card.inactive .wf-card-name { color: var(--mute); }
+
+  .system-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    background: var(--teal-evidence-bg);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
+  .wf-card-flow {
+    font-size: 12px;
+    color: var(--body);
+    line-height: 1.5;
+  }
+  .wf-card.inactive .wf-card-flow { color: var(--mute); }
+
+  .wf-card-meta {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    text-align: right;
+  }
+  .wf-card-meta .stat { display: flex; flex-direction: column; gap: 1px; }
+  .wf-card-meta .stat .num {
+    color: var(--navy); font-weight: 600; font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .wf-card.inactive .wf-card-meta .stat .num { color: var(--mute); }
+  .wf-card-meta .stat .label {
+    font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
+  .wf-card-expand {
+    display: flex; align-items: center; gap: 5px;
+    flex-shrink: 0;
+    color: var(--mute);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.06em;
+    transition: color var(--motion);
+  }
+  .wf-card-head:hover .wf-card-expand { color: var(--navy); }
+  .wf-card.expanded .wf-card-expand { color: var(--teal); }
+  .wf-card-chevron {
+    color: inherit;
+    transition: transform var(--motion);
+    flex-shrink: 0;
+  }
+  .wf-card.expanded .wf-card-chevron { transform: rotate(180deg); }
+  .wf-card-expand-label::before { content: 'View flow'; }
+  .wf-card.expanded .wf-card-expand-label::before { content: 'Hide flow'; }
+
+  /* ========================================================================
+     EXPANDED EDITOR INSIDE WORKFLOW CARD
+     ======================================================================== */
+  .wf-editor {
+    display: none;
+    padding: 22px 24px 22px;
+    background: var(--canvas);
+  }
+  .wf-card.expanded .wf-editor { display: block; }
+
+  .editor-meta-strip {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-bottom: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .editor-meta-strip .block { display: flex; flex-direction: column; gap: 2px; }
+  .editor-meta-strip .label {
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .editor-meta-strip .value { color: var(--navy); font-weight: 500; font-size: 12px; }
+  .editor-meta-strip .trigger-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border-radius: 2px;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .editor-meta-strip .trigger-pill.event     { background: var(--teal-evidence-bg); color: var(--teal); }
+  .editor-meta-strip .trigger-pill.scheduled { background: var(--card-warm); color: var(--mute); border: 1px solid var(--rule); padding: 1px 6px; }
+  .editor-meta-strip .trigger-pill.signal    { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .editor-meta-strip .trigger-pill.manual    { background: var(--navy-soft); color: var(--navy); }
+  .editor-meta-strip .safety-pill {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 500;
+  }
+  .editor-meta-strip .safety-pill.warn { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  .editor-meta-strip .safety-pill.ok   { background: var(--green-bg); color: var(--green); }
+
+  /* Process flow */
+  .process-flow {
+    display: flex; align-items: stretch; gap: 0;
+    overflow-x: auto;
+    padding: 4px 4px 16px;
+    margin: 0 -4px 18px;
+  }
+  .process-flow::-webkit-scrollbar { height: 4px; }
+  .process-flow::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+  .pf-arrow {
+    flex-shrink: 0; color: var(--rule);
+    margin: 0 6px; align-self: center;
+  }
+
+  .pf-node {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+    width: 180px;
+    flex-shrink: 0;
+    transition: all var(--motion);
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .pf-node.draftable { cursor: pointer; }
+  .pf-node.draftable:hover {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-evidence-bg);
+  }
+  .pf-node-step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .pf-node-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 13px;
+    color: var(--navy); line-height: 1.25;
+    font-variation-settings: "opsz" 16;
+    margin-bottom: 4px;
+  }
+  .pf-node-desc {
+    font-size: 11px; color: var(--body);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .pf-node-tag {
+    align-self: flex-start;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 1px 6px; border-radius: 2px;
+    margin-top: auto;
+  }
+  .pf-node-tag.draft { background: var(--teal-evidence-bg); color: var(--teal); }
+  .pf-node-tag.human { background: var(--amber-tint); color: var(--amber); }
+  .pf-node-tag.auto  { background: var(--card-warm); color: var(--mute); }
+  .pf-node-draft-hint {
+    position: absolute;
+    top: -6px; right: 10px;
+    background: var(--teal); color: var(--card);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 2px 6px; border-radius: 2px;
+    opacity: 0;
+    transition: opacity var(--motion);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .pf-node.draftable:hover .pf-node-draft-hint { opacity: 1; }
+
+  /* Trigger node */
+  .pf-node.trigger {
+    background: linear-gradient(135deg, var(--teal-evidence-bg) 0%, rgba(14, 124, 124, 0.10) 100%);
+    border: 1px solid var(--teal);
+    border-radius: 12px;
+    width: 200px;
+  }
+  .pf-node.trigger .pf-node-step-num { color: var(--teal-strong); }
+  .pf-node.trigger .pf-node-title { color: var(--teal-strong); }
+
+  /* Wait — now an inline connector style, lighter */
+  .pf-wait {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    margin: 0 4px;
+    padding: 8px 0;
+    align-self: center;
+  }
+  .pf-wait-line {
+    width: 60px;
+    height: 1px;
+    background: repeating-linear-gradient(to right, var(--rule) 0, var(--rule) 4px, transparent 4px, transparent 8px);
+  }
+  .pf-wait-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* Draft icon — visible in step, not just on hover */
+  .pf-node-icon-row {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 5px;
+  }
+  .pf-node-draft-icon {
+    width: 14px; height: 14px;
+    flex-shrink: 0;
+    color: var(--teal);
+  }
+  .pf-node-step-num-inline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  .pf-node.add-step {
+    border-style: dashed;
+    color: var(--mute);
+    background: transparent;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    width: 110px;
+    padding: 14px 10px;
+  }
+  .pf-node.add-step:hover {
+    border-style: solid;
+    border-color: var(--navy);
+    color: var(--navy);
+  }
+  .pf-node.add-step .pf-add-text {
+    font-size: 11px; font-weight: 500;
+    margin-top: 4px;
+  }
+
+  /* Activity strip below process flow */
+  .activity-strip {
+    display: flex; gap: 24px;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .activity-strip .stat {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .activity-strip .stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .activity-strip .stat-num.muted { color: var(--mute); }
+  .activity-strip .stat-num.danger { color: var(--red); }
+  .activity-strip .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .activity-strip-spacer { flex: 1; }
+  .activity-strip-link {
+    font-size: 11px; color: var(--teal);
+    cursor: pointer;
+    align-self: center;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .activity-strip-link:hover { color: var(--teal-strong); }
+
+  /* ========================================================================
+     STATE SECTION — where the in-flight LPs are
+     ======================================================================== */
+  .state-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+  }
+
+  /* What needs your attention — actionable callout */
+  .attention-section {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, var(--teal-evidence-bg) 0%, rgba(14, 124, 124, 0.08) 100%);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-md);
+  }
+  .attention-row {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .attention-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .attention-text {
+    flex: 1;
+    font-size: 13px; color: var(--navy);
+    line-height: 1.5;
+  }
+  .attention-strong {
+    font-weight: 600; color: var(--teal-strong);
+  }
+  .attention-sep {
+    color: var(--rule); margin: 0 4px;
+  }
+  .attention-cta {
+    background: var(--teal); color: var(--card);
+    border: 0;
+    border-radius: var(--r-sm);
+    padding: 8px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--motion);
+  }
+  .attention-cta:hover { background: var(--teal-strong); }
+
+  /* New funnel — two states per step */
+  .state-funnel-v2 {
+    display: flex; align-items: stretch; gap: 0;
+    margin-top: 14px;
+    margin-bottom: 16px;
+  }
+  .sf-step {
+    flex: 1;
+    display: flex; flex-direction: column;
+    min-width: 0;
+  }
+  .sf-step-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--navy);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 8px;
+    padding: 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sf-bars {
+    display: flex; flex-direction: column; gap: 4px;
+    flex: 1;
+  }
+  .sf-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--r-sm);
+    font-size: 11px;
+    transition: all var(--motion);
+  }
+  .sf-bar.drafted {
+    background: var(--amber-tint);
+    border: 1px solid var(--amber);
+    cursor: pointer;
+    color: var(--amber);
+  }
+  .sf-bar.drafted:hover {
+    background: var(--amber);
+    color: var(--card);
+  }
+  .sf-bar.sent {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    color: var(--body);
+  }
+  .sf-bar-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .sf-bar-num.zero { opacity: 0.35; }
+  .sf-bar-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex: 1; min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Wait between steps — narrower */
+  .sf-wait {
+    width: 90px;
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0 6px;
+    align-self: stretch;
+    margin-top: 22px;
+  }
+  .sf-wait-line {
+    flex: 1;
+    width: 1px;
+    background: repeating-linear-gradient(to bottom, var(--rule) 0, var(--rule) 4px, transparent 4px, transparent 8px);
+    min-height: 8px;
+  }
+  .sf-wait-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin: 4px 0 2px;
+  }
+  .sf-wait-num.zero { color: var(--mute); font-weight: 500; }
+  .sf-wait-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--mute);
+    letter-spacing: 0.04em;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  /* Replies + outcomes — outside the sequence */
+  .state-side {
+    display: flex; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .state-side-block {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: var(--r-md);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .state-side-block.reply {
+    background: var(--green-bg);
+    border: 1px solid var(--green);
+  }
+  .state-side-block.outcome {
+    background: var(--card-warm);
+    border: 1px solid var(--rule);
+  }
+  .state-side-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .state-side-block.reply .state-side-num { color: var(--green); }
+  .state-side-block.outcome .state-side-num { color: var(--navy); }
+  .state-side-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+  .state-side-block.reply .state-side-label { color: var(--green); }
+  .state-side-block.outcome .state-side-label { color: var(--navy); }
+  .state-side-aux {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+
+  /* Footer with stats */
+  .state-stat-spacer { flex: 1; }
+  .state-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .state-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--navy);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .state-link {
+    font-size: 11px; color: var(--teal);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .state-link:hover { color: var(--teal-strong); }
+
+  .state-foot {
+    display: flex; gap: 18px;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .state-stat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--body);
+    letter-spacing: 0.04em;
+  }
+  .state-stat.muted { color: var(--mute); }
+  .state-stat-num {
+    color: var(--navy); font-weight: 600;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .state-stat.muted .state-stat-num { color: var(--mute); }
+
+  /* ========================================================================
+     RUN HISTORY
+     ======================================================================== */
+  .run-history-section {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .run-history-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .run-history-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--navy);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .run-history-list {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .rh-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-soft);
+    cursor: pointer;
+    transition: background var(--motion);
+    gap: 16px;
+  }
+  .rh-row:last-child { border-bottom: 0; }
+  .rh-row:hover { background: var(--card-warm); }
+  .rh-row.active { background: var(--teal-evidence-bg); }
+  .rh-row.active:hover { background: rgba(14, 124, 124, 0.10); }
+
+  .rh-list-info { min-width: 0; flex: 1; }
+  .rh-list-name {
+    display: block;
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 14px;
+    color: var(--navy); line-height: 1.3;
+    font-variation-settings: "opsz" 16;
+    margin-bottom: 2px;
+  }
+  .rh-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .rh-status {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    flex-shrink: 0;
+  }
+  .rh-state-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .rh-state-pill.running { background: var(--teal-evidence-bg); color: var(--teal); }
+  .rh-state-pill.done { background: var(--green-bg); color: var(--green); }
+  .rh-aux {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    text-align: right;
+  }
+
+  /* Tomo input — pinned to bottom */
+  .tomo-input-wrap {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 16px 36px;
+    background: linear-gradient(to bottom, transparent, var(--canvas) 30%);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .tomo-input {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 11px 16px;
+    box-shadow: var(--shadow-2);
+    transition: border-color var(--motion);
+  }
+  .tomo-input:focus-within { border-color: var(--teal); }
+  .tomo-input .icon { color: var(--teal); flex-shrink: 0; }
+  .tomo-scope-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--teal-evidence-bg);
+    padding: 3px 8px; border-radius: 999px;
+    flex-shrink: 0;
+    transition: opacity var(--motion);
+  }
+  .tomo-scope-pill.hidden { display: none; }
+  .tomo-input input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; color: var(--navy);
+  }
+  .tomo-input input::placeholder { color: var(--mute); }
+  .tomo-input .live-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--teal-evidence-bg);
+    padding: 3px 8px; border-radius: 999px;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tomo-input .live-pill .live-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%; background: var(--teal);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  .tomo-input .send {
+    width: 26px; height: 26px;
+    border-radius: var(--r-sm);
+    background: var(--teal); color: var(--card);
+    border: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .tomo-input .send:hover { background: var(--teal-strong); }
+
+  /* ========================================================================
+     BATCH REVIEW DRAWER — primary draft review pattern
+     ======================================================================== */
+  .batch-scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .batch-scrim.open { opacity: 1; pointer-events: auto; }
+
+  .batch-drawer {
+    position: fixed;
+    top: 0; right: 0;
+    width: 820px;
+    max-width: 92vw;
+    height: 100vh;
+    background: var(--canvas);
+    border-left: 1px solid var(--rule);
+    box-shadow: var(--shadow-drawer);
+    z-index: 201;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform var(--motion);
+  }
+  .batch-drawer.open { transform: translateX(0); }
+
+  .batch-head {
+    padding: 22px 28px 14px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+  }
+  .batch-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .batch-head-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16px;
+  }
+  .batch-title-block { flex: 1; min-width: 0; }
+  .batch-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 26;
+    line-height: 1.2;
+  }
+  .batch-context {
+    font-size: 12px; color: var(--body);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .batch-tomo-strip {
+    padding: 14px 28px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .batch-tomo {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 9px 14px;
+    transition: border-color var(--motion);
+  }
+  .batch-tomo:focus-within { border-color: var(--teal); }
+  .batch-tomo .icon { color: var(--teal); flex-shrink: 0; }
+  .batch-tomo input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; color: var(--navy);
+  }
+  .batch-tomo input::placeholder { color: var(--mute); }
+  .batch-tomo .send {
+    width: 24px; height: 24px;
+    border-radius: var(--r-sm);
+    background: var(--teal); color: var(--card);
+    border: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .batch-tomo.small input { font-size: 11px; }
+  .batch-tomo-scope {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--teal);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--teal-evidence-bg);
+    padding: 3px 8px; border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .batch-tomo-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    margin-top: 6px;
+    padding-left: 4px;
+  }
+
+  .batch-body {
+    flex: 1; overflow-y: auto;
+    padding: 16px 28px 24px;
+  }
+  .batch-body::-webkit-scrollbar { width: 6px; }
+  .batch-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+  .batch-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  /* Batch card — collapsed = preview, expanded = full editor */
+  .batch-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    transition: all var(--motion);
+  }
+  .batch-card.expanded {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-evidence-bg);
+  }
+  .batch-card-head {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 14px;
+    padding: 14px 18px;
+    align-items: center;
+    cursor: pointer;
+    transition: background var(--motion);
+  }
+  .batch-card-head:hover { background: var(--card-warm); }
+  .batch-card-lp { min-width: 0; }
+  .batch-card-firm {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 15px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 18;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .batch-card-person {
+    font-size: 11px; color: var(--mute);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .batch-card-meta {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .batch-card-attach,
+  .batch-card-no-attach {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .batch-card-attach { background: var(--teal-evidence-bg); color: var(--teal); }
+  .batch-card-no-attach { color: var(--mute); }
+
+  .batch-card-actions {
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .btn-approve-row {
+    background: var(--card); color: var(--teal);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 6px 12px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .btn-approve-row:hover {
+    background: var(--teal); color: var(--card);
+  }
+  .batch-card-chevron {
+    color: var(--mute);
+    transition: transform var(--motion);
+  }
+  .batch-card.expanded .batch-card-chevron { transform: rotate(180deg); color: var(--teal); }
+
+  /* Preview — visible only when collapsed */
+  .batch-card-preview {
+    padding: 0 18px 14px;
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 12px;
+    margin: 0 0 0 0;
+  }
+  .batch-card.expanded .batch-card-preview { display: none; }
+  .batch-card-subject {
+    font-size: 13px; font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .batch-card-body {
+    font-size: 12px; color: var(--body);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Expanded — full editor inside the card */
+  .batch-card-expanded {
+    display: none;
+    padding: 0 22px 22px;
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 16px;
+  }
+  .batch-card.expanded .batch-card-expanded { display: block; }
+  .be-section { margin-bottom: 14px; }
+  .be-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .be-input {
+    width: 100%;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 8px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 500;
+    color: var(--navy);
+  }
+  .be-input:focus { outline: 0; border-color: var(--teal); }
+  .be-textarea {
+    width: 100%;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; line-height: 1.6;
+    color: var(--navy);
+    resize: vertical;
+  }
+  .be-textarea:focus { outline: 0; border-color: var(--teal); }
+  .be-tomo-row { margin-top: 8px; }
+
+  /* Sticky footer — primary action: approve all */
+  .batch-foot {
+    background: var(--card);
+    border-top: 1px solid var(--rule);
+    padding: 14px 28px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+    gap: 14px;
+  }
+  .batch-foot-left {
+    flex: 1; min-width: 0;
+  }
+  .batch-foot-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .batch-foot-actions {
+    display: flex; gap: 8px;
+    flex-shrink: 0;
+  }
+  .btn-approve-all {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 9px 18px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .btn-approve-all:hover {
+    background: var(--teal-strong); border-color: var(--teal-strong);
+  }
+  .draft-scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .draft-scrim.open { opacity: 1; pointer-events: auto; }
+
+  .draft-drawer {
+    position: fixed;
+    top: 0; right: 0;
+    width: 640px; height: 100vh;
+    background: var(--card);
+    border-left: 1px solid var(--rule);
+    box-shadow: var(--shadow-drawer);
+    z-index: 201;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform var(--motion);
+  }
+  .draft-drawer.open { transform: translateX(0); }
+
+  .draft-head {
+    padding: 22px 28px 16px;
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+  }
+  .draft-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .draft-head-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px;
+  }
+  .draft-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 22px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 26;
+  }
+  .draft-close {
+    width: 28px; height: 28px;
+    background: transparent; border: 0;
+    color: var(--mute); cursor: pointer;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .draft-close:hover { background: var(--navy-soft); color: var(--navy); }
+  .draft-context {
+    font-size: 12px; color: var(--body);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .draft-body {
+    flex: 1; overflow-y: auto;
+    padding: 22px 28px;
+  }
+  .draft-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Recipient */
+  .draft-to {
+    background: var(--card-warm);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .draft-to .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .draft-to .recipient {
+    font-size: 13px; color: var(--navy); font-weight: 500;
+  }
+  .draft-to .recipient .firm { color: var(--mute); margin-left: 6px; }
+
+  /* Subject + body */
+  .draft-subject {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+  .draft-subject:focus { outline: 0; border-color: var(--teal); }
+
+  .draft-body-textarea {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; line-height: 1.65;
+    color: var(--navy);
+    resize: vertical;
+    min-height: 280px;
+    margin-bottom: 16px;
+  }
+  .draft-body-textarea:focus { outline: 0; border-color: var(--teal); }
+
+  /* Attachment chip */
+  .draft-attachment {
+    margin-bottom: 16px;
+  }
+  .draft-attachment.hidden { display: none; }
+  .attachment-chip {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card-warm);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 12px 14px;
+  }
+  .attachment-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--r-sm);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--teal);
+    flex-shrink: 0;
+  }
+  .attachment-body { flex: 1; min-width: 0; }
+  .attachment-name {
+    font-size: 13px; font-weight: 500;
+    color: var(--navy);
+    line-height: 1.3;
+    margin-bottom: 2px;
+  }
+  .attachment-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .attachment-actions {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .attachment-replace {
+    font-size: 11px; color: var(--teal);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .attachment-replace:hover { color: var(--teal-strong); }
+  .attachment-remove {
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mute);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all var(--motion);
+  }
+  .attachment-remove:hover { background: var(--red-bg); color: var(--red); }
+  .attachment-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    margin-top: 6px;
+    padding-left: 4px;
+  }
+  .draft-tomo {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+  .draft-tomo:focus-within { border-color: var(--teal); }
+  .draft-tomo .icon { color: var(--teal); flex-shrink: 0; }
+  .draft-tomo input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; color: var(--navy);
+  }
+  .draft-tomo input::placeholder { color: var(--mute); }
+  .draft-tomo .send {
+    width: 24px; height: 24px;
+    border-radius: var(--r-sm);
+    background: var(--teal); color: var(--card);
+    border: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .draft-tomo-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+  }
+  .draft-tomo-hint .ex { color: var(--body); font-style: italic; }
+
+  /* Actions footer */
+  .draft-foot {
+    border-top: 1px solid var(--rule);
+    padding: 14px 28px;
+    background: var(--card-warm);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .draft-foot-left {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .draft-actions { display: flex; gap: 8px; }
+  .btn-dismiss {
+    background: transparent; color: var(--mute);
+    border: 0;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-dismiss:hover { color: var(--red); }
+  .btn-edit {
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 7px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-edit:hover { border-color: var(--navy); }
+  .btn-approve {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-approve:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+
+  /* Toggle confirmation popover */
+  .toggle-confirm-scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 250;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .toggle-confirm-scrim.open { opacity: 1; pointer-events: auto; }
+
+  .toggle-confirm {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -48%);
+    width: 460px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    box-shadow: 0 20px 50px rgba(28, 43, 58, 0.18);
+    z-index: 251;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion), transform var(--motion);
+    overflow: hidden;
+  }
+  .toggle-confirm.open {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+  .tc-head {
+    padding: 18px 22px 12px;
+  }
+  .tc-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .tc-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 18px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 22;
+    line-height: 1.3;
+  }
+  .tc-body {
+    padding: 0 22px 16px;
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .tc-body .strong {
+    color: var(--navy); font-weight: 500;
+  }
+  .tc-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 12px 22px;
+    border-top: 1px solid var(--rule);
+    background: var(--card-warm);
+  }
+  .tc-cancel {
+    background: transparent; color: var(--mute);
+    border: 0;
+    padding: 7px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .tc-cancel:hover { color: var(--navy); }
+  .tc-confirm {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 7px 16px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .tc-confirm:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+  .tc-confirm.danger {
+    background: var(--red); border-color: var(--red);
+  }
+  .tc-confirm.danger:hover {
+    background: #B83F3F; border-color: #B83F3F;
+  }
+
+  /* ========================================================================
+     V6 — Locked default workflows
+     ======================================================================== */
+  .system-mark.locked {
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .system-mark.locked svg {
+    width: 9px; height: 9px;
+  }
+  .wf-card.locked .pf-node.add-step { display: none; }
+
+  /* Tailored "starting template" badge */
+  .tailored-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--amber);
+    background: var(--amber-tint);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
+  /* Edit structure button on tailored cards */
+  .edit-structure-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--card); color: var(--navy);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 5px 10px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all var(--motion);
+  }
+  .edit-structure-btn:hover { border-color: var(--navy); }
+
+  /* ========================================================================
+     V7 — Tailored workflow editor affordances
+     ======================================================================== */
+  .tailored-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--amber-tint);
+    border: 1px solid var(--amber);
+    border-radius: var(--r-md);
+    padding: 12px 14px;
+    margin-bottom: 18px;
+  }
+  .tailored-banner-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tailored-banner-text {
+    flex: 1;
+    font-size: 12px; color: var(--navy);
+    line-height: 1.5;
+  }
+  .tailored-banner-text .strong {
+    color: var(--amber); font-weight: 600;
+  }
+  .tailored-banner .edit-structure-btn {
+    margin-top: 0; flex-shrink: 0;
+    background: var(--card); color: var(--amber);
+    border-color: var(--amber);
+  }
+  .tailored-banner .edit-structure-btn:hover {
+    background: var(--amber); color: var(--card);
+  }
+
+  /* Editable nodes — distinct hover state from draftable */
+  .pf-node.editable {
+    border-style: solid;
+  }
+  .pf-node.editable:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber-tint);
+  }
+  .pf-node.editable.draftable:hover {
+    /* When both editable AND draftable — editable wins visually */
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber-tint);
+  }
+  .pf-node.trigger.editable:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber-tint);
+  }
+  .pf-node-edit-hint {
+    position: absolute;
+    top: -6px; right: 10px;
+    background: var(--amber); color: var(--card);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 2px 6px; border-radius: 2px;
+    opacity: 0;
+    transition: opacity var(--motion);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .pf-node.editable:hover .pf-node-edit-hint { opacity: 1; }
+  /* Hide the regular draft hint when editable hint is showing */
+  .pf-node.editable.draftable:hover .pf-node-draft-hint { opacity: 0; }
+
+  /* Small "edit structure" button in corner of editable nodes */
+  .pf-node-struct-edit {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 22px; height: 22px;
+    border-radius: var(--r-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--mute);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+    transition: all var(--motion);
+    opacity: 0;
+  }
+  .pf-node.editable:hover .pf-node-struct-edit { opacity: 1; }
+  /* Locked default steps also get struct-edit on hover (content-only) */
+  .pf-node.draftable:hover .pf-node-struct-edit { opacity: 1; }
+  .pf-node-struct-edit:hover {
+    background: var(--amber);
+    color: var(--card);
+    border-color: var(--amber);
+  }
+  /* For locked nodes, the struct-edit hovers in teal (content-only edit) */
+  .pf-node.draftable:not(.editable) .pf-node-struct-edit:hover {
+    background: var(--teal);
+    border-color: var(--teal);
+  }
+
+  /* Editable wait — shows pencil on hover */
+  .pf-wait.editable {
+    cursor: pointer;
+    transition: opacity var(--motion);
+  }
+  .pf-wait.editable:hover .pf-wait-edit { opacity: 1; }
+  .pf-wait-edit {
+    margin-left: 4px;
+    color: var(--amber);
+    opacity: 0;
+    transition: opacity var(--motion);
+    font-size: 10px;
+  }
+
+  /* Suggestion chips — for tailored workflows */
+  .suggestions-section {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .suggestions-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .suggestion-chips {
+    display: flex; gap: 6px;
+    flex-wrap: wrap;
+  }
+  .suggestion-chip {
+    display: inline-flex; align-items: center;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11px;
+    color: var(--body);
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .suggestion-chip:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--amber-tint);
+  }
+
+  /* ========================================================================
+     V8 — EDIT TRAY (rises from bottom of workspace pane)
+     ======================================================================== */
+  .edit-tray {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    border-top: 2px solid var(--teal);
+    box-shadow: 0 -8px 24px rgba(28, 43, 58, 0.10);
+    z-index: 12;
+    transform: translateY(100%);
+    transition: transform var(--motion);
+    max-height: 60vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .edit-tray.open { transform: translateY(0); }
+  .edit-tray.amber-mode { border-top-color: var(--amber); }
+
+  .et-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 32px;
+    border-bottom: 1px solid var(--rule-soft);
+    flex-shrink: 0;
+  }
+  .et-title-block { display: flex; align-items: center; gap: 12px; }
+  .et-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .edit-tray.amber-mode .et-eyebrow { color: var(--amber); }
+  .et-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 16px;
+    color: var(--navy);
+    font-variation-settings: "opsz" 18;
+  }
+  .et-source-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--teal-evidence-bg);
+    color: var(--teal);
+  }
+  .et-source-pill.tomo-proposed {
+    background: var(--amber-tint); color: var(--amber);
+  }
+  .et-close {
+    width: 28px; height: 28px;
+    background: transparent; border: 0;
+    color: var(--mute); cursor: pointer;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .et-close:hover { background: var(--navy-soft); color: var(--navy); }
+
+  .et-body {
+    padding: 18px 32px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .et-body::-webkit-scrollbar { width: 4px; }
+  .et-body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+  .et-section { margin-bottom: 16px; }
+  .et-section:last-child { margin-bottom: 0; }
+  .et-fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+  }
+  .et-fields-row.three-col {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .et-field { display: flex; flex-direction: column; gap: 5px; }
+  .et-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .et-label.locked-label::after {
+    content: ' · LOCKED';
+    color: var(--mute);
+    font-weight: 400;
+  }
+  .et-input,
+  .et-select {
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 8px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; color: var(--navy);
+    width: 100%;
+  }
+  .et-input:focus, .et-select:focus { outline: 0; border-color: var(--teal); }
+  .et-input.disabled, .et-select.disabled {
+    background: var(--card-warm);
+    color: var(--mute);
+    cursor: not-allowed;
+  }
+  .et-textarea {
+    min-height: 60px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .et-input.changed,
+  .et-select.changed,
+  .et-textarea.changed {
+    border-color: var(--amber);
+    background: var(--amber-tint);
+  }
+
+  .et-locked-note {
+    background: var(--card-warm);
+    border-left: 2px solid var(--mute);
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--mute);
+    line-height: 1.5;
+    margin-bottom: 14px;
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  }
+  .et-locked-note .strong { color: var(--navy); font-weight: 500; }
+
+  /* Tomo proposal diff view */
+  .et-diff-section {
+    background: var(--amber-tint);
+    border: 1px solid var(--amber);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .et-diff-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--amber);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .et-diff-row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  .et-diff-row .diff-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.10em;
+    color: var(--mute);
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+  .et-diff-row.before .diff-content {
+    color: var(--mute);
+    text-decoration: line-through;
+  }
+  .et-diff-row.after .diff-content {
+    color: var(--navy);
+    font-weight: 500;
+  }
+
+  .et-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 32px;
+    border-top: 1px solid var(--rule);
+    background: var(--card-warm);
+    flex-shrink: 0;
+    gap: 14px;
+  }
+  .et-foot-left {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .et-foot-actions { display: flex; gap: 8px; }
+  .et-cancel {
+    background: transparent; color: var(--mute);
+    border: 0;
+    padding: 7px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .et-cancel:hover { color: var(--navy); }
+  .et-apply {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 7px 18px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .et-apply:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
+  .edit-tray.amber-mode .et-apply {
+    background: var(--amber); border-color: var(--amber);
+  }
+  .edit-tray.amber-mode .et-apply:hover {
+    background: #B07F2A; border-color: #B07F2A;
+  }
+
+  /* Add / Remove step buttons (tailored only) */
+  .et-step-actions {
+    display: flex; gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .et-step-action-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 6px 12px;
+    font-size: 11px; font-weight: 500;
+    color: var(--navy);
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .et-step-action-btn:hover { border-color: var(--navy); }
+  .et-step-action-btn.danger { color: var(--red); }
+  .et-step-action-btn.danger:hover { border-color: var(--red); background: var(--red-bg); }
+
+  /* ========================================================================
+     V8 — WAIT POPOVER (small, anchored to wait connector)
+     ======================================================================== */
+  .wait-popover-scrim {
+    position: fixed; inset: 0;
+    z-index: 220;
+    opacity: 0; pointer-events: none;
+  }
+  .wait-popover-scrim.open { pointer-events: auto; }
+
+  .wait-popover {
+    position: fixed;
+    background: var(--card);
+    border: 1px solid var(--amber);
+    border-radius: var(--r-md);
+    box-shadow: 0 6px 18px rgba(28, 43, 58, 0.15);
+    z-index: 221;
+    padding: 14px 16px;
+    width: 240px;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .wait-popover.open { opacity: 1; pointer-events: auto; }
+  .wait-popover-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--amber);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .wait-popover-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .wait-popover-input {
+    width: 56px;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 6px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 500;
+    color: var(--navy);
+    text-align: center;
+  }
+  .wait-popover-input:focus { outline: 0; border-color: var(--amber); }
+  .wait-popover-unit {
+    font-size: 12px; color: var(--body);
+  }
+  .wait-popover-foot {
+    display: flex; justify-content: flex-end; gap: 6px;
+  }
+  .wait-popover-cancel {
+    background: transparent; color: var(--mute);
+    border: 0;
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .wait-popover-cancel:hover { color: var(--navy); }
+  .wait-popover-apply {
+    background: var(--amber); color: var(--card);
+    border: 0;
+    border-radius: var(--r-sm);
+    padding: 5px 12px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+  }
+  .wait-popover-apply:hover { background: #B07F2A; }
+
+  /* Make wait connectors clickable when editable */
+  .pf-wait.editable {
+    cursor: pointer;
+  }
+
+  /* ========================================================================
+     RUN WORKFLOW MODAL
+     ======================================================================== */
+  .run-modal-scrim {
+    position: fixed; inset: 0;
+    background: rgba(28, 43, 58, 0.30);
+    backdrop-filter: blur(2px);
+    z-index: 250;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion);
+  }
+  .run-modal-scrim.open { opacity: 1; pointer-events: auto; }
+
+  .run-modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -48%);
+    width: 560px;
+    max-height: 90vh;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    box-shadow: 0 20px 50px rgba(28, 43, 58, 0.18);
+    z-index: 251;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--motion), transform var(--motion);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .run-modal.open {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+  .run-modal-head {
+    padding: 22px 26px 14px;
+    flex-shrink: 0;
+  }
+  .run-modal-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--teal);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .run-modal-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 20px;
+    color: var(--navy);
+    line-height: 1.25;
+    font-variation-settings: "opsz" 24;
+  }
+  .run-modal-body {
+    padding: 6px 26px 18px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .run-section { margin-bottom: 18px; }
+  .run-section:last-child { margin-bottom: 0; }
+  .run-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .run-cohort-display {
+    background: var(--card-warm);
+    border-radius: var(--r-md);
+    padding: 12px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+  }
+  .run-cohort-info { flex: 1; min-width: 0; }
+  .run-cohort-name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500; font-size: 15px;
+    color: var(--navy);
+    margin-bottom: 2px;
+    font-variation-settings: "opsz" 18;
+  }
+  .run-cohort-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .run-cohort-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 600;
+    color: var(--teal);
+    font-variant-numeric: tabular-nums;
+  }
+  .run-input {
+    width: 100%;
+    background: var(--canvas);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--navy);
+  }
+  .run-input:focus { outline: 0; border-color: var(--teal); }
+  .run-textarea {
+    min-height: 90px;
+    resize: vertical;
+    line-height: 1.55;
+  }
+  .run-file-zone {
+    background: var(--canvas);
+    border: 1px dashed var(--rule);
+    border-radius: var(--r-md);
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--motion);
+  }
+  .run-file-zone:hover {
+    border-color: var(--navy);
+    border-style: solid;
+  }
+  .run-file-text {
+    font-size: 12px; color: var(--mute);
+    line-height: 1.5;
+  }
+  .run-file-text .accent { color: var(--teal); font-weight: 500; }
+  .run-followup-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card-warm);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+  }
+  .run-followup-text {
+    flex: 1; min-width: 0;
+    font-size: 12px; color: var(--body);
+    line-height: 1.5;
+  }
+  .run-followup-text .strong {
+    color: var(--navy); font-weight: 500;
+  }
+  .run-modal-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 26px;
+    border-top: 1px solid var(--rule);
+    background: var(--card-warm);
+    flex-shrink: 0;
+    gap: 14px;
+  }
+  .run-modal-summary {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .run-modal-summary .strong {
+    color: var(--teal); font-weight: 600;
+  }
+  .run-modal-actions { display: flex; gap: 8px; }
+  .run-cancel {
+    background: transparent; color: var(--mute);
+    border: 0;
+    padding: 7px 14px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .run-cancel:hover { color: var(--navy); }
+  .run-launch {
+    background: var(--teal); color: var(--card);
+    border: 1px solid var(--teal);
+    border-radius: var(--r-sm);
+    padding: 8px 18px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .run-launch:hover {
+    background: var(--teal-strong); border-color: var(--teal-strong);
+  }
+
+  .demo-bar {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--navy); color: var(--card);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex; gap: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  }
+  .demo-toggle {
+    background: transparent; color: rgba(255, 255, 255, 0.7);
+    border: 0; border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+  }
+  .demo-toggle:hover { color: var(--card); }
+  .demo-toggle.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--card);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 80ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LEFT NAV -->
+  <nav class="nav">
+    <div class="nav-logo">tomo.</div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-1a3 3 0 0 0-2-2.8"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></div>
+    <div class="nav-item active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </nav>
+
+  <div class="workspace">
+
+    <!-- ============================================================
+         LEFT RAIL: Lists (navigation)
+         ============================================================ -->
+    <aside class="lists-rail">
+      <div class="rail-head">
+        <div class="rail-eyebrow">Workflows</div>
+        <div class="rail-search">
+          <svg class="rail-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search lists…">
+        </div>
+      </div>
+
+      <div class="rail-body">
+
+        <div class="rail-section-label">Your lists</div>
+
+        <div class="list-item" data-tooltip="Pre-loaded by Tomo. Tier 1 LPs you've confirmed fit with who have gone quiet — the most valuable cohort to re-engage.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Tier 1 · Confirmed fit · Drifting</span>
+            <span class="list-item-count">7</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag system">Tomo default</span>
+            <span class="wf-running-mark">2 running</span>
+          </div>
+        </div>
+
+        <div class="list-item active" data-tooltip="Warm-stage LPs with no signal in 30+ days — these are LPs going dormant unless you act.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Quiet · Fat Middle</span>
+            <span class="list-item-count">18</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+            <span class="wf-running-mark">1 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="LPs in active diligence or soft commit. Your most engaged conversations — keep them moving.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Active diligence focus</span>
+            <span class="list-item-count">29</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+            <span class="wf-running-mark">3 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="LPs who invested in Fund II and haven't been contacted yet about Fund III. Highest conversion rate of any cohort.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Re-ups · Fund II investors</span>
+            <span class="list-item-count">14</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+            <span class="wf-running-mark">1 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="All North American family offices in your book, regardless of stage. Useful for roadshow planning and segment-wide updates.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Family offices · NA</span>
+            <span class="list-item-count">23</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="LPs whose engagement signals are slowing — reply velocity, length, or initiation are trending down.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Cooling relationships</span>
+            <span class="list-item-count">37</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+            <span class="wf-running-mark">2 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="Hand-picked LPs for the May NYC + Boston trip. Manual list — does not auto-update.">
+          <div class="list-item-row1">
+            <span class="list-item-name">North America roadshow · May</span>
+            <span class="list-item-count">5</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag manual">Manual</span>
+            <span class="wf-running-mark">1 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="Hand-picked priority cohort for Q1 outreach. Manual list — does not auto-update.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Q1 Target List</span>
+            <span class="list-item-count">33</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag manual">Manual</span>
+            <span class="wf-running-mark">1 running</span>
+          </div>
+        </div>
+
+        <div class="list-item" data-tooltip="LPs who have spent longer than expected in their current stage. Worth a check-in or a re-engagement.">
+          <div class="list-item-row1">
+            <span class="list-item-name">Stuck in stage</span>
+            <span class="list-item-count">9</span>
+          </div>
+          <div class="list-item-row2">
+            <span class="list-type-tag live">● Live</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ============================================================
+         RIGHT PANE: workflows for selected list ("Quiet · Fat Middle")
+         ============================================================ -->
+    <main class="main-pane">
+
+      <div class="pane-head">
+        <div class="pane-eyebrow">List · Quiet · Fat Middle</div>
+        <div class="pane-title-row">
+          <h1 class="pane-title">Quiet · Fat Middle</h1>
+        </div>
+        <div class="pane-meta">
+          <span><span class="num">18</span> LPs</span>
+          <span style="color: var(--rule)">·</span>
+          <span><span class="live-dot"></span>Live · auto-updating</span>
+          <span style="color: var(--rule)">·</span>
+          <span>Filter: warm-stage LPs · no directional signal in 30+ days</span>
+        </div>
+      </div>
+
+      <div class="pane-body">
+
+        <div class="section-divider">
+          <span class="section-divider-label">Tomo defaults</span>
+          <span class="section-divider-count">4 workflows · structurally locked · content editable per run</span>
+          <span class="section-divider-line"></span>
+        </div>
+
+        <div class="wf-stack">
+
+          <!-- Three-Touch Qualification — DEFAULT, LOCKED, EXPANDED, ACTIVE -->
+          <div class="wf-card locked expanded">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle on" onclick="event.stopPropagation(); openRunModal('three-touch')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">Three-Touch Qualification</span>
+                  <span class="system-mark locked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Default
+                  </span>
+                </div>
+                <div class="wf-card-flow">Fat Middle resolution · insight → wait → question → wait → respectful close → outcome capture</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">14</span>
+                  <span class="label">Running now</span>
+                </div>
+                <div class="stat">
+                  <span class="num">28</span>
+                  <span class="label">Done last 30d</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+
+            <!-- EDITOR BODY -->
+            <div class="wf-editor">
+
+              <div class="editor-meta-strip">
+                <div class="block">
+                  <span class="label">Last activity</span>
+                  <span class="value">Touch 2 drafted for Lingotto · <span style="color: var(--teal);">14m ago →</span></span>
+                </div>
+                <div class="block">
+                  <span class="label">Outbound safety</span>
+                  <span class="value"><span class="safety-pill ok">14-day same-message dedup active</span></span>
+                </div>
+              </div>
+
+              <div class="process-flow">
+
+                <div class="pf-node trigger">
+                  <div class="pf-node-step-num">When</div>
+                  <div class="pf-node-title">GP runs on a Fat Middle list</div>
+                  <div class="pf-node-desc">Cohort enrolled together · same cadence</div>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node draftable" onclick="openBatch('insight')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <button class="pf-node-struct-edit" onclick="event.stopPropagation(); openEditTray('three-touch-insight', 'locked')" title="Edit step settings"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Touch 1 · Day 0</span>
+                  </div>
+                  <div class="pf-node-title">Insight email</div>
+                  <div class="pf-node-desc">Mandate-relevant market insight</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <div class="pf-wait">
+                  <div class="pf-wait-line"></div>
+                  <span class="pf-wait-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Wait 5–7d</span>
+                  <div class="pf-wait-line"></div>
+                </div>
+
+                <div class="pf-node draftable" onclick="openBatch('question')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Touch 2 · Day 5–7</span>
+                  </div>
+                  <div class="pf-node-title">Question email</div>
+                  <div class="pf-node-desc">Single low-friction question</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <div class="pf-wait">
+                  <div class="pf-wait-line"></div>
+                  <span class="pf-wait-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Wait 5–7d</span>
+                  <div class="pf-wait-line"></div>
+                </div>
+
+                <div class="pf-node draftable" onclick="openBatch('close')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Touch 3 · Day 12–14</span>
+                  </div>
+                  <div class="pf-node-title">Respectful close</div>
+                  <div class="pf-node-desc">Re-engage cleanly or invite an exit</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--amber);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span class="pf-node-step-num-inline">Step 4</span>
+                  </div>
+                  <div class="pf-node-title">You pick the outcome</div>
+                  <div class="pf-node-desc">Was this LP warmer · maintaining · or dormant?</div>
+                  <span class="pf-node-tag human">You · 30 seconds</span>
+                </div>
+
+              </div>
+
+              <!-- WHAT NEEDS YOUR ATTENTION -->
+              <div class="attention-section">
+                <div class="attention-row">
+                  <div class="attention-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v3M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>
+                  </div>
+                  <div class="attention-text">
+                    <span class="attention-strong">3 drafts</span> awaiting your approval
+                    <span class="attention-sep">·</span>
+                    <span class="attention-strong">2 LPs replied</span> · review and decide
+                    <span class="attention-sep">·</span>
+                    <span class="attention-strong">1 ready</span> for outcome capture
+                  </div>
+                  <button class="attention-cta" onclick="openBatch()">Review now →</button>
+                </div>
+              </div>
+
+              <!-- WHERE THE IN-FLIGHT LPs ARE -->
+              <div class="state-section">
+                <div class="state-header">
+                  <span class="state-title">Where the 14 in-flight LPs are right now</span>
+                </div>
+                <div class="state-funnel-v2">
+
+                  <div class="sf-step">
+                    <div class="sf-step-label">Touch 1 · Insight</div>
+                    <div class="sf-bars">
+                      <div class="sf-bar drafted" onclick="openBatch()" title="3 drafts ready for approval">
+                        <span class="sf-bar-num">3</span>
+                        <span class="sf-bar-state">drafted</span>
+                      </div>
+                      <div class="sf-bar sent" title="2 sent, awaiting reply">
+                        <span class="sf-bar-num">2</span>
+                        <span class="sf-bar-state">sent · awaiting reply</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sf-wait">
+                    <div class="sf-wait-line"></div>
+                    <div class="sf-wait-num">2</div>
+                    <div class="sf-wait-label">in 5–7d wait</div>
+                    <div class="sf-wait-line"></div>
+                  </div>
+
+                  <div class="sf-step">
+                    <div class="sf-step-label">Touch 2 · Question</div>
+                    <div class="sf-bars">
+                      <div class="sf-bar drafted" onclick="openBatch()" title="0 drafts ready">
+                        <span class="sf-bar-num zero">0</span>
+                        <span class="sf-bar-state">drafted</span>
+                      </div>
+                      <div class="sf-bar sent" title="4 sent, awaiting reply">
+                        <span class="sf-bar-num">4</span>
+                        <span class="sf-bar-state">sent · awaiting reply</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sf-wait">
+                    <div class="sf-wait-line"></div>
+                    <div class="sf-wait-num zero">0</div>
+                    <div class="sf-wait-label">in 5–7d wait</div>
+                    <div class="sf-wait-line"></div>
+                  </div>
+
+                  <div class="sf-step">
+                    <div class="sf-step-label">Touch 3 · Close</div>
+                    <div class="sf-bars">
+                      <div class="sf-bar drafted" onclick="openBatch()" title="0 drafts ready">
+                        <span class="sf-bar-num zero">0</span>
+                        <span class="sf-bar-state">drafted</span>
+                      </div>
+                      <div class="sf-bar sent" title="3 sent, awaiting reply">
+                        <span class="sf-bar-num">3</span>
+                        <span class="sf-bar-state">sent · awaiting reply</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="state-side">
+                  <div class="state-side-block reply">
+                    <div class="state-side-num">2</div>
+                    <div class="state-side-label">replied · sequence paused</div>
+                    <div class="state-side-aux">Frank Ieraci · Marie-Claude Dumas</div>
+                  </div>
+                  <div class="state-side-block outcome">
+                    <div class="state-side-num">1</div>
+                    <div class="state-side-label">ready for outcome capture</div>
+                    <div class="state-side-aux">Wellcome Trust · Touch 3 sent 16d ago</div>
+                  </div>
+                </div>
+
+                <div class="state-foot">
+                  <span class="state-stat"><span class="state-stat-num">14</span> running now</span>
+                  <span class="state-stat"><span class="state-stat-num">28</span> done last 30d</span>
+                  <span class="state-stat muted"><span class="state-stat-num">3</span> skipped (other workflow)</span>
+                  <span class="state-stat-spacer"></span>
+                  <span class="state-link">View activity log →</span>
+                </div>
+              </div>
+
+              <!-- RUN HISTORY -->
+              <div class="run-history-section">
+                <div class="run-history-head">
+                  <span class="run-history-title">Run history · all lists</span>
+                  <span class="state-link">Show all 7 →</span>
+                </div>
+                <div class="run-history-list">
+                  <div class="rh-row active">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Quiet · Fat Middle</span>
+                      <span class="rh-meta">started 12 May · 18 LPs enrolled</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill running">14 running</span>
+                      <span class="rh-aux">3 done · 1 skipped</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Re-ups · Fund II investors</span>
+                      <span class="rh-meta">started 28 Apr · 14 LPs · completed 11 May</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">All complete</span>
+                      <span class="rh-aux">9 warmer · 4 maintaining · 1 dormant</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Stuck in stage</span>
+                      <span class="rh-meta">started 14 Apr · 9 LPs · completed 28 Apr</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">All complete</span>
+                      <span class="rh-aux">2 warmer · 5 maintaining · 2 dormant</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Update → Follow-Up — DEFAULT, LOCKED -->
+          <div class="wf-card locked">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle" onclick="event.stopPropagation(); openRunModal('update')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">Update → Follow-Up</span>
+                  <span class="system-mark locked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Default
+                  </span>
+                </div>
+                <div class="wf-card-flow">Firm or fund news (launch, hire, capacity change) → personalised note to broad cohort → 7d follow-up to non-replies</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">—</span>
+                  <span class="label">Not running</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+
+            <div class="wf-editor">
+
+              <div class="editor-meta-strip">
+                <div class="block">
+                  <span class="label">Last run</span>
+                  <span class="value">"Fund III hard cap close" · 23 Apr · 87 LPs · 64 replies</span>
+                </div>
+                <div class="block">
+                  <span class="label">Outbound safety</span>
+                  <span class="value"><span class="safety-pill ok">14-day same-message dedup active</span></span>
+                </div>
+              </div>
+
+              <div class="process-flow">
+
+                <div class="pf-node trigger">
+                  <div class="pf-node-step-num">When</div>
+                  <div class="pf-node-title">GP launches with news</div>
+                  <div class="pf-node-desc">Run modal asks "what are you announcing?"</div>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node draftable" onclick="openBatch('update-step1')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Step 1 · Day 0</span>
+                  </div>
+                  <div class="pf-node-title">Personalised note</div>
+                  <div class="pf-node-desc">News + per-LP context</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <div class="pf-wait">
+                  <div class="pf-wait-line"></div>
+                  <span class="pf-wait-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Wait 7d</span>
+                  <div class="pf-wait-line"></div>
+                </div>
+
+                <div class="pf-node draftable" onclick="openBatch('update-step2')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Step 2 · Day 7</span>
+                  </div>
+                  <div class="pf-node-title">Follow-up to non-replies</div>
+                  <div class="pf-node-desc">Light nudge · only LPs who haven't replied</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+              </div>
+
+              <!-- Run history -->
+              <div class="run-history-section">
+                <div class="run-history-head">
+                  <span class="run-history-title">Run history · all lists</span>
+                  <span class="state-link">Show all 6 →</span>
+                </div>
+                <div class="run-history-list">
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">"Fund III hard cap close" · All Tier 1 + Tier 2</span>
+                      <span class="rh-meta">23 Apr · 87 LPs · completed 30 Apr</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">64 replies · 23 silent</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">"Q1 attribution" · Active diligence focus</span>
+                      <span class="rh-meta">14 Apr · 29 LPs · completed 21 Apr</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">22 replies · 7 silent</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">"Sarah Chen joining as Senior Partner" · Tier 1 LPs</span>
+                      <span class="rh-meta">3 Apr · 41 LPs · completed 10 Apr</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">35 replies · 6 silent</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Post-Meeting Execution — DEFAULT, LOCKED -->
+          <div class="wf-card locked">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle on" onclick="event.stopPropagation(); openRunModal('post-meeting')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">Post-Meeting Execution</span>
+                  <span class="system-mark locked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Default
+                  </span>
+                </div>
+                <div class="wf-card-flow">Event-triggered · prep brief 30m before · capture form &lt;60s after · follow-up draft within 30m</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">42</span>
+                  <span class="label">Done last 30d</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+
+            <div class="wf-editor">
+
+              <div class="editor-meta-strip">
+                <div class="block">
+                  <span class="label">Last meeting</span>
+                  <span class="value">UBS HFS · Charly Malek · today 2:00pm ET</span>
+                </div>
+                <div class="block">
+                  <span class="label">Capture rate</span>
+                  <span class="value"><span class="safety-pill ok">94% capture form completion</span></span>
+                </div>
+              </div>
+
+              <div class="process-flow">
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--mute);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="pf-node-step-num-inline">−30 min</span>
+                  </div>
+                  <div class="pf-node-title">Prep brief</div>
+                  <div class="pf-node-desc">LP context · last conversation · open loops</div>
+                  <span class="pf-node-tag auto">Auto · pushed to your phone</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node trigger">
+                  <div class="pf-node-step-num">Trigger</div>
+                  <div class="pf-node-title">Meeting ends</div>
+                  <div class="pf-node-desc">Calendar event · LP attended</div>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--amber);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span class="pf-node-step-num-inline">+60s</span>
+                  </div>
+                  <div class="pf-node-title">Capture form</div>
+                  <div class="pf-node-desc">Outcome · commitments · next steps</div>
+                  <span class="pf-node-tag human">You · 90 seconds</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node draftable" onclick="openBatch('post-meeting-followup')">
+                  <span class="pf-node-draft-hint">✎ Click to edit draft</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">+30 min</span>
+                  </div>
+                  <div class="pf-node-title">Follow-up draft</div>
+                  <div class="pf-node-desc">Recap · commitments · attached docs</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+              </div>
+
+              <!-- Recent meetings table -->
+              <div class="run-history-section">
+                <div class="run-history-head">
+                  <span class="run-history-title">Recent meetings · last 7 days</span>
+                  <span class="state-link">View all →</span>
+                </div>
+                <div class="run-history-list">
+                  <div class="rh-row active">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">UBS HFS · Charly Malek</span>
+                      <span class="rh-meta">today 2:00pm · prep brief sent · capture pending</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill running">In progress</span>
+                      <span class="rh-aux">Awaiting capture form</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">CPPIB · Frank Ieraci</span>
+                      <span class="rh-meta">today 11:00am · prep · capture · follow-up sent</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">Follow-up approved 1h ago</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">PAAMCO Prisma · Peter Zakowich</span>
+                      <span class="rh-meta">yesterday 4:30pm · prep · capture · follow-up sent</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">Reply received this morning</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Lingotto · Edoardo Lanzavecchia</span>
+                      <span class="rh-meta">3 days ago · prep · capture skipped · follow-up sent from notes</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">Capture skipped (90s window)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- DDQ Response Engine — DEFAULT, LOCKED -->
+          <div class="wf-card locked">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle on" onclick="event.stopPropagation(); openRunModal('ddq')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">DDQ Response Engine</span>
+                  <span class="system-mark locked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Default
+                  </span>
+                </div>
+                <div class="wf-card-flow">Event-triggered · DDQ received → parse → match prior answers with citations → draft → human review → finalise</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">7</span>
+                  <span class="label">Done last 30d</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+
+            <div class="wf-editor">
+
+              <div class="editor-meta-strip">
+                <div class="block">
+                  <span class="label">In flight</span>
+                  <span class="value">Lingotto DDQ · received 2 days ago · awaiting human review</span>
+                </div>
+                <div class="block">
+                  <span class="label">Avg match rate</span>
+                  <span class="value"><span class="safety-pill ok">76% questions matched from prior DDQs</span></span>
+                </div>
+              </div>
+
+              <div class="process-flow">
+
+                <div class="pf-node trigger">
+                  <div class="pf-node-step-num">Trigger</div>
+                  <div class="pf-node-title">DDQ received</div>
+                  <div class="pf-node-desc">Inbound email with questionnaire pattern</div>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--mute);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="pf-node-step-num-inline">Step 1</span>
+                  </div>
+                  <div class="pf-node-title">Parse questionnaire</div>
+                  <div class="pf-node-desc">Sections · subsections · question types</div>
+                  <span class="pf-node-tag auto">Auto · ~2 minutes</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--teal);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+                    <span class="pf-node-step-num-inline">Step 2</span>
+                  </div>
+                  <div class="pf-node-title">Match prior answers</div>
+                  <div class="pf-node-desc">Cite source DDQs · flag novel questions</div>
+                  <span class="pf-node-tag auto">76% matched on this DDQ</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node draftable" onclick="openBatch('ddq-draft')">
+                  <span class="pf-node-draft-hint">✎ Click to edit drafts</span>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span class="pf-node-step-num-inline">Step 3</span>
+                  </div>
+                  <div class="pf-node-title">Draft responses</div>
+                  <div class="pf-node-desc">Sensitive sections flagged for review</div>
+                  <span class="pf-node-tag draft">Drafts · ready for review</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--amber);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span class="pf-node-step-num-inline">Step 4</span>
+                  </div>
+                  <div class="pf-node-title">Human review</div>
+                  <div class="pf-node-desc">You verify flagged sections · approve all</div>
+                  <span class="pf-node-tag human">You · 15–30 min</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node">
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" style="color: var(--teal);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span class="pf-node-step-num-inline">Step 5</span>
+                  </div>
+                  <div class="pf-node-title">Finalise &amp; track</div>
+                  <div class="pf-node-desc">Version-locked · stored for next DDQ</div>
+                  <span class="pf-node-tag auto">Auto on approval</span>
+                </div>
+
+              </div>
+
+              <!-- Recent DDQs -->
+              <div class="run-history-section">
+                <div class="run-history-head">
+                  <span class="run-history-title">Recent DDQs</span>
+                  <span class="state-link">View all 7 →</span>
+                </div>
+                <div class="run-history-list">
+                  <div class="rh-row active">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Lingotto Investment Mgmt</span>
+                      <span class="rh-meta">received 2 days ago · 142 questions · 108 matched (76%)</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill running">Awaiting review</span>
+                      <span class="rh-aux">8 sections flagged</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">CPPIB · annual update</span>
+                      <span class="rh-meta">finalised 8 May · 89 questions · 72 matched (81%)</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">GP edited 11 sections</span>
+                    </div>
+                  </div>
+                  <div class="rh-row">
+                    <div class="rh-list-info">
+                      <span class="rh-list-name">Future Fund Australia</span>
+                      <span class="rh-meta">finalised 22 Apr · 167 questions · 124 matched (74%)</span>
+                    </div>
+                    <div class="rh-status">
+                      <span class="rh-state-pill done">Complete</span>
+                      <span class="rh-aux">GP edited 18 sections</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAILORED -->
+        <div class="section-divider">
+          <span class="section-divider-label">Tailored</span>
+          <span class="section-divider-count">3 workflows · structure and content fully editable</span>
+          <span class="section-divider-line"></span>
+        </div>
+
+        <div class="wf-stack">
+
+          <!-- Themed Outreach — TAILORED, starting template -->
+          <div class="wf-card">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle" onclick="event.stopPropagation(); openRunModal('themed')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">Themed Outreach</span>
+                  <span class="tailored-mark">Starting template</span>
+                </div>
+                <div class="wf-card-flow">GP-initiated · pick a topic and a cohort · personalised note to each LP · optional 5–7d follow-up to non-replies</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">—</span>
+                  <span class="label">Not running</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+
+            <div class="wf-editor">
+
+              <!-- Tailored-specific banner: structure editable -->
+              <div class="tailored-banner">
+                <div class="tailored-banner-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
+                <div class="tailored-banner-text">
+                  <span class="strong">This is a tailored workflow.</span> You can add steps, change cadence, edit the trigger, or rewrite step descriptions. Use the Tomo input below or the "Edit structure" button.
+                </div>
+                <button class="edit-structure-btn" onclick="openEditTray('themed-structure', 'tailored-workflow')">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  Edit structure
+                </button>
+              </div>
+
+              <div class="editor-meta-strip">
+                <div class="block">
+                  <span class="label">Last run</span>
+                  <span class="value">Never run on this list — clone or run as-is</span>
+                </div>
+                <div class="block">
+                  <span class="label">Outbound safety</span>
+                  <span class="value"><span class="safety-pill ok">14-day same-message dedup active</span></span>
+                </div>
+              </div>
+
+              <div class="process-flow editable">
+
+                <div class="pf-node trigger editable" onclick="openEditTray('themed-trigger', 'tailored')" style="cursor: pointer;">
+                  <span class="pf-node-edit-hint">✎ Edit trigger</span>
+                  <div class="pf-node-step-num">When</div>
+                  <div class="pf-node-title">GP launches with topic</div>
+                  <div class="pf-node-desc">Run modal asks "what's the topic?"</div>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node draftable editable" onclick="openBatch('themed-step1')">
+                  <span class="pf-node-edit-hint">✎ Edit step</span>
+                  <button class="pf-node-struct-edit" onclick="event.stopPropagation(); openEditTray('themed-step1', 'tailored')" title="Edit structure"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Step 1 · Day 0</span>
+                  </div>
+                  <div class="pf-node-title">Themed insight</div>
+                  <div class="pf-node-desc">Topic content + per-LP context</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <div class="pf-wait editable" onclick="openWaitPop(this, '5–7')">
+                  <div class="pf-wait-line"></div>
+                  <span class="pf-wait-label editable">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Wait 5–7d
+                    <span class="pf-wait-edit">✎</span>
+                  </span>
+                  <div class="pf-wait-line"></div>
+                </div>
+
+                <div class="pf-node draftable editable" onclick="openBatch('themed-step2')">
+                  <span class="pf-node-edit-hint">✎ Edit step</span>
+                  <button class="pf-node-struct-edit" onclick="event.stopPropagation(); openEditTray('themed-step2', 'tailored')" title="Edit structure"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                  <div class="pf-node-icon-row">
+                    <svg class="pf-node-draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="pf-node-step-num-inline">Step 2 · Day 5–7</span>
+                  </div>
+                  <div class="pf-node-title">Follow-up to non-replies</div>
+                  <div class="pf-node-desc">Light nudge · only LPs who haven't replied</div>
+                  <span class="pf-node-tag draft">Drafts · waits for your approval</span>
+                </div>
+
+                <svg class="pf-arrow" width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 6h13M13 6L8 1M13 6L8 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+
+                <div class="pf-node add-step" onclick="openEditTray('themed-new-step', 'tailored-add')">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span class="pf-add-text">Add step</span>
+                </div>
+
+              </div>
+
+              <!-- Suggested customisations -->
+              <div class="suggestions-section">
+                <div class="suggestions-title">Common ways GPs customise this template</div>
+                <div class="suggestion-chips">
+                  <span class="suggestion-chip">+ Add a second follow-up at day 14</span>
+                  <span class="suggestion-chip">+ Add an outcome capture step</span>
+                  <span class="suggestion-chip">↻ Change cadence to weekly</span>
+                  <span class="suggestion-chip">⊕ Clone as new tailored workflow</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Roadshow Organisation — TAILORED -->
+          <div class="wf-card inactive">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle" onclick="event.stopPropagation(); openRunModal('roadshow')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">Roadshow Organisation</span>
+                </div>
+                <div class="wf-card-flow">Per-LP brief → calendar slot proposals → post-trip recap consolidated</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">—</span>
+                  <span class="label">Not running</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+          </div>
+
+          <!-- IC Date Confirmation — TAILORED -->
+          <div class="wf-card inactive">
+            <div class="wf-card-head" onclick="toggleCard(this)">
+              <div class="wf-card-toggle-wrap">
+                <div class="toggle" onclick="event.stopPropagation(); openRunModal('ic-date')"></div>
+              </div>
+              <div class="wf-card-body">
+                <div class="wf-card-name-row">
+                  <span class="wf-card-name">IC Date Confirmation</span>
+                </div>
+                <div class="wf-card-flow">Soft-commit signal → weekly nudge until IC date set → escalate at 30d</div>
+              </div>
+              <div class="wf-card-meta">
+                <div class="stat">
+                  <span class="num">—</span>
+                  <span class="label">Not running</span>
+                </div>
+              </div>
+              <div class="wf-card-expand"><span class="wf-card-expand-label"></span><svg class="wf-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Tomo input -->
+      <div class="tomo-input-wrap">
+        <div class="tomo-input">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span class="tomo-scope-pill" id="tomoScopePill">Editing Three-Touch Qualification</span>
+          <input type="text" id="tomoInput" placeholder="Edit drafts, change cadence (e.g. 'change wait to 3 days'), ask about activity…">
+          <span class="live-pill"><span class="live-dot"></span>Live</span>
+          <button class="send"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+
+      <!-- EDIT TRAY — rises from bottom of pane -->
+      <div class="edit-tray" id="editTray">
+        <div class="et-head">
+          <div class="et-title-block">
+            <div>
+              <div class="et-eyebrow" id="etEyebrow">Editing step</div>
+              <div class="et-title" id="etTitle">Touch 1 · Insight email</div>
+            </div>
+            <span class="et-source-pill" id="etSourcePill" style="display: none;">✦ Tomo proposed</span>
+          </div>
+          <button class="et-close" onclick="closeEditTray()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="et-body" id="etBody">
+          <!-- Body is populated by JS based on edit context -->
+        </div>
+        <div class="et-foot">
+          <span class="et-foot-left" id="etFootText">Changes apply to this workflow's structure · existing in-flight runs continue with original cadence</span>
+          <div class="et-foot-actions">
+            <button class="et-cancel" onclick="closeEditTray()">Cancel</button>
+            <button class="et-apply" onclick="applyEditTray()">Apply changes</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+
+  </div>
+</div>
+
+<!-- ============================================================
+     BATCH REVIEW DRAWER — primary review pattern
+     ============================================================ -->
+<div class="batch-scrim" id="batchScrim" onclick="closeBatch()"></div>
+<aside class="batch-drawer" id="batchDrawer">
+
+  <div class="batch-head">
+    <div class="batch-eyebrow" id="batchEyebrow">Three-Touch Qualification · Touch 1 · Insight</div>
+    <div class="batch-head-row">
+      <div class="batch-title-block">
+        <h2 class="batch-title" id="batchTitle">3 drafts ready for approval</h2>
+        <div class="batch-context">Quiet · Fat Middle · drafted by Tomo · awaiting your approval before send</div>
+      </div>
+      <button class="draft-close" onclick="closeBatch()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Batch-wide Tomo input -->
+  <div class="batch-tomo-strip">
+    <div class="batch-tomo">
+      <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span class="batch-tomo-scope">Editing all 3 drafts</span>
+      <input type="text" placeholder="Make them all shorter · sharpen the question · don't reference Q3 numbers">
+      <button class="send"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+    </div>
+    <div class="batch-tomo-hint">Edits apply to all drafts at this step. Click any draft to edit it individually.</div>
+  </div>
+
+  <div class="batch-body">
+
+    <div class="batch-list">
+
+      <!-- Draft 1 — Edoardo Lanzavecchia (Lingotto) -->
+      <div class="batch-card" data-draft-key="edoardo">
+        <div class="batch-card-head" onclick="toggleBatchCard(this)">
+          <div class="batch-card-lp">
+            <div class="batch-card-firm">Lingotto Investment Management</div>
+            <div class="batch-card-person">Edoardo Lanzavecchia · Head of HF Allocations · Tier 1</div>
+          </div>
+          <div class="batch-card-meta">
+            <span class="batch-card-attach"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> file attached</span>
+          </div>
+          <div class="batch-card-actions">
+            <button class="btn-approve-row" onclick="event.stopPropagation()">Approve & send</button>
+            <svg class="batch-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="batch-card-preview">
+          <div class="batch-card-subject">The dispersion premium in Italian credit — pace tightening fast</div>
+          <div class="batch-card-body">Edoardo, the Italian sub-investment-grade dispersion premium has compressed roughly 80bps since our last conversation in March, which I think narrows the entry window meaningfully. Spreads on the BB tier are tighter than at any point in the last eighteen months…</div>
+        </div>
+        <div class="batch-card-expanded">
+          <div class="be-section">
+            <div class="be-label">Subject</div>
+            <input class="be-input" type="text" value="The dispersion premium in Italian credit — pace tightening fast">
+          </div>
+          <div class="be-section">
+            <div class="be-label">Body</div>
+            <textarea class="be-textarea" rows="11">Edoardo,
+
+The Italian sub-investment-grade dispersion premium has compressed roughly 80bps since our last conversation in March, which I think narrows the entry window meaningfully. Spreads on the BB tier are tighter than at any point in the last eighteen months.
+
+Two things we're watching closely as that compresses: first, whether the technical bid in BTPs continues into Q3 once ECB unwinds further; second, how that flows through to the secondary loan book where mid-cap deals are repricing weekly.
+
+Thought you might find the framing useful — the file we built on this is below.
+
+Best,
+Geoff</textarea>
+          </div>
+          <div class="be-section">
+            <div class="be-label">Attachment</div>
+            <div class="attachment-chip">
+              <div class="attachment-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="attachment-body">
+                <div class="attachment-name">Italian Credit Dispersion · Q1 2026.pdf</div>
+                <div class="attachment-meta">2.4 MB · Insight piece · Last sent to Edoardo on 12 Mar</div>
+              </div>
+              <div class="attachment-actions">
+                <span class="attachment-replace">Replace</span>
+                <span class="attachment-remove">×</span>
+              </div>
+            </div>
+          </div>
+          <div class="be-tomo-row">
+            <div class="batch-tomo small">
+              <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Tighten this draft · sharpen the question · cut the BTP line">
+              <button class="send"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Draft 2 — Charly Malek (UBS HFS) -->
+      <div class="batch-card" data-draft-key="charly">
+        <div class="batch-card-head" onclick="toggleBatchCard(this)">
+          <div class="batch-card-lp">
+            <div class="batch-card-firm">UBS Hedge Fund Solutions</div>
+            <div class="batch-card-person">Charly Malek · Head of Manager Research · Tier 1 · prior F2</div>
+          </div>
+          <div class="batch-card-meta">
+            <span class="batch-card-attach"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> file attached</span>
+          </div>
+          <div class="batch-card-actions">
+            <button class="btn-approve-row" onclick="event.stopPropagation()">Approve & send</button>
+            <svg class="batch-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="batch-card-preview">
+          <div class="batch-card-subject">Tail risk in long/short equity — what we're seeing post-March</div>
+          <div class="batch-card-body">Charly, since you re-upped into Fund II we've been thinking about how to position the tail-risk overlay against what looks like a meaningfully different liquidity regime in single-name shorts…</div>
+        </div>
+      </div>
+
+      <!-- Draft 3 — Frank Ieraci (CPPIB) -->
+      <div class="batch-card" data-draft-key="frank">
+        <div class="batch-card-head" onclick="toggleBatchCard(this)">
+          <div class="batch-card-lp">
+            <div class="batch-card-firm">CPPIB</div>
+            <div class="batch-card-person">Frank Ieraci · SMD, External Portfolio · Tier 1</div>
+          </div>
+          <div class="batch-card-meta">
+            <span class="batch-card-no-attach">no attachment</span>
+          </div>
+          <div class="batch-card-actions">
+            <button class="btn-approve-row" onclick="event.stopPropagation()">Approve & send</button>
+            <svg class="batch-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="batch-card-preview">
+          <div class="batch-card-subject">Capacity discussion — second half of the year</div>
+          <div class="batch-card-body">Frank, when we last spoke you mentioned the capacity question was the one you wanted to come back to once the new sleeve sizing was finalized. Wanted to share where we've landed and what that means for any allocation in H2…</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Sticky footer: bulk approve -->
+  <div class="batch-foot">
+    <div class="batch-foot-left">
+      <span class="batch-foot-text">Tone trained on your last 47 sends · 14-day same-message dedup checked</span>
+    </div>
+    <div class="batch-foot-actions">
+      <button class="btn-cancel" onclick="closeBatch()">Cancel</button>
+      <button class="btn-approve-all">Approve all 3 and send →</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ============================================================
+     STEP DRAFT DRAWER (legacy single-draft — kept for direct from-funnel link)
+     ============================================================ -->
+<div class="draft-scrim" id="draftScrim" onclick="closeDraft()"></div>
+<aside class="draft-drawer" id="draftDrawer">
+
+  <div class="draft-head">
+    <div class="draft-eyebrow" id="draftEyebrow">Three-Touch Qualification · Step 1</div>
+    <div class="draft-head-row">
+      <h2 class="draft-title" id="draftTitle">Touch 1 · Insight</h2>
+      <button class="draft-close" onclick="closeDraft()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="draft-context">
+      <span style="color: var(--mute);">Drafted for</span> Edoardo Lanzavecchia <span style="color: var(--mute);">at Lingotto Investment Management · Tier 1 · 18 LPs in this run</span>
+    </div>
+  </div>
+
+  <div class="draft-body">
+
+    <div class="draft-to">
+      <span class="label">To</span>
+      <span class="recipient">Edoardo Lanzavecchia <span class="firm">edoardo@lingotto.com</span></span>
+    </div>
+
+    <input class="draft-subject" type="text" id="draftSubject" value="The dispersion premium in Italian credit — pace tightening fast">
+
+    <textarea class="draft-body-textarea" id="draftBodyText">Edoardo,
+
+The Italian sub-investment-grade dispersion premium has compressed roughly 80bps since our last conversation in March, which I think narrows the entry window meaningfully. Spreads on the BB tier are tighter than at any point in the last eighteen months.
+
+Two things we're watching closely as that compresses: first, whether the technical bid in BTPs continues into Q3 once ECB unwinds further; second, how that flows through to the secondary loan book where mid-cap deals are repricing weekly.
+
+Thought you might find the framing useful — the file we built on this is below.
+
+Best,
+Geoff</textarea>
+
+    <!-- ATTACHMENT CHIP — Touch 1 ships with an Insight File -->
+    <div class="draft-attachment" id="draftAttachment">
+      <div class="attachment-chip">
+        <div class="attachment-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="attachment-body">
+          <div class="attachment-name">Italian Credit Dispersion · Q1 2026.pdf</div>
+          <div class="attachment-meta">2.4 MB · Insight piece · Last sent to Edoardo on 12 Mar</div>
+        </div>
+        <div class="attachment-actions">
+          <span class="attachment-replace">Replace</span>
+          <span class="attachment-remove">×</span>
+        </div>
+      </div>
+      <div class="attachment-hint">Tomo attached the most recent Italian credit piece you sent. Replace to swap.</div>
+    </div>
+
+    <div class="draft-section-label">Edit with Tomo</div>
+    <div class="draft-tomo">
+      <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Tighten this · make it shorter · sharpen the question">
+      <button class="send"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+    </div>
+    <div class="draft-tomo-hint">
+      Tomo edits the draft above. Examples: <span class="ex">"cut by half"</span> · <span class="ex">"move the dispersion line to the top"</span> · <span class="ex">"end with a question about Q3 positioning"</span>
+    </div>
+
+  </div>
+
+  <div class="draft-foot">
+    <span class="draft-foot-left">Tone trained on your last 47 sends</span>
+    <div class="draft-actions">
+      <button class="btn-dismiss">Dismiss</button>
+      <button class="btn-edit">Save as edit</button>
+      <button class="btn-approve">Approve & send</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- TOGGLE CONFIRM DIALOG -->
+<div class="toggle-confirm-scrim" id="tcScrim" onclick="closeTC()"></div>
+<div class="toggle-confirm" id="tcDialog">
+  <div class="tc-head">
+    <div class="tc-eyebrow" id="tcEyebrow">Activate workflow</div>
+    <div class="tc-title" id="tcTitle">Run Three-Touch Qualification on Quiet · Fat Middle?</div>
+  </div>
+  <div class="tc-body" id="tcBody">
+    <span class="strong">18 LPs</span> will be enrolled. Touch 1 will draft today and wait for your approval before sending. Three of these LPs are already in another active workflow and will be skipped automatically.
+  </div>
+  <div class="tc-foot">
+    <button class="tc-cancel" onclick="closeTC()">Cancel</button>
+    <button class="tc-confirm" id="tcConfirmBtn" onclick="confirmTC()">Activate</button>
+  </div>
+</div>
+
+<!-- RUN WORKFLOW MODAL -->
+<div class="run-modal-scrim" id="runModalScrim" onclick="closeRunModal()"></div>
+<div class="run-modal" id="runModal">
+  <div class="run-modal-head">
+    <div class="run-modal-eyebrow" id="runModalEyebrow">Run Three-Touch Qualification</div>
+    <div class="run-modal-title" id="runModalTitle">Run on Quiet · Fat Middle?</div>
+  </div>
+  <div class="run-modal-body" id="runModalBody">
+
+    <div class="run-section">
+      <div class="run-label">Cohort</div>
+      <div class="run-cohort-display">
+        <div class="run-cohort-info">
+          <div class="run-cohort-name">Quiet · Fat Middle</div>
+          <div class="run-cohort-meta">Live filter · warm-stage LPs · no signal in 30+ days</div>
+        </div>
+        <span class="run-cohort-count">18</span>
+      </div>
+    </div>
+
+    <!-- Themed/Update content sections — shown conditionally per workflow -->
+    <div class="run-section" id="runTopicSection" style="display: none;">
+      <div class="run-label" id="runTopicLabel">What are you announcing?</div>
+      <textarea class="run-input run-textarea" id="runTopicInput" placeholder="e.g. We've launched a new credit sleeve targeting Italian dispersion. Detail follows."></textarea>
+    </div>
+
+    <div class="run-section" id="runFileSection" style="display: none;">
+      <div class="run-label">Optional file</div>
+      <div class="run-file-zone">
+        <div class="run-file-text">
+          <span class="accent">+ Attach a file</span> · the insight piece, deck, or memo to send alongside
+        </div>
+      </div>
+    </div>
+
+    <div class="run-section" id="runFollowupSection" style="display: none;">
+      <div class="run-label">Follow-up</div>
+      <div class="run-followup-row">
+        <div class="run-followup-text">
+          <span class="strong">Yes</span> · automatically draft a personalised follow-up to non-replies after 7 days
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-modal-foot">
+    <span class="run-modal-summary" id="runModalSummary"><span class="strong">18 LPs</span> will be enrolled · 3 in other workflows will be skipped</span>
+    <div class="run-modal-actions">
+      <button class="run-cancel" onclick="closeRunModal()">Cancel</button>
+      <button class="run-launch" onclick="closeRunModal()" id="runLaunchBtn">Launch run</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAIT POPOVER -->
+<div class="wait-popover-scrim" id="waitPopScrim" onclick="closeWaitPop()"></div>
+<div class="wait-popover" id="waitPop">
+  <div class="wait-popover-title">Edit wait duration</div>
+  <div class="wait-popover-row">
+    <input class="wait-popover-input" type="text" id="waitPopInput" value="5–7">
+    <span class="wait-popover-unit">days between steps</span>
+  </div>
+  <div class="wait-popover-foot">
+    <button class="wait-popover-cancel" onclick="closeWaitPop()">Cancel</button>
+    <button class="wait-popover-apply" onclick="applyWaitPop()">Apply</button>
+  </div>
+</div>
+
+<!-- DEMO BAR -->
+<div class="demo-bar">
+  <button class="demo-toggle active" onclick="setDemo('list')">List view</button>
+  <button class="demo-toggle" onclick="setDemo('expanded')">+ Workflow expanded</button>
+  <button class="demo-toggle" onclick="setDemo('run')">+ Run modal</button>
+  <button class="demo-toggle" onclick="setDemo('batch')">+ Batch review</button>
+  <button class="demo-toggle" onclick="setDemo('expanded-draft')">+ Expanded draft</button>
+</div>
+
+<script>
+  // ========================================================================
+  // RUN WORKFLOW MODAL — for default and tailored workflows
+  // ========================================================================
+  const runModalConfig = {
+    'three-touch': {
+      eyebrow: 'Run Three-Touch Qualification',
+      title: 'Run on Quiet · Fat Middle?',
+      showTopic: false,
+      showFile: false,
+      showFollowup: false,
+      summary: '<span class="strong">18 LPs</span> will be enrolled · 3 in other workflows will be skipped',
+      launchLabel: 'Launch run'
+    },
+    'update': {
+      eyebrow: 'Run Update → Follow-Up',
+      title: 'Send firm or fund news to Quiet · Fat Middle?',
+      showTopic: true,
+      topicLabel: 'What are you announcing?',
+      topicPlaceholder: 'e.g. We\'ve closed Fund III at the hard cap. We\'ve added a new senior partner. Capacity has changed.',
+      showFile: true,
+      showFollowup: true,
+      summary: '<span class="strong">18 LPs</span> will receive a personalised note · follow-up to non-replies in 7 days',
+      launchLabel: 'Send to 18 LPs'
+    },
+    'post-meeting': {
+      eyebrow: 'Configure Post-Meeting Execution',
+      title: 'Active on this list?',
+      showTopic: false,
+      showFile: false,
+      showFollowup: false,
+      summary: 'Will run on every meeting that ends with an LP from this list',
+      launchLabel: 'Activate'
+    },
+    'ddq': {
+      eyebrow: 'Configure DDQ Response Engine',
+      title: 'Active on this list?',
+      showTopic: false,
+      showFile: false,
+      showFollowup: false,
+      summary: 'Will run on every inbound DDQ from an LP on this list',
+      launchLabel: 'Activate'
+    },
+    'themed': {
+      eyebrow: 'Run Themed Outreach',
+      title: 'Send a themed insight to Quiet · Fat Middle?',
+      showTopic: true,
+      topicLabel: 'What\'s the topic?',
+      topicPlaceholder: 'e.g. Italian credit dispersion has compressed materially since Q1 — sharing our framing on the entry window.',
+      showFile: true,
+      showFollowup: true,
+      summary: '<span class="strong">18 LPs</span> will receive a personalised note · follow-up to non-replies in 7 days',
+      launchLabel: 'Send to 18 LPs'
+    },
+    'roadshow': {
+      eyebrow: 'Run Roadshow Organisation',
+      title: 'Plan a roadshow against this list?',
+      showTopic: true,
+      topicLabel: 'Which trip?',
+      topicPlaceholder: 'e.g. NYC + Boston · 14–17 May · Fund III pitch sweep',
+      showFile: false,
+      showFollowup: false,
+      summary: '<span class="strong">5 LPs</span> · per-LP brief + slot proposals will draft for your review',
+      launchLabel: 'Plan trip'
+    },
+    'ic-date': {
+      eyebrow: 'Configure IC Date Confirmation',
+      title: 'Active on this list?',
+      showTopic: false,
+      showFile: false,
+      showFollowup: false,
+      summary: 'Will run weekly on soft-commit LPs without IC dates · escalate at 30d',
+      launchLabel: 'Activate'
+    }
+  };
+
+  function openRunModal(wfKey) {
+    const cfg = runModalConfig[wfKey];
+    if (!cfg) return;
+
+    document.getElementById('runModalEyebrow').textContent = cfg.eyebrow;
+    document.getElementById('runModalTitle').textContent = cfg.title;
+    document.getElementById('runModalSummary').innerHTML = cfg.summary;
+    document.getElementById('runLaunchBtn').textContent = cfg.launchLabel;
+
+    const topicSec = document.getElementById('runTopicSection');
+    const fileSec = document.getElementById('runFileSection');
+    const followupSec = document.getElementById('runFollowupSection');
+
+    topicSec.style.display = cfg.showTopic ? 'block' : 'none';
+    fileSec.style.display = cfg.showFile ? 'block' : 'none';
+    followupSec.style.display = cfg.showFollowup ? 'block' : 'none';
+
+    if (cfg.showTopic) {
+      document.getElementById('runTopicLabel').textContent = cfg.topicLabel;
+      document.getElementById('runTopicInput').placeholder = cfg.topicPlaceholder;
+      document.getElementById('runTopicInput').value = '';
+    }
+
+    document.getElementById('runModal').classList.add('open');
+    document.getElementById('runModalScrim').classList.add('open');
+  }
+
+  function closeRunModal() {
+    document.getElementById('runModal').classList.remove('open');
+    document.getElementById('runModalScrim').classList.remove('open');
+  }
+
+  // ========================================================================
+  // V8 — EDIT TRAY (structure / step settings)
+  // ========================================================================
+
+  const editConfigs = {
+    // Tailored — Themed Outreach
+    'themed-step1': {
+      eyebrow: 'Editing step',
+      title: 'Step 1 · Themed insight',
+      mode: 'tailored',
+      fields: [
+        { type: 'text', label: 'Step name', value: 'Themed insight', id: 'stepName' },
+        { type: 'textarea', label: 'Step description', value: 'Topic content + per-LP context', id: 'stepDesc' },
+        { type: 'select', label: 'Tone', value: 'Direct, market-aware', options: ['Direct, market-aware', 'Formal', 'Conversational', 'Brief'], id: 'stepTone' },
+        { type: 'select', label: 'Default attachment', value: 'Auto-attach insight file', options: ['Auto-attach insight file', 'No attachment', 'Always prompt GP'], id: 'stepAttach' }
+      ],
+      structural: [
+        { type: 'select', label: 'Day offset', value: 'Day 0 (run start)', options: ['Day 0 (run start)', 'Day 1', 'Day 2', 'Day 3'], id: 'stepDay' }
+      ],
+      footText: 'Changes apply to this workflow\'s structure · existing in-flight runs continue with original cadence',
+      stepActions: ['Remove this step']
+    },
+    'themed-step2': {
+      eyebrow: 'Editing step',
+      title: 'Step 2 · Follow-up to non-replies',
+      mode: 'tailored',
+      fields: [
+        { type: 'text', label: 'Step name', value: 'Follow-up to non-replies', id: 'stepName' },
+        { type: 'textarea', label: 'Step description', value: 'Light nudge · only LPs who haven\'t replied', id: 'stepDesc' },
+        { type: 'select', label: 'Tone', value: 'Brief', options: ['Direct, market-aware', 'Formal', 'Conversational', 'Brief'], id: 'stepTone' },
+        { type: 'select', label: 'Audience', value: 'Non-repliers only', options: ['Non-repliers only', 'All LPs', 'Repliers only'], id: 'stepAudience' }
+      ],
+      structural: [
+        { type: 'text', label: 'Days after Step 1', value: '5–7', id: 'stepWait', hint: 'e.g. 7 or 5–7 for a range' }
+      ],
+      footText: 'Changes apply to this workflow\'s structure · existing in-flight runs continue with original cadence',
+      stepActions: ['Remove this step']
+    },
+    'themed-trigger': {
+      eyebrow: 'Editing trigger',
+      title: 'When does this workflow start?',
+      mode: 'tailored',
+      fields: [
+        { type: 'select', label: 'Trigger type', value: 'GP-initiated (manual launch)', options: ['GP-initiated (manual launch)', 'Scheduled (recurring)', 'Signal-driven (when LPs match a filter)'], id: 'triggerType' },
+        { type: 'textarea', label: 'Description shown to GP', value: 'Run modal asks "what\'s the topic?"', id: 'triggerDesc' }
+      ],
+      footText: 'Changes apply only to new runs · existing runs continue unchanged'
+    },
+    'themed-new-step': {
+      eyebrow: 'Add new step',
+      title: 'New step · after Step 2',
+      mode: 'tailored',
+      fields: [
+        { type: 'text', label: 'Step name', value: '', placeholder: 'e.g. Second follow-up · or Outcome capture', id: 'stepName' },
+        { type: 'textarea', label: 'Step description', value: '', placeholder: 'What this step does', id: 'stepDesc' },
+        { type: 'select', label: 'Step type', value: 'Drafted email (waits for approval)', options: ['Drafted email (waits for approval)', 'Wait period', 'Human action (e.g. outcome capture)', 'Auto action (no approval)'], id: 'stepType' }
+      ],
+      structural: [
+        { type: 'text', label: 'Days after previous step', value: '5–7', id: 'stepWait' }
+      ],
+      footText: 'New step will be appended after Step 2',
+      applyLabel: 'Add step'
+    },
+    'themed-structure': {
+      eyebrow: 'Editing workflow',
+      title: 'Themed Outreach · structure & defaults',
+      mode: 'tailored',
+      fields: [
+        { type: 'text', label: 'Workflow name', value: 'Themed Outreach', id: 'wfName' },
+        { type: 'text', label: 'Cooldown (days)', value: '14', id: 'wfCooldown', hint: 'Same LP cannot re-enroll until this many days after completion' },
+        { type: 'select', label: 'Approval mode', value: 'Every send waits for GP approval', options: ['Every send waits for GP approval', 'Bulk-approve only (no per-draft review)'], id: 'wfApproval' }
+      ],
+      footText: 'Changes apply to all future runs of this workflow'
+    },
+    // Locked default — Three-Touch
+    'three-touch-insight': {
+      eyebrow: 'Editing step (content only)',
+      title: 'Touch 1 · Insight email',
+      mode: 'locked',
+      lockedNote: 'Three-Touch Qualification is a <span class="strong">structurally-locked default</span>. You can edit content settings (tone, attachment behavior) but step name, order, and cadence are framework-mandated. <a href="#" style="color: var(--teal);">Why?</a>',
+      fields: [
+        { type: 'select', label: 'Tone', value: 'Direct, market-aware', options: ['Direct, market-aware', 'Formal', 'Conversational', 'Brief'], id: 'stepTone' },
+        { type: 'select', label: 'Default attachment', value: 'Auto-attach insight file', options: ['Auto-attach insight file', 'No attachment', 'Always prompt GP'], id: 'stepAttach' }
+      ],
+      lockedFields: [
+        { type: 'text', label: 'Step name', value: 'Insight email' },
+        { type: 'text', label: 'Day offset', value: 'Day 0' },
+        { type: 'text', label: 'Step type', value: 'Drafted email (waits for approval)' }
+      ],
+      footText: 'Content changes apply to this workflow on all lists · structural fields are framework-mandated'
+    }
+  };
+
+  let pendingTomoProposed = false;
+
+  function openEditTray(configKey, modeHint) {
+    const cfg = editConfigs[configKey];
+    if (!cfg) return;
+
+    const tray = document.getElementById('editTray');
+    const eyebrow = document.getElementById('etEyebrow');
+    const title = document.getElementById('etTitle');
+    const body = document.getElementById('etBody');
+    const sourcePill = document.getElementById('etSourcePill');
+    const footText = document.getElementById('etFootText');
+    const applyBtn = tray.querySelector('.et-apply');
+
+    // Set mode (color)
+    if (cfg.mode === 'locked') {
+      tray.classList.remove('amber-mode');
+    } else {
+      tray.classList.add('amber-mode');
+    }
+
+    eyebrow.textContent = cfg.eyebrow;
+    title.textContent = cfg.title;
+    footText.textContent = cfg.footText;
+    applyBtn.textContent = cfg.applyLabel || 'Apply changes';
+
+    // Tomo-proposed indicator
+    if (pendingTomoProposed) {
+      sourcePill.style.display = 'inline-flex';
+      sourcePill.classList.add('tomo-proposed');
+    } else {
+      sourcePill.style.display = 'none';
+    }
+
+    // Build body
+    let html = '';
+
+    // Locked note
+    if (cfg.lockedNote) {
+      html += '<div class="et-locked-note">' + cfg.lockedNote + '</div>';
+    }
+
+    // Tomo diff (if pending tomo proposal)
+    if (pendingTomoProposed) {
+      html += '<div class="et-diff-section">';
+      html += '<div class="et-diff-title">✦ Tomo proposes:</div>';
+      html += '<div class="et-diff-row before"><span class="diff-label">Was</span><span class="diff-content">Wait 5–7 days</span></div>';
+      html += '<div class="et-diff-row after"><span class="diff-label">Now</span><span class="diff-content">Wait 3 days</span></div>';
+      html += '</div>';
+    }
+
+    // Editable fields
+    if (cfg.fields && cfg.fields.length) {
+      html += '<div class="et-section">';
+      html += '<div class="et-fields-row">';
+      cfg.fields.forEach(f => {
+        html += '<div class="et-field">';
+        html += '<span class="et-label">' + f.label + '</span>';
+        if (f.type === 'text') {
+          const placeholder = f.placeholder ? ' placeholder="' + f.placeholder + '"' : '';
+          html += '<input class="et-input" type="text" value="' + (f.value || '').replace(/"/g, '&quot;') + '"' + placeholder + '>';
+        } else if (f.type === 'textarea') {
+          const placeholder = f.placeholder ? ' placeholder="' + f.placeholder + '"' : '';
+          html += '<textarea class="et-input et-textarea"' + placeholder + '>' + (f.value || '') + '</textarea>';
+        } else if (f.type === 'select') {
+          html += '<select class="et-select">';
+          f.options.forEach(opt => {
+            const selected = opt === f.value ? ' selected' : '';
+            html += '<option' + selected + '>' + opt + '</option>';
+          });
+          html += '</select>';
+        }
+        if (f.hint) html += '<span style="font-size: 10px; color: var(--mute); margin-top: 2px;">' + f.hint + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Structural fields (tailored only)
+    if (cfg.structural && cfg.structural.length) {
+      html += '<div class="et-section">';
+      html += '<div class="et-fields-row">';
+      cfg.structural.forEach(f => {
+        html += '<div class="et-field">';
+        html += '<span class="et-label">' + f.label + '</span>';
+        if (f.type === 'text') {
+          html += '<input class="et-input" type="text" value="' + (f.value || '').replace(/"/g, '&quot;') + '">';
+        } else if (f.type === 'select') {
+          html += '<select class="et-select">';
+          f.options.forEach(opt => {
+            const selected = opt === f.value ? ' selected' : '';
+            html += '<option' + selected + '>' + opt + '</option>';
+          });
+          html += '</select>';
+        }
+        if (f.hint) html += '<span style="font-size: 10px; color: var(--mute); margin-top: 2px;">' + f.hint + '</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Locked fields (display-only, locked)
+    if (cfg.lockedFields && cfg.lockedFields.length) {
+      html += '<div class="et-section">';
+      html += '<div class="et-fields-row three-col">';
+      cfg.lockedFields.forEach(f => {
+        html += '<div class="et-field">';
+        html += '<span class="et-label locked-label">' + f.label + '</span>';
+        html += '<input class="et-input disabled" type="text" value="' + (f.value || '').replace(/"/g, '&quot;') + '" disabled>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Step actions (tailored)
+    if (cfg.stepActions && cfg.stepActions.length) {
+      html += '<div class="et-step-actions">';
+      cfg.stepActions.forEach(action => {
+        html += '<button class="et-step-action-btn danger" onclick="removeStepDemo()">';
+        html += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+        html += action;
+        html += '</button>';
+      });
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
+    tray.classList.add('open');
+  }
+
+  function closeEditTray() {
+    document.getElementById('editTray').classList.remove('open');
+    document.getElementById('etSourcePill').style.display = 'none';
+    pendingTomoProposed = false;
+  }
+
+  function applyEditTray() {
+    closeEditTray();
+    // In real product: persist, optimistic UI update, toast
+  }
+
+  function removeStepDemo() {
+    closeEditTray();
+    // In real product: remove the step
+  }
+
+  // ========================================================================
+  // WAIT POPOVER
+  // ========================================================================
+  let waitPopAnchor = null;
+
+  function openWaitPop(anchorEl, currentValue) {
+    const pop = document.getElementById('waitPop');
+    const scrim = document.getElementById('waitPopScrim');
+    const input = document.getElementById('waitPopInput');
+
+    waitPopAnchor = anchorEl;
+    input.value = currentValue || '5–7';
+
+    // Position popover anchored above the wait connector
+    const rect = anchorEl.getBoundingClientRect();
+    const popWidth = 240;
+    const popHeight = 110;
+    let left = rect.left + (rect.width / 2) - (popWidth / 2);
+    let top = rect.top - popHeight - 8;
+
+    // Keep on screen
+    if (left < 8) left = 8;
+    if (left + popWidth > window.innerWidth - 8) left = window.innerWidth - popWidth - 8;
+    if (top < 8) top = rect.bottom + 8;
+
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+
+    pop.classList.add('open');
+    scrim.classList.add('open');
+    setTimeout(() => input.select(), 100);
+  }
+
+  function closeWaitPop() {
+    document.getElementById('waitPop').classList.remove('open');
+    document.getElementById('waitPopScrim').classList.remove('open');
+  }
+
+  function applyWaitPop() {
+    const newVal = document.getElementById('waitPopInput').value;
+    if (waitPopAnchor && newVal) {
+      const label = waitPopAnchor.querySelector('.pf-wait-label');
+      // Update the label text node — preserve the icon and edit pencil
+      if (label) {
+        const icon = label.querySelector('svg');
+        const editPencil = label.querySelector('.pf-wait-edit');
+        label.innerHTML = '';
+        if (icon) label.appendChild(icon);
+        label.appendChild(document.createTextNode(' Wait ' + newVal + 'd'));
+        if (editPencil) label.appendChild(editPencil);
+      }
+    }
+    closeWaitPop();
+  }
+
+  // ========================================================================
+  // TOMO PROMPT — route structural edits to the tray
+  // ========================================================================
+  // Hook into the global Tomo input. For demo: if the user types a structural
+  // change and presses Enter or clicks send, route to the tray.
+  function setupTomoRouting() {
+    const tomoInput = document.getElementById('tomoInput');
+    if (!tomoInput) return;
+    const tomoForm = tomoInput.parentElement;
+    const sendBtn = tomoForm.querySelector('.send');
+
+    function handleTomoSubmit() {
+      const txt = tomoInput.value.toLowerCase().trim();
+      if (!txt) return;
+
+      // Heuristic: if mentions "wait", "days", "change cadence", route to tray
+      // with pre-populated proposal
+      if (txt.includes('change') && (txt.includes('wait') || txt.includes('day') || txt.includes('cadence'))) {
+        pendingTomoProposed = true;
+        openEditTray('themed-step2', 'tailored');
+        tomoInput.value = '';
+        return;
+      }
+      // Otherwise just clear (in real product would call Tomo API)
+      tomoInput.value = '';
+    }
+
+    tomoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleTomoSubmit();
+    });
+    if (sendBtn) sendBtn.addEventListener('click', handleTomoSubmit);
+  }
+
+  document.addEventListener('DOMContentLoaded', setupTomoRouting);
+
+  function toggleCard(headEl) {
+    const card = headEl.parentElement;
+    card.classList.toggle('expanded');
+    updateTomoScope();
+  }
+
+  function updateTomoScope() {
+    const expanded = document.querySelector('.wf-card.expanded');
+    const scopePill = document.getElementById('tomoScopePill');
+    const input = document.getElementById('tomoInput');
+    if (!scopePill || !input) return;
+    if (expanded) {
+      const name = expanded.querySelector('.wf-card-name').textContent;
+      scopePill.textContent = 'Editing ' + name;
+      scopePill.classList.remove('hidden');
+      input.placeholder = 'Add a wait step, rewrite a draft, or change cadence…';
+    } else {
+      scopePill.classList.add('hidden');
+      input.placeholder = 'Click a workflow to edit it · or ask about activity across all workflows';
+    }
+  }
+
+  // Toggle confirmation
+  const wfNames = {
+    'three-touch': 'Three-Touch Qualification',
+    'post-meeting': 'Post-Meeting Execution',
+    'update-follow': 'Update → Follow-Up',
+    'ddq': 'DDQ Response Engine',
+    'roadshow': 'Roadshow Organisation',
+    'ic-date': 'IC Date Confirmation'
+  };
+  const wfFirstSteps = {
+    'three-touch': 'Touch 1 will draft today',
+    'post-meeting': 'will run on the next meeting that ends',
+    'update-follow': 'will run after your next fund update',
+    'ddq': 'will run on the next inbound DDQ',
+    'roadshow': 'requires you to set trip dates first',
+    'ic-date': 'will start nudging soft-commit LPs weekly'
+  };
+
+  let pendingToggle = null;
+
+  function confirmToggle(toggleEl, wfKey, listName, lpCount, currentlyOn, inFlight, dedup) {
+    pendingToggle = { toggleEl, wfKey, currentlyOn };
+    const wfName = wfNames[wfKey];
+
+    const eyebrow = document.getElementById('tcEyebrow');
+    const title = document.getElementById('tcTitle');
+    const body = document.getElementById('tcBody');
+    const confirmBtn = document.getElementById('tcConfirmBtn');
+
+    if (currentlyOn) {
+      // Turning OFF
+      eyebrow.textContent = 'Stop workflow';
+      title.textContent = `Stop ${wfName} on ${listName}?`;
+      const inFlightText = inFlight > 0
+        ? `<span class="strong">${inFlight} LPs are mid-sequence.</span> Choose to stop them now or let current runs finish.`
+        : `No LPs are currently mid-sequence.`;
+      body.innerHTML = `${inFlightText} New LPs entering the cohort will not be enrolled.`;
+      confirmBtn.textContent = inFlight > 0 ? 'Stop now' : 'Stop workflow';
+      confirmBtn.classList.add('danger');
+    } else {
+      // Turning ON
+      eyebrow.textContent = 'Activate workflow';
+      title.textContent = `Run ${wfName} on ${listName}?`;
+      const dedupText = dedup > 0
+        ? ` Three of these LPs are already in another active workflow and will be skipped automatically.`
+        : ``;
+      body.innerHTML = `<span class="strong">${lpCount} LPs</span> will be enrolled. ${wfFirstSteps[wfKey]} and wait for your approval before sending.${dedupText}`;
+      confirmBtn.textContent = 'Activate';
+      confirmBtn.classList.remove('danger');
+    }
+
+    document.getElementById('tcDialog').classList.add('open');
+    document.getElementById('tcScrim').classList.add('open');
+  }
+
+  function confirmTC() {
+    if (pendingToggle) {
+      pendingToggle.toggleEl.classList.toggle('on');
+      pendingToggle = null;
+    }
+    closeTC();
+  }
+
+  function closeTC() {
+    document.getElementById('tcDialog').classList.remove('open');
+    document.getElementById('tcScrim').classList.remove('open');
+    pendingToggle = null;
+  }
+
+  const drafts = {
+    insight: {
+      eyebrow: 'Three-Touch Qualification · Step 1',
+      title: 'Touch 1 · Insight',
+      subject: 'The dispersion premium in Italian credit — pace tightening fast',
+      body: `Edoardo,
+
+The Italian sub-investment-grade dispersion premium has compressed roughly 80bps since our last conversation in March, which I think narrows the entry window meaningfully. Spreads on the BB tier are tighter than at any point in the last eighteen months.
+
+Two things we're watching closely as that compresses: first, whether the technical bid in BTPs continues into Q3 once ECB unwinds further; second, how that flows through to the secondary loan book where mid-cap deals are repricing weekly.
+
+Thought you might find the framing useful — the file we built on this is below.
+
+Best,
+Geoff`
+    },
+    question: {
+      eyebrow: 'Three-Touch Qualification · Step 2',
+      title: 'Touch 2 · Question',
+      subject: 'Quick one — your hold-period view on the BB names?',
+      body: `Edoardo,
+
+Following up on my note — curious how Lingotto is thinking about hold periods on BB credit right now. I've heard a wider range than usual from allocators we talk to, anywhere from twelve months on the technical-driven names to three-year-plus where there's a real catalyst.
+
+Where does Lingotto sit?
+
+Geoff`
+    },
+    close: {
+      eyebrow: 'Three-Touch Qualification · Step 3',
+      title: 'Touch 3 · Respectful close',
+      subject: 'Should we park this until Q4?',
+      body: `Edoardo,
+
+I won't keep you. We've spoken a few times this year and the timing hasn't quite clicked, which happens. I'd rather hear that directly than keep finding reasons to land in your inbox.
+
+Two options. If the mandate is real but the timing is off, happy to park this until you're ready — say something brief and I'll mark you as not-this-cycle. If the fit isn't right at all, also fine, just let me know and I'll close it cleanly on our side.
+
+Either way, no awkwardness.
+
+Geoff`
+    }
+  };
+
+  // ========================================================================
+  // BATCH REVIEW DRAWER
+  // ========================================================================
+  const batchSteps = {
+    'insight': {
+      eyebrow: 'Three-Touch Qualification · Touch 1 · Insight',
+      title: '3 drafts ready for approval',
+      context: 'Quiet · Fat Middle · drafted by Tomo · awaiting your approval before send'
+    },
+    'question': {
+      eyebrow: 'Three-Touch Qualification · Touch 2 · Question',
+      title: '0 drafts ready for approval',
+      context: 'No drafts at this step right now. 4 LPs are sent, awaiting reply.'
+    },
+    'close': {
+      eyebrow: 'Three-Touch Qualification · Touch 3 · Close',
+      title: '0 drafts ready for approval',
+      context: 'No drafts at this step right now. 3 LPs are sent, awaiting reply or outcome capture.'
+    }
+  };
+
+  function openBatch(stepKey) {
+    const key = stepKey || 'insight';
+    const meta = batchSteps[key];
+    if (meta) {
+      document.getElementById('batchEyebrow').textContent = meta.eyebrow;
+      document.getElementById('batchTitle').textContent = meta.title;
+      document.querySelector('#batchDrawer .batch-context').textContent = meta.context;
+    }
+    document.getElementById('batchDrawer').classList.add('open');
+    document.getElementById('batchScrim').classList.add('open');
+  }
+
+  function closeBatch() {
+    document.getElementById('batchDrawer').classList.remove('open');
+    document.getElementById('batchScrim').classList.remove('open');
+    // Collapse all expanded cards on close
+    document.querySelectorAll('.batch-card.expanded').forEach(c => c.classList.remove('expanded'));
+  }
+
+  function toggleBatchCard(headEl) {
+    const card = headEl.parentElement;
+    card.classList.toggle('expanded');
+  }
+
+  function openDraft(stepKey) {
+    const d = drafts[stepKey];
+    if (!d) return;
+    document.getElementById('draftEyebrow').textContent = d.eyebrow;
+    document.getElementById('draftTitle').textContent = d.title;
+    document.getElementById('draftSubject').value = d.subject;
+    document.getElementById('draftBodyText').value = d.body;
+    // Attachment shown only for Touch 1 (insight)
+    const attachment = document.getElementById('draftAttachment');
+    if (stepKey === 'insight') {
+      attachment.classList.remove('hidden');
+    } else {
+      attachment.classList.add('hidden');
+    }
+    document.getElementById('draftDrawer').classList.add('open');
+    document.getElementById('draftScrim').classList.add('open');
+  }
+  function closeDraft() {
+    document.getElementById('draftDrawer').classList.remove('open');
+    document.getElementById('draftScrim').classList.remove('open');
+  }
+
+  function setDemo(state) {
+    document.querySelectorAll('.demo-toggle').forEach(b => b.classList.remove('active'));
+    if (state === 'list') {
+      document.querySelectorAll('.demo-toggle')[0].classList.add('active');
+      document.querySelectorAll('.wf-card.expanded').forEach(c => c.classList.remove('expanded'));
+      closeDraft();
+      closeBatch();
+      closeRunModal();
+    } else if (state === 'expanded') {
+      document.querySelectorAll('.demo-toggle')[1].classList.add('active');
+      document.querySelectorAll('.wf-card.expanded').forEach(c => c.classList.remove('expanded'));
+      document.querySelector('.wf-card').classList.add('expanded');
+      closeDraft();
+      closeBatch();
+      closeRunModal();
+    } else if (state === 'run') {
+      document.querySelectorAll('.demo-toggle')[2].classList.add('active');
+      document.querySelectorAll('.wf-card.expanded').forEach(c => c.classList.remove('expanded'));
+      closeDraft();
+      closeBatch();
+      openRunModal('update');
+    } else if (state === 'batch') {
+      document.querySelectorAll('.demo-toggle')[3].classList.add('active');
+      document.querySelector('.wf-card').classList.add('expanded');
+      closeDraft();
+      closeRunModal();
+      openBatch('insight');
+      document.querySelectorAll('.batch-card.expanded').forEach(c => c.classList.remove('expanded'));
+    } else if (state === 'expanded-draft') {
+      document.querySelectorAll('.demo-toggle')[4].classList.add('active');
+      document.querySelector('.wf-card').classList.add('expanded');
+      closeDraft();
+      closeRunModal();
+      openBatch('insight');
+      const firstCard = document.querySelector('.batch-card');
+      if (firstCard) firstCard.classList.add('expanded');
+    }
+    updateTomoScope();
+  }
+
+  // Initial call to set scope pill correctly on load (Three-Touch is expanded by default)
+  document.addEventListener('DOMContentLoaded', updateTomoScope);
+</script>
+
+</body>
+</html>

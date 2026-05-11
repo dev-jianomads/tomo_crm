@@ -9,10 +9,10 @@ import {
 } from "@/components/settings/settings-widgets";
 import { LinkSlashIcon } from "@heroicons/react/24/outline";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { defaultOnboardingState, OnboardingState } from "@/lib/types";
+import { ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsIntegrationsPage() {
-  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", defaultOnboardingState);
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>(ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState);
 
   const [affinityListId, setAffinityListId] = useState(integrations.affinityListId ?? "");
   const [affinityToken, setAffinityToken] = useState("");

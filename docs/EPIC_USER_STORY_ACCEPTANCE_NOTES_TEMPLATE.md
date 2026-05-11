@@ -222,7 +222,7 @@ These four nested routes are the **subscription and workspace-admin** cluster. T
    - After disconnect, the UI shows **not connected** (or the correct next state) everywhere that connection appears; any dependent toggles (e.g. notification routing) disable or show dependency messaging as designed.
    - Disconnect removes access and **revokes or invalidates credentials server-side**; scheduled jobs, webhooks, and digests for that connection **stop** once disconnect completes.
 
-   **Implementation note (repo / mock):** The UI pattern is implemented with `IntegrationRow` and `DisconnectIntegrationDialog` in `src/components/settings/settings-widgets.tsx` (confirm dialog, Cancel + destructive CTA, **link-slash** affordance on disconnect). **Integrations** — Calendar, Contacts, Email, **Affinity CRM**, **Google Sheets**. **Messaging** — Slack, Telegram. **Notifications** — **Channels** (Email, Slack, Telegram) with copy that state is shared with Integrations / Messaging. In the mock, connection state uses **`tomo-onboarding`** in local storage; production should use a **single** server-backed source of truth and real token revocation with the same user-visible contract.
+   **Implementation note (repo / mock):** The UI pattern is implemented with `IntegrationRow` and `DisconnectIntegrationDialog` in `src/components/settings/settings-widgets.tsx` (confirm dialog, Cancel + destructive CTA, **link-slash** affordance on disconnect). **Integrations** — Calendar, Contacts, Email, **Affinity CRM**, **Google Sheets**. **Messaging** — Slack, Telegram. **Notifications** — **Channels** (Email, Slack, Telegram) with copy that state is shared with Integrations / Messaging. In the mock, connection state uses **`tomo-onboarding-v2`** (`ONBOARDING_STATE_STORAGE_KEY`); production should use a **single** server-backed source of truth and real token revocation with the same user-visible contract.
 
 5. **Story:** As a subscriber, I can review **plans**, **trial**, and **seat-oriented** actions on **Billing & Plan** (`/settings/billing`).  
    **Acceptance criteria**
@@ -333,19 +333,17 @@ These four nested routes are the **subscription and workspace-admin** cluster. T
 
 **Epic:** First-run setup  
 
-1. **Story:** As a new user, I can complete **onboarding** steps and resume later without losing required progress.  
+1. **Story:** As a new user, I can complete the **eight-screen** onboarding (`design/tomo_onboarding_v1.html` / Document B) and resume later without losing required progress.  
    **Acceptance criteria**
-   - Progress persists server-side; clearing local storage alone does not reset completed steps incorrectly.
-   - Required vs optional steps are explicit; users can finish minimal onboarding and access the app.
-   - Skipped optional steps can be completed later from Settings or an equivalent entry point.
+   - Progress persists (`tomo-onboarding-v2` in mock; server-side in production); `wizardStep` resumes the flow after refresh.
+   - Required vs optional steps match Document B (workspace + pipeline required on screen 2; fund/raise required fields on screens 3–4).
+   - Skipped optional items (e.g. extra team rows) can be completed later from Settings or equivalent.
 
-2. **Story:** After I connect **email** during onboarding, I can allow TOMO to read about the **last 6 months** of mail for relationship enrichment, statuses, profile/summary, and tone-matched drafts, or choose **new mail only**, with a clear explanation that some features are **limited** until I allow history (e.g. in Settings).  
+2. **Story:** I can control **historical mail scope** (SRS three-tier) and related ingestion from **Settings** (not in the eight-screen wizard in the current mock).  
    **Acceptance criteria**
-   - The choice appears as a **second screen on the same onboarding step** as email connect (not a new step number); **Back** from that screen returns to the connect-confirmation sub-step; header **Next** is disabled on the data-scope sub-step until a choice is made.
-   - **Allow last 6 months** and **new mail only** are both explicit, mutually exclusive options (no silent default that contradicts copy).
-   - The user’s choice is **persisted** with the integration/onboarding state, is **reversible** from Settings in production, and in production is enforced with **OAuth** scopes and policy (not client-only for mail content access).
-   - Skipping **email** connect entirely does not show the history sub-step; the user can still complete onboarding.
-   - Mock implementation reference: `emailHistoryScope` on `OnboardingState` in `src/lib/types.ts`, UI in `src/app/onboarding/page.tsx` (step 3).
+   - `optInHistoricalEmailIngestion` (and meeting transcripts / Slack) remain on `OnboardingState` for Settings; changing them updates mock state and, in production, OAuth/policy.
+   - Wizard copy does not imply a mail-history choice on a dedicated onboarding step until product re-introduces it.
+   - Mock reference: `src/components/onboarding/onboarding-wizard.tsx`, `src/lib/types.ts`.
 
 ---
 

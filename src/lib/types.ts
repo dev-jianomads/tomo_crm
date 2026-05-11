@@ -160,18 +160,43 @@ export type WorkspaceProvider = "google" | "microsoft";
 /** How CRM data is supplied during onboarding. */
 export type CrmImportMethod = "csv" | "affinity";
 
+/** Mock auth — which IdP the user chose at sign-in (identity strip in onboarding). */
+export type AuthProviderKind = "google" | "microsoft" | "email";
+
+/**
+ * Client mock persistence for onboarding (`localStorage`).
+ * New key — legacy `tomo-onboarding` is not read (no migration).
+ */
+export const ONBOARDING_STATE_STORAGE_KEY = "tomo-onboarding-v2";
+
+/** CRM cards that use CSV upload in V1 (Backstop, HubSpot, Foliometrics, or generic). */
+export type OnboardingCrmCsvLabel = "generic" | "backstop" | "hubspot" | "folio";
+
+export type OnboardingTeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  meta?: string;
+};
+
+export type OnboardingToneCapture = "sent_sample" | "manual" | "skip";
+
 export type OnboardingState = {
   /** Single-provider bundle: Gmail/Calendar/Contacts or Outlook/Calendar/Contacts (mock: one action). */
   workspaceProvider: WorkspaceProvider | null;
   workspaceBundleConnected: boolean;
   /**
-   * Optional — SRS §3.3 three-tier model: first 12 months full content, months 13–36 metadata-only.
-   * If false in mock, represent forward / minimal scope until user enables in Settings.
+   * Configurable in Settings. Onboarding no longer surfaces this; production defaults / background jobs may still use SRS §3.3.
    */
   optInHistoricalEmailIngestion: boolean;
-  /** Optional — Microsoft Teams or Google Meet transcripts, meeting notes, and extracted actions (SRS §3.13). */
+  /** Configurable in Settings; onboarding does not surface (SRS §3.13). */
   optInMeetingTranscripts: boolean;
   crmImportMethod: CrmImportMethod | null;
+  /**
+   * When pipeline data came from a labelled CSV card (Backstop, HubSpot, Foliometrics) or generic upload.
+   */
+  crmCsvLabel: OnboardingCrmCsvLabel | null;
   calendarConnected: boolean;
   contactsConnected: boolean;
   emailConnected: boolean;
@@ -193,6 +218,25 @@ export type OnboardingState = {
   fundStrategyUploaded: boolean;
   fundStrategyFilename?: string;
   fundStrategyText?: string;
+  /** Screen 3 — fund profile (design/tomo_onboarding_v1.html). */
+  fundName: string;
+  fundStrategy: string;
+  fundAum: string;
+  fundDistinction: string;
+  /** Screen 4 — raise campaign. */
+  raiseVehicle: string;
+  raiseTarget: string;
+  raiseSoftCircled: string;
+  raiseCloseTarget: string;
+  raiseDiligenceCount: string;
+  raiseTargetingCount: string;
+  raiseAspirations: string;
+  /** Screen 5 — teammates beyond the signed-in user. */
+  teamMembersExtra: OnboardingTeamMember[];
+  /** Screen 6 — tone calibration path. */
+  toneCapture: OnboardingToneCapture;
+  /** 1–8 — persisted so refresh resumes the wizard. */
+  wizardStep: number;
   notifications: Record<string, { email?: boolean; slack?: boolean; telegram?: boolean; inApp?: boolean }>;
   completed: boolean;
 };
@@ -204,13 +248,14 @@ const defaultOnboardingNotifications: OnboardingState["notifications"] = {
   Escalations: { email: true, slack: false, telegram: false, inApp: true },
 };
 
-/** Default onboarding slice for `tomo-onboarding` persistence and Settings pages. */
+/** Default onboarding slice for `ONBOARDING_STATE_STORAGE_KEY` and Settings pages. */
 export const defaultOnboardingState: OnboardingState = {
   workspaceProvider: null,
   workspaceBundleConnected: false,
   optInHistoricalEmailIngestion: false,
   optInMeetingTranscripts: false,
   crmImportMethod: null,
+  crmCsvLabel: null,
   calendarConnected: false,
   contactsConnected: false,
   emailConnected: false,
@@ -222,6 +267,20 @@ export const defaultOnboardingState: OnboardingState = {
   googleSheetsAuthed: false,
   contactImportUploaded: false,
   fundStrategyUploaded: false,
+  fundName: "",
+  fundStrategy: "Hedge fund · long/short equity",
+  fundAum: "",
+  fundDistinction: "",
+  raiseVehicle: "",
+  raiseTarget: "",
+  raiseSoftCircled: "",
+  raiseCloseTarget: "",
+  raiseDiligenceCount: "",
+  raiseTargetingCount: "",
+  raiseAspirations: "",
+  teamMembersExtra: [],
+  toneCapture: "sent_sample",
+  wizardStep: 1,
   notifications: defaultOnboardingNotifications,
   completed: false,
 };
@@ -245,9 +304,12 @@ export type SessionState = {
   email: string;
   plan: PlanType;
   onboardingComplete: boolean;
+  /** Optional display name for onboarding identity strip. */
+  displayName?: string;
+  /** Mock: last auth method used on `/auth`. */
+  authProvider?: AuthProviderKind;
   // PRODUCTION: Add these fields
   // uid: string;           // Firebase Auth uid
-  // displayName?: string;
   // photoURL?: string;
   // stripeCustomerId?: string;
 };

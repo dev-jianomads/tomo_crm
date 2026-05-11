@@ -2,10 +2,10 @@
 
 import { IntegrationRow } from "@/components/settings/settings-widgets";
 import { usePersistentState } from "@/lib/usePersistentState";
-import { defaultOnboardingState, OnboardingState } from "@/lib/types";
+import { ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsMessagingPage() {
-  const [integrations, setIntegrations] = usePersistentState<OnboardingState>("tomo-onboarding", defaultOnboardingState);
+  const [integrations, setIntegrations] = usePersistentState<OnboardingState>(ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState);
 
   return (
     <div className="space-y-3">

@@ -198,7 +198,7 @@ export default function AuthPage() {
     if (!email) return;
     
     // MOCK: Route through onboarding for new sign-in/sign-up
-    const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false };
+    const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false, authProvider: "email" };
     setSession(session);
     router.replace("/onboarding");
     
@@ -354,12 +354,30 @@ export default function AuthPage() {
                 - Microsoft: signInWithPopup(auth, new OAuthProvider('microsoft.com'))
               */}
               <div className="grid grid-cols-2 gap-2">
-                <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    if (!email) return;
+                    const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false, authProvider: "google" };
+                    setSession(session);
+                    router.replace("/onboarding");
+                  }}
+                >
                   <img src="/icons/google.svg" alt="Google" className="h-4 w-4" />
                   Google
                 </button>
-                <button className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  <img src="/icons/microsoft.svg" alt="Microsoft" className="h-4 w-4" />
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    if (!email) return;
+                    const session: SessionState = { email, plan: selectedPlan, onboardingComplete: false, authProvider: "microsoft" };
+                    setSession(session);
+                    router.replace("/onboarding");
+                  }}
+                >
+                  <img src="/icons/microsoft.svg" alt="" className="h-4 w-4" />
                   Microsoft 365
                 </button>
               </div>
