@@ -262,7 +262,7 @@ TOMO V1 is a new, standalone product. It is not a module of an existing system. 
         │    or AWS SES)                        │
         └───────────────────────────────────────┘
 
-        † Native CRM **read-only** API pull ships for **Affinity or Backstop, whichever comes first**; bi-directional SoR sync is not V1 — see §3.4.
+        † Native CRM **read-only** API pull ships for **Affinity or Backstop, whichever comes first** (credentials in **Settings** in the V1 eight-screen mock; onboarding screen 2 is CSV for all pipeline cards). Bi-directional SoR sync is not V1 — see §3.4.
 ```
 
 External actors and systems that TOMO V1 interacts with are listed in §4.2 with the specific endpoints and authentication patterns.
@@ -272,7 +272,7 @@ External actors and systems that TOMO V1 interacts with are listed in §4.2 with
 V1 delivers twelve product capability areas. Each is a top-level grouping of functional requirements in §3 and a top-level grouping of user stories in §8.
 
 1. **Authentication and account management** — Firebase Auth (email + Google + Microsoft); per-user OAuth for data-source connections; workspace creation; team invites (multiple members per workspace); plan billing via Stripe.
-2. **Onboarding** — **Eight-screen** post-auth flow per **Document B** and **`design/tomo_onboarding_v1.html`**: welcome → connect workspace + pipeline (Affinity API **or** CSV / Excel; Backstop / HubSpot / Foliometrics are **CSV-only** in V1) → fund profile → raise profile → team → tone capture **choice** → first-read notices (mock) → briefing preview → **Take me to the app** / Home. **Three-tier historical email**, **meeting transcripts**, and **Slack** are **not** in the wizard; they are **Settings / background** (may return to onboarding later). See §3.2.
+2. **Onboarding** — **Eight-screen** post-auth flow per **Document B** and **`design/tomo_onboarding_v1.html`**: welcome → connect workspace (pick Google or Microsoft) + pipeline (**all pipeline cards use CSV / Excel upload** in the wizard mock, including Affinity-labelled; native CRM API is **Settings**) → fund profile → raise profile → team → tone capture **choice** → first-read notices (mock) → briefing preview → **Take me to the app** / Home. **Three-tier historical email**, **meeting transcripts**, and **Slack** are **not** in the wizard; they are **Settings / background** (may return to onboarding later). See §3.2.
 3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection.
 4. **CRM integration** — generic CSV pipeline with auto-mapping, deduplication, and conflict resolution; **read-only** native CRM API pull for **Affinity or Backstop — whichever connector ships first** (bi-directional / SoR write-back not in V1).
 5. **Signals engine** — nine surfaced signals plus three captured attributes; nightly batch and event-driven computation; append-only signal log; pipeline flag computation.
@@ -403,7 +403,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 3. If the user has no workspace memberships and is not joining via invitation, the application creates a new `workspaces` row with the user as `owner_user_id` and a `workspace_members` row with `role='owner'`. This atomic creation happens before redirect to onboarding.
 4. Workspace invitations are emailed to a target address. The invitation row carries a single-use token (`workspace_members.invitation_token`) with 7-day expiry. Accepting an invitation requires the invitee to be signed into Firebase Auth with the matching email; mismatched emails are rejected with a clear error.
 5. Workspace membership has no artificial member-count limit; invite acceptance creates `workspace_members` rows subject only to duplicate-membership checks and eligibility rules (not a numeric cap).
-6. Per-user OAuth grants for data sources are initiated from Settings → Integrations or during onboarding (**screen 2** connect: workspace bundle and Affinity when applicable). Each grant is a separate OAuth flow against Microsoft (Azure App Registration) or Google (Google Cloud OAuth Client) — Firebase auth is **not** reused for data scopes. Tokens land in `oauth_tokens` encrypted via Supabase Vault.
+6. Per-user OAuth grants for data sources are initiated from **Settings → Integrations** or during onboarding for the **workspace bundle only** on **screen 2**. **Pipeline** cards on screen 2 do **not** start native CRM OAuth in the V1 mock — they use file import only; CRM API tokens are captured in Settings when applicable. Each grant is a separate OAuth flow against Microsoft (Azure App Registration) or Google (Google Cloud OAuth Client) — Firebase auth is **not** reused for data scopes. Tokens land in `oauth_tokens` encrypted via Supabase Vault.
 7. Refresh tokens are used by a background worker to refresh access tokens before expiry. Failed refresh writes `last_refresh_error`; the integration health flips to `degraded` or `disconnected` per §3.16.
 8. Password reset uses Firebase's standard reset email flow; TOMO does not handle passwords directly.
 9. Account deletion is a soft-delete on `users` followed by a 30-day grace period; on confirmation (or after 30 days), the application hard-deletes and writes a final `auth_events` row. Per §6.4, append-only audit data is preserved; PII is scrubbed where not legally required.
@@ -437,7 +437,7 @@ Where source documents (Section 8, Section 9, Document A, Document B) are normat
 
 ### 3.2. Onboarding flow
 
-**Description.** **Eight-screen** post-auth experience from sign-up through **Take me to the app** (`/home`), aligned with **`design/tomo_onboarding_v1.html`** and **Document B** (`Document_B_Onboarding_Flow_Specification.md`). Primary chrome: top progress (eight segments + label), **indexing ticker** from screen 2 (mock), **Back** + **Continue** in a **fixed bottom bar** on screens 2–7; screen 1 uses **Begin setup** in content; screen 8 uses in-content CTAs.
+**Description.** **Eight-screen** post-auth experience from sign-up through **Take me to the app** (`/home`), aligned with **`design/tomo_onboarding_v1.html`** and **Document B** (`Document_B_Onboarding_Flow_Specification.md`). Primary chrome: top progress (eight segments + label), **indexing ticker** from screen 2 (mock; non-interactive), **Back** + **Continue** in a **fixed bottom bar** on screens 2–7 — the bar is implemented so **only** those two controls receive pointer events (backdrop does not block the connect grid). Screen 1 uses **Begin setup** in content; screen 8 uses in-content CTAs.
 
 **Moved out of the wizard (background / Settings — may re-enter the wizard later):** in-wizard checkboxes for **SRS three-tier historical email** and **meeting transcripts**, and **Slack** (+ *What’s on my Radar*). Those preferences remain on `OnboardingState` and in production on the user/workspace row for **Settings** and default job behaviour; they are **not** shown in this eight-screen flow.
 
@@ -454,7 +454,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 1. **Screen 1 — Welcome.** Editorial welcome, identity strip, **Begin setup**. No integrations.
 
-2. **Screen 2 — Connect data.** **Google Workspace** or **Microsoft 365** (required bundle). **Pipeline:** at least one of **Affinity (API)** or **confirmed CSV / Excel** import. **Backstop**, **HubSpot**, and **Foliometrics** cards are **CSV upload only** in V1 (same mapping + confirm flow; `crmCsvLabel` records the card). **Continue** disabled until workspace + pipeline satisfied.
+2. **Screen 2 — Connect data.** **Google Workspace** or **Microsoft 365** (required bundle — pick one). **Pipeline:** every card (**Backstop**, **Affinity**, **Foliometrics**, **HubSpot**, **CSV upload**) uses the **same** mock flow: tap card → inline upload panel → optional auto file picker → column mapping → **Confirm import** → panel closes → matching card shows **Connected** (`crmCsvLabel`). **No** Affinity API capture in the wizard; native CRM OAuth/API remains **Settings → Integrations**. **Continue** disabled until workspace connected **and** (`contactImportUploaded` **or** `affinityConnected` if already set from Settings in production).
 
 3. **Screen 3 — Your fund.** Fund name (required), strategy, AUM, narrative.
 
@@ -477,15 +477,15 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Outputs.**
 
-- `oauth_tokens` for workspace bundle (and Affinity when applicable).
-- CRM import from CSV confirm or Affinity pull per §3.4.
+- `oauth_tokens` for workspace bundle (and for native CRM read when the GP connects API in **Settings**, not from the eight-screen wizard pipeline cards).
+- CRM import from **CSV / Excel confirm** on screen 2 (all pipeline cards) or from native Affinity/Backstop **API pull** when configured in Settings per §3.4.
 - Fund/raise/team/tone fields stored in onboarding JSON (and mirrored to profile / workspace tables in production as needed).
 - User preference flags for historical email, transcripts, and Slack remain available from **Settings**, not from the wizard.
 
 **Business rules.**
 
-- BR-3.2.1 — **Continue** on screen 2 remains disabled until workspace bundle connect succeeds **and** pipeline requirement is met (Affinity connected or CSV import confirmed).
-- BR-3.2.2 — Backstop / HubSpot / Foliometrics **do not** unlock native OAuth in V1; they use **CSV upload** only.
+- BR-3.2.1 — **Continue** on screen 2 remains disabled until workspace bundle connect succeeds **and** pipeline requirement is met (**Confirm import** on the CSV path, or `affinityConnected` when mirrored from Settings in production).
+- BR-3.2.2 — In the **wizard mock**, **all** pipeline source cards (including Affinity) use **CSV / Excel upload** only; Backstop / HubSpot / Foliometrics **do not** unlock native OAuth on screen 2. Native CRM OAuth is **Settings → Integrations** per §3.4.
 - BR-3.2.3 — Wizard completion does not require Slack, historical email opt-in, or meeting-transcript opt-in (those are Settings / background).
 - BR-3.2.4 — Three-tier historical ingestion and transcript behaviour remain defined in §3.3 and §3.13; consent and defaults may be applied outside this wizard until those controls return to onboarding.
 
@@ -493,7 +493,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 - AC-3.2.1 — A GP can complete all eight screens and land on `/home` with workspace connected and pipeline requirement satisfied.
 - AC-3.2.2 — Closing the browser mid-wizard and reopening resumes at the persisted `wizardStep` with prior field values intact.
-- AC-3.2.3 — CSV path: after **Confirm import**, import behaviour matches §3.4 ACs; Affinity path: connector validation matches §3.4 ACs.
+- AC-3.2.3 — After **Confirm import** on screen 2, behaviour matches §3.4 CSV ACs; `crmCsvLabel` records which card was chosen. Native Affinity/Backstop API validation applies only when the GP uses **Settings** (or future wizard API step), not the current CSV-only pipeline cards.
 - AC-3.2.4 — A GP who never changes historical-email / transcript / Slack flags in Settings still completes onboarding; those features follow §3.3 / §3.13 defaults or deferred enablement.
 
 ---
@@ -566,9 +566,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Inputs / triggers.**
 
-- CSV upload at onboarding (Step 4).
+- CSV upload on **onboarding screen 2** (connect; all pipeline cards use the same file-import path in the V1 wizard mock — see §3.2).
 - CSV re-upload via Settings → Integrations or Today review queue.
-- **Affinity:** API key at onboarding or Settings → Integrations when Affinity is the integrated path.
+- **Affinity:** API key in **Settings → Integrations** when using the native read path (not captured on onboarding screen 2 in the current eight-screen mock).
 - **Backstop:** licensed API credentials (paste and/or OAuth — per integration design doc) when Backstop is the integrated path.
 - **Affinity** v1 webhook deliveries on person/organization events (when Affinity is the integrated path).
 - **Backstop:** webhook and/or polling-driven incremental updates per vendor contract (when Backstop is the integrated path).
@@ -587,7 +587,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Affinity path (when Affinity is the first native connector shipped):**
 
-1. GP pastes Affinity API key (bearer token) at onboarding **screen 2** or Settings → Integrations. Token validated by hitting `GET /v2/auth/whoami`. Stored in `oauth_tokens` with `provider='affinity'`.
+1. GP pastes Affinity API key (bearer token) in **Settings → Integrations** when using the native read path (or future onboarding API step). The **eight-screen onboarding** mock uses **CSV / Excel** for all pipeline cards, including the Affinity-labelled card (`crmCsvLabel='affinity'`). Token validated by hitting `GET /v2/auth/whoami`. Stored in `oauth_tokens` with `provider='affinity'`.
 2. Initial pull: paginated GET against Affinity `Persons`, `Organizations`, `Lists`, `List Entries`, `Interactions` v2 endpoints. Mapped to `lp_organizations`, `lp_contacts`, `lp_interactions`, `lp_email_threads` with `source='affinity_api'` and `source_external_id` set.
 3. Webhook subscription: 1 of Affinity's 3 max webhook slots used. Subscribe to `person.updated` and `organization.updated` v1 events. Webhook handler diffs and applies updates with last-write-wins rules.
 4. Custom-field provisioning: **not in V1** (would only matter for write-back). The six TOMO fields (`tomo_signal_flag`, `tomo_signal_evidence`, etc.) are not created on the Affinity workspace until V2.
@@ -619,7 +619,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 - AC-3.4.1 — A Backstop export of 300 LPs maps cleanly with ≤ 6 ambiguous columns surfaced for GP review and imports within 2 minutes.
 - AC-3.4.2 — Re-uploading the same Backstop export 30 days later applies the saved mapping automatically and surfaces only the 5–20 changed records.
-- AC-3.4.3 — When **Affinity** is the shipped native connector: an FC GP entering a valid Affinity API key at onboarding sees their full pipeline (Persons + Organizations + Lists + Interactions) populated within 5 minutes.
+- AC-3.4.3 — When **Affinity** is the shipped native connector: an FC GP entering a valid Affinity API key in **Settings → Integrations** sees their full pipeline (Persons + Organizations + Lists + Interactions) populated within 5 minutes.
 - AC-3.4.3b — When **Backstop** is the shipped native connector: an FC GP completing Backstop credential capture sees the equivalent pipeline entities populated within the **same-order SLO as AC-3.4.3** (target ≤ 5 minutes at FC scale).
 - AC-3.4.4 — **Affinity:** a webhook delivery for `person.updated` reflects the change in TOMO within 60 seconds of receipt.
 - AC-3.4.4b — **Backstop:** an incremental update reflects the CRM-side change in TOMO within **60 seconds** of receipt when webhooks apply; otherwise within **one polling interval** (document the interval in the integration design doc).
@@ -3368,7 +3368,7 @@ The data dictionary is the per-field reference for fields that participate in si
 
 | Field | Type / values | Source / derivation | Consumed by |
 |---|---|---|---|
-| `funds.raise_target` | numeric(18,2), nullable | GP-set at onboarding screen 7 (Document B) or Settings → Funds | Metric 1 (Capital vs Target), Metric 4 (Concentration alert) |
+| `funds.raise_target` | numeric(18,2), nullable | GP-set at onboarding screen 4 — Your raise (Document B) or Settings → Funds | Metric 1 (Capital vs Target), Metric 4 (Concentration alert) |
 | `funds.concentration_threshold_pct` | numeric, default 20.00 | Hardcoded V1; per-fund configurable V1.5 | Metric 4 |
 | `lp_calendar_events.actual_duration_minutes` | int, nullable | Transcript when available, else null (do not impute) | Signal 7 (calendar friction); §8.3 caveat |
 | `lp_calendar_events.accept_latency_hrs` | numeric | (`accepted_at` − `invite_sent_at`) / 3600 | Signal 7 |
@@ -3606,11 +3606,12 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Top chrome shows eight-segment progress and step label `01 / 08 · Welcome`.
 
 **Story 8.3.2 — Connect data (screen 2).**
-*As a GP, I connect Google Workspace or Microsoft 365 and satisfy the pipeline requirement via Affinity or a confirmed CSV import.*
+*As a GP, I connect Google Workspace or Microsoft 365 and satisfy the pipeline requirement via **Confirm import** on a pipeline card (CSV / Excel) or, in production, an Affinity API connection already stored from Settings.*
 
-- AC — **Continue** stays disabled until workspace bundle is connected and (Affinity connected **or** CSV **Confirm import** completed).
-- AC — Backstop, HubSpot, and Foliometrics cards use **CSV upload only** in V1; `crmCsvLabel` records the card.
-- AC — **Back** returns to Welcome; fixed bottom bar shows **Back** + **Continue**; indexing ticker appears (mock).
+- AC — **Continue** stays disabled until workspace bundle is connected and (`contactImportUploaded` **or** `affinityConnected` when mirrored from Settings in production).
+- AC — **All** pipeline cards (Backstop, Affinity, Foliometrics, HubSpot, generic CSV) use the **same** wizard flow: tap card → inline panel → file picker (auto-opens on first open) → mapping → **Confirm import** → panel closes → **Connected** pill; `crmCsvLabel` records the card. Native CRM API is **not** collected on this screen.
+- AC — Tapping the **same** **Connected** card again reopens the panel for **Replace file** without resetting unrelated wizard state.
+- AC — **Back** returns to Welcome; fixed bottom bar shows **Back** + **Continue** (only those controls receive clicks; bar backdrop does not block the grid); indexing ticker appears (mock, non-interactive).
 
 **Story 8.3.3 — Fund profile (screen 3).**
 *As a GP, I describe my fund so Tomo can calibrate signals and drafts.*

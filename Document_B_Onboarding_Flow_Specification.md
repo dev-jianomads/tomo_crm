@@ -10,7 +10,7 @@
 
 ## Strategic frame
 
-Onboarding introduces Tomo as the **capital formation operating system**: connect workspace + pipeline data, capture fund and raise context, team, and tone, then surface a **first-read** narrative and **briefing preview** before Home. Primary navigation is **Back** + **Continue** in a **fixed bottom bar** (screens 2–7). Screen 1 uses an in-content **Begin setup** CTA. Top chrome: wordmark, **eight-segment** progress, and step label (`01 / 08 · Welcome` … `08 / 08 · Briefing preview`). From screen 2 onward, a small **indexing ticker** (mock copy) appears in the lower corner.
+Onboarding introduces Tomo as the **capital formation operating system**: connect workspace + pipeline data, capture fund and raise context, team, and tone, then surface a **first-read** narrative and **briefing preview** before Home. Primary navigation is **Back** + **Continue** in a **fixed bottom bar** (screens 2–7). The bar uses **pointer-events** so only the two controls capture clicks — the bar’s backdrop does not block the connect grid (see implementation). Screen 1 uses an in-content **Begin setup** CTA. Top chrome: wordmark, **eight-segment** progress, and step label (`01 / 08 · Welcome` … `08 / 08 · Briefing preview`). From screen 2 onward, a small **indexing ticker** (mock copy) appears in the lower corner with **pointer-events** disabled so it never intercepts clicks.
 
 ---
 
@@ -26,12 +26,13 @@ Onboarding introduces Tomo as the **capital formation operating system**: connec
 
 ## Screen 2 — Connect data (Step 1 · Connect)
 
-- Workspace: **Google Workspace** or **Microsoft 365** — one mock **Connect** each; **required** so that email, calendar, and contacts are authorised together in production (SRS §4.2).  
-- **Pipeline (at least one required):**
-  - **Backstop**, **HubSpot**, **Foliometrics** — V1 is **CSV / Excel upload only** (same mapping + confirm import flow as generic CSV).  
-  - **Affinity** — API connect (list ID + token; mock).  
-  - **CSV upload** — generic spreadsheet path.  
-- **Continue** disabled until workspace is connected **and** (Affinity connected **or** CSV import confirmed).  
+- **Workspace (pick one):** **Google Workspace** or **Microsoft 365** — each card is a single control; mock **Connect**; production authorises email, calendar, and contacts together (SRS §4.2). Cards show an underlined **Connect …** affordance; **Continue** requires exactly one workspace connected.  
+- **Pipeline (pick one source — all use the same CSV / Excel path in the V1 mock wizard):**
+  - **Backstop**, **Affinity**, **Foliometrics**, **HubSpot**, and **CSV upload** (generic) are **only** file import in this screen: no Affinity API form in the wizard. **Live Affinity (or other) native API** is **Settings → Integrations**, not a gating step here.  
+  - Tapping **any** pipeline card opens an **inline panel** below the grid: on first open the **OS file picker auto-starts**; user maps columns if needed and **Confirm import**.  
+  - After **Confirm import**, the panel **closes**; the user returns to the **same** grid. The card for the chosen source shows a **Connected** pill (`crmCsvLabel` ∈ `backstop` | `affinity` | `folio` | `hubspot` | `generic`). **Continue** enables once workspace is connected **and** pipeline is satisfied: **`contactImportUploaded`** after CSV confirm in the mock, or **`affinityConnected`** if native Affinity was already connected in **Settings** (production handoff).  
+  - Tapping the **same** card again after it is connected reopens the panel for **Replace file** (import cleared only when the user replaces or picks a different source card, per implementation).  
+- **Continue** disabled until workspace is connected **and** the pipeline rule above is met.  
 - **Back** → screen 1.  
 - Ticker visible from this screen onward (mock percentages).
 
