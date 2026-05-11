@@ -448,11 +448,14 @@ export function OnboardingWizard() {
             </p>
 
             <div className="mt-8 grid gap-3.5 sm:grid-cols-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)] sm:col-span-2">
+                Workspace <span className="text-[color:var(--tomo-status-amber-text)]">· pick one</span>
+              </p>
               <ConnCard
                 icon="G"
                 name="Google Workspace"
                 desc="Email (sent + received) and calendar. Read-only initially; sending is opt-in per workflow."
-                required
+                badge="Pick one"
                 connected={state.workspaceProvider === "google" && state.workspaceBundleConnected}
                 onConnect={() => connectWorkspaceBundle("google")}
                 actionLabel="Connect Google"
@@ -461,16 +464,18 @@ export function OnboardingWizard() {
                 icon="M"
                 name="Microsoft 365"
                 desc="Outlook mail, calendar, and Microsoft 365 contacts together (mock bundle)."
-                required
+                badge="Pick one"
                 connected={state.workspaceProvider === "microsoft" && state.workspaceBundleConnected}
                 onConnect={() => connectWorkspaceBundle("microsoft")}
                 actionLabel="Connect Microsoft 365"
               />
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)] sm:col-span-2">
+                Pipeline <span className="text-[color:var(--tomo-status-amber-text)]">· Affinity API or any CSV path</span> (one is enough)
+              </p>
               <ConnCard
                 icon="B"
                 name="Backstop"
                 desc="Bi-directional sync in production. V1 mock: upload a CRM export (CSV / Excel)."
-                required
                 connected={state.contactImportUploaded && state.crmCsvLabel === "backstop"}
                 onConnect={() => openCsvPanel("backstop")}
                 actionLabel="Upload CSV →"
@@ -583,10 +588,23 @@ export function OnboardingWizard() {
               </div>
             )}
 
-            <p className="mt-6 text-xs leading-relaxed text-[color:var(--tomo-mute)]">
-              You need at least one CRM connection or CSV upload to continue. Google Workspace or Microsoft 365 is required for the
-              email and calendar baseline.
-            </p>
+            <div className="mt-6 space-y-2 text-xs leading-relaxed text-[color:var(--tomo-mute)]">
+              <p>
+                <span className="font-medium text-[color:var(--foreground)]">To enable Continue:</span> connect{" "}
+                <strong className="text-[color:var(--foreground)]">one</strong> workspace (Google or Microsoft){" "}
+                <strong className="text-[color:var(--foreground)]">and</strong> add pipeline data via{" "}
+                <strong className="text-[color:var(--foreground)]">Affinity</strong> or by uploading a CSV (any of the CSV cards —
+                including generic upload).
+              </p>
+              {!pipelineSatisfied && state.workspaceBundleConnected ? (
+                <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_35%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2 text-[color:var(--foreground)]">
+                  Next: click a pipeline card and connect Affinity or upload and confirm a CSV file. The whole card is clickable.
+                </p>
+              ) : null}
+              {!state.workspaceBundleConnected ? (
+                <p className="text-[color:var(--tomo-mute)]">Click a workspace card above to connect (entire card is the button).</p>
+              ) : null}
+            </div>
           </div>
         )}
 
@@ -906,7 +924,7 @@ export function OnboardingWizard() {
             <button
               type="button"
               disabled={continueDisabled}
-              title={continueDisabled ? "Complete required fields to continue" : undefined}
+              title={continueDisabled ? "Connect one workspace and add pipeline data (Affinity or CSV) to continue" : undefined}
               className="inline-flex items-center gap-2 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-navy)] px-6 py-3 text-sm font-medium text-[color:var(--tomo-canvas)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[color:var(--foreground)] dark:text-[color:var(--tomo-canvas)]"
               onClick={goNext}
             >
@@ -964,7 +982,7 @@ function ConnCard({
   icon,
   name,
   desc,
-  required,
+  badge,
   connected,
   onConnect,
   actionLabel,
@@ -972,17 +990,24 @@ function ConnCard({
   icon: string;
   name: string;
   desc: string;
-  required?: boolean;
+  /** Small kicker in corner, e.g. "Pick one" for workspace row */
+  badge?: string;
   connected: boolean;
   onConnect: () => void;
   actionLabel: string;
 }) {
+  const statusLabel = connected ? "Connected" : actionLabel;
   return (
-    <div
-      className={`relative rounded-[var(--tomo-radius-md)] border p-5 transition hover:-translate-y-px hover:shadow-[var(--tomo-shadow-2)] ${connected ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-evidence-bg)]" : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"}`}
+    <button
+      type="button"
+      onClick={onConnect}
+      aria-label={`${name}: ${statusLabel}`}
+      className={`relative w-full rounded-[var(--tomo-radius-md)] border p-5 text-left transition hover:-translate-y-px hover:shadow-[var(--tomo-shadow-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--tomo-teal)] ${connected ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-evidence-bg)]" : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"}`}
     >
-      {required ? (
-        <span className="absolute right-4 top-3.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[color:var(--tomo-status-amber-text)]">Required</span>
+      {badge ? (
+        <span className="absolute right-4 top-3.5 max-w-[45%] text-right font-mono text-[9px] uppercase leading-tight tracking-[0.12em] text-[color:var(--tomo-status-amber-text)]">
+          {badge}
+        </span>
       ) : null}
       <div
         className={`mb-3.5 flex h-9 w-9 items-center justify-center rounded-[var(--tomo-radius-sm)] font-[family-name:var(--font-fraunces)] text-base font-medium ${connected ? "bg-[color:var(--tomo-teal)] text-white" : "bg-[color:var(--tomo-card-warm)] text-[color:var(--foreground)]"}`}
@@ -991,17 +1016,19 @@ function ConnCard({
       </div>
       <div className="font-[family-name:var(--font-newsreader)] text-base font-medium text-[color:var(--foreground)]">{name}</div>
       <p className="mt-1 text-xs leading-relaxed text-[color:var(--tomo-body)]">{desc}</p>
-      <button type="button" className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)] hover:text-[color:var(--tomo-teal)]" onClick={onConnect}>
+      <span className="mt-3 block font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
         {connected ? (
           <span className="inline-flex items-center gap-1.5 text-[color:var(--tomo-teal)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--tomo-teal)]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--tomo-teal)]" aria-hidden />
             Connected
           </span>
         ) : (
-          actionLabel
+          <span className="text-[color:var(--tomo-teal-muted)] underline decoration-[color:color-mix(in_srgb,var(--tomo-teal)_40%,transparent)] decoration-1 underline-offset-2">
+            {actionLabel}
+          </span>
         )}
-      </button>
-    </div>
+      </span>
+    </button>
   );
 }
 
