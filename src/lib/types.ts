@@ -169,8 +169,8 @@ export type AuthProviderKind = "google" | "microsoft" | "email";
  */
 export const ONBOARDING_STATE_STORAGE_KEY = "tomo-onboarding-v2";
 
-/** CRM cards that use CSV upload in V1 (Backstop, HubSpot, Foliometrics, or generic). */
-export type OnboardingCrmCsvLabel = "generic" | "backstop" | "hubspot" | "folio";
+/** CRM card used for CSV upload in onboarding (all pipeline cards use CSV in the mock). */
+export type OnboardingCrmCsvLabel = "generic" | "backstop" | "hubspot" | "folio" | "affinity";
 
 export type OnboardingTeamMember = {
   id: string;
@@ -194,7 +194,7 @@ export type OnboardingState = {
   optInMeetingTranscripts: boolean;
   crmImportMethod: CrmImportMethod | null;
   /**
-   * When pipeline data came from a labelled CSV card (Backstop, HubSpot, Foliometrics) or generic upload.
+   * Which pipeline card the user chose before CSV confirm (all pipeline cards use file upload in onboarding mock).
    */
   crmCsvLabel: OnboardingCrmCsvLabel | null;
   calendarConnected: boolean;

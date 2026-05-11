@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getSession, setSession } from "@/lib/auth";
 import { ContactImportFieldMapping } from "@/components/contact-import-field-mapping";
 import { ContactImportFileZone } from "@/components/contact-import-file-zone";
-import { connectAffinity, uploadContactsSeed } from "@/lib/integrations";
+import { uploadContactsSeed } from "@/lib/integrations";
 import {
   CONTACT_IMPORT_ACCEPT,
   type ContactImportFieldId,
@@ -100,15 +100,14 @@ export function OnboardingWizard() {
   const [session, setSessionSnap] = useState<SessionState | null>(null);
 
   const [pendingCsvLabel, setPendingCsvLabel] = useState<OnboardingCrmCsvLabel | null>(null);
-  const [showPipelinePanel, setShowPipelinePanel] = useState<"none" | "affinity" | "csv">("none");
+  const [showPipelinePanel, setShowPipelinePanel] = useState<"none" | "csv">("none");
+  /** Bumps when opening the CSV panel to auto-trigger the OS file picker (ContactImportFileZone). */
+  const [csvPickerNonce, setCsvPickerNonce] = useState(0);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
   const [contactsPreview, setContactsPreview] = useState<ContactImportPreview | null>(null);
   const [contactsMapping, setContactsMapping] = useState<ContactImportFieldId[]>([]);
   const [contactsParsing, setContactsParsing] = useState(false);
   const [contactsUploading, setContactsUploading] = useState(false);
-  const [affinityListId, setAffinityListId] = useState("");
-  const [affinityToken, setAffinityToken] = useState("");
-  const [affinitySaving, setAffinitySaving] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
@@ -167,6 +166,7 @@ export function OnboardingWizard() {
     setContactsFile(null);
     setContactsPreview(null);
     setContactsMapping([]);
+    setCsvPickerNonce((n) => n + 1);
     setState((prev) => ({
       ...prev,
       contactImportUploaded: false,
@@ -215,6 +215,10 @@ export function OnboardingWizard() {
           contactImportRowCount: res.rowCount,
           contactImportMappingSummary: mappingSummary,
         }));
+        setContactsFile(null);
+        setContactsPreview(null);
+        setContactsMapping([]);
+        setShowPipelinePanel("none");
       }
     } finally {
       setContactsUploading(false);
@@ -232,26 +236,6 @@ export function OnboardingWizard() {
     }));
   };
 
-  const handleAffinityConnect = async () => {
-    if (!affinityListId.trim() || !affinityToken.trim()) return;
-    setAffinitySaving(true);
-    try {
-      const res = await connectAffinity({ listId: affinityListId.trim(), apiToken: affinityToken.trim() });
-      if (res.ok) {
-        setState((prev) => ({
-          ...prev,
-          crmImportMethod: "affinity",
-          affinityConnected: true,
-          affinityListId: res.listId,
-          affinityTokenLast4: res.tokenLast4,
-        }));
-        setAffinityToken("");
-      }
-    } finally {
-      setAffinitySaving(false);
-    }
-  };
-
   const completeOnboarding = () => {
     const s = getSession();
     if (s) setSession({ ...s, onboardingComplete: true });
@@ -261,36 +245,25 @@ export function OnboardingWizard() {
   };
 
   const openCsvPanel = (label: OnboardingCrmCsvLabel) => {
+    const reopenSame = state.contactImportUploaded && state.crmCsvLabel === label;
+
     setPendingCsvLabel(label);
     setShowPipelinePanel("csv");
     setContactsFile(null);
     setContactsPreview(null);
     setContactsMapping([]);
-    setAffinityListId("");
-    setAffinityToken("");
+
+    if (reopenSame) {
+      return;
+    }
+
+    setCsvPickerNonce((n) => n + 1);
     setState((prev) => ({
       ...prev,
       affinityConnected: false,
       affinityListId: undefined,
       affinityTokenLast4: undefined,
       crmImportMethod: "csv",
-      contactImportUploaded: false,
-      contactImportFilename: undefined,
-      contactImportRowCount: undefined,
-      contactImportMappingSummary: undefined,
-      crmCsvLabel: null,
-    }));
-  };
-
-  const openAffinityPanel = () => {
-    setShowPipelinePanel("affinity");
-    setPendingCsvLabel(null);
-    setContactsFile(null);
-    setContactsPreview(null);
-    setContactsMapping([]);
-    setState((prev) => ({
-      ...prev,
-      crmImportMethod: "affinity",
       contactImportUploaded: false,
       contactImportFilename: undefined,
       contactImportRowCount: undefined,
@@ -377,7 +350,7 @@ export function OnboardingWizard() {
       {/* Ticker — steps 2+ */}
       {step >= 2 && TICKER_BY_STEP[step] ? (
         <div
-          className="fixed bottom-[5.25rem] right-4 z-50 flex max-w-[min(360px,calc(100vw-2rem))] items-center gap-2 rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-2 text-[10px] font-mono tracking-wide text-[color:var(--tomo-mute)] shadow-[var(--tomo-shadow-2)] md:bottom-[5.5rem] md:right-8"
+          className="pointer-events-none fixed bottom-[5.25rem] right-4 z-50 flex max-w-[min(360px,calc(100vw-2rem))] items-center gap-2 rounded-full border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-2 text-[10px] font-mono tracking-wide text-[color:var(--tomo-mute)] shadow-[var(--tomo-shadow-2)] md:bottom-[5.5rem] md:right-8"
           role="status"
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -388,7 +361,7 @@ export function OnboardingWizard() {
         </div>
       ) : null}
 
-      <main className={`mx-auto max-w-[760px] px-4 pb-28 pt-[4.5rem] md:px-8 md:pb-32 md:pt-20 ${step === 8 ? "max-w-[1040px]" : ""}`}>
+      <main className={`mx-auto max-w-[760px] px-4 pt-[4.5rem] md:px-8 md:pt-20 ${step === 2 ? "pb-40 md:pb-44" : "pb-28 md:pb-32"} ${step === 8 ? "max-w-[1040px]" : ""}`}>
         {/* 1 Welcome */}
         {step === 1 && (
           <div className="max-w-[620px]">
@@ -470,7 +443,7 @@ export function OnboardingWizard() {
                 actionLabel="Connect Microsoft 365"
               />
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)] sm:col-span-2">
-                Pipeline <span className="text-[color:var(--tomo-status-amber-text)]">· Affinity API or any CSV path</span> (one is enough)
+                Pipeline — click a card to upload; when import finishes you&apos;ll return here with a connected pill, then Continue.
               </p>
               <ConnCard
                 icon="B"
@@ -478,15 +451,13 @@ export function OnboardingWizard() {
                 desc="Bi-directional sync in production. V1 mock: upload a CRM export (CSV / Excel)."
                 connected={state.contactImportUploaded && state.crmCsvLabel === "backstop"}
                 onConnect={() => openCsvPanel("backstop")}
-                actionLabel="Upload CSV →"
               />
               <ConnCard
                 icon="A"
                 name="Affinity"
-                desc="Bi-directional sync available. Use if Affinity is your primary pipeline."
-                connected={state.affinityConnected}
-                onConnect={openAffinityPanel}
-                actionLabel="Connect →"
+                desc="Upload an Affinity export (CSV / Excel) in V1. Live API connect is available in Settings."
+                connected={state.contactImportUploaded && state.crmCsvLabel === "affinity"}
+                onConnect={() => openCsvPanel("affinity")}
               />
               <ConnCard
                 icon="F"
@@ -494,7 +465,6 @@ export function OnboardingWizard() {
                 desc="CSV import only in V1. Useful for one-time enrichment."
                 connected={state.contactImportUploaded && state.crmCsvLabel === "folio"}
                 onConnect={() => openCsvPanel("folio")}
-                actionLabel="Upload CSV →"
               />
               <ConnCard
                 icon="H"
@@ -502,7 +472,6 @@ export function OnboardingWizard() {
                 desc="CSV import only in V1. Bi-directional sync coming in V1.5."
                 connected={state.contactImportUploaded && state.crmCsvLabel === "hubspot"}
                 onConnect={() => openCsvPanel("hubspot")}
-                actionLabel="Upload CSV →"
               />
               <ConnCard
                 icon="·"
@@ -510,29 +479,8 @@ export function OnboardingWizard() {
                 desc="For LP records you keep in spreadsheets. Tomo will help you map columns."
                 connected={state.contactImportUploaded && state.crmCsvLabel === "generic"}
                 onConnect={() => openCsvPanel("generic")}
-                actionLabel="Upload →"
               />
             </div>
-
-            {showPipelinePanel === "affinity" && (
-              <div className="mt-6 space-y-4 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_35%,var(--tomo-card))] p-4 dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_90%,var(--tomo-navy-soft))]">
-                <p className="text-sm text-[color:var(--tomo-body)]">Paste your Affinity API key and list ID (mock).</p>
-                <div>
-                  <label className="tomo-field-label">List ID</label>
-                  <input className="tomo-input mt-1 text-sm" value={affinityListId} onChange={(e) => setAffinityListId(e.target.value)} placeholder="e.g. 12345" />
-                </div>
-                <div>
-                  <label className="tomo-field-label">API key</label>
-                  <input type="password" className="tomo-input mt-1 text-sm" value={affinityToken} onChange={(e) => setAffinityToken(e.target.value)} placeholder="From Affinity → Settings → API" />
-                </div>
-                {state.affinityConnected ? (
-                  <p className="text-sm text-[color:var(--tomo-status-green)]">Affinity connected (mock). Token …{state.affinityTokenLast4}</p>
-                ) : null}
-                <button type="button" className="button-primary" disabled={affinitySaving || !affinityListId.trim() || !affinityToken.trim()} onClick={() => void handleAffinityConnect()}>
-                  {affinitySaving ? "Connecting…" : "Connect Affinity"}
-                </button>
-              </div>
-            )}
 
             {showPipelinePanel === "csv" && (
               <div className="mt-6 space-y-4 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_35%,var(--tomo-card))] p-4 dark:bg-[color:color-mix(in_srgb,var(--tomo-card)_90%,var(--tomo-navy-soft))]">
@@ -543,7 +491,9 @@ export function OnboardingWizard() {
                       ? "HubSpot — upload export"
                       : pendingCsvLabel === "folio"
                         ? "Foliometrics — upload export"
-                        : "CSV upload"}
+                        : pendingCsvLabel === "affinity"
+                          ? "Affinity — upload export"
+                          : "CSV upload"}
                 </p>
                 {state.contactImportUploaded && !contactsPreview ? (
                   <div className="space-y-2">
@@ -557,7 +507,12 @@ export function OnboardingWizard() {
                   </div>
                 ) : !contactsPreview ? (
                   <>
-                    <ContactImportFileZone accept={CONTACT_IMPORT_ACCEPT} disabled={contactsParsing} onFileSelected={(f) => void handleContactsFileSelected(f)} />
+                    <ContactImportFileZone
+                      accept={CONTACT_IMPORT_ACCEPT}
+                      disabled={contactsParsing}
+                      autoOpenToken={csvPickerNonce}
+                      onFileSelected={(f) => void handleContactsFileSelected(f)}
+                    />
                     <p className="text-xs text-[color:var(--tomo-mute)]">CSV, XLS, or XLSX with a header row.</p>
                     {contactsParsing ? <p className="text-xs text-[color:var(--tomo-mute)]">Reading file…</p> : null}
                   </>
@@ -591,14 +546,13 @@ export function OnboardingWizard() {
             <div className="mt-6 space-y-2 text-xs leading-relaxed text-[color:var(--tomo-mute)]">
               <p>
                 <span className="font-medium text-[color:var(--foreground)]">To enable Continue:</span> connect{" "}
-                <strong className="text-[color:var(--foreground)]">one</strong> workspace (Google or Microsoft){" "}
-                <strong className="text-[color:var(--foreground)]">and</strong> add pipeline data via{" "}
-                <strong className="text-[color:var(--foreground)]">Affinity</strong> or by uploading a CSV (any of the CSV cards —
-                including generic upload).
+                <strong className="text-[color:var(--foreground)]">one</strong> workspace, then click a pipeline card — the file
+                picker opens. After you <strong className="text-[color:var(--foreground)]">Confirm import</strong>, you&apos;ll land
+                back on this screen with a <strong className="text-[color:var(--foreground)]">Connected</strong> pill on that card.
               </p>
               {!pipelineSatisfied && state.workspaceBundleConnected ? (
                 <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_35%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2 text-[color:var(--foreground)]">
-                  Next: click a pipeline card and connect Affinity or upload and confirm a CSV file. The whole card is clickable.
+                  Choose a pipeline card to upload. If the sheet is in the way, scroll so the cards sit above the bottom bar.
                 </p>
               ) : null}
               {!state.workspaceBundleConnected ? (
@@ -916,16 +870,20 @@ export function OnboardingWizard() {
 
       {/* Bottom step nav — steps 2–7: Back + Continue; step 8 uses in-content CTAs only */}
       {step >= 2 && step <= 7 ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--background)_94%,transparent)] px-4 py-3 backdrop-blur-md md:px-8 dark:bg-[color:color-mix(in_srgb,var(--background)_90%,transparent)]">
-          <div className="mx-auto flex max-w-[760px] items-center justify-between gap-4">
-            <button type="button" className="text-[13px] text-[color:var(--tomo-mute)] transition hover:text-[color:var(--foreground)]" onClick={goBack}>
+        <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-[90] border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--background)_94%,transparent)] px-4 py-3 backdrop-blur-md md:px-8 dark:bg-[color:color-mix(in_srgb,var(--background)_90%,transparent)]">
+          <div className="pointer-events-none mx-auto flex max-w-[760px] items-center justify-between gap-4">
+            <button
+              type="button"
+              className="pointer-events-auto text-[13px] text-[color:var(--tomo-mute)] transition hover:text-[color:var(--foreground)]"
+              onClick={goBack}
+            >
               ← Back
             </button>
             <button
               type="button"
               disabled={continueDisabled}
-              title={continueDisabled ? "Connect one workspace and add pipeline data (Affinity or CSV) to continue" : undefined}
-              className="inline-flex items-center gap-2 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-navy)] px-6 py-3 text-sm font-medium text-[color:var(--tomo-canvas)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[color:var(--foreground)] dark:text-[color:var(--tomo-canvas)]"
+              title={continueDisabled ? "Connect one workspace and upload a pipeline CSV to continue" : undefined}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-navy)] px-6 py-3 text-sm font-medium text-[color:var(--tomo-canvas)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[color:var(--foreground)] dark:text-[color:var(--tomo-canvas)]"
               onClick={goNext}
             >
               {primaryFooterLabel}
@@ -994,14 +952,16 @@ function ConnCard({
   badge?: string;
   connected: boolean;
   onConnect: () => void;
-  actionLabel: string;
+  /** Pipeline cards omit this — whole card opens upload; workspace cards keep e.g. "Connect Google". */
+  actionLabel?: string;
 }) {
-  const statusLabel = connected ? "Connected" : actionLabel;
+  const aria =
+    connected ? `${name}, connected` : actionLabel ? `${name}: ${actionLabel}` : `${name}, upload spreadsheet file`;
   return (
     <button
       type="button"
       onClick={onConnect}
-      aria-label={`${name}: ${statusLabel}`}
+      aria-label={aria}
       className={`relative w-full rounded-[var(--tomo-radius-md)] border p-5 text-left transition hover:-translate-y-px hover:shadow-[var(--tomo-shadow-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--tomo-teal)] ${connected ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-evidence-bg)]" : "border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)]"}`}
     >
       {badge ? (
@@ -1016,18 +976,20 @@ function ConnCard({
       </div>
       <div className="font-[family-name:var(--font-newsreader)] text-base font-medium text-[color:var(--foreground)]">{name}</div>
       <p className="mt-1 text-xs leading-relaxed text-[color:var(--tomo-body)]">{desc}</p>
-      <span className="mt-3 block font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
-        {connected ? (
-          <span className="inline-flex items-center gap-1.5 text-[color:var(--tomo-teal)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--tomo-teal)]" aria-hidden />
-            Connected
-          </span>
-        ) : (
-          <span className="text-[color:var(--tomo-teal-muted)] underline decoration-[color:color-mix(in_srgb,var(--tomo-teal)_40%,transparent)] decoration-1 underline-offset-2">
-            {actionLabel}
-          </span>
-        )}
-      </span>
+      {connected || actionLabel ? (
+        <span className="mt-3 block">
+          {connected ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:color-mix(in_srgb,var(--tomo-teal)_35%,var(--tomo-rule))] bg-[color:var(--tomo-teal-evidence-bg)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--tomo-teal)]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--tomo-teal)]" aria-hidden />
+              Connected
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--tomo-teal-muted)] underline decoration-[color:color-mix(in_srgb,var(--tomo-teal)_40%,transparent)] decoration-1 underline-offset-2">
+              {actionLabel}
+            </span>
+          )}
+        </span>
+      ) : null}
     </button>
   );
 }
