@@ -3,15 +3,14 @@
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useSearchParams, useRouter } from "next/navigation";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { WorkflowDetailDrawer } from "@/components/workflow-detail-drawer";
 import { WorkflowAttachModal } from "@/components/workflow-attach-modal";
 import {
   suggestedPlaybooks,
-  Playbook,
   tomoDefaultWorkflows,
-  type TomoDefaultWorkflow,
 } from "@/lib/mockPlaybooks";
 import { usePipelines } from "@/lib/use-pipelines";
 import { useFunds } from "@/components/fund-provider";
@@ -19,7 +18,7 @@ import { useRelationships } from "@/components/relationships-provider";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { getPipelineMembers, isManualList } from "@/lib/pipelines";
 import { useRequireSession } from "@/lib/auth";
-import { type CustomPlaybookStored, workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
+import { workflowDefinitionFromCustomStored } from "@/lib/customPlaybooks";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
 import { DEFAULT_TEMPLATES, TOMO_DEFAULT_TEMPLATES, type WorkflowDefinition } from "@/lib/workflow-templates";
@@ -38,18 +37,6 @@ const WORKFLOW_DEFAULT_ALIASES: Record<string, string> = {
   "td-meeting-notes": "td-post-meeting-execution",
 };
 
-function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
-  return {
-    id: c.id,
-    name: c.name,
-    type: "roadshow_prep",
-    description: c.trigger,
-    summary: c.action,
-    createdAt: c.createdAt,
-    enabled: true,
-  };
-}
-
 function WorkflowsPageContent() {
   const { ready } = useRequireSession();
   const { relationships } = useRelationships();
@@ -64,6 +51,7 @@ function WorkflowsPageContent() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(null);
   const [selectedTomoDefaultId, setSelectedTomoDefaultId] = useState<string | null>(null);
+  const [listQuery, setListQuery] = useState("");
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
     {}
@@ -197,6 +185,19 @@ function WorkflowsPageContent() {
     setSelectedTomoDefaultId(null);
   }, []);
 
+  const handleSelectTemplateForCurrentList = useCallback(
+    (id: string) => {
+      if (selectedPipelineId) {
+        setPlaybookOverrides((prev) => ({
+          ...prev,
+          [id]: { pipelineId: selectedPipelineId },
+        }));
+      }
+      handleSelectPlaybook(id);
+    },
+    [handleSelectPlaybook, selectedPipelineId, setPlaybookOverrides]
+  );
+
   const handleSelectTomoDefault = useCallback((id: string) => {
     setSelectedTomoDefaultId(id);
     setSelectedPlaybookId(null);
@@ -297,137 +298,176 @@ function WorkflowsPageContent() {
     return r0 ? { name: r0.name, firm: r0.firm } : null;
   }, [pipelineContext, relationships]);
 
-  const listWorkflowRows = useMemo(() => {
-    if (!selectedPipelineId) return [];
-    const rows: Array<{ id: string; playbook: Playbook }> = [];
-    for (const pb of suggestedPlaybooks) {
-      const pid = playbookOverrides[pb.id]?.pipelineId ?? pb.pipelineId;
-      if (pid === selectedPipelineId) rows.push({ id: pb.id, playbook: pb });
-    }
-    for (const c of customPlaybooks) {
-      const pid = playbookOverrides[c.id]?.pipelineId;
-      if (pid === selectedPipelineId) rows.push({ id: c.id, playbook: stubPlaybookCardRow(c) });
-    }
-    return rows;
-  }, [selectedPipelineId, playbookOverrides, customPlaybooks]);
-
   const selectedPipeline = useMemo(
     () => (selectedPipelineId ? pipelines.find((p) => p.id === selectedPipelineId) ?? null : null),
     [pipelines, selectedPipelineId]
   );
 
+  useEffect(() => {
+    if (selectedPipelineId || pipelines.length === 0) return;
+    queueMicrotask(() => setSelectedPipelineId(pipelines[0]?.id ?? null));
+  }, [pipelines, selectedPipelineId]);
+
+  const filteredPipelines = useMemo(() => {
+    const q = listQuery.trim().toLowerCase();
+    if (!q) return pipelines;
+    return pipelines.filter((p) => p.name.toLowerCase().includes(q));
+  }, [listQuery, pipelines]);
+
+  const selectedPipelineMeta = useMemo(() => {
+    if (!selectedPipeline) return null;
+    const count = getPipelineMembers(relationships, selectedPipeline).length;
+    const filterSummary = isManualList(selectedPipeline)
+      ? (selectedPipeline.manualDescription ?? "Manual list")
+      : formatFilterSummary(selectedPipeline.filterCriteria).replace(/^Tomo:\s*/i, "").trim();
+    return {
+      count,
+      mode: isManualList(selectedPipeline) ? "Manual" : "Live",
+      filterSummary,
+    };
+  }, [relationships, selectedPipeline]);
+
   const drawerOpen = hasDrawerSelection && Boolean(workflow);
 
   const listContent = (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col bg-[color:var(--tomo-bg)]">
       <PageListHeader label="Workflows" />
 
       <div className="flex min-h-0 flex-1">
-        {/* Column 1 — fund-scoped lists */}
-        <div className="flex w-[280px] shrink-0 flex-col border-r border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
-          <p className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">
-            Lists
-          </p>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
-            {pipelines.length === 0 ? (
-              <p className="px-2 text-xs text-[color:var(--tomo-mute)]">No lists for this fund.</p>
+        {/* Left rail — fund-scoped lists, matching the workflows reference layout. */}
+        <aside className="flex w-[250px] shrink-0 flex-col border-r border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
+          <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-4 py-4">
+            <p className="mb-2 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]">
+              Workflows
+            </p>
+            <label className="flex items-center gap-2 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_80%,var(--tomo-bg))] px-2.5 py-1.5 shadow-inner">
+              <MagnifyingGlassIcon className="h-3.5 w-3.5 text-[color:var(--tomo-mute)]" />
+              <input
+                value={listQuery}
+                onChange={(e) => setListQuery(e.target.value)}
+                placeholder="Search lists..."
+                className="min-w-0 flex-1 bg-transparent text-xs text-[color:var(--foreground)] placeholder:text-[color:var(--tomo-mute)] focus:outline-none"
+              />
+            </label>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+            <p className="mb-2 px-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]">
+              Your lists
+            </p>
+            {filteredPipelines.length === 0 ? (
+              <p className="px-1 text-xs text-[color:var(--tomo-mute)]">No lists match this search.</p>
             ) : (
-              pipelines.map((p) => {
+              <div className="space-y-1.5">
+                {filteredPipelines.map((p) => {
                 const count = getPipelineMembers(relationships, p).length;
                 const sel = selectedPipelineId === p.id;
+                const manual = isManualList(p);
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => setSelectedPipelineId(p.id)}
-                    className={`w-full rounded-[var(--tomo-radius-md)] border px-3 py-2.5 text-left text-sm shadow-[var(--tomo-shadow-1)] transition ${
+                    className={`w-full rounded-[var(--tomo-radius-sm)] px-3 py-2.5 text-left transition ${
                       sel
-                        ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_22%,transparent)]"
-                        : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
+                        ? "bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_82%,var(--tomo-card))] shadow-[inset_3px_0_0_var(--tomo-teal)]"
+                        : "hover:bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_45%,transparent)]"
                     }`}
                   >
-                    <p className="font-semibold text-[color:var(--foreground)]">{p.name}</p>
-                    <p className="text-[11px] text-[color:var(--tomo-mute)]">{count} relationships</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 truncate text-sm font-semibold text-[color:var(--foreground)]">{p.name}</p>
+                      <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-mute)]">
+                        {count}
+                      </span>
+                    </div>
+                    <p className="mt-1 flex items-center gap-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.12em] text-[color:var(--tomo-mute)]">
+                      <span className={manual ? "text-[color:var(--tomo-mute)]" : "text-[color:var(--tomo-teal)]"}>
+                        {manual ? "Manual" : "Live"}
+                      </span>
+                      <span>·</span>
+                      <span>{sel ? "Selected" : "1 running"}</span>
+                    </p>
                   </button>
                 );
-              })
+                })}
+              </div>
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* Column 2 — locked defaults + configurable templates for selected list */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_38%,var(--tomo-card))]">
-          <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Tomo defaults</p>
-            <p className="text-xs text-[color:var(--tomo-body)]">
-              2 locked defaults · structurally locked · content editable per run
+        {/* Main pane — selected list header + 4 workflow cards. */}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_70%,var(--tomo-bg))]">
+          <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-7 py-5">
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]">
+              List
+              {selectedPipeline ? ` · ${selectedPipeline.name}` : ""}
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {tomoDefaultWorkflows.map((wf) => (
-                <TomoDefaultWorkflowPill
-                  key={wf.id}
-                  workflow={wf}
-                  enabled={effectiveEnabled(wf.id, wf.enabled)}
-                  isSelected={selectedTomoDefaultId === wf.id}
-                  onSelect={() => handleSelectTomoDefault(wf.id)}
-                  onToggleEnabled={() => toggleRowEnabled(wf.id, wf.enabled)}
-                />
-              ))}
+            <h1 className="mt-1 font-[family-name:var(--font-newsreader)] text-[28px] font-medium leading-none text-[color:var(--foreground)] [font-variation-settings:'opsz'_28]">
+              {selectedPipeline?.name ?? "Select a list"}
+            </h1>
+            <div className="mt-3 flex flex-wrap items-center gap-3 font-[family-name:var(--font-jetbrains-mono)] text-[10px] tracking-[0.08em] text-[color:var(--tomo-mute)]">
+              {selectedPipelineMeta ? (
+                <>
+                  <span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{selectedPipelineMeta.count}</span> LPs
+                  </span>
+                  <span className="text-[color:var(--tomo-rule)]">·</span>
+                  <span>
+                    <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--tomo-teal)]" />
+                    {selectedPipelineMeta.mode} · auto-updating
+                  </span>
+                  <span className="text-[color:var(--tomo-rule)]">·</span>
+                  <span className="normal-case tracking-normal">Filter: {selectedPipelineMeta.filterSummary}</span>
+                </>
+              ) : (
+                <span>Choose a list on the left to configure workflow runs.</span>
+              )}
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {!selectedPipeline ? (
-              <div className="flex flex-1 items-center justify-center px-6 text-center">
-                <div>
-                  <p className="text-sm font-medium text-[color:var(--foreground)]">Select a list</p>
-                  <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
-                    Choose a fund list on the left to see and attach workflows.
-                  </p>
-                </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-7 py-5">
+            <WorkflowSectionDivider label="Tomo defaults" count="2 workflows · structurally locked · content editable per run" />
+            <div className="space-y-3">
+              {tomoDefaultWorkflows.map((wf) => (
+                <WorkflowSurfaceCard
+                  key={wf.id}
+                  name={wf.name}
+                  badge="Default"
+                  flow={`${wf.trigger} · ${wf.action}`}
+                  enabled={effectiveEnabled(wf.id, wf.enabled)}
+                  isSelected={selectedTomoDefaultId === wf.id}
+                  primaryStat={wf.id === "td-post-meeting-execution" ? "42" : "14"}
+                  primaryLabel={wf.id === "td-post-meeting-execution" ? "Done last 30d" : "Running now"}
+                  secondaryStat={wf.id === "td-three-touch-qualification" ? "28" : undefined}
+                  secondaryLabel={wf.id === "td-three-touch-qualification" ? "Done last 30d" : undefined}
+                  onSelect={() => handleSelectTomoDefault(wf.id)}
+                  onToggleEnabled={() => toggleRowEnabled(wf.id, wf.enabled)}
+                  locked
+                />
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <WorkflowSectionDivider label="Tailored" count="2 workflows · parameterized per run" />
+              <div className="space-y-3">
+                {suggestedPlaybooks.map((pb) => (
+                  <WorkflowSurfaceCard
+                    key={pb.id}
+                    name={pb.name}
+                    badge={pb.type === "trip_orchestrator" ? "Saved configuration" : "Starting template"}
+                    flow={pb.summary}
+                    enabled={effectiveEnabled(pb.id, pb.enabled)}
+                    isSelected={selectedPlaybookId === pb.id && selectedTomoDefaultId === null}
+                    primaryStat={pb.type === "trip_orchestrator" ? "3-5d" : "2w"}
+                    primaryLabel={pb.type === "trip_orchestrator" ? "Incremental build" : "Base implementation"}
+                    onSelect={() => handleSelectTemplateForCurrentList(pb.id)}
+                    onToggleEnabled={() => toggleRowEnabled(pb.id, pb.enabled)}
+                  />
+                ))}
               </div>
-            ) : (
-              <>
-                <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
-                  <div className="min-w-0 pr-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Configurable templates</p>
-                    <p className="mt-0.5 text-xs leading-snug text-[color:var(--tomo-body)]">
-                      2 workflow templates · parameterized per list · batch review in Action Drawer.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setAttachModalOpen(true)}
-                    className="shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:opacity-90"
-                  >
-                    Link template
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-                  {listWorkflowRows.length === 0 ? (
-                    <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-8 text-center text-sm text-[color:var(--tomo-mute)] shadow-[var(--tomo-shadow-1)]">
-                      No templates linked yet. Use Link template to add Themed Outreach or Trip Orchestrator for this list.
-                    </div>
-                  ) : (
-                    <ul className="space-y-2">
-                      {listWorkflowRows.map((row) => (
-                        <li key={row.id}>
-                          <WorkflowListRow
-                            playbook={row.playbook}
-                            enabled={effectiveEnabled(row.id, row.playbook.enabled)}
-                            isSelected={selectedPlaybookId === row.id && selectedTomoDefaultId === null}
-                            onSelect={() => handleSelectPlaybook(row.id)}
-                            onToggleEnabled={() => toggleRowEnabled(row.id, row.playbook.enabled)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </>
-            )}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
 
       <WorkflowAttachModal
@@ -508,20 +548,6 @@ function WorkflowsPageFallback() {
   );
 }
 
-/** DD MMM YYYY (e.g. 08 Nov 2025) — date only, locale-friendly */
-function formatWorkflowCardDate(iso: string): string {
-  const d = new Date(iso);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function formatWorkflowCardSubtitle(playbook: Playbook): string {
-  const summary = (playbook.summary || playbook.description || "").trim();
-  const created = playbook.createdAt ? formatWorkflowCardDate(playbook.createdAt) : "—";
-  return `Created ${created}: ${summary}`;
-}
-
 function ActiveToggle({
   enabled,
   onToggle,
@@ -562,95 +588,99 @@ function ActiveToggle({
   );
 }
 
-function TomoDefaultWorkflowPill({
-  workflow,
-  enabled,
-  isSelected,
-  onSelect,
-  onToggleEnabled,
-}: {
-  workflow: TomoDefaultWorkflow;
-  enabled: boolean;
-  isSelected: boolean;
-  onSelect: () => void;
-  onToggleEnabled: () => void;
-}) {
+function WorkflowSectionDivider({ label, count }: { label: string; count: string }) {
   return (
-    <div
-      className={`flex max-w-full items-center gap-1 rounded-[var(--tomo-radius-md)] border px-2 py-1.5 shadow-[var(--tomo-shadow-1)] ${
-        isSelected
-          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_22%,transparent)]"
-          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
-      }`}
-    >
-      <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-xs font-semibold text-[color:var(--foreground)]">{workflow.name}</p>
-      </button>
-      <div className="flex items-center border-l border-transparent pl-1">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          aria-label={enabled ? `${workflow.name}: on` : `${workflow.name}: off`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleEnabled();
-          }}
-          className={`relative h-6 w-9 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] ${
-            enabled ? "bg-[color:var(--tomo-status-green)]" : "bg-[color:color-mix(in_srgb,var(--tomo-mute)_48%,var(--tomo-rule))]"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-[color:var(--tomo-card)] shadow transition-transform ${
-              enabled ? "translate-x-3" : "translate-x-0"
-            }`}
-          />
-        </button>
-      </div>
+    <div className="mb-3 flex items-center gap-2">
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.2em] text-[color:var(--tomo-mute)]">
+        {label}
+      </span>
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] tracking-[0.12em] text-[color:var(--tomo-mute)]">
+        {count}
+      </span>
+      <span className="h-px flex-1 bg-[color:var(--tomo-rule-soft)]" />
     </div>
   );
 }
 
-function WorkflowListRow({
-  playbook,
+function WorkflowSurfaceCard({
+  name,
+  badge,
+  flow,
   enabled,
   isSelected,
+  primaryStat,
+  primaryLabel,
+  secondaryStat,
+  secondaryLabel,
   onSelect,
   onToggleEnabled,
+  locked = false,
 }: {
-  playbook: Playbook;
+  name: string;
+  badge: string;
+  flow: string;
   enabled: boolean;
   isSelected: boolean;
+  primaryStat?: string;
+  primaryLabel?: string;
+  secondaryStat?: string;
+  secondaryLabel?: string;
   onSelect: () => void;
   onToggleEnabled: () => void;
+  locked?: boolean;
 }) {
-  const subtitle = formatWorkflowCardSubtitle(playbook);
   return (
     <div
-      className={`flex items-stretch gap-0 rounded-[var(--tomo-radius-md)] border shadow-[var(--tomo-shadow-1)] transition ${
+      className={`flex min-h-[72px] items-stretch rounded-[var(--tomo-radius-sm)] border shadow-[var(--tomo-shadow-1)] transition ${
         isSelected
-          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_22%,transparent)]"
-          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
+          ? "border-[color:var(--tomo-teal)] bg-[color:color-mix(in_srgb,var(--tomo-teal)_9%,var(--tomo-card))] ring-1 ring-[color:color-mix(in_srgb,var(--tomo-teal)_24%,transparent)]"
+          : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule))]"
       }`}
     >
-      <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-3 py-3 text-left">
+      <ActiveToggle enabled={enabled} onToggle={onToggleEnabled} showLabel={false} />
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-4 py-3 text-left">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-[color:var(--foreground)]">{playbook.name}</p>
-          {playbook.comingSoonLabel ? (
-            <span className="rounded-full bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_78%,var(--tomo-card))] px-2 py-0.5 text-[10px] font-medium text-[color:var(--tomo-body)]">
-              {playbook.comingSoonLabel}
-            </span>
-          ) : null}
+          <p className="font-[family-name:var(--font-newsreader)] text-[17px] font-medium leading-snug text-[color:var(--foreground)] [font-variation-settings:'opsz'_20]">
+            {name}
+          </p>
+          <span className="inline-flex items-center gap-1 rounded-[2px] bg-[color:color-mix(in_srgb,var(--tomo-teal)_10%,transparent)] px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.1em] text-[color:var(--tomo-teal)]">
+            {locked ? "Locked · " : ""}
+            {badge}
+          </span>
         </div>
-        <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-[color:var(--tomo-mute)] break-words" title={subtitle}>
-          {subtitle}
+        <p className="mt-1 line-clamp-2 text-xs leading-snug text-[color:var(--tomo-body)]" title={flow}>
+          {flow}
         </p>
       </button>
-      <ActiveToggle
-        enabled={enabled}
-        onToggle={onToggleEnabled}
-        disabled={Boolean(playbook.comingSoonLabel)}
-      />
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex min-w-[180px] shrink-0 items-center justify-end gap-6 border-l border-[color:var(--tomo-rule-soft)] px-4 py-3 text-right"
+      >
+        {primaryStat && primaryLabel ? (
+          <span>
+            <span className="block font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
+              {primaryStat}
+            </span>
+            <span className="block font-[family-name:var(--font-jetbrains-mono)] text-[8px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+              {primaryLabel}
+            </span>
+          </span>
+        ) : null}
+        {secondaryStat && secondaryLabel ? (
+          <span>
+            <span className="block font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
+              {secondaryStat}
+            </span>
+            <span className="block font-[family-name:var(--font-jetbrains-mono)] text-[8px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+              {secondaryLabel}
+            </span>
+          </span>
+        ) : null}
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+          View flow
+        </span>
+      </button>
     </div>
   );
 }
