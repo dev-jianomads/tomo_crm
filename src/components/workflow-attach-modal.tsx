@@ -112,7 +112,7 @@ export function WorkflowAttachModal({
         <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="tomo-field-label">Create workflow</p>
+              <p className="tomo-field-label">Link workflow template</p>
               <h2 id="workflow-attach-title" className="text-lg font-semibold text-[color:var(--foreground)]">
                 Link to this list
               </h2>
@@ -164,7 +164,7 @@ export function WorkflowAttachModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
           {(!ENABLE_WORKFLOW_CREATOR || mode === "existing") && (
             <>
-              <p className="mb-2 text-xs font-medium text-[color:var(--tomo-mute)]">User-defined workflows</p>
+              <p className="mb-2 text-xs font-medium text-[color:var(--tomo-mute)]">Configurable templates</p>
               <ul className="space-y-2">
                 {allExistingRows.map((pb) => {
                   const selected = selectedPlaybookId === pb.id;

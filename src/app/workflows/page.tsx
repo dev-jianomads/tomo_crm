@@ -26,6 +26,18 @@ import { DEFAULT_TEMPLATES, TOMO_DEFAULT_TEMPLATES, type WorkflowDefinition } fr
 
 type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 
+const WORKFLOW_PLAYBOOK_ALIASES: Record<string, string> = {
+  "pb-ny-roadshow-2026": "pb-trip-orchestrator",
+  "pb-roadshow-prep": "pb-trip-orchestrator",
+  "pb-update-followup": "pb-themed-outreach",
+};
+
+const WORKFLOW_DEFAULT_ALIASES: Record<string, string> = {
+  "pb-post-meeting": "td-post-meeting-execution",
+  "pb-three-touch-qualification": "td-three-touch-qualification",
+  "td-meeting-notes": "td-post-meeting-execution",
+};
+
 function stubPlaybookCardRow(c: CustomPlaybookStored): Playbook {
   return {
     id: c.id,
@@ -144,7 +156,16 @@ function WorkflowsPageContent() {
   /** Deep link: ?playbook= — select list + workflow row */
   useEffect(() => {
     const raw = searchParams.get("playbook");
-    const pb = raw === "pb-ny-roadshow-2026" ? "pb-roadshow-prep" : raw;
+    const defaultAlias = raw ? WORKFLOW_DEFAULT_ALIASES[raw] : undefined;
+    if (defaultAlias) {
+      queueMicrotask(() => {
+        setSelectedTomoDefaultId(defaultAlias);
+        setSelectedPlaybookId(null);
+      });
+      router.replace("/workflows", { scroll: false });
+      return;
+    }
+    const pb = raw ? WORKFLOW_PLAYBOOK_ALIASES[raw] ?? raw : raw;
     if (!pb) return;
     const sp = suggestedPlaybooks.find((x) => x.id === pb);
     const cp = customPlaybooks.find((c) => c.id === pb);
@@ -161,7 +182,8 @@ function WorkflowsPageContent() {
   }, [searchParams, playbookOverrides, customPlaybooks, router]);
 
   useEffect(() => {
-    const td = searchParams.get("tomoDefault");
+    const raw = searchParams.get("tomoDefault");
+    const td = raw ? WORKFLOW_DEFAULT_ALIASES[raw] ?? raw : raw;
     if (!td?.startsWith("td-")) return;
     queueMicrotask(() => {
       setSelectedTomoDefaultId(td);
@@ -333,11 +355,13 @@ function WorkflowsPageContent() {
           </div>
         </div>
 
-        {/* Column 2 — Tomo Default + workflows for selected list */}
+        {/* Column 2 — locked defaults + configurable templates for selected list */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_38%,var(--tomo-card))]">
           <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Tomo Default</p>
-            <p className="text-xs text-[color:var(--tomo-body)]">Global automations — not tied to a list</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Tomo defaults</p>
+            <p className="text-xs text-[color:var(--tomo-body)]">
+              2 locked defaults · structurally locked · content editable per run
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {tomoDefaultWorkflows.map((wf) => (
                 <TomoDefaultWorkflowPill
@@ -366,9 +390,9 @@ function WorkflowsPageContent() {
               <>
                 <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
                   <div className="min-w-0 pr-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">User Custom</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--tomo-mute)]">Configurable templates</p>
                     <p className="mt-0.5 text-xs leading-snug text-[color:var(--tomo-body)]">
-                      Workflows linked to your selected list. Open one to edit, or create from a template or with Tomo.
+                      2 workflow templates · parameterized per list · batch review in Action Drawer.
                     </p>
                   </div>
                   <button
@@ -376,13 +400,13 @@ function WorkflowsPageContent() {
                     onClick={() => setAttachModalOpen(true)}
                     className="shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:opacity-90"
                   >
-                    Create workflow
+                    Link template
                   </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
                   {listWorkflowRows.length === 0 ? (
                     <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-8 text-center text-sm text-[color:var(--tomo-mute)] shadow-[var(--tomo-shadow-1)]">
-                      No workflows linked yet. Use Create workflow to link a template or build a custom one with Tomo.
+                      No templates linked yet. Use Link template to add Themed Outreach or Trip Orchestrator for this list.
                     </div>
                   ) : (
                     <ul className="space-y-2">
@@ -434,7 +458,7 @@ function WorkflowsPageContent() {
           onWorkflowUpdate={handleWorkflowUpdate}
           headerNote={
             selectedTomoDefault ? (
-              <p className="text-xs text-[color:var(--tomo-mute)]">Global — no CRM audience</p>
+              <p className="text-xs text-[color:var(--tomo-mute)]">Locked default · structure fixed · content settings editable</p>
             ) : undefined
           }
           previewLp={previewLp}

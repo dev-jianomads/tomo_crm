@@ -13,6 +13,7 @@ export type PlaybookPipelineOverrides = Record<string, { pipelineId?: string }>;
 type Tab = "system" | "custom";
 
 function triggerSpecForPlaybookType(t: PlaybookType): { kind: "event" | "scheduled" | "signal" | "manual"; label: string } {
+  if (t === "themed_outreach" || t === "trip_orchestrator") return { kind: "manual", label: "Manual" };
   if (t === "no_response_stall") return { kind: "signal", label: "Signal" };
   if (
     t === "intro_tracker" ||
@@ -100,7 +101,7 @@ export function LinkWorkflowModalV1({
       const first = suggestedPlaybooks.find((p) => !p.comingSoonLabel) ?? suggestedPlaybooks[0];
       setSelectedId(first?.id ?? "");
     });
-  }, [open, pipeline?.id]);
+  }, [open, pipeline]);
 
   useEffect(() => {
     if (!open) return;

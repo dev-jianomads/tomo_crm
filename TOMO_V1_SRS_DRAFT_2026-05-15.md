@@ -1,8 +1,8 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Document status:** DRAFT v0.1 — for engineering and PM review.
+**Document status:** DRAFT v0.2 — workflow scope refresh for engineering and PM review.
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
-**Authoring source:** Tomo V1 Final (Geoff 27.04.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
+**Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
 **Scope rule:** the body of this document covers V1 only. V2/V3 capability matrix, deferred features, and forward-compatibility notes are in Appendix C.
 
 ---
@@ -117,7 +117,7 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 - A nine-signal behavioural engine (per Section 8) that fires nightly batch and event-driven signal observations against email and calendar metadata and writes to an append-only signal log.
 - A ten-metric Insights page (per Section 9) computed nightly with selected event-driven recomputation.
 - A reminders engine covering open loops, missed replies, and commitments.
-- The Today screen, Action Drawer with draft approvals, Relationships page, Lists, Workflows (with five default playbooks plus the F7 Three-Touch Qualification sequence), Insights, Activity, Search, and Settings.
+- The Today screen, Action Drawer with draft approvals, Relationships page, Lists, Workflows (with four V1 workflow entries: two locked defaults plus two configurable templates), Insights, Activity, Search, and Settings.
 - A meeting lifecycle covering prep brief generation, transcript and AI-recap ingestion (Microsoft Teams and Google Meet), the ~10-field post-meeting capture prompt, and follow-up draft generation.
 - Daily Brief delivery via in-app, email, and Slack (push only; no Slack-native operating model in V1).
 - SOC 2 Type 1 and CASA Tier 2 compliance posture sufficient for institutional security diligence.
@@ -280,7 +280,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 7. **Reminders engine** — open loops, missed replies, commitments; tier-aware thresholds; Action Drawer routing.
 8. **Today / Daily Brief** — daily-rhythm landing surface with attention queue, commitments, brief, and inline Tomo chat. Daily Brief delivered also via email and Slack push at user-selected time.
 9. **Action Drawer and approvals** — drafts, post-meeting capture, scheduling threads, follow-up reminders, meeting prep briefs; human-in-the-loop on every outbound.
-10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow editor with default playbooks plus F7 Three-Touch.
+10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow editor with four V1 workflow entries: Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, and Trip Orchestrator.
 11. **Meeting lifecycle** — prep brief, transcript ingestion (Teams + Meet) with AI recap fallback, post-meeting capture (~10 fields, <60 seconds), follow-up draft.
 12. **Tomo agent orchestration** — surface-gated tool calls; CRM updates, draft replies, filter relationships, workflow editing, post-meeting capture. All mutations require user confirmation.
 
@@ -705,7 +705,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 | 5 | Time Recovered | Nightly (rolling 7d / 30d / cumulative) | `tomo_action_log` |
 | 6a | Follow-up compliance rate | Nightly + onboarding baseline | calendar + email sync |
 | 6b | Draft approval rate | Nightly (rolling 30d / 60d) | `tomo_action_log` |
-| 6c | Scheduling efficiency | Nightly + onboarding baseline | scheduling-intent pattern library |
+| 6c | Scheduling efficiency | Nightly + onboarding baseline | scheduling assistant instrumentation + scheduling-intent pattern library |
 | 7 | Direction with mandate qualifier | Nightly | `lp_signal_log` directional + `mandate_fit` |
 | 8 | Fat Middle ratio | Nightly | `lp_interactions` meaningful-touch (6 month lookback) |
 | 9a | Pipeline velocity + sparkline | Nightly + weekly snapshot | `daily_pipeline_summary` weekly samples |
@@ -865,7 +865,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 ### 3.9. Action Drawer and draft approvals
 
-**Description.** The right-hand panel (or modal on mobile) where TOMO surfaces drafts, capture prompts, scheduling threads, follow-up reminders, and meeting-prep briefs for GP review and action. Human-in-the-loop on every outbound. Edit-level classification per O-3 drives Metric 6b.
+**Description.** The right-hand panel (or modal on mobile) where TOMO surfaces drafts, capture prompts, scheduling replies, follow-up reminders, meeting-prep briefs, and single-moment AI-assisted flows for GP review and action. Human-in-the-loop on every outbound. Edit-level classification per O-3 drives Metric 6b. Warm Intro Tracker, DDQ Response Engine, and Re-engagement Response are named Action Drawer flows in V1, not Workflows-surface playbooks.
 
 **Inputs / triggers.**
 
@@ -875,15 +875,18 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Processing.**
 
 1. **Drawer cards.** Each card represents one `tomo_action_log` row. Card types:
-   - `draft` — a generated email draft (re-engagement, follow-up, scheduling response).
-   - `scheduling_thread` — a multi-turn scheduling negotiation context.
+   - `draft` — a generated email draft (follow-up, scheduling response, themed outreach, trip outreach).
+   - `warm_intro` — detected introduction email; GP confirms whether to add / update the LP record and draft a reply.
+   - `ddq_response` — detected DDQ-like inbound; GP triggers a draft response using the GP-curated prior DDQ store.
+   - `re_engagement_response` — Signal 2 urgent reply draft after an LP inbound following 45+ days of GP silence.
+   - `scheduling_thread` — scheduling-intent reply with proposed times and, where needed, follow-up context.
    - `open_loop` — a fulfilment prompt for a tracked open loop.
    - `missed_reply` — a draft reply for a missed-reply reminder.
    - `meeting_prep` — a prep brief generated ahead of a meeting (§3.13).
    - `tier_correction` — a prompt to correct LP tier based on observed behaviour.
    - `mandate_fit_capture` — the post-meeting mandate-fit chip selection.
    - `post_meeting_note` — the post-meeting capture form (§3.13).
-   - `three_touch_send` — a step in an active F7 workflow.
+   - `workflow_step_send` — an outbound draft step in an active workflow run, including F7 and configurable outreach templates.
 2. **Draft approval flow.**
    - Draft rendered editable in the drawer.
    - GP can: approve unchanged, approve with edits, edit substantially, dismiss, or snooze.
@@ -894,7 +897,12 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 5. **Owner routing.** Cards inherit `assigned_user_id` from the underlying reminder or LP `relationship_owner_user_id`. A workspace member sees only their own cards by default; "Show team" toggle shows everyone's.
 6. **Success state.** After approve+send, the card collapses into a single confirmation line ("Sent to Frank · 2 min ago"), counted in Time Recovered (Metric 5).
 7. **Confirmation gate.** Every mutation (send draft, update CRM, mark resolved) requires explicit GP confirmation. No auto-send, ever (per §1.2).
-8. **Meeting prep drawer (Today — Coming up).** When the GP opens a **Coming up** commitment or calendar-backed meeting row on Today, the context drawer SHALL support the **meeting prep layout** (normative visual reference: `design/tomo_drawer_meetingprep_light_v3.html` in `tomo_crm`). The layout includes: header (meeting-type eyebrow, LP / contact title, relationship subtitle, Esc); **time strip** (scheduled range, location e.g. video link, open-in-calendar, join-meeting when available); **status pills** and contextual quick links (LP record, latest email / intro thread); a configurable narrative block (e.g. *What changed since you last spoke* vs *What you're walking into*) with evidence stamp; **attendees** (initials, role, context, LinkedIn); **last-touch / background synthesis** (multi-paragraph, including quoted commitments where applicable); **open commitments** with provenance lines and state badges (delivered / for today / queued / open); **numbered suggested focus**; **materials at hand** (name, meta, open); **compact activity preview** with affordance to expand the full drawer activity log; **prep action bar** (mark reviewed, print prep, send to phone, add note, draft message before call — mock may no-op or toast); **Approve and send** / amend / attach document / dismiss for distributing the prep pack and closing the drawer. The mock implementation MAY use static JSON on the commitment entity; production SHALL hydrate fields from `briefs` (prep phase), `lp_calendar_events`, `lp_interactions`, `commitments`, open loops, and materials index per §3.13.
+8. **Named single-moment flows.**
+   - **Warm Intro Tracker:** inbound email parsing detects an introduction where the GP is included alongside other parties. The drawer asks whether to add / update the LP pipeline entry and draft a reply. Outcome capture is the binary GP decision plus any confirmed CRM mutation.
+   - **DDQ Response Engine:** inbound classification detects a DDQ-like request. The drawer offers to draft a response using the GP-curated prior DDQ store. V1 light is retrieval from curated prior answers, not full RAG.
+   - **Re-engagement Response:** Signal 2 fires within 1 hour of qualifying inbound. The drawer surfaces an urgent reply draft; if no LP response follows the GP's reply within the missed-reply threshold, the generic reminders engine handles the nudge.
+9. **Scheduling assistant capability (§3.9.x).** Scheduling is a cross-cutting Action Drawer capability, not a Workflows-surface entry. Invocation points: inbound email with scheduling intent; Post-Meeting Execution follow-up drafts that propose a next touch; Re-engagement Response drafts that propose a meeting; Trip Orchestrator replies where the trip date window constrains availability. Processing: classify scheduling intent, query Microsoft Graph / Google Calendar availability, propose three time blocks with timezone handling and an optional date-window constraint, inject the proposed times into a tone-profile-aware draft, and log the outcome for Metric 6c.
+10. **Meeting prep drawer (Today — Coming up).** When the GP opens a **Coming up** commitment or calendar-backed meeting row on Today, the context drawer SHALL support the **meeting prep layout** (normative visual reference: `design/tomo_drawer_meetingprep_light_v3.html` in `tomo_crm`). The layout includes: header (meeting-type eyebrow, LP / contact title, relationship subtitle, Esc); **time strip** (scheduled range, location e.g. video link, open-in-calendar, join-meeting when available); **status pills** and contextual quick links (LP record, latest email / intro thread); a configurable narrative block (e.g. *What changed since you last spoke* vs *What you're walking into*) with evidence stamp; **attendees** (initials, role, context, LinkedIn); **last-touch / background synthesis** (multi-paragraph, including quoted commitments where applicable); **open commitments** with provenance lines and state badges (delivered / for today / queued / open); **numbered suggested focus**; **materials at hand** (name, meta, open); **compact activity preview** with affordance to expand the full drawer activity log; **prep action bar** (mark reviewed, print prep, send to phone, add note, draft message before call — mock may no-op or toast); **Approve and send** / amend / attach document / dismiss for distributing the prep pack and closing the drawer. The mock implementation MAY use static JSON on the commitment entity; production SHALL hydrate fields from `briefs` (prep phase), `lp_calendar_events`, `lp_interactions`, `commitments`, open loops, and materials index per §3.13.
 
 **Outputs.**
 
@@ -902,6 +910,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - Outbound email sent via provider API; `lp_interactions` row eventually re-ingested via webhook with `direction='outbound'` (de-duped via `provider_internet_message_id`).
 - `email_delivery_log` row.
 - `activity_log` row for draft lifecycle event.
+- Scheduling assistant instrumentation used by Metric 6c: detected scheduling intent, proposal generation timestamp, proposed slots, accepted slot when known, and calendar-event creation timestamp.
 
 **Business rules.**
 
@@ -922,6 +931,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.9.5 — Drafts to LPs are sent from the GP's authenticated mailbox (visible in their Sent folder), never from a TOMO-managed mailbox.
 - AC-3.9.6 — A GP opening a **Coming up** row with meeting prep data sees the time strip, narrative block, attendees when present, open commitments with state badges when present, suggested focus when present, materials list when present, activity preview, prep action bar, and **Approve and send** / dismiss controls consistent with `design/tomo_drawer_meetingprep_light_v3.html` (order and section labels may vary by template e.g. first-contact vs existing investor).
 - AC-3.9.7 — **View full history** (or equivalent) from the compact activity preview expands the drawer activity log and scrolls it into view without losing the prep content above.
+- AC-3.9.8 — Warm Intro Tracker, DDQ Response Engine, and Re-engagement Response appear as Action Drawer cards and do not create `workflow_runs` or `workflow_step_runs`.
+- AC-3.9.9 — A scheduling-intent inbound produces a drawer draft with three proposed time blocks, logs the proposal timestamp, and writes the calendar-event creation timestamp when the GP confirms the meeting.
+- AC-3.9.10 — Trip Orchestrator reply handling passes the trip date window into scheduling assistant proposals; proposed times outside that window are rejected.
 
 ---
 
@@ -1042,32 +1054,37 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 ### 3.12. Workflows (playbooks)
 
-**Description.** Workflows are guided multi-step playbooks. Five default playbooks ship with V1 (per the V1 Final Geoff doc): Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification. Custom workflows can be created from templates. Tomo agent edits workflows via the `update_workflow` tool. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
+**Description.** Workflows are guided multi-step playbooks that earn a Workflows-surface slot only when they span hours or days, preserve meaningful state between steps, and capture an outcome at the end. V1 ships four Workflows-surface entries: two locked defaults (**Post-Meeting Execution**, **F7 Three-Touch Qualification**) and two configurable templates (**Themed Outreach**, **Trip Orchestrator**). Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, re-engagement, and scheduling live outside the Workflows surface unless they are invoked through the shared workflow substrate described here. Tomo agent edits workflows via the `update_workflow` tool. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
+
+**Design reference.** `design/tomo_workflows_v8.html` is authoritative for the list-detail workflow layout, locked/default card treatment, process-flow visualisation, run modal, batch review affordances, and in-flight state summaries. Its card inventory must be updated to the V1 scope in this section: replace **Update → Follow-Up** and **DDQ Response Engine** with configurable-template entries for **Themed Outreach** and **Trip Orchestrator**, while retaining Post-Meeting Execution and F7 Three-Touch as locked defaults.
 
 **Inputs / triggers.**
 
 - User loads `/workflows`.
 - User triggers a workflow on an LP or a list.
-- A signal trigger fires (e.g. F7 auto-suggests when the Fat Middle filter contains > 0 LPs).
+- `lp_calendar_events.status='completed'` triggers Post-Meeting Execution for LP meetings.
+- F7 is manually run on a Fat Middle LP / list, or auto-suggested when the Fat Middle filter contains > 0 LPs.
+- User manually configures Themed Outreach or Trip Orchestrator.
+- Trip Orchestrator may be auto-suggested when TOMO detects a multi-day calendar block in a city different from the GP's primary location.
 - User edits a workflow via the visual editor or Tomo chat.
 
 **Processing.**
 
-1. **Workflow definition.** Stored in `workflows` + `workflow_steps`. `trigger_type` ∈ (manual / signal / event / scheduled). `target_list_filter_jsonb` carries the filter applied at run time.
-2. **Default playbooks.** Seeded at workspace creation:
-   - **Warm Intro Tracker** — detects warm-intro emails (where the GP is included alongside other parties), creates/suggests LP record, prepares draft reply for approval.
-   - **Post-Meeting Execution** — triggered on meeting end (`lp_calendar_events.status='completed'`); generates prep brief in advance, post-meeting capture form within minutes after, follow-up draft within 30 minutes.
-   - **Update → Follow-Up** — triggered on outbound fund-update send; tracks LP engagement (V1 light: replies); generates personalised follow-up after 7 days for non-replies.
-   - **DDQ Response Engine** — triggered on inbound DDQ email; assembles draft response from prior DDQ database (V1 light: GP-curated; V2 full RAG).
-   - **F7 Three-Touch Qualification** — three-step sequence (insight → question → respectful close) for quiet LPs.
-3. **Workflow runs.**
+1. **Workflow definition.** Stored in `workflows` + `workflow_steps`. `trigger_type` ∈ (manual / signal / event / scheduled). `target_list_filter_jsonb` carries the filter applied at run time. `template_id` / `base_template_id` and `parameters_jsonb` allow saved configurations to share one base workflow implementation.
+2. **V1 workflow entries.** Seeded at workspace creation:
+   - **Post-Meeting Execution** — locked default; triggered on completed LP meetings; prep brief in advance, post-meeting capture within minutes, follow-up draft within 30 minutes. Capture output informs follow-up, Signal 6 stagnation tracking, and `mandate_fit`.
+   - **F7 Three-Touch Qualification** — locked default; three sequential drafts across roughly 14 days (insight → question → respectful close), with each later draft referencing earlier touch context and final outcome capture.
+   - **Themed Outreach** — configurable base template; GP picks a List and content kernel / theme; TOMO drafts personalised outreach per LP using tone profile and recent interaction context; optional 7-day follow-up to non-responders.
+   - **Trip Orchestrator** — saved configuration of the Themed Outreach base template; GP supplies destination and date range (or accepts detected trip context); TOMO filters LPs by city / region, drafts trip-themed outreach, and invokes the scheduling assistant on replies with the trip window as an availability constraint.
+3. **Shared outreach substrate.** Themed Outreach, Trip Orchestrator, and V1 fund-update behaviour share the same base implementation: cohort selection, content kernel, prompt template, batch draft generation, Action Drawer review, GP-approved send, outbound dedup, optional non-responder follow-up, and engagement outcome capture. Fund Update in V1 is a saved Themed Outreach configuration, not a named Workflow entry or structured content-block editor.
+4. **Workflow runs.**
    - One `workflow_runs` row per LP per workflow execution.
    - Steps execute in order. `step_type='wait'` introduces a delay (`wait_duration_hours`); `step_type='action_draft'` generates a draft and surfaces in Action Drawer with `requires_approval=true` (default V1 — human-in-the-loop on every outbound).
    - GP approves/edits/dismisses per §3.9. Approval advances the run.
-4. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
-5. **Visual editor.** Located at `/workflows`. Renders steps as a process flow (mock has `workflow-process-flow.tsx`). Step nodes are editable inline.
-6. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder steps. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
-7. **F7 outcome capture.** At workflow run completion, the GP picks one of: warmer than expected / maintaining but non-committal / genuinely dormant. Stored in `workflow_runs.outcome`. Drives the Three-Touch Qualification analytics.
+5. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
+6. **Visual editor.** Located at `/workflows`. Renders steps as a process flow (mock has `workflow-process-flow.tsx`). Locked defaults expose content settings only; configurable templates expose parameters and future-run structure.
+7. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
+8. **Outcome capture.** At workflow run completion, F7 captures one of: warmer than expected / maintaining but non-committal / genuinely dormant. Outreach templates capture engagement outcomes (reply, scheduling accepted, declined, no response) on `workflow_runs.outcome` / output JSON as appropriate.
 
 **Outputs.**
 
@@ -1079,17 +1096,22 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Business rules.**
 
-- BR-3.12.1 — Default playbooks are seeded once per workspace at creation; cannot be deleted but can be deactivated (`workflows.is_active=false`).
+- BR-3.12.1 — The four V1 workflow entries are seeded once per workspace at creation; cannot be deleted but can be deactivated (`workflows.is_active=false`) where the entry supports deactivation.
 - BR-3.12.2 — `requires_approval=true` is the default and cannot be disabled in V1 (no auto-send).
 - BR-3.12.3 — Outbound dedup window is 14 days globally for V1; per-workflow override is V1.5.
 - BR-3.12.4 — F7 Three-Touch is the **default-on workflow** per V1 Final Decision #2 — the framework's V1 NON-NEGOTIABLE.
+- BR-3.12.5 — Workflow-surface inclusion requires multi-step sequencing over hours or days, meaningful state between steps, and outcome capture. Single-moment Action Drawer flows, signal-triggered drafts, and reminder nudges do not receive workflow slots.
+- BR-3.12.6 — Themed Outreach is the canonical configurable outreach implementation. Trip Orchestrator and V1 fund-update behaviour are saved configurations / parameter sets, not bespoke workflow engines.
 
 **Acceptance criteria.**
 
-- AC-3.12.1 — A new workspace has 5 default playbooks seeded at first sign-in.
+- AC-3.12.1 — A new workspace has four Workflows-surface entries seeded at first sign-in: Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, and Trip Orchestrator.
 - AC-3.12.2 — F7 triggered on a 29-LP Fat Middle cohort creates 29 `workflow_runs`, each with steps queued.
 - AC-3.12.3 — A step that would send a duplicate outbound (same LP + signature within 14 days) skips and records the skip.
-- AC-3.12.4 — Tomo chat editing a workflow ("Add a wait step of 3 days after step 2") updates `workflow_steps` after GP confirmation and writes an `agent_tool_calls` row.
+- AC-3.12.4 — Tomo chat editing a configurable workflow ("Add a wait step of 3 days after step 2") updates `workflow_steps` after GP confirmation and writes an `agent_tool_calls` row.
+- AC-3.12.5 — Themed Outreach and Trip Orchestrator runs use the same base template / worker path with different `parameters_jsonb`, prompt template, and reply-handling configuration.
+- AC-3.12.6 — A fund-update run can be saved and invoked as a Themed Outreach configuration, but no first-class Fund Update workflow card or structured content-block UI appears in V1.
+- AC-3.12.7 — Warm Intro Tracker, DDQ Response Engine, re-engagement drafts, and scheduling replies never appear as Workflows-surface cards in V1; they route through Action Drawer, Signals, and Reminders per §3.9.
 
 ---
 
@@ -1109,7 +1131,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 1. 30 min before meeting: read recent context (`lp_meeting_recaps` from prior meetings, last 5 `lp_interactions`, `lp_state`, open `commitments`, `open_loops`).
 2. Generate prep brief using LLM with structured prompt: unanswered questions, missed/promised materials, relationship context, suggested focus, recent documents exchanged.
 3. Write `briefs` row with `brief_phase='prep'`, `generated_by='tomo_llm'`.
-4. Surface in Action Drawer as `action_type='meeting_prep'`. GP viewing the brief sets `briefs.viewed_at` and writes `tomo_action_log` outcome `viewed`. The same prep payload SHOULD power the **Coming up meeting prep drawer** on Today (§3.9 item 8) when the row references the same meeting / brief.
+4. Surface in Action Drawer as `action_type='meeting_prep'`. GP viewing the brief sets `briefs.viewed_at` and writes `tomo_action_log` outcome `viewed`. The same prep payload SHOULD power the **Coming up meeting prep drawer** on Today (§3.9 item 10) when the row references the same meeting / brief.
 
 **Processing — transcript ingestion.**
 
@@ -3045,7 +3067,7 @@ Maps TOMO fields to Affinity custom-field ids for bi-directional sync. **V1 ship
 
 ##### Table: `workflows`
 
-Workflow definition (default playbook or custom). The five default workflows seeded at workspace creation: Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification. *(Workspace-scoped, soft-delete.)*
+Workflow definition (locked default, configurable template, saved configuration, or user-created custom workflow). The four V1 Workflows-surface entries seeded at workspace creation: Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, Trip Orchestrator. *(Workspace-scoped, soft-delete.)*
 
 | Column | Type | Null | Default | References | Notes |
 |---|---|---|---|---|---|
@@ -3053,7 +3075,10 @@ Workflow definition (default playbook or custom). The five default workflows see
 | `name` | text | not null | | | |
 | `slug` | text | not null | | | E.g. `pb-three-touch-qualification` |
 | `description` | text | null | | | |
-| `is_default` | boolean | not null | `false` | | True for the five seed playbooks |
+| `workflow_kind` | text | not null | `'user_custom'` | check in (`'locked_default'`, `'configurable_template'`, `'saved_configuration'`, `'user_custom'`) | Controls edit affordances on `/workflows` |
+| `template_id` | uuid | null | | fk → `workflows.id` | Base template for saved configurations (e.g. Trip Orchestrator → Themed Outreach) |
+| `parameters_jsonb` | jsonb | not null | `'{}'` | | Cohort, prompt-template, reply-handler, trip window, saved fund-update config |
+| `is_default` | boolean | not null | `false` | | True for the four V1 seed entries |
 | `is_active` | boolean | not null | `true` | | |
 | `trigger_type` | text | not null | | check in (`'manual'`, `'signal'`, `'event'`, `'scheduled'`) | |
 | `trigger_config_jsonb` | jsonb | not null | `'{}'` | | E.g. `{"signal_type":"silence","flag":"red"}` |
@@ -3419,7 +3444,7 @@ The data dictionary is the per-field reference for fields that participate in si
 4. Indexes created concurrently after tables.
 5. RLS policies enabled on every workspace-scoped table.
 6. Postgres triggers: `AFTER UPDATE` on `lp_contacts.pipeline_stage` writes a row to `lp_stage_transitions`; `AFTER UPDATE` on audited tables writes to `activity_log`.
-7. Seed data: `stage_cadence_benchmarks` rows (eight); five default workflows seeded per workspace via post-creation trigger.
+7. Seed data: `stage_cadence_benchmarks` rows (eight); four V1 workflow entries seeded per workspace via post-creation trigger.
 
 **Onboarding-time data ingestion (per Document B):**
 
@@ -3813,45 +3838,50 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 ### 8.7. Workflows
 
-**Epic:** Guided multi-step playbooks — five default plus custom; F7 Three-Touch as the V1 non-negotiable default-on workflow.
+**Epic:** Guided multi-step playbooks — four V1 Workflows-surface entries; F7 Three-Touch as the V1 non-negotiable default-on workflow.
 
-**Story 8.7.1 — Default playbooks at workspace creation.**
-*As a new GP, I see five default playbooks pre-loaded in `/workflows`.*
+**Story 8.7.1 — Workflow entries at workspace creation.**
+*As a new GP, I see the four V1 workflow entries pre-loaded in `/workflows`.*
 
-- AC — Warm Intro Tracker, Post-Meeting Execution, Update → Follow-Up, DDQ Response Engine, F7 Three-Touch Qualification all present.
-- AC — Default playbooks cannot be deleted but can be deactivated.
+- AC — Post-Meeting Execution and F7 Three-Touch Qualification appear as locked defaults.
+- AC — Themed Outreach and Trip Orchestrator appear as configurable templates.
+- AC — Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, scheduling, and re-engagement do not appear as workflow cards.
 
 **Story 8.7.2 — Visual workflow editor.**
-*As a GP, I can view and edit workflow steps in a visual flow editor.*
+*As a GP, I can view workflow steps in a visual flow editor and edit only what the workflow type permits.*
 
 - AC — Steps render as a process flow with action / wait / gate node types.
-- AC — Inline edits to step config persist via `workflow_steps` updates.
-- AC — Reordering steps updates `step_index` atomically.
+- AC — Locked defaults allow content settings / run parameters but block structural changes.
+- AC — Configurable templates allow future-run structure and parameter edits that persist via `workflow_steps` and `workflows.parameters_jsonb`.
 
 **Story 8.7.3 — Edit workflow via Tomo chat.**
-*As a GP, I can ask Tomo to add a wait step or reorder steps, with confirmation before persistence.*
+*As a GP, I can ask Tomo to adjust configurable workflow steps or run parameters, with confirmation before persistence.*
 
 - AC — Tomo's `update_workflow` tool returns a proposed change; confirm applies it; cancel discards.
 - AC — Streaming response begins within 1.5s of submit.
+- AC — Structural edit requests against locked defaults return a clear explanation and offer editable content settings instead.
 
 **Story 8.7.4 — F7 Three-Touch on a Fat Middle cohort.**
 *As a GP, I can run the F7 sequence (insight → question → respectful close) on quiet relationships and capture an outcome.*
 
 - AC — Each touch surfaces in the Action Drawer awaiting GP approval.
+- AC — Touch 2 and Touch 3 prompts can reference prior touch context for the same LP.
 - AC — Outcome capture at run completion writes one of: warmer-than-expected / maintaining-non-committal / genuinely-dormant.
 - AC — F7 step sends are deduped against `outbound_safety_log` (14-day window).
 
-**Story 8.7.5 — Custom workflow from a template.**
-*As a GP, I can clone a default playbook into a custom workflow and modify it.*
+**Story 8.7.5 — Themed Outreach / Trip Orchestrator templates.**
+*As a GP, I can run parameterised outreach workflows without TOMO building separate engines for each use case.*
 
-- AC — Cloned workflow appears in `/workflows` with `is_default=false`.
-- AC — Modifications do not affect the original default playbook.
+- AC — Themed Outreach requires a List and a content kernel / theme before draft generation.
+- AC — Trip Orchestrator requires destination and date range, or accepts a detected trip suggestion, before draft generation.
+- AC — Trip Orchestrator reply handling invokes the scheduling assistant with the trip window as an availability constraint.
+- AC — A saved fund-update configuration appears as a Themed Outreach saved configuration, not a first-class workflow card.
 
 **Story 8.7.6 — Workflow run log.**
 *As a GP, I can review the run log for any workflow to see step-by-step status per LP.*
 
 - AC — Run log rows source from `workflow_runs` and `workflow_step_runs`.
-- AC — Click-through to a step shows the generated draft, send timestamp, and outcome classification.
+- AC — Click-through to a step shows the generated draft, send timestamp, skip reason if deduped, and outcome classification.
 
 ---
 
@@ -4265,6 +4295,8 @@ The following items are explicitly deferred to V1.5 (a stabilisation release) an
 - Algolia or Pinecone-backed search.
 - Localisation beyond English (US/UK).
 - Mobile native applications.
+- Fund Update as a first-class workflow with structured content blocks, jurisdictional distribution rules, and engagement analytics. V1 ships fund-update behaviour only as a saved Themed Outreach configuration.
+- Full DDQ RAG over a structured DDQ knowledge base. V1 ships only the Action Drawer DDQ response flow backed by a GP-curated prior DDQ store.
 
 ### 9.2. Permanent non-goals (not on any roadmap)
 
@@ -4284,6 +4316,8 @@ The following items are explicitly deferred to V1.5 (a stabilisation release) an
 - Quarterly CRM export generators.
 - Tomo streaming on all surfaces (V1 ships streaming on at minimum Today, Workflows, Action Drawer; remaining surfaces may be staged).
 - Optional eu-west-1 region for EU-data-residency customers.
+- Fund Update promoted to a first-class workflow once FC usage validates the required content-block editor, distribution controls, and analytics.
+- Per-workflow outbound dedup windows and richer outreach engagement analytics.
 
 V2 (Q4 2026) and V3 (2027) capability matrix is in Appendix C.
 
@@ -4352,7 +4386,7 @@ Extends §1.3. Alphabetical.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
-- `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 8).
+- `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 10).
 - `design/tomo_lists_v1.html` — normative visual / IA reference for the **Lists** index and list-detail drawer (including LP row table, live vs manual semantics, **drawer actions**, **link workflow** modal, disabled top-row and secondary CTAs in V1) — §3.11, §8.6.
 
 ### C. V2 / V3 capability matrix and forward-compatibility notes
@@ -5058,7 +5092,7 @@ for each scheduling thread (inbound with detected scheduling intent, last 30 day
 avg_efficiency_days = AVG(resolution_days)
 ```
 
-Scheduling-intent detection in V1 is pattern-library based ("can we meet", "schedule a call", etc.); LLM classification deferred V2.
+Scheduling-intent detection in V1 is pattern-library based ("can we meet", "schedule a call", etc.) with optional lightweight LLM tie-break where confidence is low. Metric 6c depends on the scheduling assistant logging detected intent, proposal generation, accepted slot, and calendar-event creation timestamps.
 Pre-TOMO baseline computed once at onboarding. Refresh: nightly.
 
 #### Metric 7 — Direction with mandate-fit qualifier

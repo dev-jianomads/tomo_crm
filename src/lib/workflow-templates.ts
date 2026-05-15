@@ -68,14 +68,14 @@ const INTRO_TRACKER: WorkflowDefinition = {
 };
 
 const POST_MEETING: WorkflowDefinition = {
-  title: "Post-Meeting Follow-Up",
+  title: "Post-Meeting Execution",
   triggerKind: "EVENT",
-  trigger: "Zoom meeting with Lisa Tanaka (Crestview) ends",
+  trigger: "LP calendar event status changes to completed",
   steps: [
-    { name: "Extract & Summarize", type: "action", description: "Pull transcript, extract objections, commitments, next steps" },
-    { name: "Draft Follow-Up", type: "action", description: "Draft tailored email with attached materials, log CRM summary" },
-    { name: "Wait for Approval", type: "wait", duration: "Human review", description: "Human must approve outbound email before sending" },
-    { name: "Send & Monitor", type: "action", description: "Send approved email, set next touch date, watch for reply" },
+    { name: "Prep brief", type: "action", description: "Generate LP context, last conversation, open loops, and suggested focus before the meeting" },
+    { name: "Capture form", type: "action", description: "Surface post-meeting capture within minutes: outcome, mandate fit, commitments, next steps" },
+    { name: "Draft follow-up", type: "action", description: "Draft recap and commitments email within 30 minutes, informed by capture output" },
+    { name: "Outcome update", type: "action", description: "Write confirmed stage / mandate-fit changes and feed downstream stagnation tracking" },
   ],
 };
 
@@ -134,6 +134,65 @@ const ROADSHOW_PREP: WorkflowDefinition = {
       type: "action",
       description: "As replies arrive, log confirmed slots to CRM and calendar holds",
     },
+  ],
+};
+
+const THEMED_OUTREACH: WorkflowDefinition = {
+  title: "Themed Outreach",
+  triggerKind: "SCHEDULED",
+  trigger: "GP picks a List and provides a theme or content kernel",
+  steps: [
+    {
+      name: "Select cohort",
+      type: "action",
+      description: "Use the linked List as the outreach cohort and apply outbound-safety exclusions",
+    },
+    {
+      name: "Batch draft",
+      type: "action",
+      description: "Draft personalized versions per LP using tone profile and recent interaction context",
+    },
+    {
+      name: "Review in Action Drawer",
+      type: "action",
+      description: "GP approves, edits, or dismisses each draft individually or in batch",
+    },
+    { name: "Wait", type: "wait", duration: "7 days", description: "Track replies and scheduling acceptances" },
+    {
+      name: "Optional follow-up draft",
+      type: "action",
+      description: "Draft a light follow-up only for non-responders when the GP enables it",
+      condition: "No reply after wait",
+    },
+  ],
+};
+
+const TRIP_ORCHESTRATOR: WorkflowDefinition = {
+  title: "Trip Orchestrator",
+  triggerKind: "SCHEDULED",
+  trigger: "GP enters destination and date range, or Tomo detects a multi-day trip",
+  steps: [
+    {
+      name: "Filter by location",
+      type: "action",
+      description: "Apply city / region filter to the selected List based on destination",
+    },
+    {
+      name: "Draft trip outreach",
+      type: "action",
+      description: "Draft personalized trip-themed meeting asks with date-bounded availability",
+    },
+    {
+      name: "Review in Action Drawer",
+      type: "action",
+      description: "GP reviews batch drafts before any send",
+    },
+    {
+      name: "Scheduling reply handling",
+      type: "action",
+      description: "Use scheduling assistant on replies, constrained to the trip date window",
+    },
+    { name: "Outcome capture", type: "action", description: "Track replies, meetings scheduled, declines, and no response" },
   ],
 };
 
@@ -253,6 +312,8 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
   no_response_stall: NO_RESPONSE_STALL,
   ddq_response: DDQ_RESPONSE,
   roadshow_prep: ROADSHOW_PREP,
+  themed_outreach: THEMED_OUTREACH,
+  trip_orchestrator: TRIP_ORCHESTRATOR,
   three_touch_qualification: THREE_TOUCH_QUALIFICATION,
   quarterly_lp_update: QUARTERLY_LP_UPDATE,
   commitment_close: COMMITMENT_CLOSE,
@@ -261,77 +322,25 @@ export const DEFAULT_TEMPLATES: Record<PlaybookType, WorkflowDefinition> = {
 
 // ── Tomo Default workflow templates (keyed by workflow id) ───────────────────
 
-const WEBSITE_CRM_SYNC: WorkflowDefinition = {
-  title: "Website & News → Relationship Updates",
-  triggerKind: "EVENT",
-  trigger: "Corporate website change or relevant news item detected for coverage universe",
-  steps: [
-    {
-      name: "Scan sources",
-      type: "action",
-      description: "Crawl website and trusted news for personnel, role, mandate, and material changes",
-    },
-    { name: "Compare with CRM", type: "action", description: "Diff findings against existing relationship records" },
-    {
-      name: "Suggest updates",
-      type: "action",
-      description: "Surface proposed relationship updates (title, role, coverage, contact info) for review",
-    },
-    { name: "Apply approved", type: "action", description: "Apply user-approved updates to CRM records" },
-  ],
-};
-
-const EMAIL_SCHEDULING: WorkflowDefinition = {
-  title: "Email Scheduling Assistant",
-  triggerKind: "EVENT",
-  trigger: "Scheduling request detected in email",
-  steps: [
-    { name: "Detect Request", type: "action", description: "Identify scheduling intent from incoming emails" },
-    { name: "Check Calendar", type: "action", description: "Cross-reference calendar for available time slots" },
-    { name: "Draft Response", type: "action", description: "Draft reply with proposed meeting times" },
-    { name: "Wait for Approval", type: "wait", duration: "Human review", description: "User reviews and approves outbound scheduling reply" },
-    { name: "Send & Confirm", type: "action", description: "Send approved response, add tentative calendar hold" },
-  ],
-};
-
-const MEETING_NOTES_ACTIONS: WorkflowDefinition = {
-  title: "Meeting → Follow-Up",
-  triggerKind: "EVENT",
-  trigger: "Meeting notes or transcript uploaded",
-  steps: [
-    { name: "Parse notes", type: "action", description: "Extract key discussion points, decisions, and quotes" },
-    { name: "Identify actions", type: "action", description: "Pull out action items, commitments, and deadlines" },
-    { name: "Suggest CRM updates", type: "action", description: "Propose relationship status changes based on meeting content" },
-    { name: "Create follow-ups", type: "action", description: "Generate follow-up tasks and reminders from action items" },
-  ],
-};
-
 export const TOMO_DEFAULT_TEMPLATES: Record<string, WorkflowDefinition> = {
-  "td-website-scan": WEBSITE_CRM_SYNC,
-  "td-email-scheduling": EMAIL_SCHEDULING,
-  "td-meeting-notes": MEETING_NOTES_ACTIONS,
+  "td-post-meeting-execution": POST_MEETING,
+  "td-three-touch-qualification": THREE_TOUCH_QUALIFICATION,
 };
 
 // ── Tomo Default suggestion chips (keyed by workflow id) ────────────────────
 
 export const TOMO_DEFAULT_SUGGESTIONS: Record<string, string[]> = {
-  "td-website-scan": [
-    "Only scan LinkedIn profiles",
-    "Add a weekly scan schedule",
-    "Skip contacts with recent activity",
-    "Add Slack notification for major changes",
+  "td-post-meeting-execution": [
+    "Adjust capture prompt wording",
+    "Always include open loops in follow-up",
+    "Attach latest deck when mentioned",
+    "Route skipped capture to reminder",
   ],
-  "td-email-scheduling": [
-    "Block mornings for deep work",
-    "Add buffer time between meetings",
-    "Prefer Zoom links over in-person",
-    "Auto-decline if calendar is >80% full",
-  ],
-  "td-meeting-notes": [
-    "Extract sentiment from tone",
-    "Tag action items by urgency",
-    "Auto-assign follow-ups to team members",
-    "Add a 48h follow-up reminder",
+  "td-three-touch-qualification": [
+    "Tune touch 1 insight style",
+    "Change wait copy for hot cohorts",
+    "Exclude LPs who replied after touch 2",
+    "Review outcome labels",
   ],
 };
 
@@ -373,6 +382,18 @@ export const PLAYBOOK_SUGGESTIONS: Record<PlaybookType, string[]> = {
     "Attach one-pager and data room link to the draft",
     "Add CC to ops for calendar holds",
     "Mention city and venue block in the subject line",
+  ],
+  themed_outreach: [
+    "Save this as a fund update configuration",
+    "Make follow-up optional by default",
+    "Use a more direct tone for Tier 1 LPs",
+    "Suppress LPs touched in the last 14 days",
+  ],
+  trip_orchestrator: [
+    "Use London June 12-15 as the trip window",
+    "Limit the cohort to Tier 1 and Tier 2",
+    "Mention breakfast and afternoon windows",
+    "Pass replies to the scheduling assistant",
   ],
   three_touch_qualification: [
     "Compress touches to 7 / 14 days for hot cohort only",
@@ -426,6 +447,12 @@ const PLAYBOOK_CONTEXT: Record<PlaybookType, string> = {
   roadshow_prep:
     `Trip date + geography locked for next roadshow block.\n` +
     `Cohort pulled from Family Office Outreach (NA Tier 1–2). Next run drafts availability requests and logs confirmations to CRM.`,
+  themed_outreach:
+    `18 LPs in the selected List are eligible after outbound-safety checks.\n` +
+    `Theme kernel is supplied per run. Tomo will personalize each draft from tone profile and recent interaction context.`,
+  trip_orchestrator:
+    `Trip window is parameterized per run.\n` +
+    `Destination filters the linked List by city / region, then scheduling replies are constrained to the trip dates.`,
   three_touch_qualification:
     `18 LPs in fat-middle / cold cohort on Q1 Target List.\n` +
     `Touch 1 insight queued — awaiting GP approval. Spacing: 5–7d to touch 2, 12–14d to touch 3.`,

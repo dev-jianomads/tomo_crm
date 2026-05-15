@@ -26,7 +26,7 @@ const C = {
   formula: "#6B7280",
 } as const;
 
-const THREE_TOUCH_PLAYBOOK = "pb-three-touch-qualification";
+const THREE_TOUCH_WORKFLOW = "td-three-touch-qualification";
 
 /**
  * Mock nightly snapshot — replace with API (Sections 1–2 live for Singapore; 3–4 gated in backend).
@@ -252,7 +252,7 @@ export default function InsightsPage() {
                 {showFatMiddlePrompt ? (
                   <p className="mt-3 text-sm" style={{ color: C.slate }}>
                     <Link
-                      href={`/workflows?playbook=${THREE_TOUCH_PLAYBOOK}`}
+                      href={`/workflows?tomoDefault=${THREE_TOUCH_WORKFLOW}`}
                       className="font-medium underline decoration-[#0D7377]/40 underline-offset-2 hover:decoration-[#0D7377]"
                       style={{ color: C.teal }}
                     >
