@@ -1,0 +1,689 @@
+/**
+ * Mock data contract for the V1 Workflows surface.
+ *
+ * This fixture is intentionally shaped like a future API response so the
+ * accordion workflow UI can later swap from mock data to production data with
+ * minimal component churn.
+ */
+
+export type WorkflowSurfaceKind = "locked_default" | "configurable_template";
+export type WorkflowSurfaceStatus = "active" | "inactive";
+
+export type WorkflowStepActionType =
+  | "draft_batch"
+  | "single_draft"
+  | "settings"
+  | "outcome_capture"
+  | "run_config"
+  | "readonly";
+
+export type WorkflowStepNodeType = "trigger" | "action" | "wait" | "gate" | "outcome";
+
+export type WorkflowStat = {
+  label: string;
+  value: string;
+  tone?: "default" | "muted" | "good" | "warning";
+};
+
+export type WorkflowMetaItem = {
+  label: string;
+  value: string;
+  tone?: "default" | "good" | "warning";
+};
+
+export type WorkflowStepNode = {
+  id: string;
+  nodeType: WorkflowStepNodeType;
+  actionType: WorkflowStepActionType;
+  title: string;
+  description: string;
+  timingLabel?: string;
+  statusLabel?: string;
+  locked?: boolean;
+  draftBatchId?: string;
+};
+
+export type WorkflowAttentionItem = {
+  id: string;
+  label: string;
+  count: number;
+  actionLabel: string;
+  stepId?: string;
+};
+
+export type WorkflowStateSegment = {
+  id: string;
+  label: string;
+  drafted: number;
+  sent: number;
+  waiting: number;
+};
+
+export type WorkflowStateSummary = {
+  title: string;
+  segments: WorkflowStateSegment[];
+  replied: number;
+  readyForOutcome: number;
+  skipped: number;
+};
+
+export type WorkflowRunSummary = {
+  id: string;
+  listName: string;
+  startedAtLabel: string;
+  lpCount: number;
+  statusLabel: string;
+  outcomeSummary: string;
+};
+
+export type WorkflowDraftAttachment = {
+  name: string;
+  meta: string;
+};
+
+export type WorkflowDraftStatus = "ready" | "edited" | "approved" | "skipped";
+
+export type WorkflowDraft = {
+  id: string;
+  lpName: string;
+  firmName: string;
+  roleLabel: string;
+  tierLabel: string;
+  email: string;
+  subject: string;
+  body: string;
+  status: WorkflowDraftStatus;
+  attachment?: WorkflowDraftAttachment;
+};
+
+export type WorkflowDraftBatch = {
+  id: string;
+  workflowId: string;
+  stepId: string;
+  eyebrow: string;
+  title: string;
+  context: string;
+  batchTomoPlaceholder: string;
+  drafts: WorkflowDraft[];
+};
+
+export type WorkflowOutcomeOption = {
+  id: "warmer_than_expected" | "maintaining_non_committal" | "genuinely_dormant";
+  label: string;
+  description: string;
+};
+
+export type WorkflowOutcomeCapture = {
+  workflowId: string;
+  pendingLpNames: string[];
+  options: WorkflowOutcomeOption[];
+};
+
+export type WorkflowRunConfig = {
+  workflowId: string;
+  fields: Array<{
+    id: string;
+    label: string;
+    value: string;
+    helperText?: string;
+  }>;
+};
+
+export type WorkflowSurfaceEntry = {
+  id: string;
+  name: string;
+  kind: WorkflowSurfaceKind;
+  status: WorkflowSurfaceStatus;
+  badgeLabel: string;
+  summary: string;
+  triggerLabel: string;
+  stats: WorkflowStat[];
+  meta: WorkflowMetaItem[];
+  steps: WorkflowStepNode[];
+  attentionItems: WorkflowAttentionItem[];
+  stateSummary: WorkflowStateSummary;
+  runHistory: WorkflowRunSummary[];
+  baseTemplateId?: string;
+  runConfig?: WorkflowRunConfig;
+};
+
+const f7InsightDrafts: WorkflowDraft[] = [
+  {
+    id: "draft-f7-insight-lingotto",
+    lpName: "Edoardo Lanzavecchia",
+    firmName: "Lingotto Investment Management",
+    roleLabel: "Head of HF Allocations",
+    tierLabel: "Tier 1",
+    email: "edoardo@lingotto.com",
+    subject: "The dispersion premium in Italian credit",
+    body:
+      "Edoardo, the Italian sub-investment-grade dispersion premium has compressed since our last conversation, which narrows the entry window meaningfully. Thought the attached framing may be useful as you think about Q3 positioning.",
+    status: "ready",
+    attachment: {
+      name: "Italian Credit Dispersion - Q1 2026.pdf",
+      meta: "2.4 MB - Insight piece - Last sent to Edoardo on 12 Mar",
+    },
+  },
+  {
+    id: "draft-f7-insight-ubs",
+    lpName: "Charly Malek",
+    firmName: "UBS Hedge Fund Solutions",
+    roleLabel: "Head of Manager Research",
+    tierLabel: "Tier 1 - prior F2",
+    email: "charly.malek@ubs.com",
+    subject: "Tail risk in long/short equity",
+    body:
+      "Charly, since you re-upped into Fund II we have been thinking about how to position the tail-risk overlay against a different liquidity regime in single-name shorts. Sharing the short note we discussed.",
+    status: "edited",
+    attachment: {
+      name: "Tail Risk Overlay - May 2026.pdf",
+      meta: "1.8 MB - Strategy note",
+    },
+  },
+  {
+    id: "draft-f7-insight-cppib",
+    lpName: "Frank Ieraci",
+    firmName: "CPPIB",
+    roleLabel: "SMD, External Portfolio",
+    tierLabel: "Tier 1",
+    email: "frank.ieraci@cppib.com",
+    subject: "Capacity discussion for H2",
+    body:
+      "Frank, when we last spoke you mentioned capacity was the question to revisit once the new sleeve sizing was final. Wanted to share where we have landed and what that means for H2 allocation capacity.",
+    status: "ready",
+  },
+];
+
+const themedOutreachDrafts: WorkflowDraft[] = [
+  {
+    id: "draft-themed-wellcome",
+    lpName: "Marie-Claude Dumas",
+    firmName: "Wellcome Trust",
+    roleLabel: "Investment Director",
+    tierLabel: "Tier 1",
+    email: "marieclaude@wellcome.org",
+    subject: "Follow-up on European credit dispersion",
+    body:
+      "Marie-Claude, sharing a short note on the dispersion theme we discussed. The setup has become more pronounced in Europe, and I thought the framing might be useful for your manager review work.",
+    status: "ready",
+  },
+  {
+    id: "draft-themed-futurefund",
+    lpName: "James McIntyre",
+    firmName: "Future Fund Australia",
+    roleLabel: "Portfolio Manager",
+    tierLabel: "Tier 2",
+    email: "james.mcintyre@futurefund.gov.au",
+    subject: "A short update on our credit book",
+    body:
+      "James, wanted to send the concise version of what we are seeing in credit dispersion and how it is affecting position sizing across the book.",
+    status: "ready",
+  },
+];
+
+const tripDrafts: WorkflowDraft[] = [
+  {
+    id: "draft-trip-london-btf",
+    lpName: "Sarah Whitmore",
+    firmName: "British Telecom Pension Scheme",
+    roleLabel: "Alternatives Lead",
+    tierLabel: "Tier 1",
+    email: "sarah.whitmore@btps.co.uk",
+    subject: "In London June 12-15",
+    body:
+      "Sarah, I will be in London June 12-15 and wondered if it would be useful to compare notes while I am in town. I can do breakfast or late afternoon on the 13th or 14th.",
+    status: "ready",
+  },
+  {
+    id: "draft-trip-london-lgps",
+    lpName: "Tom Richards",
+    firmName: "LGPS Central",
+    roleLabel: "Investment Director",
+    tierLabel: "Tier 2",
+    email: "tom.richards@lgpscentral.co.uk",
+    subject: "London visit - June 12-15",
+    body:
+      "Tom, I will be in London June 12-15 and would be glad to find 30 minutes if useful. Tomo is holding the trip window for scheduling replies.",
+    status: "ready",
+  },
+];
+
+export const workflowSurfaceDraftBatches: WorkflowDraftBatch[] = [
+  {
+    id: "batch-f7-touch-1",
+    workflowId: "wf-f7-three-touch",
+    stepId: "f7-touch-1",
+    eyebrow: "F7 Three-Touch Qualification - Touch 1 - Insight",
+    title: "3 drafts ready for approval",
+    context: "Quiet - Fat Middle - drafted by Tomo - awaiting GP approval before send",
+    batchTomoPlaceholder: "Make them all shorter - sharpen the insight - avoid Q3 numbers",
+    drafts: f7InsightDrafts,
+  },
+  {
+    id: "batch-themed-day-0",
+    workflowId: "wf-themed-outreach",
+    stepId: "themed-batch-draft",
+    eyebrow: "Themed Outreach - Day 0",
+    title: "2 drafts ready for approval",
+    context: "Selected list - theme: European credit dispersion",
+    batchTomoPlaceholder: "Make all drafts warmer - add a clearer call to action",
+    drafts: themedOutreachDrafts,
+  },
+  {
+    id: "batch-trip-london",
+    workflowId: "wf-trip-orchestrator",
+    stepId: "trip-draft-outreach",
+    eyebrow: "Trip Orchestrator - London June 12-15",
+    title: "2 trip outreach drafts ready",
+    context: "London-filtered LPs - scheduling constrained to trip window",
+    batchTomoPlaceholder: "Mention breakfast options - make the ask lower friction",
+    drafts: tripDrafts,
+  },
+];
+
+export const workflowOutcomeCaptures: WorkflowOutcomeCapture[] = [
+  {
+    workflowId: "wf-f7-three-touch",
+    pendingLpNames: ["Wellcome Trust"],
+    options: [
+      {
+        id: "warmer_than_expected",
+        label: "Warmer than expected",
+        description: "LP replied with renewed interest or a concrete next step.",
+      },
+      {
+        id: "maintaining_non_committal",
+        label: "Maintaining but non-committal",
+        description: "Relationship remains alive but no clear movement yet.",
+      },
+      {
+        id: "genuinely_dormant",
+        label: "Genuinely dormant",
+        description: "Sequence confirmed this LP should be deprioritized for now.",
+      },
+    ],
+  },
+];
+
+export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
+  {
+    id: "wf-post-meeting-execution",
+    name: "Post-Meeting Execution",
+    kind: "locked_default",
+    status: "active",
+    badgeLabel: "Default",
+    triggerLabel: "LP calendar event completed",
+    summary: "Prep brief before meeting - capture form after - follow-up draft within 30 minutes",
+    stats: [{ label: "Done last 30d", value: "42", tone: "default" }],
+    meta: [
+      { label: "Last meeting", value: "UBS HFS - Charly Malek - today 2:00pm ET" },
+      { label: "Capture rate", value: "94% capture form completion", tone: "good" },
+    ],
+    steps: [
+      {
+        id: "post-prep-brief",
+        nodeType: "action",
+        actionType: "readonly",
+        title: "Prep brief",
+        description: "LP context, last conversation, open loops",
+        timingLabel: "-30 min",
+        statusLabel: "Auto",
+        locked: true,
+      },
+      {
+        id: "post-meeting-completed",
+        nodeType: "trigger",
+        actionType: "readonly",
+        title: "Meeting ends",
+        description: "Calendar event completed and LP attended",
+        statusLabel: "Trigger",
+        locked: true,
+      },
+      {
+        id: "post-capture-form",
+        nodeType: "action",
+        actionType: "settings",
+        title: "Capture form",
+        description: "Outcome, commitments, next steps",
+        timingLabel: "+60s",
+        statusLabel: "You",
+        locked: true,
+      },
+      {
+        id: "post-follow-up-draft",
+        nodeType: "action",
+        actionType: "single_draft",
+        title: "Follow-up draft",
+        description: "Recap, commitments, attached docs",
+        timingLabel: "+30 min",
+        statusLabel: "Draft",
+        locked: true,
+      },
+    ],
+    attentionItems: [
+      { id: "post-capture-pending", label: "capture pending", count: 1, actionLabel: "Open capture", stepId: "post-capture-form" },
+      { id: "post-draft-pending", label: "follow-up draft waiting", count: 1, actionLabel: "Review draft", stepId: "post-follow-up-draft" },
+    ],
+    stateSummary: {
+      title: "Recent meetings last 7 days",
+      segments: [
+        { id: "post-prep", label: "Prep", drafted: 0, sent: 4, waiting: 0 },
+        { id: "post-capture", label: "Capture", drafted: 1, sent: 3, waiting: 1 },
+        { id: "post-followup", label: "Follow-up", drafted: 1, sent: 3, waiting: 0 },
+      ],
+      replied: 2,
+      readyForOutcome: 0,
+      skipped: 1,
+    },
+    runHistory: [
+      {
+        id: "run-post-ubs",
+        listName: "UBS HFS - Charly Malek",
+        startedAtLabel: "today 2:00pm",
+        lpCount: 1,
+        statusLabel: "In progress",
+        outcomeSummary: "Awaiting capture form",
+      },
+      {
+        id: "run-post-cppib",
+        listName: "CPPIB - Frank Ieraci",
+        startedAtLabel: "today 11:00am",
+        lpCount: 1,
+        statusLabel: "Complete",
+        outcomeSummary: "Follow-up approved 1h ago",
+      },
+    ],
+  },
+  {
+    id: "wf-f7-three-touch",
+    name: "F7 Three-Touch Qualification",
+    kind: "locked_default",
+    status: "active",
+    badgeLabel: "Default",
+    triggerLabel: "Manual on Fat Middle LPs or suggested when Fat Middle > 0",
+    summary: "Insight - wait - question - wait - respectful close - outcome capture",
+    stats: [
+      { label: "Running now", value: "14" },
+      { label: "Done last 30d", value: "28" },
+    ],
+    meta: [
+      { label: "Last activity", value: "Touch 2 drafted for Lingotto - 14m ago" },
+      { label: "Outbound safety", value: "14-day same-message dedup active", tone: "good" },
+    ],
+    steps: [
+      {
+        id: "f7-trigger",
+        nodeType: "trigger",
+        actionType: "run_config",
+        title: "GP runs on a Fat Middle list",
+        description: "Cohort enrolled together with same cadence",
+        statusLabel: "When",
+        locked: true,
+      },
+      {
+        id: "f7-touch-1",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Insight email",
+        description: "Mandate-relevant market insight",
+        timingLabel: "Touch 1 - Day 0",
+        statusLabel: "Drafts",
+        draftBatchId: "batch-f7-touch-1",
+        locked: true,
+      },
+      {
+        id: "f7-wait-1",
+        nodeType: "wait",
+        actionType: "settings",
+        title: "Wait",
+        description: "Spacing before touch 2",
+        timingLabel: "5-7d",
+        locked: true,
+      },
+      {
+        id: "f7-touch-2",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Question email",
+        description: "Single low-friction question referencing prior touch",
+        timingLabel: "Touch 2 - Day 5-7",
+        statusLabel: "Drafts",
+        locked: true,
+      },
+      {
+        id: "f7-wait-2",
+        nodeType: "wait",
+        actionType: "settings",
+        title: "Wait",
+        description: "Allow replies before final touch",
+        timingLabel: "5-7d",
+        locked: true,
+      },
+      {
+        id: "f7-touch-3",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Respectful close",
+        description: "Re-engage cleanly or invite an exit",
+        timingLabel: "Touch 3 - Day 12-14",
+        statusLabel: "Drafts",
+        locked: true,
+      },
+      {
+        id: "f7-outcome",
+        nodeType: "outcome",
+        actionType: "outcome_capture",
+        title: "Pick the outcome",
+        description: "Warmer, maintaining, or dormant",
+        statusLabel: "You",
+        locked: true,
+      },
+    ],
+    attentionItems: [
+      { id: "f7-drafts", label: "drafts awaiting approval", count: 3, actionLabel: "Review now", stepId: "f7-touch-1" },
+      { id: "f7-replies", label: "LPs replied", count: 2, actionLabel: "Review replies" },
+      { id: "f7-outcome", label: "ready for outcome capture", count: 1, actionLabel: "Capture outcome", stepId: "f7-outcome" },
+    ],
+    stateSummary: {
+      title: "Where the 14 in-flight LPs are right now",
+      segments: [
+        { id: "f7-state-touch-1", label: "Touch 1 - Insight", drafted: 3, sent: 2, waiting: 2 },
+        { id: "f7-state-touch-2", label: "Touch 2 - Question", drafted: 0, sent: 4, waiting: 0 },
+        { id: "f7-state-touch-3", label: "Touch 3 - Close", drafted: 0, sent: 3, waiting: 0 },
+      ],
+      replied: 2,
+      readyForOutcome: 1,
+      skipped: 3,
+    },
+    runHistory: [
+      {
+        id: "run-f7-fat-middle",
+        listName: "Quiet - Fat Middle",
+        startedAtLabel: "started 12 May",
+        lpCount: 18,
+        statusLabel: "14 running",
+        outcomeSummary: "3 done - 1 skipped",
+      },
+      {
+        id: "run-f7-reups",
+        listName: "Re-ups - Fund II investors",
+        startedAtLabel: "started 28 Apr",
+        lpCount: 14,
+        statusLabel: "All complete",
+        outcomeSummary: "9 warmer - 4 maintaining - 1 dormant",
+      },
+    ],
+  },
+  {
+    id: "wf-themed-outreach",
+    name: "Themed Outreach",
+    kind: "configurable_template",
+    status: "inactive",
+    badgeLabel: "Starting template",
+    triggerLabel: "GP picks a List and provides a theme or content kernel",
+    summary: "Cohort selection - batch drafting - Action Drawer review - optional 7-day follow-up",
+    stats: [{ label: "Not running", value: "-", tone: "muted" }],
+    meta: [
+      { label: "Last run", value: "Never run on this list" },
+      { label: "Outbound safety", value: "14-day same-message dedup active", tone: "good" },
+    ],
+    steps: [
+      {
+        id: "themed-trigger",
+        nodeType: "trigger",
+        actionType: "run_config",
+        title: "GP launches with topic",
+        description: "Run modal captures theme and content kernel",
+      },
+      {
+        id: "themed-batch-draft",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Personalized outreach",
+        description: "Per-LP context and tone-profile drafts",
+        timingLabel: "Day 0",
+        draftBatchId: "batch-themed-day-0",
+      },
+      {
+        id: "themed-wait",
+        nodeType: "wait",
+        actionType: "settings",
+        title: "Wait",
+        description: "Track replies and scheduling acceptances",
+        timingLabel: "7d",
+      },
+      {
+        id: "themed-follow-up",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Follow-up to non-responders",
+        description: "Optional light nudge for non-replies",
+        timingLabel: "Day 7",
+      },
+    ],
+    attentionItems: [
+      { id: "themed-setup", label: "template ready to configure", count: 1, actionLabel: "Configure run", stepId: "themed-trigger" },
+    ],
+    stateSummary: {
+      title: "No active run on this list",
+      segments: [
+        { id: "themed-state-draft", label: "Draft", drafted: 0, sent: 0, waiting: 0 },
+        { id: "themed-state-followup", label: "Follow-up", drafted: 0, sent: 0, waiting: 0 },
+      ],
+      replied: 0,
+      readyForOutcome: 0,
+      skipped: 0,
+    },
+    runHistory: [
+      {
+        id: "run-themed-hardcap",
+        listName: "All Tier 1 + Tier 2",
+        startedAtLabel: "23 Apr",
+        lpCount: 87,
+        statusLabel: "Complete",
+        outcomeSummary: "64 replies - 23 silent",
+      },
+    ],
+    runConfig: {
+      workflowId: "wf-themed-outreach",
+      fields: [
+        { id: "list", label: "List", value: "Quiet - Fat Middle" },
+        { id: "theme", label: "Theme", value: "European credit dispersion", helperText: "Free-text content kernel for this run" },
+        { id: "follow_up", label: "Optional follow-up", value: "Enabled after 7 days" },
+      ],
+    },
+  },
+  {
+    id: "wf-trip-orchestrator",
+    name: "Trip Orchestrator",
+    kind: "configurable_template",
+    status: "inactive",
+    badgeLabel: "Saved configuration",
+    baseTemplateId: "wf-themed-outreach",
+    triggerLabel: "GP enters destination and date range or Tomo detects a multi-day trip",
+    summary: "Destination filter - trip-themed outreach - batch review - scheduling constrained to trip dates",
+    stats: [{ label: "Not running", value: "-", tone: "muted" }],
+    meta: [
+      { label: "Detected trip", value: "London - June 12-15", tone: "good" },
+      { label: "Scheduling window", value: "Trip dates only" },
+    ],
+    steps: [
+      {
+        id: "trip-trigger",
+        nodeType: "trigger",
+        actionType: "run_config",
+        title: "Trip configured",
+        description: "Destination and date range supplied by GP or calendar detection",
+      },
+      {
+        id: "trip-filter-location",
+        nodeType: "action",
+        actionType: "settings",
+        title: "Filter by location",
+        description: "Apply city / region filter to selected List",
+      },
+      {
+        id: "trip-draft-outreach",
+        nodeType: "action",
+        actionType: "draft_batch",
+        title: "Trip outreach drafts",
+        description: "Personalized date-bounded meeting asks",
+        draftBatchId: "batch-trip-london",
+      },
+      {
+        id: "trip-scheduling",
+        nodeType: "action",
+        actionType: "settings",
+        title: "Scheduling reply handling",
+        description: "Scheduling assistant proposes times inside the trip window",
+      },
+      {
+        id: "trip-outcome",
+        nodeType: "outcome",
+        actionType: "outcome_capture",
+        title: "Outcome tracking",
+        description: "Replies, meetings scheduled, declines, and no response",
+      },
+    ],
+    attentionItems: [
+      { id: "trip-config", label: "detected trip ready to review", count: 1, actionLabel: "Configure trip", stepId: "trip-trigger" },
+    ],
+    stateSummary: {
+      title: "London trip run preview",
+      segments: [
+        { id: "trip-state-filter", label: "Location filter", drafted: 0, sent: 0, waiting: 0 },
+        { id: "trip-state-drafts", label: "Draft outreach", drafted: 2, sent: 0, waiting: 0 },
+        { id: "trip-state-scheduling", label: "Scheduling", drafted: 0, sent: 0, waiting: 0 },
+      ],
+      replied: 0,
+      readyForOutcome: 0,
+      skipped: 0,
+    },
+    runHistory: [
+      {
+        id: "run-trip-ny",
+        listName: "North America roadshow - May",
+        startedAtLabel: "5 May",
+        lpCount: 22,
+        statusLabel: "Complete",
+        outcomeSummary: "9 meetings scheduled - 4 declined - 9 silent",
+      },
+    ],
+    runConfig: {
+      workflowId: "wf-trip-orchestrator",
+      fields: [
+        { id: "destination", label: "Destination", value: "London" },
+        { id: "date_window", label: "Date window", value: "June 12-15" },
+        { id: "availability", label: "Scheduling constraint", value: "Only propose times inside trip window" },
+      ],
+    },
+  },
+];
+
+export function getWorkflowSurfaceEntry(id: string): WorkflowSurfaceEntry | undefined {
+  return workflowSurfaceEntries.find((entry) => entry.id === id);
+}
+
+export function getWorkflowDraftBatch(id: string): WorkflowDraftBatch | undefined {
+  return workflowSurfaceDraftBatches.find((batch) => batch.id === id);
+}
