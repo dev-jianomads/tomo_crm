@@ -6,6 +6,7 @@
  * - Cross-link to Materials/Briefs for prep and Actions for execution
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
@@ -57,7 +58,7 @@ import {
 import { WhereRaiseStandsCard } from "@/components/where-raise-stands-card";
 import { useRelationships } from "@/components/relationships-provider";
 import { actions, briefs, commitments, type ActionAttentionCard, type ActionItem } from "@/lib/mockData";
-import { computeRaiseStandsFromRelationships } from "@/lib/todayRaiseStands";
+import { computeRaiseStandsFromRelationships, isGenuinelyMoveableMock } from "@/lib/todayRaiseStands";
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -491,6 +492,15 @@ export default function HomePage() {
 
   const raiseStandsBreakdown = useMemo(() => computeRaiseStandsFromRelationships(relationships), [relationships]);
 
+  const focusListTeaser = useMemo(
+    () =>
+      relationships
+        .filter((r) => isGenuinelyMoveableMock(r))
+        .slice(0, 10)
+        .map((r) => ({ id: r.id, line: `${r.firm} · ${r.name}` })),
+    [relationships],
+  );
+
   const sortedCommitments = useMemo(() => {
     const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const windowOrder: Record<string, number> = { today: 0, next72h: 1 };
@@ -875,6 +885,35 @@ export default function HomePage() {
                 scrollable
               />
               <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} />
+              <div className="mt-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
+                <div className="mb-2 flex items-baseline justify-between gap-2">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                    Focus list
+                  </h3>
+                  <Link
+                    href="/relationships?raiseStand=genuinely_moveable"
+                    className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]"
+                  >
+                    All moveable →
+                  </Link>
+                </div>
+                {focusListTeaser.length === 0 ? (
+                  <p className="text-[13px] leading-snug text-[color:var(--tomo-mute)]">No moveable LPs in this snapshot.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {focusListTeaser.map((row) => (
+                      <li key={row.id} className="truncate text-[13px]">
+                        <Link
+                          href={`/relationships?focus=${encodeURIComponent(row.id)}`}
+                          className="text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
+                        >
+                          {row.line}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         </div>

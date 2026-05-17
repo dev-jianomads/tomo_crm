@@ -1,7 +1,6 @@
 /**
- * Insights — Singapore demo slice (Geoff Q2 2026 spec).
- * Sections 1–2: mock data representing nightly job output. Sections 3–4: honest stubs.
- * Evidence only: inline formulas, no tooltips-only; no charts in demo slice (S3 sparkline deferred).
+ * Insights — three-section V1 layout (SRS §3.6 daily-surfaces amendment).
+ * Evidence lines only; Fat Middle cohort is a Relationships filter (no gauge in this slice).
  */
 
 "use client";
@@ -135,7 +134,6 @@ export default function InsightsPage() {
   const e = MOCK.execution;
   const p = MOCK.pipelineIntel;
   const directionalPct = Math.round((p.directional.withSignal / p.directional.activeLps) * 100);
-  const showFatMiddlePrompt = p.fatMiddle.yourPct < p.fatMiddle.promptThreshold;
   const showDraftNudge = e.draftApproval.pct < 50;
 
   const listContent = (
@@ -146,19 +144,103 @@ export default function InsightsPage() {
       />
       <div className="flex-1 overflow-auto px-4 pb-8 pt-2">
         <div className="mx-auto max-w-2xl space-y-12">
-          {/* Section 1 — Execution Health */}
+          {/* 1 · Where your raise stands */}
           <section aria-labelledby="insights-s1">
             <SectionTitle>
-              <span id="insights-s1">1 · Execution Health</span>
+              <span id="insights-s1">1 · Where your raise stands</span>
             </SectionTitle>
             <p className="mt-1 text-sm" style={{ color: C.slate }}>
-              TOMO&apos;s own behaviour — available from day one.
+              Pipeline coverage and cohort health — ties to Today and Relationships.
             </p>
             <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2">
-              <Metric
-                title="Follow-up compliance rate"
-                formula={e.followUp.formula}
-              >
+              <Metric title="Relationships with a clear direction" formula={p.directional.formula}>
+                <p className="text-lg font-medium tabular-nums text-gray-900">
+                  <span style={{ color: C.teal }}>{p.directional.withSignal}</span>
+                  <span className="text-gray-500"> of </span>
+                  {p.directional.activeLps} relationships now have a directional signal
+                  <span className="text-gray-500"> ({directionalPct}%)</span>
+                </p>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: C.slate }}>
+                  {p.directional.context}
+                </p>
+              </Metric>
+
+              <Metric title="Relationships rescued from silence" formula={p.rescued.formula}>
+                <p className="text-4xl font-semibold tabular-nums" style={{ color: C.teal }}>
+                  {p.rescued.count}
+                </p>
+                <p className="mt-1 text-sm" style={{ color: C.slate }}>
+                  relationships flagged before they went cold since connection
+                </p>
+                <Link
+                  href="/relationships"
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+                  style={{ color: C.teal }}
+                >
+                  Open Relationships
+                  <ArrowRightIcon className="h-4 w-4" aria-hidden />
+                </Link>
+              </Metric>
+
+              <Metric title="Focus list &amp; Fat Middle cohort" formula={p.fatMiddle.formula}>
+                <p className="text-sm leading-relaxed" style={{ color: C.slate }}>
+                  Metric 10 (Focus list) caps at ten moveable LPs on Today. The Fat Middle diagnostic remains available as a named
+                  filter in Relationships — no standalone gauge here.
+                </p>
+                <p className="mt-3 text-sm" style={{ color: C.slate }}>
+                  <Link href="/relationships" className="font-medium underline decoration-[#0D7377]/40 underline-offset-2 hover:decoration-[#0D7377]" style={{ color: C.teal }}>
+                    Open Relationships
+                  </Link>{" "}
+                  and use the &quot;Quiet — Fat middle&quot; quick filter, or{" "}
+                  <Link
+                    href={`/workflows?tomoDefault=${THREE_TOUCH_WORKFLOW}`}
+                    className="font-medium underline decoration-[#0D7377]/40 underline-offset-2 hover:decoration-[#0D7377]"
+                    style={{ color: C.teal }}
+                  >
+                    launch Three-Touch Qualification
+                  </Link>{" "}
+                  on that cohort.
+                </p>
+              </Metric>
+            </div>
+          </section>
+
+          {/* 2 · Momentum */}
+          <section aria-labelledby="insights-s2">
+            <SectionTitle>
+              <span id="insights-s2">2 · Momentum</span>
+            </SectionTitle>
+            <p className="mt-1 text-sm" style={{ color: C.slate }}>
+              Velocity and stage motion — ships after the demo window when signal history matures.
+            </p>
+            <div className="mt-4 space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/30 px-4 py-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pipeline velocity</p>
+                <p className="mt-2 text-sm" style={{ color: C.slate }}>
+                  Average days between meaningful touches — with an 8-week sparkline and direction vs connection — unlocks after
+                  Raise Momentum goes live. No placeholder percentage shown.
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Stage progression rate</p>
+                <p className="mt-2 text-sm" style={{ color: C.slate }}>
+                  Available after 30 days — monitoring for stage movements. Shows % of LPs who moved at least one pipeline stage
+                  since connection.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* 3 · What TOMO has done */}
+          <section aria-labelledby="insights-s3">
+            <SectionTitle>
+              <span id="insights-s3">3 · What TOMO has done</span>
+            </SectionTitle>
+            <p className="mt-1 text-sm" style={{ color: C.slate }}>
+              TOMO&apos;s own execution behaviour — available from day one.
+            </p>
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2">
+              <Metric title="Follow-up compliance rate" formula={e.followUp.formula}>
                 <p className="text-4xl font-semibold tabular-nums" style={{ color: C.teal }}>
                   {e.followUp.pct}%
                 </p>
@@ -181,11 +263,7 @@ export default function InsightsPage() {
                     {e.draftApproval.pct}%
                   </p>
                   <span className="text-sm text-gray-600">approved without edits</span>
-                  <TrendPill
-                    direction="up"
-                    goodWhen="up"
-                    label={`Improving vs ${e.draftApproval.priorPct}% prior period`}
-                  />
+                  <TrendPill direction="up" goodWhen="up" label={`Improving vs ${e.draftApproval.priorPct}% prior period`} />
                 </div>
                 {showDraftNudge ? (
                   <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -220,127 +298,6 @@ export default function InsightsPage() {
             </div>
           </section>
 
-          {/* Section 2 — Pipeline Intelligence */}
-          <section aria-labelledby="insights-s2">
-            <SectionTitle>
-              <span id="insights-s2">2 · Pipeline Intelligence</span>
-            </SectionTitle>
-            <p className="mt-1 text-sm" style={{ color: C.slate }}>
-              Signal coverage and relationship quality — typically day 3–7 once computation catches up.
-            </p>
-            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2">
-              <Metric title="Relationships with a clear direction" formula={p.directional.formula}>
-                <p className="text-lg font-medium tabular-nums text-gray-900">
-                  <span style={{ color: C.teal }}>{p.directional.withSignal}</span>
-                  <span className="text-gray-500"> of </span>
-                  {p.directional.activeLps} relationships now have a directional signal
-                  <span className="text-gray-500"> ({directionalPct}%)</span>
-                </p>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: C.slate }}>
-                  {p.directional.context}
-                </p>
-              </Metric>
-
-              <Metric title="Fat Middle diagnostic" formula={p.fatMiddle.formula}>
-                <p className="text-sm leading-relaxed" style={{ color: C.slate }}>
-                  Your rate:{" "}
-                  <span className="text-2xl font-semibold tabular-nums" style={{ color: C.teal }}>
-                    {p.fatMiddle.yourPct}%
-                  </span>{" "}
-                  · Industry norm: {p.fatMiddle.industryNorm} · Closing raise target: {p.fatMiddle.raiseTarget}
-                </p>
-                {showFatMiddlePrompt ? (
-                  <p className="mt-3 text-sm" style={{ color: C.slate }}>
-                    <Link
-                      href={`/workflows?tomoDefault=${THREE_TOUCH_WORKFLOW}`}
-                      className="font-medium underline decoration-[#0D7377]/40 underline-offset-2 hover:decoration-[#0D7377]"
-                      style={{ color: C.teal }}
-                    >
-                      Launch Three-Touch Qualification on your Fat Middle list
-                    </Link>{" "}
-                    to move this number.
-                  </p>
-                ) : null}
-              </Metric>
-
-              <Metric title="Relationships rescued from silence" formula={p.rescued.formula}>
-                <p className="text-4xl font-semibold tabular-nums" style={{ color: C.teal }}>
-                  {p.rescued.count}
-                </p>
-                <p className="mt-1 text-sm" style={{ color: C.slate }}>
-                  relationships flagged before they went cold since connection
-                </p>
-                <Link
-                  href="/relationships"
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium hover:underline"
-                  style={{ color: C.teal }}
-                >
-                  Open Relationships
-                  <ArrowRightIcon className="h-4 w-4" aria-hidden />
-                </Link>
-                <p className="mt-1 text-[11px]" style={{ color: C.formula }}>
-                  Saved filter for this cohort will apply when wired — link opens Relationships for now.
-                </p>
-              </Metric>
-            </div>
-          </section>
-
-          {/* Section 3 — Raise Momentum (stubbed for Singapore demo) */}
-          <section aria-labelledby="insights-s3">
-            <SectionTitle>
-              <span id="insights-s3">3 · Raise Momentum</span>
-            </SectionTitle>
-            <p className="mt-1 text-sm" style={{ color: C.slate }}>
-              Full momentum metrics ship after the demo — signal needs ~7–14 days to mature.
-            </p>
-            <div className="mt-4 space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/30 px-4 py-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pipeline velocity</p>
-                <p className="mt-2 text-sm" style={{ color: C.slate }}>
-                  Average days between meaningful touches — with an 8-week sparkline and direction vs connection — unlocks after
-                  Raise Momentum goes live. No placeholder percentage shown.
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Stage progression rate</p>
-                <p className="mt-2 text-sm" style={{ color: C.slate }}>
-                  Available after 30 days — monitoring for stage movements. Shows % of LPs who moved at least one pipeline stage
-                  since connection.
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Cooling relationships caught</p>
-                <p className="mt-2 text-sm" style={{ color: C.slate }}>
-                  Currently flagged vs resolved (last 30 days) will appear here with definitions for amber/red and
-                  &quot;resolved&quot; after a TOMO-triggered touch.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 4 — Capital Influenced */}
-          <section aria-labelledby="insights-s4">
-            <SectionTitle>
-              <span id="insights-s4">4 · Capital influenced</span>
-            </SectionTitle>
-            <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-4 py-4">
-              <p className="text-sm leading-relaxed" style={{ color: C.slate }}>
-                Once you log a close in TOMO, we&apos;ll show which closes had active TOMO workflows on the relationship. We show
-                correlation only — you draw your own conclusions.
-              </p>
-              <ul className="mt-4 list-inside list-disc space-y-2 text-sm" style={{ color: C.slate }}>
-                <li>
-                  <strong className="font-medium text-gray-800">Closes with TOMO active</strong> — e.g. &quot;4 of your last 6
-                  closes had TOMO active on the relationship for 30+ days before signing,&quot; each close linkable to the LP record.
-                </li>
-                <li>
-                  <strong className="font-medium text-gray-800">Time-to-close comparison</strong> — populates at 3+ closes logged;
-                  compares TOMO-active relationships to historical baseline from email history.
-                </li>
-              </ul>
-            </div>
-          </section>
-
           <p className="text-center text-xs leading-relaxed" style={{ color: C.slate }}>
             {MOCK.lastUpdatedLabel}
           </p>
@@ -357,8 +314,8 @@ export default function InsightsPage() {
       detailVisible={false}
       contextTitle="Insights"
       assistantChips={[
-        "Summarize execution health",
-        "Explain Fat Middle diagnostic",
+        "Summarize where the raise stands",
+        "What is the Focus list?",
         "What counts as a meaningful touch?",
       ]}
     />

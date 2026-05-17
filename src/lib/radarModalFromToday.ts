@@ -122,6 +122,7 @@ export function buildRadarModalPayload(
       allBriefs: input.allBriefs,
       stillInTodoActions: input.stillInTodoActions,
       relationships: input.relationships ?? [],
+      now,
     });
     const badgeCount = countRadarBadgeEligibleRows(sections);
     const totalItems = countRadarModalTotalItems(sections);

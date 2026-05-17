@@ -45,7 +45,11 @@ export function relationshipToLpContactRecord(
 ): LpContactRecord {
   const evidence = buildSignalEvidence(rel);
   const prior = mockDaysInPriorStage(rel);
-  const pf = derivePipelineFlagMock(rel);
+  const relForFlag: Relationship = {
+    ...rel,
+    offChannelActiveUntil: options?.offChannelActiveUntilIso ?? rel.offChannelActiveUntil ?? null,
+  };
+  const pf = derivePipelineFlagMock(relForFlag);
 
   return {
     id: rel.id,

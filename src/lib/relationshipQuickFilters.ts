@@ -49,7 +49,7 @@ export const RELATIONSHIP_QUICK_FILTERS: RelationshipQuickFilter[] = [
   },
   {
     id: "quiet-fat-middle",
-    label: "Quiet — Fat Middle",
+    label: "Quiet — Fat middle",
     criteria: { momentumDirection: "Stable", tier: "Tier 2", band: "Active-Stable" },
     srsNote: "§3.11 Quiet — Fat Middle — production: warm stages + no directional signal 30d; mock: coarse surrogate.",
   },

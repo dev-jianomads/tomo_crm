@@ -149,6 +149,8 @@ export type Relationship = {
   openLoops: number;
   /** Derived from momentumDirection + days for filter/display */
   band: Band;
+  /** GP-set `lp_state.off_channel_active_until` (ISO) — hydrated in demo from `/api/lp-contacts` + client store. */
+  offChannelActiveUntil?: string | null;
 };
 
 /** Format days since contact for display (e.g. "3d ago", "14d ago") */

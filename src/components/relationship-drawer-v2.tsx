@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
+import { useRelationships } from "@/components/relationships-provider";
+import { isOffChannelActiveAt } from "@/lib/signals/offChannelRules";
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { Relationship } from "@/lib/mockData";
 import {
@@ -66,9 +69,25 @@ export function RelationshipDrawerV2({
 }: RelationshipDrawerV2Props) {
   const [crmOpen, setCrmOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  const [offBusy, setOffBusy] = useState(false);
+  const { patchOffChannel } = useRelationships();
 
   const evidence = buildSignalEvidence(rel);
   const flag = derivePipelineFlagMock(rel);
+  const offActive = isOffChannelActiveAt(rel.offChannelActiveUntil ?? null, new Date());
+  const offUntilLabel = rel.offChannelActiveUntil?.slice(0, 10) ?? "";
+
+  const runOffChannel = async (action: "set" | "extend" | "clear") => {
+    setOffBusy(true);
+    try {
+      await patchOffChannel(rel.id, action);
+      toast.success(action === "clear" ? "Off-channel cleared" : "Off-channel window updated");
+    } catch {
+      toast.error("Could not update off-channel");
+    } finally {
+      setOffBusy(false);
+    }
+  };
   const daysIn = mockDaysInCurrentStage(rel);
   const prior = mockDaysInPriorStage(rel);
   const loops = buildMockOpenLoopRows(rel);
@@ -185,6 +204,51 @@ export function RelationshipDrawerV2({
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">Owner</p>
             <p className="mt-1 text-sm text-[color:var(--tomo-navy)]">{rel.relationshipOwner}</p>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-5 py-4">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-[color:var(--tomo-mute)]">Off-channel</span>
+          {offActive ? (
+            <span className="rounded-full bg-[color:var(--tomo-teal-tint)] px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[color:var(--tomo-teal)]">
+              Active until {offUntilLabel}
+            </span>
+          ) : (
+            <span className="rounded-full bg-[color:var(--tomo-navy-soft)] px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[color:var(--tomo-mute)]">
+              Inactive
+            </span>
+          )}
+        </div>
+        <p className="text-sm leading-relaxed text-[color:var(--tomo-body)]">
+          Mark when you are working this LP outside monitored channels so silence-class drift signals and Gone quiet rows pause
+          for the window.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={offBusy}
+            onClick={() => void runOffChannel("set")}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] px-2.5 py-1.5 font-mono text-[10px] font-medium text-[color:var(--tomo-teal)] transition enabled:hover:bg-[color:var(--tomo-teal-tint)] disabled:opacity-50"
+          >
+            Mark 30d
+          </button>
+          <button
+            type="button"
+            disabled={offBusy || !offActive}
+            onClick={() => void runOffChannel("extend")}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-2.5 py-1.5 font-mono text-[10px] font-medium text-[color:var(--tomo-mute)] transition enabled:hover:border-[color:var(--tomo-teal)] enabled:hover:text-[color:var(--tomo-teal)] disabled:opacity-50"
+          >
+            +30d
+          </button>
+          <button
+            type="button"
+            disabled={offBusy || !offActive}
+            onClick={() => void runOffChannel("clear")}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-2.5 py-1.5 font-mono text-[10px] font-medium text-[color:var(--tomo-mute)] transition enabled:hover:border-[color:var(--tomo-red)] enabled:hover:text-[color:var(--tomo-red)] disabled:opacity-50"
+          >
+            Clear
+          </button>
         </div>
       </div>
 

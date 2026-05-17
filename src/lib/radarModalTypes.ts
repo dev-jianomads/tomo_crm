@@ -6,15 +6,8 @@
 
 import type { DailyBriefLink } from "@/lib/dailyBriefFromToday";
 
-/** Section identifiers — order matches Appendix I.3 */
-export type RadarSectionId =
-  | "returning_to_you"
-  | "commitments_yours"
-  | "commitments_theirs"
-  | "heating_up"
-  | "cooling_off"
-  | "quiet_beyond_cadence"
-  | "next_7_days";
+/** Section identifiers — order matches Appendix I.3 (five top-level sections; Commitments uses sub-rails). */
+export type RadarSectionId = "commitments" | "heating_up" | "cooling_off" | "gone_quiet" | "next_7_days";
 
 /** Heating / Cooling sections use optional direction labels in the UI */
 export type RadarSectionDirection = "positive" | "negative";
@@ -71,6 +64,15 @@ export type RadarItem = {
   link?: RadarNavigateLink;
 };
 
+/** Nested rail under **Commitments** (Returning / Yours / Theirs). */
+export type RadarSubsection = {
+  id: string;
+  title: string;
+  items: RadarItem[];
+  countSummary: string;
+  emptyMessage?: string;
+};
+
 export type RadarModalSection = {
   id: RadarSectionId;
   /** Section heading — must match Appendix I.3 titles for shipped product */
@@ -80,6 +82,8 @@ export type RadarModalSection = {
   defaultCollapsed: boolean;
   direction?: RadarSectionDirection;
   items: RadarItem[];
+  /** When `items` is empty and the Commitments block uses nested rails */
+  subsections?: RadarSubsection[];
   /** When items.length === 0 and section is shown */
   emptyMessage?: string;
 };

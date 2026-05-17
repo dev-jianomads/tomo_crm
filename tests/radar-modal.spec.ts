@@ -15,8 +15,8 @@ test.describe("Phase 5 — Radar Modal (Appendix I)", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("heading", { name: /^On my radar$/i })).toBeVisible();
 
-    await expect(dialog.getByRole("button", { name: "Returning to you" })).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Your commitments approaching" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Commitments" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Gone quiet" })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Next 7 days at a glance" })).toBeVisible();
 
     await expect(dialog.getByText(/Daily Brief delivered also via email/i)).toBeVisible();

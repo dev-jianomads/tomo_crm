@@ -6,11 +6,36 @@ const ROWS: {
   label: string;
   dotClass: string;
   countClass: string;
+  href: string;
 }[] = [
-  { key: "genuinelyMoveable", label: "Genuinely moveable", dotClass: "bg-[color:var(--tomo-teal)]", countClass: "text-[color:var(--tomo-teal-muted)]" },
-  { key: "healthyOnTrack", label: "Healthy & on track", dotClass: "bg-emerald-500", countClass: "text-emerald-700 dark:text-emerald-400/90" },
-  { key: "coolingWatch", label: "Cooling — watch", dotClass: "bg-amber-400", countClass: "text-amber-800 dark:text-amber-300/90" },
-  { key: "driftingAct", label: "Drifting — act", dotClass: "bg-red-500", countClass: "text-red-700 dark:text-red-400/90" },
+  {
+    key: "genuinelyMoveable",
+    label: "Moveable",
+    dotClass: "bg-[color:var(--tomo-teal)]",
+    countClass: "text-[color:var(--tomo-teal-muted)]",
+    href: "/relationships?raiseStand=genuinely_moveable",
+  },
+  {
+    key: "healthyOnTrack",
+    label: "Healthy & on track",
+    dotClass: "bg-emerald-500",
+    countClass: "text-emerald-700 dark:text-emerald-400/90",
+    href: "/relationships?raiseStand=healthy_on_track",
+  },
+  {
+    key: "coolingWatch",
+    label: "Stalling — watch",
+    dotClass: "bg-amber-400",
+    countClass: "text-amber-800 dark:text-amber-300/90",
+    href: "/relationships?raiseStand=cooling_watch",
+  },
+  {
+    key: "driftingAct",
+    label: "Drifting — act",
+    dotClass: "bg-red-500",
+    countClass: "text-red-700 dark:text-red-400/90",
+    href: "/relationships?raiseStand=drifting_act",
+  },
 ];
 
 type Props = {
@@ -36,13 +61,21 @@ export function WhereRaiseStandsCard({ breakdown, className = "" }: Props) {
         </Link>
       </div>
       <ul className="space-y-1.5">
-        {ROWS.map(({ key, label, dotClass, countClass }) => (
+        {ROWS.map(({ key, label, dotClass, countClass, href }) => (
           <li key={key} className="flex items-center justify-between gap-3 text-[13px]">
-            <span className="flex min-w-0 items-center gap-2 text-[color:var(--tomo-body)]">
+            <Link
+              href={href}
+              className="flex min-w-0 flex-1 items-center gap-2 text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
+            >
               <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden />
               <span className="truncate">{label}</span>
-            </span>
-            <span className={`shrink-0 font-mono text-sm tabular-nums font-medium ${countClass}`}>{breakdown[key]}</span>
+            </Link>
+            <Link
+              href={href}
+              className={`shrink-0 font-mono text-sm tabular-nums font-medium underline-offset-2 hover:underline ${countClass}`}
+            >
+              {breakdown[key]}
+            </Link>
           </li>
         ))}
       </ul>

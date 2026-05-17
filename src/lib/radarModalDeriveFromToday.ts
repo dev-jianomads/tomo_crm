@@ -5,9 +5,10 @@
 
 import type { ActionItem, Brief, Commitment, Relationship } from "@/lib/mockData";
 import { formatDaysSinceContact } from "@/lib/mockData";
-import type { RadarItem, RadarModalSection, RadarSectionId } from "@/lib/radarModalTypes";
+import type { RadarItem, RadarModalSection, RadarSectionId, RadarSubsection } from "@/lib/radarModalTypes";
 import { getRadarModalAppendixISkeletonSections } from "@/lib/radarModalSeed";
 import { isTodayAttentionSlot } from "@/lib/todayAttentionDates";
+import { isOffChannelActiveAt, shouldOmitFromGoneQuietCohort } from "@/lib/signals/offChannelRules";
 
 const CAP = { returning: 5, yours: 6, theirs: 4, heat: 5, cool: 5, quiet: 4, calendar: 8 } as const;
 
@@ -47,6 +48,8 @@ export type DeriveRadarModalInput = {
   allBriefs: Brief[];
   stillInTodoActions: ActionItem[];
   relationships: Relationship[];
+  /** Fixed clock for tests / suppression windows */
+  now?: Date;
 };
 
 /** Brief lookup for prep-line copy on calendar rows */
@@ -57,10 +60,15 @@ function briefById(allBriefs: Brief[], id: string | undefined): Brief | undefine
 
 export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput): RadarModalSection[] {
   const { sortedActions, sortedCommitments, allBriefs, stillInTodoActions, relationships } = input;
+  const now = input.now ?? new Date();
 
-  let sections: RadarModalSection[] = getRadarModalAppendixISkeletonSections().map((s) => ({ ...s }));
+  let sections: RadarModalSection[] = getRadarModalAppendixISkeletonSections().map((s) => ({
+    ...s,
+    items: [...s.items],
+    subsections: s.subsections?.map((ss) => ({ ...ss, items: [...ss.items] })),
+  }));
 
-  /* ── 1 · Returning — surfaced but drawer never opened (engagement model) ── */
+  /* ── 1 · Commitments — three nested rails ── */
   const returningItems: RadarItem[] = stillInTodoActions.slice(0, CAP.returning).map((a) => ({
     id: `derive-ret-${a.id}`,
     tier: 2,
@@ -85,13 +93,6 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
       ? "0 items · queue opened or cleared"
       : `${returningItems.length} item${returningItems.length === 1 ? "" : "s"} · surfaced, not opened yet`;
 
-  sections = patchSection(sections, "returning_to_you", {
-    items: returningItems,
-    countSummary: retSummary,
-    emptyMessage: returningItems.length === 0 ? sections.find((x) => x.id === "returning_to_you")?.emptyMessage : undefined,
-  });
-
-  /* ── 2 · Your commitments — approval / blocked in Today attention queue ── */
   const yoursPool = sortedActions
     .filter(isTodayAttentionSlot)
     .filter((a) => a.status === "approval" || a.status === "blocked");
@@ -114,16 +115,6 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
     ],
   }));
 
-  sections = patchSection(sections, "commitments_yours", {
-    items: yoursItems,
-    countSummary:
-      yoursItems.length === 0
-        ? "0 due from Today queue"
-        : `${yoursItems.length} in queue needing you`,
-    emptyMessage: yoursItems.length === 0 ? sections.find((x) => x.id === "commitments_yours")?.emptyMessage : undefined,
-  });
-
-  /* ── 3 · Outstanding from LPs — active stages with open loops ── */
   const theirsPool = relationships
     .filter((r) => STAGES_ACTIVE.has(r.stage) && r.openLoops > 0)
     .sort((a, b) => b.openLoops - a.openLoops);
@@ -149,16 +140,47 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
     ],
   }));
 
-  sections = patchSection(sections, "commitments_theirs", {
-    items: theirsItems,
-    countSummary:
-      theirsItems.length === 0
-        ? "0 relationships with outstanding LP-side loops"
-        : `${theirsItems.length} relationship${theirsItems.length === 1 ? "" : "s"} with open loops`,
-    emptyMessage: theirsItems.length === 0 ? sections.find((x) => x.id === "commitments_theirs")?.emptyMessage : undefined,
+  const commitmentsShell = sections.find((x) => x.id === "commitments")!;
+  const subShell = commitmentsShell.subsections!;
+
+  const patchSub = (idx: number, items: RadarItem[], countSummary: string, emptyFallback?: string): RadarSubsection => {
+    const base = subShell[idx]!;
+    return {
+      ...base,
+      items,
+      countSummary,
+      emptyMessage: items.length === 0 ? (emptyFallback ?? base.emptyMessage) : undefined,
+    };
+  };
+
+  const totalCommitRows = returningItems.length + yoursItems.length + theirsItems.length;
+  const commitSummary =
+    totalCommitRows === 0 ? "0 rows · commitments" : `${totalCommitRows} row${totalCommitRows === 1 ? "" : "s"} · commitments`;
+
+  sections = patchSection(sections, "commitments", {
+    items: [],
+    countSummary: commitSummary,
+    emptyMessage: totalCommitRows === 0 ? commitmentsShell.emptyMessage : undefined,
+    subsections: [
+      patchSub(0, returningItems, retSummary, subShell[0]?.emptyMessage),
+      patchSub(
+        1,
+        yoursItems,
+        yoursItems.length === 0 ? "0 due from Today queue" : `${yoursItems.length} in queue needing you`,
+        subShell[1]?.emptyMessage,
+      ),
+      patchSub(
+        2,
+        theirsItems,
+        theirsItems.length === 0
+          ? "0 relationships with outstanding LP-side loops"
+          : `${theirsItems.length} relationship${theirsItems.length === 1 ? "" : "s"} with open loops`,
+        subShell[2]?.emptyMessage,
+      ),
+    ],
   });
 
-  /* ── 4 · Heating up ── */
+  /* ── 2 · Heating up ── */
   const heatPool = relationships.filter((r) => r.momentumDirection === "Heating up").sort((a, b) => {
     const ta = tierFromRelationship(a.tier);
     const tb = tierFromRelationship(b.tier);
@@ -186,13 +208,19 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
     emptyMessage: heatItems.length === 0 ? sections.find((x) => x.id === "heating_up")?.emptyMessage : undefined,
   });
 
-  /* ── 5 · Cooling off ── */
-  const coolPool = relationships.filter((r) => r.momentumDirection === "Cooling").sort((a, b) => {
-    const ta = tierFromRelationship(a.tier);
-    const tb = tierFromRelationship(b.tier);
-    if (ta !== tb) return ta - tb;
-    return b.daysSinceLastMeaningfulContact - a.daysSinceLastMeaningfulContact;
-  });
+  /* ── 3 · Cooling off — omit silence-class cohort when off-channel active (SRS BR-3.5.8) ── */
+  const coolPool = relationships
+    .filter((r) => r.momentumDirection === "Cooling")
+    .filter((r) => {
+      if (!isOffChannelActiveAt(r.offChannelActiveUntil ?? null, now)) return true;
+      return r.band !== "Cooling";
+    })
+    .sort((a, b) => {
+      const ta = tierFromRelationship(a.tier);
+      const tb = tierFromRelationship(b.tier);
+      if (ta !== tb) return ta - tb;
+      return b.daysSinceLastMeaningfulContact - a.daysSinceLastMeaningfulContact;
+    });
 
   const coolItems: RadarItem[] = coolPool.slice(0, CAP.cool).map((r) => ({
     id: `derive-cool-${r.id}`,
@@ -214,9 +242,10 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
     emptyMessage: coolItems.length === 0 ? sections.find((x) => x.id === "cooling_off")?.emptyMessage : undefined,
   });
 
-  /* ── 6 · Quiet beyond cadence — active pipeline + long silence ── */
+  /* ── 4 · Gone quiet ── */
   const quietPool = relationships
     .filter((r) => STAGES_ACTIVE.has(r.stage) && r.daysSinceLastMeaningfulContact >= 10)
+    .filter((r) => !shouldOmitFromGoneQuietCohort(r.offChannelActiveUntil ?? null, now))
     .sort((a, b) => b.daysSinceLastMeaningfulContact - a.daysSinceLastMeaningfulContact);
 
   const quietItems: RadarItem[] = quietPool.slice(0, CAP.quiet).map((r) => ({
@@ -233,16 +262,16 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
     link: relationshipLink(r.id),
   }));
 
-  sections = patchSection(sections, "quiet_beyond_cadence", {
+  sections = patchSection(sections, "gone_quiet", {
     items: quietItems,
     countSummary:
       quietItems.length === 0
         ? "0 diligence threads unusually quiet"
         : `${quietItems.length} thread${quietItems.length === 1 ? "" : "s"} quiet vs typical`,
-    emptyMessage: quietItems.length === 0 ? sections.find((x) => x.id === "quiet_beyond_cadence")?.emptyMessage : undefined,
+    emptyMessage: quietItems.length === 0 ? sections.find((x) => x.id === "gone_quiet")?.emptyMessage : undefined,
   });
 
-  /* ── 7 · Next 7 days — Coming up (commitments + optional brief prep link) ── */
+  /* ── 5 · Next 7 days — Coming up (commitments + optional brief prep link) ── */
   const calPool = sortedCommitments.slice(0, CAP.calendar);
   const calItems: RadarItem[] = calPool.map((c) => {
     const rel = c.relationshipId ? relationships.find((x) => x.id === c.relationshipId) : undefined;
@@ -296,9 +325,16 @@ export function deriveRadarModalSectionsFromToday(input: DeriveRadarModalInput):
   });
 
   /* Clear emptyMessage when section has rows */
-  sections = sections.map((s) =>
-    s.items.length > 0 ? { ...s, emptyMessage: undefined } : s,
-  );
+  sections = sections.map((s) => {
+    if (s.subsections?.length) {
+      const nextSubs = s.subsections.map((sub) =>
+        sub.items.length > 0 ? { ...sub, emptyMessage: undefined } : sub,
+      );
+      const any = nextSubs.some((x) => x.items.length > 0);
+      return { ...s, subsections: nextSubs, emptyMessage: any ? undefined : s.emptyMessage };
+    }
+    return s.items.length > 0 ? { ...s, emptyMessage: undefined } : s;
+  });
 
   return sections;
 }

@@ -1,4 +1,5 @@
 import type { Relationship, Stage } from "@/lib/mockData";
+import { applyOffChannelToPipelineFlag, isOffChannelActiveAt } from "@/lib/signals/offChannelRules";
 
 /** V1 partition buckets for Today “Where the raise stands” (SRS §3.8, Section 9 supplement). */
 export type RaiseStandsBreakdown = {
@@ -56,10 +57,29 @@ function amberTouchThresholdDays(stage: Stage): number | null {
  * Production uses `lp_state.pipeline_flag` (Section 8 §8.7). Mock CRM rows approximate G/A/R from `band`
  * + momentum so the Today tile moves with the same Relationship list as Pipeline / Kanban.
  */
-export function derivePipelineFlagMock(r: Relationship): PipelineFlagGar {
-  if (r.band === "Stalled") return "red";
-  if (r.band === "Cooling" || r.momentumDirection === "Cooling") return "amber";
-  return "green";
+export function derivePipelineFlagMock(r: Relationship, now: Date = new Date()): PipelineFlagGar {
+  let provisional: PipelineFlagGar;
+  if (r.band === "Stalled") {
+    provisional = "red";
+  } else if (r.band === "Cooling" || r.momentumDirection === "Cooling") {
+    provisional = "amber";
+  } else {
+    provisional = "green";
+  }
+
+  const off = r.offChannelActiveUntil ?? null;
+  if (!isOffChannelActiveAt(off, now)) return provisional;
+
+  const silenceOnlyCause = provisional === "amber";
+  return applyOffChannelToPipelineFlag({
+    provisionalFlag: provisional,
+    provisionalReason: "",
+    offChannelActiveUntilIso: off,
+    batchAsOf: now,
+    reEngagementUrgent: false,
+    silenceOnlyCause,
+    directionalCoolingActive: r.momentumDirection === "Cooling",
+  }).pipeline_flag;
 }
 
 /**
@@ -71,10 +91,10 @@ function hasWarmingDirectionalSignalMock(r: Relationship): boolean {
 }
 
 /** Section 9 Metric 3 — count LP if in moveability stages, G/A (not red), warming signal, within touch SLA. */
-export function isGenuinelyMoveableMock(r: Relationship): boolean {
+export function isGenuinelyMoveableMock(r: Relationship, now: Date = new Date()): boolean {
   if (!isActiveRaiseStage(r.stage)) return false;
   if (moveabilityStageGroup(r.stage) == null) return false;
-  const flag = derivePipelineFlagMock(r);
+  const flag = derivePipelineFlagMock(r, now);
   if (flag === "red") return false;
   if (!hasWarmingDirectionalSignalMock(r)) return false;
   const threshold = amberTouchThresholdDays(r.stage);
@@ -89,7 +109,10 @@ export function isGenuinelyMoveableMock(r: Relationship): boolean {
  * 3. Cooling — watch → `pipeline_flag === 'amber'` and not moveable
  * 4. Healthy & on track → `pipeline_flag === 'green'` and not moveable
  */
-export function computeRaiseStandsFromRelationships(relationships: Relationship[]): RaiseStandsBreakdown {
+export function computeRaiseStandsFromRelationships(
+  relationships: Relationship[],
+  now: Date = new Date(),
+): RaiseStandsBreakdown {
   const out: RaiseStandsBreakdown = {
     genuinelyMoveable: 0,
     healthyOnTrack: 0,
@@ -99,12 +122,12 @@ export function computeRaiseStandsFromRelationships(relationships: Relationship[
 
   for (const r of relationships) {
     if (!isActiveRaiseStage(r.stage)) continue;
-    const flag = derivePipelineFlagMock(r);
+    const flag = derivePipelineFlagMock(r, now);
     if (flag === "red") {
       out.driftingAct += 1;
       continue;
     }
-    if (isGenuinelyMoveableMock(r)) {
+    if (isGenuinelyMoveableMock(r, now)) {
       out.genuinelyMoveable += 1;
       continue;
     }
@@ -113,4 +136,21 @@ export function computeRaiseStandsFromRelationships(relationships: Relationship[
   }
 
   return out;
+}
+
+/** URL / filter chip bucket — mutually exclusive partition over active LPs (same rules as {@link computeRaiseStandsFromRelationships}). */
+export type RaiseStandBucketKey = keyof RaiseStandsBreakdown;
+
+export function relationshipMatchesRaiseStandBucket(
+  r: Relationship,
+  key: RaiseStandBucketKey,
+  now: Date = new Date(),
+): boolean {
+  if (!isActiveRaiseStage(r.stage)) return false;
+  const flag = derivePipelineFlagMock(r, now);
+  if (key === "driftingAct") return flag === "red";
+  if (key === "genuinelyMoveable") return isGenuinelyMoveableMock(r, now);
+  if (key === "coolingWatch") return flag === "amber" && !isGenuinelyMoveableMock(r, now);
+  if (key === "healthyOnTrack") return flag === "green" && !isGenuinelyMoveableMock(r, now);
+  return false;
 }

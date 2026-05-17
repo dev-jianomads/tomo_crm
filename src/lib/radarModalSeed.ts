@@ -4,7 +4,7 @@
  * Action/commitment ids reference {@link ./mockData} where possible for drawer navigation.
  */
 
-import type { RadarModalPayload, RadarModalSection, RadarNavigateLink } from "@/lib/radarModalTypes";
+import type { RadarItem, RadarModalPayload, RadarModalSection, RadarNavigateLink } from "@/lib/radarModalTypes";
 
 const action = (id: string): RadarNavigateLink => ({ kind: "action", id });
 const commitment = (id: string): RadarNavigateLink => ({ kind: "commitment", id });
@@ -12,197 +12,224 @@ const brief = (id: string): RadarNavigateLink => ({ kind: "brief", id });
 const relationship = (id: string): RadarNavigateLink => ({ kind: "relationship", id });
 
 /** Rows that count toward the entry badge per Appendix I.6 (navigable / CTA with link). */
+function countBadgeEligibleInItems(items: readonly RadarItem[]): number {
+  let n = 0;
+  for (const item of items) {
+    if (item.link) {
+      n++;
+      continue;
+    }
+    const ctaLinked = item.ctas?.some((c) => c.link != null);
+    if (ctaLinked) n++;
+  }
+  return n;
+}
+
 export function countRadarBadgeEligibleRows(sections: readonly RadarModalSection[]): number {
   let n = 0;
   for (const sec of sections) {
-    for (const item of sec.items) {
-      if (item.link) {
-        n++;
-        continue;
+    n += countBadgeEligibleInItems(sec.items);
+    if (sec.subsections) {
+      for (const sub of sec.subsections) {
+        n += countBadgeEligibleInItems(sub.items);
       }
-      const ctaLinked = item.ctas?.some((c) => c.link != null);
-      if (ctaLinked) n++;
     }
   }
   return n;
 }
 
 export function countRadarModalTotalItems(sections: readonly RadarModalSection[]): number {
-  return sections.reduce((acc, s) => acc + s.items.length, 0);
+  let n = 0;
+  for (const sec of sections) {
+    n += sec.items.length;
+    if (sec.subsections) {
+      for (const sub of sec.subsections) {
+        n += sub.items.length;
+      }
+    }
+  }
+  return n;
 }
 
 function demoSections(): RadarModalSection[] {
-  const returning: RadarModalSection = {
-    id: "returning_to_you",
-    title: "Returning to you",
-    countSummary: "3 items · snoozes expired today",
+  const commitments: RadarModalSection = {
+    id: "commitments",
+    title: "Commitments",
+    countSummary: "8 rows · returning, yours, and LP-side",
     defaultCollapsed: false,
-    items: [
+    items: [],
+    subsections: [
       {
-        id: "radar-ret-1",
-        tier: 1,
-        lpLabel: "CPPIB",
-        personLabel: "Frank Ieraci",
-        tags: [
-          { kind: "tier", tier: 1 },
-          { kind: "custom", label: "Tier 1", tone: "teal" },
-        ],
-        evidencePlain:
-          "You snoozed Frank's intro to the Toronto private credit team on Tuesday. The snooze just expired and his reply velocity has tightened since — last three exchanges 22h, 14h, 6h against typical 18h.",
-        asideLines: ["Snoozed Tue", "2 days"],
-        ctas: [
+        id: "commitments_returning",
+        title: "Returning to you",
+        countSummary: "3 items · snoozes expired today",
+        emptyMessage: "Nothing returning from snooze today.",
+        items: [
           {
-            kind: "bring_to_today",
-            label: "Bring to Today",
-            variant: "primary",
-            link: relationship("r6"),
+            id: "radar-ret-1",
+            tier: 1,
+            lpLabel: "CPPIB",
+            personLabel: "Frank Ieraci",
+            tags: [
+              { kind: "tier", tier: 1 },
+              { kind: "custom", label: "Tier 1", tone: "teal" },
+            ],
+            evidencePlain:
+              "You snoozed Frank's intro to the Toronto private credit team on Tuesday. The snooze just expired and his reply velocity has tightened since — last three exchanges 22h, 14h, 6h against typical 18h.",
+            asideLines: ["Snoozed Tue", "2 days"],
+            ctas: [
+              {
+                kind: "bring_to_today",
+                label: "Bring to Today",
+                variant: "primary",
+                link: relationship("r6"),
+              },
+            ],
+          },
+          {
+            id: "radar-ret-2",
+            tier: 2,
+            lpLabel: "Albourne",
+            personLabel: "James Staltari",
+            tags: [{ kind: "tier", tier: 2 }],
+            evidencePlain:
+              "Operational due-diligence questionnaire from Albourne ops team. You snoozed for 48 hours on Tuesday to gather inputs from Lisa.",
+            asideLines: ["Snoozed Tue", "2 days"],
+            ctas: [
+              {
+                kind: "bring_to_today",
+                label: "Bring to Today",
+                variant: "subtle",
+                link: relationship("r7"),
+              },
+            ],
+          },
+          {
+            id: "radar-ret-3",
+            tier: 2,
+            lpLabel: "Lingotto Investment Management",
+            personLabel: "Edoardo Lanzavecchia",
+            tags: [{ kind: "tier", tier: 2 }],
+            evidencePlain:
+              "Follow-up email after the Mosaic introduction. Snoozed 5 days to land after the Apr 30 Lingotto Q1 publication.",
+            asideLines: ["Snoozed Sat", "5 days"],
+            ctas: [
+              {
+                kind: "bring_to_today",
+                label: "Bring to Today",
+                variant: "subtle",
+                link: action("a6"),
+              },
+            ],
           },
         ],
       },
       {
-        id: "radar-ret-2",
-        tier: 2,
-        lpLabel: "Albourne",
-        personLabel: "James Staltari",
-        tags: [{ kind: "tier", tier: 2 }],
-        evidencePlain:
-          "Operational due-diligence questionnaire from Albourne ops team. You snoozed for 48 hours on Tuesday to gather inputs from Lisa.",
-        asideLines: ["Snoozed Tue", "2 days"],
-        ctas: [
+        id: "commitments_yours",
+        title: "Your commitments approaching",
+        countSummary: "2 due in next 3 days",
+        emptyMessage: "No commitments due in the next three days.",
+        items: [
           {
-            kind: "bring_to_today",
-            label: "Bring to Today",
-            variant: "subtle",
-            link: relationship("r7"),
+            id: "radar-comy-1",
+            tier: 1,
+            lpLabel: "Albourne",
+            personLabel: "James Staltari",
+            tags: [{ kind: "custom", label: "Due tomorrow", tone: "red" }],
+            evidencePlain:
+              'You promised the portfolio positioning deck and Q1 attribution detail "by end of week" on Wednesday\'s call. Tomorrow is Friday. No draft yet — not currently in Today\'s queue.',
+            asideLines: ["Promised Wed", "1 day left"],
+            ctas: [
+              {
+                kind: "draft_now",
+                label: "Draft now",
+                variant: "primary",
+                link: action("a3"),
+              },
+            ],
+          },
+          {
+            id: "radar-comy-2",
+            tier: null,
+            lpLabel: "UBS Hedge Fund Solutions",
+            personLabel: "Charly Malek",
+            tags: [{ kind: "custom", label: "Due Mon", tone: "amber" }],
+            evidencePlain:
+              'Side-letter terms summary (Fund II precedent) was the open ask from Charly\'s Mar 4 email. You promised it for "early next week" on Apr 28 — Monday is the natural landing point.',
+            asideLines: ["Promised Apr 28", "4 days left"],
+            ctas: [
+              {
+                kind: "draft_now",
+                label: "Draft now",
+                variant: "subtle",
+                link: commitment("c1"),
+              },
+            ],
           },
         ],
       },
       {
-        id: "radar-ret-3",
-        tier: 2,
-        lpLabel: "Lingotto Investment Management",
-        personLabel: "Edoardo Lanzavecchia",
-        tags: [{ kind: "tier", tier: 2 }],
-        evidencePlain:
-          "Follow-up email after the Mosaic introduction. Snoozed 5 days to land after the Apr 30 Lingotto Q1 publication.",
-        asideLines: ["Snoozed Sat", "5 days"],
-        ctas: [
+        id: "commitments_theirs",
+        title: "Outstanding from your LPs",
+        countSummary: "3 past their typical turnaround",
+        emptyMessage: "No LP-side items are past typical turnaround.",
+        items: [
           {
-            kind: "bring_to_today",
-            label: "Bring to Today",
-            variant: "subtle",
-            link: action("a6"),
+            id: "radar-lp-1",
+            tier: 1,
+            lpLabel: "PAAMCO Prisma",
+            personLabel: "Operations team",
+            tags: [
+              { kind: "tier", tier: 1 },
+              { kind: "custom", label: "Past stated turnaround", tone: "amber" },
+            ],
+            evidencePlain:
+              "DDQ submitted to PAAMCO ops 9 days ago. Their stated turnaround is 5–7 business days. Peter Zakowich has been responsive elsewhere — last reply 6h ago on the scheduling thread.",
+            asideLines: ["Sent Apr 28", "9 days"],
+            ctas: [
+              {
+                kind: "draft_nudge",
+                label: "Draft a nudge",
+                variant: "primary",
+                link: action("a1"),
+              },
+            ],
           },
-        ],
-      },
-    ],
-  };
-
-  const commitmentsYours: RadarModalSection = {
-    id: "commitments_yours",
-    title: "Your commitments approaching",
-    countSummary: "2 due in next 3 days",
-    defaultCollapsed: false,
-    items: [
-      {
-        id: "radar-comy-1",
-        tier: 1,
-        lpLabel: "Albourne",
-        personLabel: "James Staltari",
-        tags: [{ kind: "custom", label: "Due tomorrow", tone: "red" }],
-        evidencePlain:
-          'You promised the portfolio positioning deck and Q1 attribution detail "by end of week" on Wednesday\'s call. Tomorrow is Friday. No draft yet — not currently in Today\'s queue.',
-        asideLines: ["Promised Wed", "1 day left"],
-        ctas: [
           {
-            kind: "draft_now",
-            label: "Draft now",
-            variant: "primary",
-            link: action("a3"),
+            id: "radar-lp-2",
+            tier: 2,
+            lpLabel: "Cambridge Associates",
+            personLabel: "Stuart Reid",
+            tags: [{ kind: "tier", tier: 2 }],
+            evidencePlain:
+              "Stuart said he'd intro you to two more LPs after the GIC connection landed. 8 days since that email. GIC intro completed Apr 30 — the trigger has cleared.",
+            asideLines: ["Promised Apr 29", "8 days"],
+            ctas: [
+              {
+                kind: "draft_nudge",
+                label: "Draft a nudge",
+                variant: "subtle",
+                link: action("a7"),
+              },
+            ],
           },
-        ],
-      },
-      {
-        id: "radar-comy-2",
-        tier: null,
-        lpLabel: "UBS Hedge Fund Solutions",
-        personLabel: "Charly Malek",
-        tags: [{ kind: "custom", label: "Due Mon", tone: "amber" }],
-        evidencePlain:
-          'Side-letter terms summary (Fund II precedent) was the open ask from Charly\'s Mar 4 email. You promised it for "early next week" on Apr 28 — Monday is the natural landing point.',
-        asideLines: ["Promised Apr 28", "4 days left"],
-        ctas: [
           {
-            kind: "draft_now",
-            label: "Draft now",
-            variant: "subtle",
-            link: commitment("c1"),
-          },
-        ],
-      },
-    ],
-  };
-
-  const commitmentsTheirs: RadarModalSection = {
-    id: "commitments_theirs",
-    title: "Outstanding from your LPs",
-    countSummary: "3 past their typical turnaround",
-    defaultCollapsed: false,
-    items: [
-      {
-        id: "radar-lp-1",
-        tier: 1,
-        lpLabel: "PAAMCO Prisma",
-        personLabel: "Operations team",
-        tags: [
-          { kind: "tier", tier: 1 },
-          { kind: "custom", label: "Past stated turnaround", tone: "amber" },
-        ],
-        evidencePlain:
-          "DDQ submitted to PAAMCO ops 9 days ago. Their stated turnaround is 5–7 business days. Peter Zakowich has been responsive elsewhere — last reply 6h ago on the scheduling thread.",
-        asideLines: ["Sent Apr 28", "9 days"],
-        ctas: [
-          {
-            kind: "draft_nudge",
-            label: "Draft a nudge",
-            variant: "primary",
-            link: action("a1"),
-          },
-        ],
-      },
-      {
-        id: "radar-lp-2",
-        tier: 2,
-        lpLabel: "Cambridge Associates",
-        personLabel: "Stuart Reid",
-        tags: [{ kind: "tier", tier: 2 }],
-        evidencePlain:
-          "Stuart said he'd intro you to two more LPs after the GIC connection landed. 8 days since that email. GIC intro completed Apr 30 — the trigger has cleared.",
-        asideLines: ["Promised Apr 29", "8 days"],
-        ctas: [
-          {
-            kind: "draft_nudge",
-            label: "Draft a nudge",
-            variant: "subtle",
-            link: action("a7"),
-          },
-        ],
-      },
-      {
-        id: "radar-lp-3",
-        tier: 2,
-        lpLabel: "Goldman Sachs",
-        personLabel: "Michel del Buono",
-        tags: [{ kind: "tier", tier: 2 }],
-        evidencePlain:
-          'Promised intro to Edmond de Rothschild Family Office 11 days ago. Reply velocity in the thread has been 2-day average; latest acknowledgement was "working on it" on Apr 29.',
-        asideLines: ["Promised Apr 26", "11 days"],
-        ctas: [
-          {
-            kind: "draft_nudge",
-            label: "Draft a nudge",
-            variant: "subtle",
-            link: action("a2"),
+            id: "radar-lp-3",
+            tier: 2,
+            lpLabel: "Goldman Sachs",
+            personLabel: "Michel del Buono",
+            tags: [{ kind: "tier", tier: 2 }],
+            evidencePlain:
+              'Promised intro to Edmond de Rothschild Family Office 11 days ago. Reply velocity in the thread has been 2-day average; latest acknowledgement was "working on it" on Apr 29.',
+            asideLines: ["Promised Apr 26", "11 days"],
+            ctas: [
+              {
+                kind: "draft_nudge",
+                label: "Draft a nudge",
+                variant: "subtle",
+                link: action("a2"),
+              },
+            ],
           },
         ],
       },
@@ -293,9 +320,9 @@ function demoSections(): RadarModalSection[] {
     ],
   };
 
-  const quiet: RadarModalSection = {
-    id: "quiet_beyond_cadence",
-    title: "Quiet beyond cadence",
+  const goneQuiet: RadarModalSection = {
+    id: "gone_quiet",
+    title: "Gone quiet",
     countSummary: "2 active diligence threads silent past typical",
     defaultCollapsed: true,
     items: [
@@ -359,7 +386,7 @@ function demoSections(): RadarModalSection[] {
     ],
   };
 
-  return [returning, commitmentsYours, commitmentsTheirs, heating, cooling, quiet, next7];
+  return [commitments, heating, cooling, goneQuiet, next7];
 }
 
 /**
@@ -394,28 +421,35 @@ export const RADAR_MODAL_DEMO_SECTIONS: readonly RadarModalSection[] = demoSecti
 export function getRadarModalAppendixISkeletonSections(): RadarModalSection[] {
   return [
     {
-      id: "returning_to_you",
-      title: "Returning to you",
-      countSummary: "0 items · snoozes expired today",
+      id: "commitments",
+      title: "Commitments",
+      countSummary: "0 rows · returning, yours, and LP-side",
       defaultCollapsed: false,
       items: [],
-      emptyMessage: "Nothing returning from snooze today.",
-    },
-    {
-      id: "commitments_yours",
-      title: "Your commitments approaching",
-      countSummary: "0 due in next 3 days",
-      defaultCollapsed: false,
-      items: [],
-      emptyMessage: "No commitments due in the next three days.",
-    },
-    {
-      id: "commitments_theirs",
-      title: "Outstanding from your LPs",
-      countSummary: "0 past their typical turnaround",
-      defaultCollapsed: false,
-      items: [],
-      emptyMessage: "No LP-side items are past typical turnaround.",
+      subsections: [
+        {
+          id: "commitments_returning",
+          title: "Returning to you",
+          countSummary: "0 items · snoozes expired today",
+          items: [],
+          emptyMessage: "Nothing returning from snooze today.",
+        },
+        {
+          id: "commitments_yours",
+          title: "Your commitments approaching",
+          countSummary: "0 due in next 3 days",
+          items: [],
+          emptyMessage: "No commitments due in the next three days.",
+        },
+        {
+          id: "commitments_theirs",
+          title: "Outstanding from your LPs",
+          countSummary: "0 past their typical turnaround",
+          items: [],
+          emptyMessage: "No LP-side items are past typical turnaround.",
+        },
+      ],
+      emptyMessage: "No commitment rows for this window.",
     },
     {
       id: "heating_up",
@@ -436,8 +470,8 @@ export function getRadarModalAppendixISkeletonSections(): RadarModalSection[] {
       emptyMessage: "No deceleration signals for today.",
     },
     {
-      id: "quiet_beyond_cadence",
-      title: "Quiet beyond cadence",
+      id: "gone_quiet",
+      title: "Gone quiet",
       countSummary: "0 threads silent past typical",
       defaultCollapsed: true,
       items: [],

@@ -52,11 +52,14 @@ export function RadarModal({
     return s;
   }, [payload.sections]);
 
+  const stampKey = useMemo(() => payload.stampLines.join("|"), [payload.stampLines]);
+
   const [collapsedIds, setCollapsedIds] = useState(() => initiallyCollapsed);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset accordion when derived defaults / stamp change
     setCollapsedIds(initiallyCollapsed);
-  }, [initiallyCollapsed, payload.stampLines.join("|")]);
+  }, [initiallyCollapsed, stampKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -246,8 +249,12 @@ function RadarModalSectionBlock({
   onToggle: () => void;
   onNavigateLink: (link: RadarNavigateLink) => void;
 }) {
-  const showItems = section.items.length > 0 && !collapsed;
-  const empty = section.items.length === 0;
+  const flatCount = section.items.length;
+  const subRowCount =
+    section.subsections?.reduce((acc, sub) => acc + sub.items.length, 0) ?? 0;
+  const totalRows = flatCount + subRowCount;
+  const showBody = totalRows > 0 && !collapsed;
+  const empty = totalRows === 0;
 
   return (
     <section className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-4 last:border-b-0 sm:px-8">
@@ -283,10 +290,35 @@ function RadarModalSectionBlock({
         <p className="mt-2 text-sm italic text-[color:var(--tomo-body)]">{section.emptyMessage}</p>
       ) : null}
 
-      {showItems ? (
+      {showBody && flatCount > 0 ? (
         <div className="mt-3 flex flex-col gap-0">
           {section.items.map((item) => (
             <RadarItemRow key={item.id} item={item} onNavigateLink={onNavigateLink} />
+          ))}
+        </div>
+      ) : null}
+
+      {showBody && section.subsections?.length ? (
+        <div className="mt-3 flex flex-col gap-5">
+          {section.subsections.map((sub) => (
+            <div key={sub.id}>
+              <div className="mb-2 flex flex-wrap items-baseline gap-2 border-b border-[color:var(--tomo-rule-soft)] pb-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--tomo-body)]">
+                  {sub.title}
+                </span>
+                <span className="font-mono text-[10px] text-[color:var(--tomo-mute)]">{sub.countSummary}</span>
+              </div>
+              {sub.items.length === 0 && sub.emptyMessage ? (
+                <p className="mt-1 text-sm italic text-[color:var(--tomo-body)]">{sub.emptyMessage}</p>
+              ) : null}
+              {sub.items.length > 0 ? (
+                <div className="mt-1 flex flex-col gap-0">
+                  {sub.items.map((item) => (
+                    <RadarItemRow key={item.id} item={item} onNavigateLink={onNavigateLink} />
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
       ) : null}

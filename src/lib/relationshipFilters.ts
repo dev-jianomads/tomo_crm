@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import type { Relationship } from "./mockData";
+import { derivePipelineFlagMock, relationshipMatchesRaiseStandBucket, type RaiseStandBucketKey } from "./todayRaiseStands";
 import {
   BAND_OPTIONS,
   STAGE_OPTIONS,
@@ -49,6 +50,9 @@ const fiscalYearSchema = z.enum([...FISCAL_YEAR_END_OPTIONS]);
 const consultantSchema = z.enum([...CONSULTANT_DEPENDENT_OPTIONS]);
 const esgSchema = z.enum([...ESG_REQUIRED_OPTIONS]);
 
+const pipelineFlagGarSchema = z.enum(["green", "amber", "red"]);
+const raiseStandBucketSchema = z.enum(["genuinelyMoveable", "healthyOnTrack", "coolingWatch", "driftingAct"]);
+
 const rangeSchema = z.object({
   min: z.number().optional(),
   max: z.number().optional(),
@@ -90,10 +94,27 @@ export const relationshipFilterSchema = z
     query: z.string().optional(),
     /** Workspace fund cohort (`lp_contacts.fund_id`) — advanced filters / lists */
     fundId: z.string().optional(),
+    /** Today “Where the raise stands” bucket — deep link from `/home` */
+    raiseStandBucket: raiseStandBucketSchema.optional(),
+    /** Mock `lp_state.pipeline_flag` slice */
+    pipelineFlag: pipelineFlagGarSchema.optional(),
   })
   .strict();
 
 export type StructuredFilterCriteria = z.infer<typeof relationshipFilterSchema>;
+
+/** `?raiseStand=` query values → {@link RaiseStandBucketKey} */
+export const RAISE_STAND_URL_TO_BUCKET: Record<string, RaiseStandBucketKey> = {
+  genuinely_moveable: "genuinelyMoveable",
+  healthy_on_track: "healthyOnTrack",
+  cooling_watch: "coolingWatch",
+  drifting_act: "driftingAct",
+};
+
+export function parseRaiseStandQueryParam(param: string | null | undefined): RaiseStandBucketKey | null {
+  if (!param?.trim()) return null;
+  return RAISE_STAND_URL_TO_BUCKET[param.trim()] ?? null;
+}
 
 // ── Filter application ─────────────────────────────────────────────────────
 
@@ -168,6 +189,13 @@ export function applyFilters(
     if (!matchesRange(rel.daysSinceLastMeaningfulContact, criteria.daysSinceLastMeaningfulContact))
       return false;
     if (!matchesRange(rel.openLoops, criteria.openLoops)) return false;
+
+    if (criteria.pipelineFlag) {
+      if (derivePipelineFlagMock(rel) !== criteria.pipelineFlag) return false;
+    }
+    if (criteria.raiseStandBucket) {
+      if (!relationshipMatchesRaiseStandBucket(rel, criteria.raiseStandBucket)) return false;
+    }
 
     return true;
   });
@@ -279,6 +307,8 @@ const ENUM_LIKE_KEYS = new Set<keyof StructuredFilterCriteria>([
   "consultantDependent",
   "esgRequired",
   "band",
+  "pipelineFlag",
+  "raiseStandBucket",
 ]);
 
 /** Deep equality for saved filter state vs chip definitions (single enums vs one-tuple arrays). */
@@ -358,6 +388,18 @@ export function formatFilterSummary(criteria: StructuredFilterCriteria): string 
   if (criteria.fundId?.trim()) {
     parts.push(`fund ${criteria.fundId}`);
   }
+  if (criteria.raiseStandBucket) {
+    const labels: Record<RaiseStandBucketKey, string> = {
+      genuinelyMoveable: "Moveable",
+      healthyOnTrack: "On track",
+      coolingWatch: "Stalling — watch",
+      driftingAct: "Drifting — act",
+    };
+    parts.push(labels[criteria.raiseStandBucket]);
+  }
+  if (criteria.pipelineFlag) {
+    parts.push(`flag ${criteria.pipelineFlag}`);
+  }
 
   if (parts.length === 0) return "";
   return `Tomo: ${parts.join(" • ")}`;
@@ -410,6 +452,18 @@ export function criteriaToFilterTags(criteria: StructuredFilterCriteria): Filter
   if (criteria.fundId?.trim()) {
     tags.push({ id: "fundId", label: `Fund ${criteria.fundId.trim()}` });
   }
+  if (criteria.raiseStandBucket) {
+    const labels: Record<RaiseStandBucketKey, string> = {
+      genuinelyMoveable: "Moveable (Today)",
+      healthyOnTrack: "On track (Today)",
+      coolingWatch: "Stalling — watch (Today)",
+      driftingAct: "Drifting — act (Today)",
+    };
+    tags.push({ id: "raiseStandBucket", label: labels[criteria.raiseStandBucket] });
+  }
+  if (criteria.pipelineFlag) {
+    tags.push({ id: "pipelineFlag", label: `Pipeline ${criteria.pipelineFlag}` });
+  }
 
   return tags;
 }
@@ -447,6 +501,12 @@ export function removeCriteriaTag(criteria: StructuredFilterCriteria, tagId: str
       break;
     case "fundId":
       delete next.fundId;
+      break;
+    case "raiseStandBucket":
+      delete next.raiseStandBucket;
+      break;
+    case "pipelineFlag":
+      delete next.pipelineFlag;
       break;
     default:
       break;

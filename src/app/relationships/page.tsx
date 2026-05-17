@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpTrayIcon,
   Bars3Icon,
@@ -36,6 +36,8 @@ import {
   applyFilters,
   formatFilterSummary,
   EMPTY_CRITERIA,
+  parseRaiseStandQueryParam,
+  validateAndMergeFilters,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
 import {
@@ -148,6 +150,7 @@ function mergeWithOverrides(
 
 export default function RelationshipsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { ready } = useRequireSession();
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
   const { funds, activeFundId } = useFunds();
@@ -168,6 +171,28 @@ export default function RelationshipsPage() {
     EMPTY_CRITERIA
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const focusFromUrl = searchParams.get("focus")?.trim() || null;
+  const drawerRelationshipId = activeId ?? focusFromUrl;
+
+  const closeRelationshipDrawer = useCallback(() => {
+    setActiveId(null);
+    const f = searchParams.get("focus")?.trim();
+    if (f) {
+      const p = new URLSearchParams(searchParams.toString());
+      p.delete("focus");
+      const qs = p.toString();
+      router.replace(qs ? `/relationships?${qs}` : "/relationships");
+    }
+  }, [router, searchParams]);
+
+  const raiseStandUrl = searchParams.get("raiseStand");
+
+  useEffect(() => {
+    const bucket = parseRaiseStandQueryParam(raiseStandUrl);
+    if (!bucket) return;
+    setFilterCriteria((prev) => validateAndMergeFilters(prev, { raiseStandBucket: bucket }) ?? prev);
+  }, [raiseStandUrl, setFilterCriteria]);
+
   const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
   const [createPipelineName, setCreatePipelineName] = useState("");
   const [newContactOpen, setNewContactOpen] = useState(false);
@@ -412,14 +437,14 @@ export default function RelationshipsPage() {
   }, [sortedFiltered]);
 
   const active = useMemo(
-    () => relationshipsWithOverrides.find((r) => r.id === activeId) ?? null,
-    [relationshipsWithOverrides, activeId]
+    () => relationshipsWithOverrides.find((r) => r.id === drawerRelationshipId) ?? null,
+    [relationshipsWithOverrides, drawerRelationshipId],
   );
 
   const drawerActivityEntries = useMemo(() => {
-    if (!active || !activeId) return [];
-    return getMockRelationshipActivityEntries(activeId, active.name, active.firm);
-  }, [active, activeId]);
+    if (!active || !drawerRelationshipId) return [];
+    return getMockRelationshipActivityEntries(drawerRelationshipId, active.name, active.firm);
+  }, [active, drawerRelationshipId]);
 
   const snapshotParagraph = useMemo(() => {
     if (!active || drawerActivityEntries.length === 0) return "";
@@ -427,17 +452,18 @@ export default function RelationshipsPage() {
   }, [active, drawerActivityEntries]);
 
   const drawerSelection = useMemo(
-    () => (activeId ? { type: "relationship" as const, id: activeId } : undefined),
-    [activeId]
+    () => (drawerRelationshipId ? { type: "relationship" as const, id: drawerRelationshipId } : undefined),
+    [drawerRelationshipId],
   );
 
   useEffect(() => {
-    if (!activeId) {
+    if (!drawerRelationshipId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset provenance when drawer has no LP
       setLpDrawerProvenance(undefined);
       return;
     }
     let cancelled = false;
-    fetch(`/api/lp-contacts?id=${encodeURIComponent(activeId)}`)
+    fetch(`/api/lp-contacts?id=${encodeURIComponent(drawerRelationshipId)}`)
       .then((res) => (res.ok ? res.json() : Promise.resolve(null)))
       .then((data: { contact?: LpContactRecord } | null) => {
         if (!cancelled && data?.contact?.provenance) setLpDrawerProvenance(data.contact.provenance);
@@ -446,7 +472,7 @@ export default function RelationshipsPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeId]);
+  }, [drawerRelationshipId]);
 
   const handleCrmUpdate = useCallback(
     (payload: {
@@ -481,14 +507,14 @@ export default function RelationshipsPage() {
 
   const handleRelationshipManualField = useCallback(
     (key: keyof Relationship | string, raw: string) => {
-      if (!activeId) return;
+      if (!drawerRelationshipId) return;
       if (
         (MANUAL_OPTIONAL_CLEAR_KEYS as readonly string[]).includes(key as string) &&
         raw.trim() === ""
       ) {
         setRelationshipOverrides((prev) => ({
           ...prev,
-          [activeId]: { ...(prev[activeId] ?? {}), [key]: undefined },
+          [drawerRelationshipId]: { ...(prev[drawerRelationshipId] ?? {}), [key]: undefined },
         }));
         return;
       }
@@ -499,10 +525,10 @@ export default function RelationshipsPage() {
       }
       setRelationshipOverrides((prev) => ({
         ...prev,
-        [activeId]: { ...(prev[activeId] ?? {}), [key]: result.value },
+        [drawerRelationshipId]: { ...(prev[drawerRelationshipId] ?? {}), [key]: result.value },
       }));
     },
-    [activeId, setRelationshipOverrides]
+    [drawerRelationshipId, setRelationshipOverrides]
   );
 
   const commitStageOverride = useCallback(
@@ -873,7 +899,7 @@ export default function RelationshipsPage() {
                           key={rel.id}
                           rel={rel}
                           columns={visibleColumns}
-                          isActive={activeId === rel.id}
+                          isActive={drawerRelationshipId === rel.id}
                           onSelect={() => setActiveId(rel.id)}
                         />
                       ))}
@@ -901,7 +927,7 @@ export default function RelationshipsPage() {
                     <RelationshipCard
                       key={rel.id}
                       rel={rel}
-                      isActive={activeId === rel.id}
+                      isActive={drawerRelationshipId === rel.id}
                       onSelect={() => setActiveId(rel.id)}
                     />
                   ))}
@@ -914,7 +940,7 @@ export default function RelationshipsPage() {
           ) : (
             <RelationshipsKanbanBoard
               columns={kanbanColumns}
-              activeId={activeId}
+              activeId={drawerRelationshipId}
               onSelect={(id) => setActiveId(id)}
               onMoveToStage={handleKanbanMoveToStage}
               fundRaiseLabel={cohortFundLabel}
@@ -942,8 +968,8 @@ export default function RelationshipsPage() {
         assistantChips={["Summarize last thread", "Draft outreach", "Propose next step", "Create action"]}
       />
       <ContextDrawer
-        open={Boolean(activeId)}
-        onClose={() => setActiveId(null)}
+        open={Boolean(drawerRelationshipId)}
+        onClose={closeRelationshipDrawer}
         hideChromeHeader
         drawerAriaLabel={active ? `LP detail · ${active.name}` : "LP detail"}
         title={active?.name ?? "Relationship"}
@@ -958,7 +984,7 @@ export default function RelationshipsPage() {
                 snapshotParagraph || "No recent interaction history for this LP (demo)."
               }
               activeFundLabel={activeFundLabel}
-              onClose={() => setActiveId(null)}
+              onClose={closeRelationshipDrawer}
               onFieldChange={handleRelationshipManualField}
               provenance={lpDrawerProvenance}
             />
@@ -967,12 +993,12 @@ export default function RelationshipsPage() {
         hideSection2
         section2MinHeightClassName="min-h-0"
         sectionBetween2AndActivity={
-          activeId && drawerSelection ? (
+          drawerRelationshipId && drawerSelection ? (
             <RelationshipDrawerTomoRow
-              entityKey={activeId}
+              entityKey={drawerRelationshipId}
               selection={drawerSelection}
               contextLabel={active?.name}
-              assistanceContext={getTomoAssistance(activeId)}
+              assistanceContext={getTomoAssistance(drawerRelationshipId)}
               onCrmUpdate={handleCrmUpdate}
             />
           ) : undefined
