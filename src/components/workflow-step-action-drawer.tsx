@@ -1,8 +1,10 @@
 "use client";
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { WorkflowBatchReview } from "@/components/workflow-batch-review";
 import {
   getWorkflowDraftBatch,
+  getWorkflowSingleDraftBatch,
   workflowOutcomeCaptures,
   type WorkflowDraftBatch,
   type WorkflowStepNode,
@@ -21,8 +23,27 @@ export function WorkflowStepActionDrawer({
   selection: WorkflowStepActionSelection | null;
   onClose: () => void;
 }) {
-  const batch = selection?.step.draftBatchId ? getWorkflowDraftBatch(selection.step.draftBatchId) : undefined;
+  const draftReviewBatch = selection
+    ? selection.step.actionType === "draft_batch" && selection.step.draftBatchId
+      ? getWorkflowDraftBatch(selection.step.draftBatchId)
+      : selection.step.actionType === "single_draft"
+        ? getWorkflowSingleDraftBatch(selection.entry.id, selection.step.id)
+        : undefined
+    : undefined;
+
   const outcome = selection ? workflowOutcomeCaptures.find((item) => item.workflowId === selection.entry.id) : undefined;
+
+  const wideDraftDrawer =
+    !!selection &&
+    !!draftReviewBatch &&
+    (selection.step.actionType === "draft_batch" || selection.step.actionType === "single_draft");
+
+  const footerHint =
+    selection?.step.actionType === "draft_batch" || selection?.step.actionType === "single_draft"
+      ? draftReviewBatch
+        ? "Edits and approvals stay in this browser session until runs sync to the API."
+        : "No mock drafts are attached to this step yet."
+      : "Use other steps for settings, outcomes, or run configuration.";
 
   return (
     <>
@@ -34,9 +55,9 @@ export function WorkflowStepActionDrawer({
         onClick={onClose}
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[720px] flex-col border-l border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-drawer-shadow)] transition-transform duration-200 ${
-          selection ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-drawer-shadow)] transition-transform duration-200 ${
+          wideDraftDrawer ? "max-w-[min(92vw,820px)]" : "max-w-[720px]"
+        } ${selection ? "translate-x-0" : "translate-x-full"}`}
         role="dialog"
         aria-label={selection ? `${selection.entry.name} - ${selection.step.title}` : "Workflow step drawer"}
         aria-modal="true"
@@ -66,14 +87,12 @@ export function WorkflowStepActionDrawer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <StepActionContent entry={selection.entry} step={selection.step} batch={batch} outcome={outcome} />
+              <StepActionContent entry={selection.entry} step={selection.step} draftReviewBatch={draftReviewBatch} outcome={outcome} />
             </div>
 
             <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-5 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-[color:var(--tomo-mute)]">
-                  Phase 4 routing is active. Full editing controls arrive in the next drawer phase.
-                </p>
+                <p className="text-xs text-[color:var(--tomo-mute)]">{footerHint}</p>
                 <button
                   type="button"
                   onClick={onClose}
@@ -93,23 +112,21 @@ export function WorkflowStepActionDrawer({
 function StepActionContent({
   entry,
   step,
-  batch,
+  draftReviewBatch,
   outcome,
 }: {
   entry: WorkflowSurfaceEntry;
   step: WorkflowStepNode;
-  batch?: WorkflowDraftBatch;
+  draftReviewBatch?: WorkflowDraftBatch;
   outcome?: (typeof workflowOutcomeCaptures)[number];
 }) {
-  if (step.actionType === "draft_batch") {
-    return batch ? <DraftBatchPreview batch={batch} /> : <EmptyState title="No draft batch yet" body="This step is draft-capable, but no mock batch is attached yet." />;
-  }
-
-  if (step.actionType === "single_draft") {
-    return (
+  if (step.actionType === "draft_batch" || step.actionType === "single_draft") {
+    return draftReviewBatch ? (
+      <WorkflowBatchReview batch={draftReviewBatch} variant={step.actionType === "single_draft" ? "single" : "batch"} />
+    ) : (
       <EmptyState
-        title="Single draft review"
-        body="This step will open a one-recipient draft editor. Phase 4 wires the route; Phase 5 adds full editing controls."
+        title="No drafts for this step"
+        body="This step is draft-capable, but no mock batch or single draft is attached yet."
       />
     );
   }
@@ -127,49 +144,6 @@ function StepActionContent({
   }
 
   return <EmptyState title="Read-only step" body="This step is informational and does not require a drawer action." />;
-}
-
-function DraftBatchPreview({ batch }: { batch: WorkflowDraftBatch }) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]">
-          {batch.eyebrow}
-        </p>
-        <h3 className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">{batch.title}</h3>
-        <p className="mt-1 text-sm text-[color:var(--tomo-body)]">{batch.context}</p>
-      </div>
-
-      <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-3 py-2 text-xs text-[color:var(--tomo-mute)]">
-        Tomo batch prompt placeholder: <span className="text-[color:var(--foreground)]">{batch.batchTomoPlaceholder}</span>
-      </div>
-
-      <div className="space-y-2">
-        {batch.drafts.map((draft) => (
-          <div key={draft.id} className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[color:var(--foreground)]">{draft.firmName}</p>
-                <p className="text-xs text-[color:var(--tomo-mute)]">
-                  {draft.lpName} · {draft.roleLabel} · {draft.tierLabel}
-                </p>
-              </div>
-              <span className="rounded-full bg-[color:var(--tomo-teal-evidence-bg)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--tomo-teal)]">
-                {draft.status}
-              </span>
-            </div>
-            <p className="mt-3 text-sm font-medium text-[color:var(--foreground)]">{draft.subject}</p>
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[color:var(--tomo-body)]">{draft.body}</p>
-            {draft.attachment ? (
-              <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
-                Attachment: <span className="text-[color:var(--foreground)]">{draft.attachment.name}</span>
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function SettingsPreview({ step }: { step: WorkflowStepNode }) {

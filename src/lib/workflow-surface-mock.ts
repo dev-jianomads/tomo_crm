@@ -248,6 +248,44 @@ const tripDrafts: WorkflowDraft[] = [
   },
 ];
 
+const postMeetingFollowUpDraft: WorkflowDraft = {
+  id: "draft-post-meeting-charly-followup",
+  lpName: "Charly Malek",
+  firmName: "UBS Hedge Fund Solutions",
+  roleLabel: "Head of Manager Research",
+  tierLabel: "Tier 1 - prior F2",
+  email: "charly.malek@ubs.com",
+  subject: "Thank you — notes and next steps from today",
+  body:
+    "Charly, thank you for the time today. Captured your questions on capacity and the overlay sleeve — attaching the one-pager we walked through. Let me know if you want Tomo to propose slots for a follow-up with the PM.",
+  status: "ready",
+  attachment: {
+    name: "UBS HFS - Meeting recap - May 2026.pdf",
+    meta: "420 KB - Recap + open commitments",
+  },
+};
+
+/** Single-recipient drafts keyed by workflow + step (reuses batch-review UI with one row). */
+const workflowSingleDraftRows: Array<{
+  workflowId: string;
+  stepId: string;
+  eyebrow: string;
+  title: string;
+  context: string;
+  batchTomoPlaceholder: string;
+  draft: WorkflowDraft;
+}> = [
+  {
+    workflowId: "wf-post-meeting-execution",
+    stepId: "post-follow-up-draft",
+    eyebrow: "Post-Meeting Execution - Follow-up",
+    title: "1 follow-up draft",
+    context: "UBS HFS - Charly Malek - meeting ended 2:00pm ET - send window inside outbound policy",
+    batchTomoPlaceholder: "Shorter opening - emphasize capacity answer - softer ask",
+    draft: postMeetingFollowUpDraft,
+  },
+];
+
 export const workflowSurfaceDraftBatches: WorkflowDraftBatch[] = [
   {
     id: "batch-f7-touch-1",
@@ -686,4 +724,19 @@ export function getWorkflowSurfaceEntry(id: string): WorkflowSurfaceEntry | unde
 
 export function getWorkflowDraftBatch(id: string): WorkflowDraftBatch | undefined {
   return workflowSurfaceDraftBatches.find((batch) => batch.id === id);
+}
+
+export function getWorkflowSingleDraftBatch(workflowId: string, stepId: string): WorkflowDraftBatch | undefined {
+  const row = workflowSingleDraftRows.find((r) => r.workflowId === workflowId && r.stepId === stepId);
+  if (!row) return undefined;
+  return {
+    id: `single-${workflowId}-${stepId}`,
+    workflowId,
+    stepId,
+    eyebrow: row.eyebrow,
+    title: row.title,
+    context: row.context,
+    batchTomoPlaceholder: row.batchTomoPlaceholder,
+    drafts: [row.draft],
+  };
 }
