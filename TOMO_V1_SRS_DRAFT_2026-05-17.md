@@ -1,8 +1,8 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Document status:** DRAFT v0.2 — workflow scope refresh for engineering and PM review.
+**Document status:** DRAFT v0.3 — workflow surface accordion UX refresh for engineering and PM review.
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
-**Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
+**Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Workflows Surface Implementation Plan (17.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
 **Scope rule:** the body of this document covers V1 only. V2/V3 capability matrix, deferred features, and forward-compatibility notes are in Appendix C.
 
 ---
@@ -1056,7 +1056,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Description.** Workflows are guided multi-step playbooks that earn a Workflows-surface slot only when they span hours or days, preserve meaningful state between steps, and capture an outcome at the end. V1 ships four Workflows-surface entries: two locked defaults (**Post-Meeting Execution**, **F7 Three-Touch Qualification**) and two configurable templates (**Themed Outreach**, **Trip Orchestrator**). Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, re-engagement, and scheduling live outside the Workflows surface unless they are invoked through the shared workflow substrate described here. Tomo agent edits workflows via the `update_workflow` tool. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
 
-**Design reference.** `design/tomo_workflows_v8.html` is authoritative for the list-detail workflow layout, locked/default card treatment, process-flow visualisation, run modal, batch review affordances, and in-flight state summaries. Its card inventory must be updated to the V1 scope in this section: replace **Update → Follow-Up** and **DDQ Response Engine** with configurable-template entries for **Themed Outreach** and **Trip Orchestrator**, while retaining Post-Meeting Execution and F7 Three-Touch as locked defaults.
+**Design reference.** `design/tomo_workflows_v8.html` is authoritative for the list-detail workflow layout, locked/default card treatment, accordion expansion pattern, inline process-flow visualisation, run modal, batch review affordances, and in-flight state summaries. Its card inventory is reference-only and must be interpreted through the V1 scope in this section: replace **Update → Follow-Up** and **DDQ Response Engine** with configurable-template entries for **Themed Outreach** and **Trip Orchestrator**, while retaining Post-Meeting Execution and F7 Three-Touch as locked defaults. Implementation phasing and mock-data requirements are recorded in `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md`.
 
 **Inputs / triggers.**
 
@@ -1082,9 +1082,11 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - Steps execute in order. `step_type='wait'` introduces a delay (`wait_duration_hours`); `step_type='action_draft'` generates a draft and surfaces in Action Drawer with `requires_approval=true` (default V1 — human-in-the-loop on every outbound).
    - GP approves/edits/dismisses per §3.9. Approval advances the run.
 5. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
-6. **Visual editor.** Located at `/workflows`. Renders steps as a process flow (mock has `workflow-process-flow.tsx`). Locked defaults expose content settings only; configurable templates expose parameters and future-run structure.
-7. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
-8. **Outcome capture.** At workflow run completion, F7 captures one of: warmer than expected / maintaining but non-committal / genuinely dormant. Outreach templates capture engagement outcomes (reply, scheduling accepted, declined, no response) on `workflow_runs.outcome` / output JSON as appropriate.
+6. **Accordion workflow control room.** Located at `/workflows`. The default interaction is not workflow-card → generic detail drawer. Each workflow card expands inline as an accordion to show workflow-level operating context: meta strip, visual process flow, attention row, in-flight state summary, and run history.
+7. **Step-level drawers / modals.** Clicking a specific process-flow step opens the appropriate secondary surface for granular work: batch LP draft review, single-draft review, step settings, outcome capture, or run configuration. The drawer is scoped to the selected step, not the whole workflow record.
+8. **Visual editor.** Expanded workflow cards render steps as a process flow (mock has `workflow-process-flow.tsx`). Locked defaults expose content settings only; configurable templates expose parameters and future-run structure.
+9. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
+10. **Outcome capture.** At workflow run completion, F7 captures one of: warmer than expected / maintaining but non-committal / genuinely dormant. Outreach templates capture engagement outcomes (reply, scheduling accepted, declined, no response) on `workflow_runs.outcome` / output JSON as appropriate.
 
 **Outputs.**
 
@@ -1108,10 +1110,12 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.12.1 — A new workspace has four Workflows-surface entries seeded at first sign-in: Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, and Trip Orchestrator.
 - AC-3.12.2 — F7 triggered on a 29-LP Fat Middle cohort creates 29 `workflow_runs`, each with steps queued.
 - AC-3.12.3 — A step that would send a duplicate outbound (same LP + signature within 14 days) skips and records the skip.
-- AC-3.12.4 — Tomo chat editing a configurable workflow ("Add a wait step of 3 days after step 2") updates `workflow_steps` after GP confirmation and writes an `agent_tool_calls` row.
-- AC-3.12.5 — Themed Outreach and Trip Orchestrator runs use the same base template / worker path with different `parameters_jsonb`, prompt template, and reply-handling configuration.
-- AC-3.12.6 — A fund-update run can be saved and invoked as a Themed Outreach configuration, but no first-class Fund Update workflow card or structured content-block UI appears in V1.
-- AC-3.12.7 — Warm Intro Tracker, DDQ Response Engine, re-engagement drafts, and scheduling replies never appear as Workflows-surface cards in V1; they route through Action Drawer, Signals, and Reminders per §3.9.
+- AC-3.12.4 — Expanding a workflow card keeps the user on `/workflows` and shows the inline process flow, attention row, in-flight state summary, and run history; it does not open the generic workflow detail drawer.
+- AC-3.12.5 — Clicking a draftable process-flow step opens a step-scoped draft review drawer with LP-level drafts and approve / edit controls; clicking a settings step opens step configuration; clicking an outcome step opens outcome capture.
+- AC-3.12.6 — Tomo chat editing a configurable workflow ("Add a wait step of 3 days after step 2") updates `workflow_steps` after GP confirmation and writes an `agent_tool_calls` row.
+- AC-3.12.7 — Themed Outreach and Trip Orchestrator runs use the same base template / worker path with different `parameters_jsonb`, prompt template, and reply-handling configuration.
+- AC-3.12.8 — A fund-update run can be saved and invoked as a Themed Outreach configuration, but no first-class Fund Update workflow card or structured content-block UI appears in V1.
+- AC-3.12.9 — Warm Intro Tracker, DDQ Response Engine, re-engagement drafts, and scheduling replies never appear as Workflows-surface cards in V1; they route through Action Drawer, Signals, and Reminders per §3.9.
 
 ---
 
@@ -3847,9 +3851,11 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Themed Outreach and Trip Orchestrator appear as configurable templates.
 - AC — Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, scheduling, and re-engagement do not appear as workflow cards.
 
-**Story 8.7.2 — Visual workflow editor.**
-*As a GP, I can view workflow steps in a visual flow editor and edit only what the workflow type permits.*
+**Story 8.7.2 — Accordion workflow operating view.**
+*As a GP, I can expand a workflow card inline to understand its steps, current state, attention items, and run history without leaving the Workflows page.*
 
+- AC — Clicking a workflow card expands / collapses that card inline on `/workflows`; the workflow card click does not open the generic detail drawer.
+- AC — The expanded body shows a process flow, meta strip, attention row where relevant, in-flight state summary where relevant, and recent run history.
 - AC — Steps render as a process flow with action / wait / gate node types.
 - AC — Locked defaults allow content settings / run parameters but block structural changes.
 - AC — Configurable templates allow future-run structure and parameter edits that persist via `workflow_steps` and `workflows.parameters_jsonb`.
@@ -3877,7 +3883,14 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Trip Orchestrator reply handling invokes the scheduling assistant with the trip window as an availability constraint.
 - AC — A saved fund-update configuration appears as a Themed Outreach saved configuration, not a first-class workflow card.
 
-**Story 8.7.6 — Workflow run log.**
+**Story 8.7.6 — Step-level workflow action surfaces.**
+*As a GP, I can click a workflow step to act on the specific drafts, settings, or outcomes behind that step.*
+
+- AC — Draftable steps open a step-scoped review drawer with LP-level draft cards, batch Tomo edit, per-draft edit, attachments, approve-one, and approve-all controls.
+- AC — Settings / structure affordances open a step configuration surface; locked defaults explain which fields are framework-mandated.
+- AC — Outcome steps open outcome capture for eligible LPs.
+
+**Story 8.7.7 — Workflow run log.**
 *As a GP, I can review the run log for any workflow to see step-by-step status per LP.*
 
 - AC — Run log rows source from `workflow_runs` and `workflow_step_runs`.
@@ -4385,6 +4398,7 @@ Extends §1.3. Alphabetical.
 - `Tomo_MVP3.docx` — historical reference; carries SOC 2 / CASA framing and agent-orchestration tool inventory; superseded for everything else by V1 Final.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
+- `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md` — implementation plan for the Workflows accordion surface, step-level drawers, and supporting mock-data contract.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 - `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 10).
 - `design/tomo_lists_v1.html` — normative visual / IA reference for the **Lists** index and list-detail drawer (including LP row table, live vs manual semantics, **drawer actions**, **link workflow** modal, disabled top-row and secondary CTAs in V1) — §3.11, §8.6.
