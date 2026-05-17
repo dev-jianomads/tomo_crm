@@ -165,6 +165,8 @@ Deliverable: templates can be configured and launched from the Workflows surface
 
 ### Phase 7 — Production Data Prep
 
+**Status: delivered** (documentation + machine-readable map; no production API in this repo step).
+
 - Map fixture fields to future API data from:
   - `workflows`
   - `workflow_steps`
@@ -174,7 +176,12 @@ Deliverable: templates can be configured and launched from the Workflows surface
   - `outbound_safety_log`
 - Keep API response shape close to `WorkflowSurfaceEntry`.
 
-Deliverable: mock-to-production migration path is clear and low-churn.
+**Deliverables**
+
+1. **`docs/WORKFLOW_SURFACE_API_MAPPING_2026-05-17.md`** — Narrative mapping, suggested `GET` shape, and implementation checklist for engineers wiring Postgres / API routes (canonical columns per **SRS §6.2.6**).
+2. **`src/lib/workflow-surface-api-mapping.ts`** — `WorkflowSurfaceFieldSource` rows grouped by DTO (`WORKFLOW_SURFACE_ENTRY_SOURCES`, step, draft batch, outcome, run history, run config) for drift-friendly reference next to the mock types.
+
+**Related:** `src/lib/workflow-surface-mock.ts` file header links to both artifacts above.
 
 ## Recommended Build Order
 
@@ -185,6 +192,6 @@ Deliverable: mock-to-production migration path is clear and low-churn.
 5. Post-Meeting expanded body.
 6. Themed Outreach and Trip Orchestrator expanded bodies.
 7. Run/config modals.
-8. Production API wiring.
+8. Production API wiring (use `docs/WORKFLOW_SURFACE_API_MAPPING_2026-05-17.md` + `src/lib/workflow-surface-api-mapping.ts`).
 
 The highest-value proof point is F7 accordion expansion plus a clickable draft step that opens the batch LP draft drawer.

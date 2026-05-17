@@ -4,6 +4,9 @@
  * This fixture is intentionally shaped like a future API response so the
  * accordion workflow UI can later swap from mock data to production data with
  * minimal component churn.
+ *
+ * Phase 7 (production prep): table and column mapping for this DTO lives in
+ * `docs/WORKFLOW_SURFACE_API_MAPPING_2026-05-17.md` and `workflow-surface-api-mapping.ts`.
  */
 
 export type WorkflowSurfaceKind = "locked_default" | "configurable_template";
