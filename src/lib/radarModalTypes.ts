@@ -1,7 +1,7 @@
 /**
  * Contract types for the unified Radar Modal (Daily Brief + On my radar).
  * Normative spec: TOMO_V1_SRS — Appendix I — Radar Modal IA (v1).
- * Visual reference: design/tomo_radar_modal_v1.html
+ * Visual reference: design/tomo_radar_modal_v1.html (v2 — five sections + Commitments sub-rails).
  */
 
 import type { DailyBriefLink } from "@/lib/dailyBriefFromToday";

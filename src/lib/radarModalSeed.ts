@@ -1,6 +1,6 @@
 /**
  * Demo seed data for the Radar Modal (Phase 2 — mock CRM).
- * Aligns with `design/tomo_radar_modal_v1.html` and SRS Appendix I.
+ * Aligns with `design/tomo_radar_modal_v1.html` (v2 — five-section Appendix I) and SRS Appendix I.
  * Action/commitment ids reference {@link ./mockData} where possible for drawer navigation.
  */
 

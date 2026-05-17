@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- Phase C (2026-05-17): Appendix I five-section layout; Commitments = Your / Their / Coming due; Quiet → Gone quiet. Ship parity: src/lib/radarModalTypes.ts + radar-modal.tsx. -->
 <head>
 <meta charset="UTF-8">
-<title>TOMO · On My Radar / Daily Brief Modal</title>
+<title>TOMO · On My Radar / Daily Brief Modal (v2 · Appendix I five-section)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -284,7 +285,8 @@
   .section:last-child { border-bottom: 0; }
   .section.empty { padding: 18px 32px; }
   .section.collapsed .section-items,
-  .section.collapsed .see-more { display: none; }
+  .section.collapsed .see-more,
+  .section.collapsed .commitments-body { display: none; }
 
   .section-head {
     display: flex; align-items: center;
@@ -340,6 +342,41 @@
     margin-top: 14px;
     display: flex; flex-direction: column;
     gap: 0;
+  }
+
+  /* Commitments — nested sub-rails (SRS Appendix I v2 / Phase C) */
+  .commitments-body {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .subsection-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .subsection-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--body);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+  .subsection-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+  .commitments-body .subsection .section-items {
+    margin-top: 10px;
   }
 
   /* ========================================================================
@@ -588,7 +625,7 @@
           <p class="modal-summary">
             <span class="accent">Three items returning from snooze</span>, one commitment due tomorrow that you haven't drafted, and <span class="teal-accent">Frank Ieraci re-engaged after 18 days quiet</span>. Two diligence threads have gone quieter than their typical cadence — Brookfield and Lingotto. PAAMCO's DDQ is now nine days out against their stated five-to-seven.
           </p>
-          <div class="modal-stamp">Computed 06:30 · Spans 90-day window · 14 items today</div>
+          <div class="modal-stamp">Computed 06:30 · Spans 90-day window · 17 items today</div>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal()">Esc</button>
@@ -599,84 +636,24 @@
   <div class="modal-body">
 
     <!-- =========================================================
-         SECTION 1: RETURNING TO YOU (snoozed items expired)
+         SECTION 1: COMMITMENTS (three sub-rails — Appendix I v2)
          ========================================================= -->
-    <section class="section" id="sec-returning">
-      <div class="section-head" onclick="toggleSection('sec-returning')">
+    <section class="section" id="sec-commitments">
+      <div class="section-head" onclick="toggleSection('sec-commitments')">
         <div class="section-title-row">
-          <span class="section-title">Returning to you</span>
-          <span class="section-count">3 items · snoozes expired today</span>
+          <span class="section-title">Commitments</span>
+          <span class="section-count">8 rows · your, their, and coming due</span>
         </div>
         <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <div class="section-items">
+      <div class="commitments-body">
 
-        <div class="item tier-1">
-          <div class="item-rule"></div>
-          <div class="item-body">
-            <div class="item-meta-row">
-              <span class="item-lp">CPPIB · <span class="person">Frank Ieraci</span></span>
-              <span class="item-tag tier-1">Tier 1</span>
-            </div>
-            <div class="item-evidence">
-              You snoozed Frank's intro to the Toronto private credit team on <span class="number">Tuesday</span>. The snooze just expired and his reply velocity has tightened since — last three exchanges <span class="number">22h, 14h, 6h</span> against typical <span class="number">18h</span>.
-            </div>
+        <div class="subsection">
+          <div class="subsection-head">
+            <span class="subsection-title">Your commitments</span>
+            <span class="subsection-count">2 due in next 3 days</span>
           </div>
-          <div class="item-aside">
-            <span class="item-time">Snoozed Tue<br>2 days</span>
-            <button class="item-action">Bring to Today</button>
-          </div>
-        </div>
-
-        <div class="item">
-          <div class="item-rule"></div>
-          <div class="item-body">
-            <div class="item-meta-row">
-              <span class="item-lp">Albourne · <span class="person">Sarah Chen</span></span>
-              <span class="item-tag tier-2">Tier 2</span>
-            </div>
-            <div class="item-evidence">
-              Operational due-diligence questionnaire from Albourne ops team. You snoozed for <span class="number">48 hours</span> on Tuesday to gather inputs from Lisa.
-            </div>
-          </div>
-          <div class="item-aside">
-            <span class="item-time">Snoozed Tue<br>2 days</span>
-            <button class="item-action subtle">Bring to Today</button>
-          </div>
-        </div>
-
-        <div class="item">
-          <div class="item-rule"></div>
-          <div class="item-body">
-            <div class="item-meta-row">
-              <span class="item-lp">Lingotto Investment Management · <span class="person">Edoardo Lanzavecchia</span></span>
-              <span class="item-tag tier-2">Tier 2</span>
-            </div>
-            <div class="item-evidence">
-              Follow-up email after the Mosaic introduction. Snoozed <span class="number">5 days</span> to land after the Apr 30 Lingotto Q1 publication.
-            </div>
-          </div>
-          <div class="item-aside">
-            <span class="item-time">Snoozed Sat<br>5 days</span>
-            <button class="item-action subtle">Bring to Today</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- =========================================================
-         SECTION 2: YOUR COMMITMENTS APPROACHING
-         ========================================================= -->
-    <section class="section" id="sec-commitments-yours">
-      <div class="section-head" onclick="toggleSection('sec-commitments-yours')">
-        <div class="section-title-row">
-          <span class="section-title">Your commitments approaching</span>
-          <span class="section-count">2 due in next 3 days</span>
-        </div>
-        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </div>
-      <div class="section-items">
+          <div class="section-items">
 
         <div class="item tier-1">
           <div class="item-rule"></div>
@@ -712,21 +689,15 @@
           </div>
         </div>
 
-      </div>
-    </section>
-
-    <!-- =========================================================
-         SECTION 3: OUTSTANDING FROM YOUR LPs
-         ========================================================= -->
-    <section class="section" id="sec-commitments-theirs">
-      <div class="section-head" onclick="toggleSection('sec-commitments-theirs')">
-        <div class="section-title-row">
-          <span class="section-title">Outstanding from your LPs</span>
-          <span class="section-count">3 past their typical turnaround</span>
+          </div>
         </div>
-        <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </div>
-      <div class="section-items">
+
+        <div class="subsection">
+          <div class="subsection-head">
+            <span class="subsection-title">Their commitments</span>
+            <span class="subsection-count">3 past their typical turnaround</span>
+          </div>
+          <div class="section-items">
 
         <div class="item tier-1">
           <div class="item-rule"></div>
@@ -780,11 +751,75 @@
           </div>
         </div>
 
+          </div>
+        </div>
+
+        <div class="subsection">
+          <div class="subsection-head">
+            <span class="subsection-title">Coming due</span>
+            <span class="subsection-count">3 items · snoozes expired today</span>
+          </div>
+          <div class="section-items">
+
+        <div class="item tier-1">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">CPPIB · <span class="person">Frank Ieraci</span></span>
+              <span class="item-tag tier-1">Tier 1</span>
+            </div>
+            <div class="item-evidence">
+              You snoozed Frank's intro to the Toronto private credit team on <span class="number">Tuesday</span>. The snooze just expired and his reply velocity has tightened since — last three exchanges <span class="number">22h, 14h, 6h</span> against typical <span class="number">18h</span>.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Tue<br>2 days</span>
+            <button class="item-action">Bring to Today</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Albourne · <span class="person">Sarah Chen</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Operational due-diligence questionnaire from Albourne ops team. You snoozed for <span class="number">48 hours</span> on Tuesday to gather inputs from Lisa.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Tue<br>2 days</span>
+            <button class="item-action subtle">Bring to Today</button>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="item-rule"></div>
+          <div class="item-body">
+            <div class="item-meta-row">
+              <span class="item-lp">Lingotto Investment Management · <span class="person">Edoardo Lanzavecchia</span></span>
+              <span class="item-tag tier-2">Tier 2</span>
+            </div>
+            <div class="item-evidence">
+              Follow-up email after the Mosaic introduction. Snoozed <span class="number">5 days</span> to land after the Apr 30 Lingotto Q1 publication.
+            </div>
+          </div>
+          <div class="item-aside">
+            <span class="item-time">Snoozed Sat<br>5 days</span>
+            <button class="item-action subtle">Bring to Today</button>
+          </div>
+        </div>
+
+          </div>
+        </div>
+
       </div>
     </section>
 
     <!-- =========================================================
-         SECTION 4: HEATING UP (positive signal direction)
+         SECTION 2: HEATING UP (positive signal direction)
          ========================================================= -->
     <section class="section" id="sec-heating">
       <div class="section-head" onclick="toggleSection('sec-heating')">
@@ -835,7 +870,7 @@
     </section>
 
     <!-- =========================================================
-         SECTION 5: COOLING OFF (collapsed by default)
+         SECTION 3: COOLING OFF (collapsed by default)
          ========================================================= -->
     <section class="section collapsed" id="sec-cooling">
       <div class="section-head" onclick="toggleSection('sec-cooling')">
@@ -903,12 +938,12 @@
     </section>
 
     <!-- =========================================================
-         SECTION 6: QUIET BEYOND CADENCE (collapsed)
+         SECTION 4: GONE QUIET (collapsed)
          ========================================================= -->
-    <section class="section collapsed" id="sec-quiet">
-      <div class="section-head" onclick="toggleSection('sec-quiet')">
+    <section class="section collapsed" id="sec-gone-quiet">
+      <div class="section-head" onclick="toggleSection('sec-gone-quiet')">
         <div class="section-title-row">
-          <span class="section-title">Quiet beyond cadence</span>
+          <span class="section-title">Gone quiet</span>
           <span class="section-count">2 active diligence threads silent past typical</span>
         </div>
         <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -953,7 +988,7 @@
     </section>
 
     <!-- =========================================================
-         SECTION 7: NEXT 7 DAYS AT A GLANCE
+         SECTION 5: NEXT 7 DAYS AT A GLANCE
          ========================================================= -->
     <section class="section" id="sec-calendar">
       <div class="section-head" onclick="toggleSection('sec-calendar')">
