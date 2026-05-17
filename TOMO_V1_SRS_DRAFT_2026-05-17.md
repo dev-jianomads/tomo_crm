@@ -672,6 +672,11 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.5.5 — Reply-length confidence flag suppresses observation when body-cleansing produces dirty content (§8.9 clarification 9).
 - BR-3.5.6 — `mandate_fit` is captured GP-confirmed only — TOMO never imputes from email content in V1.
 - BR-3.5.7 — Stage thresholds use the `stage_cadence_benchmarks` table; per-fund overrides are V2.
+- BR-3.5.8 — **Off-channel suppression.** When `lp_state.off_channel_active_until` is **strictly after** the nightly batch as-of timestamp, the batch **does not** append `lp_signal_log` rows for Signal **1** (Silence), **6** (Stage stagnation), or **9** (One-way contact) for that LP on that run, and **does not** include that LP in the Radar Modal **Gone quiet** cohort or in **Cooling off** rows whose **sole** basis would be silence-class absence (directional deceleration rows from Signals 3 / 4 / 5 / 7 / 8 still emit normally). Re-engagement (Signal 2) is **not** suppressed.
+- BR-3.5.9 — **Off-channel window.** Tapping *I'm in touch off-channel* on the LP record (§3.10) sets `off_channel_active_until = now() + interval '30 days'` (workspace-local `now`). Extend resets the 30-day window from the tap instant; Clear sets `off_channel_active_until = null`. Each set, extend, or clear appends one `lp_signal_log` row with `signal_type='off_channel_marked'` and `signal_value_jsonb` including `{action, prior_until, new_until, gp_user_id}`.
+- BR-3.5.10 — **Pipeline flag vs off-channel.** While `off_channel_active_until` is in the future, Section 8 §8.7 **must not** assign amber/red **solely** from silence-derived inputs for that LP. Positive-direction overrides and re-engagement **urgent red** remain in effect. When suppression prevents an otherwise-applicable silence-derived flag, `pipeline_flag_reason` **includes** the token `off_channel_suppressed`.
+- BR-3.5.11 — **`pipeline_flag='red'` semantics.** Red is **intentionally overloaded**: it may mean (a) negative drift / breach **or** (b) re-engagement **urgent** surfacing (Signal 2). Renderers and operators **must** interpret red via `pipeline_flag_reason`, `lp_state.re_engagement_flag`, and recent `lp_signal_log` rows — never assume red ≡ drift.
+- BR-3.5.12 — **Moveable warming predicate.** For Metric 3 and the `MOVEABLE(lp)` partition (Section 9 Today supplement), the EXISTS “directional warming” clause is satisfied **only** when `lp_signal_log` contains at least one row in the **last 30 days** with `is_directional=true` and `signal_type IN ('reply_velocity','reply_length','reply_initiation','calendar_friction')` whose `signal_value_jsonb` is classified as **warming** per Section 8 §8.3 for that signal (e.g. accelerating velocity, lengthening replies, improving initiation, improving calendar friction). Rows of types `silence`, `stage_stagnation`, `one_way_contact`, `re_engagement`, `cc_expansion`, `warm_ghost_capture`, `close_proximity_capture`, `flag_transition`, `override_applied`, and `off_channel_marked` **do not** satisfy this predicate **by themselves**.
 
 **Acceptance criteria.**
 
@@ -682,6 +687,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.5.5 — An LP with `cc_expansion=true` triggers a profile-update prompt in the Action Drawer with the new contact email pre-filled.
 - AC-3.5.6 — An LP whose recent activity satisfies any positive-direction signal in the last 14 days has `lp_state.pipeline_flag='green'` regardless of `days_since_meaningful_touch` (Section 8 §8.7 override).
 - AC-3.5.7 — `lp_signal_log` entries for the workspace persist indefinitely; a query for signals from 18 months ago returns rows.
+- AC-3.5.8 — An LP with `off_channel_active_until` **10 days in the future** and **70** days since last meaningful touch receives **no** new `lp_signal_log` rows of types `silence` or `stage_stagnation` on the nightly batch run and **does not** appear in the Radar Modal **Gone quiet** section for that run.
+- AC-3.5.9 — An LP with `off_channel_active_until` **10 days in the future** whose pipeline flag **would** have been `red` **purely** from silence-derived inputs is evaluated to `green` (or `amber` if independent directional cooling signals justify amber), and `pipeline_flag_reason` **includes** `off_channel_suppressed` when silence-derived red was suppressed.
+- AC-3.5.10 — An LP with `off_channel_active_until` **10 days in the future** who sends qualifying inbound email after **60** days of GP-side silence **still** triggers Signal 2 (re-engagement) on the event-driven path — off-channel suppression **does not** block re-engagement.
 
 ---
 
@@ -710,19 +718,21 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 | 8 | Fat Middle ratio | Nightly | `lp_interactions` meaningful-touch (6 month lookback) |
 | 9a | Pipeline velocity + sparkline | Nightly + weekly snapshot | `daily_pipeline_summary` weekly samples |
 | 9b | Cooling caught | Nightly | `lp_signal_log` flag_transition entries |
-| 10 | 60-Day Close List | Nightly | Section 9 ranking formula §9.3 Metric 10 |
+| 10 | Focus list (formerly 60-Day Close List) | Nightly | Section 9 ranking formula §9.3 Metric 10 |
 
 **Insights page rendering.**
 
-- **Top half — Where your raise stands.** Capital vs Target hero bar, Day 1 Gap two-up left (with 30-day sparkline), Moveability count two-up right, optional Concentration banner above the two-up.
-- **Bottom half — What TOMO has done.** Time Recovered hero block, Execution Health three-cell row (6a/6b/6c), Lists Intelligence two-block (Direction + qualifier; Fat Middle gauge with Three-Touch CTA), Raise Momentum two-block (Pipeline velocity + sparkline; Cooling caught with trace line), 60-Day Close List anchor.
+- **Section 1 — Where your raise stands (snapshot).** Capital vs Target hero bar; Day 1 Gap two-up left (with 30-day sparkline); Moveability count two-up right (with re-up and active-diligence breakdown); optional Concentration alert banner above the two-up.
+- **Section 2 — Momentum (LP behaviour and priority).** Direction summary with mandate-fit qualifier (Metric 7); Pipeline velocity with 8-week sparkline (Metric 9a); **Focus list** — top **10** LPs from the Moveable cohort ranked by Metric 10 score (Metric 10 rename; cap/shrink per BR-3.6.10).
+- **Section 3 — What TOMO has done (receipts).** Time Recovered hero block (Metric 5); Execution Health three-cell row (Metrics 6a / 6b / 6c).
+- **Deferred surface (V1.5) — still computed in V1:** Metric **9b** (*Cooling caught*) continues to append `lp_signal_log` `flag_transition` inputs nightly but **does not** ship a dedicated Insights block in V1 (see §9.1).
 - "How is this calculated?" inline link below each metric opens a help drawer with the formula in plain language.
 - "Last updated: today at 2:04am · Next update tonight at 2:00am" header banner.
 
 **Outputs.**
 
 - `daily_pipeline_summary` row appended (driven by §3.5 daily snapshot).
-- API responses to `GET /api/insights/{capital,day1gap,moveability,concentration,time-recovered,exec-health,lists-intel,raise-momentum,close-list}` rendering the Insights page.
+- API responses to `GET /api/insights/{capital,day1gap,moveability,concentration,time-recovered,exec-health,momentum,close-list}` rendering the Insights page (`close-list` route name MAY alias **focus-list** in implementation).
 
 **Business rules.**
 
@@ -734,7 +744,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.6.6 — Per-action time benchmarks (drafts 8m / scheduling 12m / follow-ups 10m / meeting prep 15m) per Appendix H O-2; recalibrate after FC Month 1.
 - BR-3.6.7 — Draft edit-level threshold 30% character change (per O-3); below = `approved_with_edits`, at-or-above = `edited_substantially`.
 - BR-3.6.8 — Recalibration nudge fires when `draft_approval_rate_30d < 0.50`.
-- BR-3.6.9 — Fat Middle gauge zones hardcoded 0–30 / 30–60 / 60–100 in V1.
+- BR-3.6.9 — Fat Middle **ratio** zones for Metric 8 remain hardcoded 0–30 / 30–60 / 60–100 in V1. **Insights does not render a Fat Middle gauge in V1**; the actionable cohort is the **Quiet — Fat Middle** named filter on Relationships / Lists (§3.11) with the Three-Touch Qualification CTA unchanged.
+- BR-3.6.10 — **Focus list (Metric 10)** returns at most **10** `lp_contact` rows from the Moveable cohort ranked by the §9.3 Metric 10 score; if the Moveable cohort has **fewer than 10** members, the list length **shrinks** to match; if the cohort is **empty**, the UI shows the prescribed empty state copy ("No LPs are in the moveable cohort yet — check back as signals develop") instead of a blank list.
 
 **Acceptance criteria.**
 
@@ -745,6 +756,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.6.5 — A draft edited at 22% character change is classified `approved_with_edits` and counts toward Metric 6b approval rate.
 - AC-3.6.6 — Concentration alert fires for a workspace where one LP's `expected_commitment_amount` is 25% of `(raise_target - committed_sum)` and is hidden when the largest concentration is below 20%.
 - AC-3.6.7 — A click-through on Day 1 Gap opens the Relationships page filtered to the same N LPs that compose the count.
+- AC-3.6.8 — The Insights page renders **three** titled sections in order: **Where your raise stands**, **Momentum**, **What TOMO has done**, matching §3.6 prose; the **Focus list** (Metric 10) shows **at most 10** ranked Moveable LPs and uses the empty-state copy prescribed in BR-3.6.10 when the Moveable cohort is empty.
 
 ---
 
@@ -821,8 +833,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow. Selecting a row opens the **meeting prep drawer** (see §3.9 meeting prep layout; visual reference `design/tomo_drawer_meetingprep_light_v3.html`).
-   - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. CTA links to Insights (`/insights`). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
-   - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal.
+   - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. **Presentation labels:** *Drifting — act*, *Stalling — watch* (amber, not Moveable), *Moveable*, *Healthy — on track*. Below the four counts, a **Focus list** teaser line links to Relationships filtered to the top-10 Moveable cohort (Metric 10 ordering). The headline **Insights →** control links to `/insights`. Each of the **four counts** is independently tappable and deep-links to Relationships with the **named / URL-addressable** filter state for that bucket (AC-3.8.8). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
+   - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal. **Gone quiet** and **Cooling off** row generation respects `lp_state.off_channel_active_until` per BR-3.5.8.
 2. **Radar Modal (Daily Brief + On my radar).**
    - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
    - **Normative section taxonomy** (order, default collapsed state, CTA dictionary): **Appendix I — Radar Modal IA (v1)**.
@@ -848,7 +860,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.8.2 — Slack delivery requires a connected workspace (`slack_workspace_connections` row not revoked) and a user opt-in (`user_preferences.daily_brief_channels` includes 'slack').
 - BR-3.8.3 — If both email and Slack are enabled, both are delivered; no de-duplication.
 - BR-3.8.4 — Empty-state attention queue surfaces a "Nothing pressing today" state with a link to Lists.
-- BR-3.8.5 — **Where the raise stands** counts use the same normative definitions as Section 9 (Metric 3 for “genuinely moveable”; `lp_state.pipeline_flag` for G/A/R-derived buckets). The four buckets are mutually exclusive and sum to the **Today tile cohort** of LPs (non-terminal raise stages per Section 9 Today supplement — production default excludes `pass`, `closed_lost`, and `committed` from *work left*; the mock uses CRM labels **Closed** and **Pass** only).
+- BR-3.8.5 — **Where the raise stands** counts use the same normative definitions as Section 9 (Metric 3 for the **Moveable** bucket; `lp_state.pipeline_flag` for G/A/R-derived buckets). **Presentation names:** *Stalling — watch* (not "cooling — watch") disambiguates the Today bucket from Radar **Cooling off**. The four buckets are mutually exclusive and sum to the **Today tile cohort** of LPs (non-terminal raise stages per Section 9 Today supplement — production default excludes `pass`, `closed_lost`, and `committed` from *work left*; the mock uses CRM labels **Closed** and **Pass** only).
 - BR-3.8.6 — Radar Modal section titles, collapse defaults, and CTA labels match **Appendix I** unless an explicit **[OPEN]** issue records a product exception.
 
 **Acceptance criteria.**
@@ -858,8 +870,10 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.8.3 — A GP with Slack connected and `daily_brief_channels=['in_app','email','slack']` receives the brief in their Slack DM at 07:30 local.
 - AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded.
 - AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, **Radar Modal payload**, **raise-stands counts**) and returns answers consistent with what's rendered on the page.
-- AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (genuinely moveable, healthy & on track, cooling — watch, drifting — act) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
+- AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (**Moveable**, **Healthy — on track**, **Stalling — watch**, **Drifting — act**) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
 - AC-3.8.7 — The in-app Radar Modal implements the section taxonomy and defaults in **Appendix I** (including footer **Brief settings** and **Done**).
+- AC-3.8.8 — Each of the four bucket counts on **Where the raise stands** is independently tappable: **Drifting — act** → Relationships cohort `pipeline_flag='red'` among active LPs; **Stalling — watch** → `pipeline_flag='amber'` AND NOT `MOVEABLE(lp)`; **Moveable** → full Moveable predicate; **Healthy — on track** → `pipeline_flag='green'` AND NOT `MOVEABLE(lp)`. Each filter SHALL be a **named filter and/or URL-addressable** Relationships state (see §3.11 combinator).
+- AC-3.8.9 — The **Focus list** teaser below the four counts shows the prescribed label for the top **10** Moveable LPs (or fewer when the cohort is smaller) and navigates to Relationships filtered to that ordered cohort with rank visible in the LP column per Metric 10 / BR-3.6.10.
 
 ---
 
@@ -962,7 +976,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - **Also required from §3.10 / §8.5:** sortable columns; default sort **pipeline_flag** (red → amber → green) then **days_since_meaningful_touch** desc; “Stuck Nd” when `stage_stagnation_flag` is amber/red; subtle re-up dot when `prior_fund_investor=true`.
 2. **Cards view.** Same grouping rules as list; **LP cards** per v3 (`design/tomo_relationships_cards_v3.html`) — signal dot, tier / prior badge, signal pill, last/next touch, ticket, mandate fit, open loops.
 3. **Board (Kanban) view.** Columns = canonical pipeline stages (order and chrome per `design/tomo_relationships_kanban_v3.html`). Drag-and-drop writes `lp_stage_transitions`. **Group by is ignored** in this view.
-4. **Detail drawer (LP record).** Follow section order and interaction patterns in **`design/tomo_relationships_lp_drawer_v2.html`:** drawer header (Newsreader title, role · firm · tier); **Signal evidence** (`pipeline_flag_reason` narrative); **Snapshot** (synthesised narrative); **Pipeline state** (stage, pipeline flag, tier, days in stage / prior stage, owner); **Pipeline data** (mandate fit, expected commitment, prior fund, active investments summary); **Open loops & commitments**; **Update with Tomo**; **Show full record** expanding to identity & contact, firm details (**fund being raised against** = active `fund_id`), **behavioural signals** (nine signals + derived rows per §3.5), CRM extended fields as needed; **Activity log** (chronological). Mobile: full-height drawer / sheet equivalent.
+4. **Detail drawer (LP record).** Follow section order and interaction patterns in **`design/tomo_relationships_lp_drawer_v2.html`:** drawer header (Newsreader title, role · firm · tier); **Off-channel chip** (*I'm in touch off-channel* / *Off-channel until {date} — extend* / Clear) per BR-3.5.9; **Signal evidence** (`pipeline_flag_reason` narrative); **Snapshot** (synthesised narrative); **Pipeline state** (stage, pipeline flag, tier, days in stage / prior stage, owner); **Pipeline data** (mandate fit, expected commitment, prior fund, active investments summary); **Open loops & commitments**; **Update with Tomo**; **Show full record** expanding to identity & contact, firm details (**fund being raised against** = active `fund_id`), **behavioural signals** (nine signals + derived rows per §3.5), CRM extended fields as needed; **Activity log** (chronological). Mobile: full-height drawer / sheet equivalent.
 5. **Inline editing via Tomo chat (Manual Update Principle).**
    - GP types: "Peter sized at $25M" → Tomo proposes `lp_contacts.expected_commitment_amount=25000000` → confirmation gate → write + `activity_log` row.
    - Direct field editing remains available for power users (chip selectors, numeric sizing) with the same audit rules.
@@ -973,7 +987,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Outputs.**
 
-- `lp_contacts`, `lp_state` updates from edits.
+- `lp_contacts`, `lp_state` updates from edits (including GP mutations to `off_channel_active_until` per §3.10 / BR-3.5.9).
 - `lp_stage_transitions` rows on stage changes.
 - `lp_notes` rows on free-text notes.
 - `agent_tool_calls` rows for chat-driven updates (`tool_name='update_crm'`).
@@ -985,6 +999,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.10.2 — Stage changes on the Kanban board write to `lp_stage_transitions` immediately. The trigger ensures `lp_state.days_in_current_stage` is recomputed within seconds.
 - BR-3.10.3 — Provenance: every field write records `source` (CRM-imported / GP-edited / TOMO-derived / TOMO-computed) and is rendered on hover.
 - BR-3.10.4 — Workspace teammates see and edit the same LPs; concurrent edits use last-write-wins with conflict surfaces in `activity_log`.
+- BR-3.10.5 — **Off-channel affordance** on the LP record SHALL call the same persistence rules as BR-3.5.9 (30-day rolling window; append-only `lp_signal_log` audit rows). The chip is visible in the drawer header region per `design/tomo_relationships_lp_drawer_v2.html` engineering placement.
 
 **Acceptance criteria.**
 
@@ -992,7 +1007,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.10.2 — Dragging an LP from `first_meeting` to `nurturing` on the board writes a `lp_stage_transitions` row and updates `lp_state.days_in_current_stage` within 5 seconds.
 - AC-3.10.3 — Typing "Peter sized at $25M" in the LP-card chat surfaces a confirm dialog with the proposed `expected_commitment_amount=25000000`, and writing applies on confirm.
 - AC-3.10.4 — The LP card surfaces every Section 8 §8.3–§8.4 surface element listed in §8.8.
-- AC-3.10.5 — The LP **detail drawer** implements the section order and primary interactions of `design/tomo_relationships_lp_drawer_v2.html` (signal evidence, snapshot, pipeline state, pipeline data, open loops & commitments, Update with Tomo, expandable full record including behavioural signals grid and activity log).
+- AC-3.10.5 — The LP **detail drawer** implements the section order and primary interactions of `design/tomo_relationships_lp_drawer_v2.html` (off-channel chip when applicable, signal evidence, snapshot, pipeline state, pipeline data, open loops & commitments, Update with Tomo, expandable full record including behavioural signals grid and activity log).
+- AC-3.10.6 — Tapping *I'm in touch off-channel* on an LP whose `off_channel_active_until` is null sets the field to **now + 30 days**, appends `lp_signal_log` with `signal_type='off_channel_marked'` and `signal_value_jsonb.action='set'`, and updates the chip label to *Off-channel until {date} — extend* (localized date).
 
 ---
 
@@ -1702,9 +1718,9 @@ All routes are Next.js Route Handlers (App Router) on Vercel except where noted 
 | `/api/insights/concentration` | GET | Metric 4 |
 | `/api/insights/time-recovered` | GET | Metric 5 |
 | `/api/insights/execution-health` | GET | Metric 6 a/b/c |
-| `/api/insights/lists-intel` | GET | Metric 7, 8 |
-| `/api/insights/raise-momentum` | GET | Metric 9 a/b |
-| `/api/insights/close-list` | GET | Metric 10 |
+| `/api/insights/lists-intel` | GET | Metric 7 (Direction); Metric 8 Fat Middle **ratio + cohort ids** (Insights **omits gauge** in V1 — BR-3.6.9) |
+| `/api/insights/raise-momentum` | GET | Metric 9a sparkline data; Metric **9b** inputs (**Insights UI block** deferred §9.1) |
+| `/api/insights/close-list` | GET | Metric 10 **Focus list** (implementation MAY alias path as `focus-list`) |
 | `/api/workflows` | GET, POST | List, create workflow |
 | `/api/workflows/{id}` | GET, PATCH | Workflow detail |
 | `/api/workflows/{id}/steps` | GET, POST, PATCH | Step CRUD |
@@ -2556,7 +2572,7 @@ LP person record. Foreign key to `lp_organizations` (every LP belongs to a firm)
 | `mandate_fit_captured_at` | timestamptz | null | | | When the GP last confirmed |
 | `prior_fund_investor` | boolean | not null | `false` | | Re-up cohort flag |
 | `prior_fund_identifier` | text | null | | | E.g. "Fund II" |
-| `prior_commitment_amount` | numeric(18,2) | null | | | Used in 60-Day Close List metadata |
+| `prior_commitment_amount` | numeric(18,2) | null | | | Used in Focus list (Metric 10) metadata |
 | `prior_commitment_currency` | varchar(3) | null | | | |
 | **Sizing for Section 9 metrics:** | | | | | |
 | `expected_commitment_amount` | numeric(18,2) | null | | | New per §9.4 schema addition 1; null = exclude from sum-based metrics |
@@ -2574,7 +2590,7 @@ LP person record. Foreign key to `lp_organizations` (every LP belongs to a firm)
 
 ##### Table: `lp_state`
 
-Derived per-LP state, recomputed by the nightly batch. One row per `lp_contact_id`. **All values in this table are derived; never edited directly by humans.** Computed by the signals engine (§3.5) and read by the metrics engine (§3.6). *(Workspace-scoped; soft-delete via cascade only.)*
+Derived per-LP state, recomputed by the nightly batch. One row per `lp_contact_id`. **All values in this table are derived and batch-owned except one GP-authoritative field:** `off_channel_active_until` (set/cleared only via the Relationships LP-record affordance in §3.10 and its API; the nightly batch **reads** it for suppression rules in §3.5 and does not overwrite it). Computed by the signals engine (§3.5) and read by the metrics engine (§3.6). *(Workspace-scoped; soft-delete via cascade only.)*
 
 | Column | Type | Null | Default | References | Notes |
 |---|---|---|---|---|---|
@@ -2586,6 +2602,7 @@ Derived per-LP state, recomputed by the nightly batch. One row per `lp_contact_i
 | `pipeline_flag` | text | not null | `'green'` | check in (`'green'`, `'amber'`, `'red'`) | Output of locked algorithm |
 | `pipeline_flag_reason` | text | null | | | Plain-English explanation, surfaced on LP card |
 | `pipeline_flag_computed_at` | timestamptz | null | | | |
+| `off_channel_active_until` | timestamptz | null | | | GP-set via §3.10 *I'm in touch off-channel*; when in the future, silence-class signals and silence-derived Radar cohorts are suppressed per BR-3.5.8–BR-3.5.10. Rolling 30-day window from each set/extend action. |
 | **Re-engagement (Signal 2):** | | | | | |
 | `re_engagement_flag` | boolean | not null | `false` | | True for 24h after re-engagement detected |
 | `re_engagement_detected_at` | timestamptz | null | | | |
@@ -2843,7 +2860,7 @@ AI-generated meeting recap. Two paths per §3.13: (a) ingested from upstream (Mi
 |---|---|---|---|---|---|
 | `id` | uuid | not null | `gen_random_uuid()` | pk | |
 | `lp_contact_id` | uuid | not null | | fk → `lp_contacts.id` | |
-| `signal_type` | text | not null | | check in (`'silence'`, `'re_engagement'`, `'reply_velocity'`, `'reply_length'`, `'reply_initiation'`, `'stage_stagnation'`, `'calendar_friction'`, `'cc_expansion'`, `'one_way_contact'`, `'warm_ghost_capture'`, `'close_proximity_capture'`, `'flag_transition'`, `'override_applied'`) | |
+| `signal_type` | text | not null | | check in (`'silence'`, `'re_engagement'`, `'reply_velocity'`, `'reply_length'`, `'reply_initiation'`, `'stage_stagnation'`, `'calendar_friction'`, `'cc_expansion'`, `'one_way_contact'`, `'warm_ghost_capture'`, `'close_proximity_capture'`, `'flag_transition'`, `'override_applied'`, `'off_channel_marked'`) | |
 | `signal_value_jsonb` | jsonb | not null | | | Per-signal raw observation (e.g. `{"latency_series_hrs":[18,72,168], "trend":"decelerating", "baseline_avg_hrs":24}`) |
 | `flag_before` | text | null | | | For `flag_transition` and `override_applied` |
 | `flag_after` | text | null | | | |
@@ -2884,9 +2901,9 @@ Per Section 8 §8.6. Global defaults per stage; per-workspace override deferred 
 | `cooling_currently_flagged` | int | not null | `0` | | LPs with pipeline_flag in (amber, red) |
 | `moveability_count` | int | not null | `0` | | Count of LPs in Metric 3 cohort |
 | `today_tile_drifting_act` | int | null | | | Optional materialisation: partition bucket — `pipeline_flag='red'` (active stages only) |
-| `today_tile_cooling_watch` | int | null | | | Optional: `pipeline_flag='amber'` and not in Metric 3 cohort |
+| `today_tile_stalling_watch` | int | null | | | Optional: `pipeline_flag='amber'` and not in Metric 3 cohort |
 | `today_tile_healthy_on_track` | int | null | | | Optional: `pipeline_flag='green'` and not in Metric 3 cohort |
-| `today_tile_genuinely_moveable` | int | null | | | Optional: same as `moveability_count` when materialised for the tile; omit if derived from `moveability_count` column |
+| `today_tile_moveable` | int | null | | | Optional: same as `moveability_count` when materialised for the tile; omit if derived from `moveability_count` column |
 | `flag_resolutions_today` | int | not null | `0` | | Cooling caught "resolved" component |
 | `currency` | varchar(3) | not null | `'USD'` | | Workspace primary at time of snapshot |
 | `snapshot_run_id` | uuid | not null | | | Tie back to the batch run |
@@ -3917,9 +3934,9 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Click-through opens Relationships filtered to the same N LPs.
 
 **Story 8.8.3 — Moveability count.**
-*As a GP, I see a single number for LPs genuinely moveable now, with a re-up / active-diligence breakdown.*
+*As a GP, I see a single number for LPs moveable now, with a re-up / active-diligence breakdown.*
 
-- AC — Count matches the cohort that scores into Metric 10's 60-Day Close List.
+- AC — Count matches the cohort that scores into Metric 10's **Focus list** (same Moveable predicate).
 - AC — Dollar annotation sums `expected_commitment_amount` over the cohort.
 
 **Story 8.8.4 — Concentration risk alert.**
@@ -3942,23 +3959,24 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Draft approval rate trends rolling 30d vs 60d; below 50% triggers a recalibration nudge.
 - AC — Scheduling efficiency shows current and pre-TOMO baseline.
 
-**Story 8.8.7 — Lists Intelligence.**
-*As a GP, I see relationships with clear direction and the Fat Middle ratio with a CTA.*
+**Story 8.8.7 — Momentum (Direction + velocity + Focus list teaser path).**
+*As a GP, I see relationships with clear direction, pipeline velocity, and the ranked Focus list — without a standalone Fat Middle gauge on Insights.*
 
-- AC — Direction count plus the mandate-fit qualifier subset render together.
-- AC — Fat Middle gauge renders zones 0–30 / 30–60 / 60+.
-- AC — "Run Three-Touch Qualification on N LPs" CTA opens the F7 workflow with the cohort pre-loaded.
+- AC — Direction count plus the mandate-fit qualifier subset render together in **Momentum**.
+- AC — Pipeline velocity sparkline renders weekly samples from `daily_pipeline_summary.pipeline_velocity_avg_days`.
+- AC — **Fat Middle** is not rendered as a gauge on Insights V1; the **Quiet — Fat Middle** named filter + Three-Touch CTA on Relationships / Lists satisfies the cohort action path.
+- AC — **Focus list** shows up to **10** ranked Moveable LPs per Metric 10 / BR-3.6.10.
 
-**Story 8.8.8 — Raise Momentum.**
-*As a GP, I see pipeline velocity with an 8-week sparkline and a cooling-caught count with a trace line.*
+**Story 8.8.8 — Raise Momentum (Metric 9a + 9b data).**
+*As a GP, I see pipeline velocity with an 8-week sparkline; Metric 9b continues to compute for analytics even when the Cooling-caught **Insights block** is deferred.*
 
 - AC — Sparkline samples weekly from `daily_pipeline_summary.pipeline_velocity_avg_days`.
-- AC — Cooling-caught "resolved" count uses `lp_signal_log` `flag_transition` rows.
+- AC — Cooling-caught "resolved" count for Metric **9b** still uses `lp_signal_log` `flag_transition` rows in the batch — **UI deferral only** (§9.1).
 
-**Story 8.8.9 — 60-Day Close List.**
-*As a GP, I see a ranked list of seven LPs most likely to close in the next 60 days with badges, evidence, and dollar metadata.*
+**Story 8.8.9 — Focus list (Metric 10).**
+*As a GP, I see a ranked list of up to **10** moveable LPs with badges, evidence, and dollar metadata — ordered by the §9.3 Metric 10 score, not a literal 60-day close guarantee.*
 
-- AC — Ranking uses Section 9 §9.3 Metric 10 formula.
+- AC — Ranking uses Section 9 §9.3 Metric 10 formula (cap/shrink per BR-3.6.10).
 - AC — Each row is decomposable on hover into its score components.
 - AC — Click-through opens the LP detail.
 
@@ -4310,6 +4328,7 @@ The following items are explicitly deferred to V1.5 (a stabilisation release) an
 - Mobile native applications.
 - Fund Update as a first-class workflow with structured content blocks, jurisdictional distribution rules, and engagement analytics. V1 ships fund-update behaviour only as a saved Themed Outreach configuration.
 - Full DDQ RAG over a structured DDQ knowledge base. V1 ships only the Action Drawer DDQ response flow backed by a GP-curated prior DDQ store.
+- **Insights — Cooling caught hero surface** (Metric 9b narrative block). Metric **9b** continues to compute from `lp_signal_log` `flag_transition` rows in V1; only the **Insights UI surface** is deferred to V1.5 (see §3.6 rendering notes).
 
 ### 9.2. Permanent non-goals (not on any roadmap)
 
@@ -4352,32 +4371,40 @@ Extends §1.3. Alphabetical.
 | **Backfill** | The historical email and calendar ingestion run at onboarding. Three-tier: 0–12 months full content, 13–36 months metadata, beyond 36 months no ingestion. |
 | **CASA** | Cloud Application Security Assessment. Google's third-party security review programme for OAuth apps that access sensitive scopes. CASA Tier 2 is the V1 commitment. |
 | **Concentration risk** | Insights Metric 4. Triggered when one LP's expected commitment exceeds 20% of remaining target. |
+| **Cooling off** | Radar Modal **directional** deceleration section (negative momentum). Not the same as Today **Stalling — watch**. |
 | **Day 1 Gap** | Count of LPs whose CRM lists them as active but for whom TOMO finds no meaningful touch in 60+ days. Insights Metric 2; revealed after initial sync (not a Document B onboarding step — §3.2). |
 | **Daily Brief** | Per-day summary delivered in-app (Radar Modal), email, and Slack. §3.8; section taxonomy **Appendix I**. |
 | **Radar Modal** | Unified modal on Today: **Daily Brief** framing (eyebrow, narrative, stamp) + **On my radar** content with collapsible sections per **Appendix I**. Design reference: `design/tomo_radar_modal_v1.html`. |
 | **Delta sync** | Incremental ingestion via Microsoft Graph delta links and Google History API / push notifications. |
 | **Drifting** | Named filter on Lists for LPs in amber/red flag with silence reason. |
-| **Fat Middle** | Cohort of warm-stage LPs with no directional signal in 30+ days. Insights Metric 8 plus the named filter. |
 | **F7** | Three-Touch Qualification — V1 NON-NEGOTIABLE default-on workflow per V1 Final Decision #2. |
+| **Fat Middle** | Cohort of warm-stage LPs with no directional signal in 30+ days. Insights Metric 8 (ratio) still computes in V1; **Insights does not ship a Fat Middle gauge** — use the **Quiet — Fat Middle** named filter on Relationships / Lists (§3.11) with the Three-Touch CTA. |
+| **Focus list** | Insights Metric 10 — up to **10** Moveable LPs ranked by the §9.3 score (not a literal time-to-close model). |
 | **Foliometrics** | A CRM used by 2 FC GPs. V1 ships CSV import only; no API exists. |
 | **Founding Circle (FC)** | First 12 GP cohort using TOMO V1. |
+| **Gone quiet** | Radar Modal section (formerly *Quiet beyond cadence*): LPs past meaningful-touch cadence for their stage. |
 | **Geoffrey Surface** | The TOMO operator role for FC onboarding and Day 14/30/60 reviews. Manual operational support in V1 (no impersonation feature). |
 | **GP** | General Partner. Primary user. |
 | **HubSpot** | A CRM used by some FC GPs. V1 ships CSV import only; API integration deferred to V1.5. |
 | **LP** | Limited Partner. Investor or prospective investor. |
 | **Manual Update Principle** | GP edits CRM fields by talking to Tomo in plain language; Tomo proposes the change; GP confirms before persistence. From Tomo MVP3. |
 | **Meaningful Touch** | The unit of measurement for "have we recently connected with this LP." Defined in Section 8 §8.2. |
-| **Moveability count** | Insights Metric 3. Single number for LPs genuinely moveable now. |
+| **Moveability count** | Insights Metric 3. Single number for LPs **moveable** now (Metric 3 cohort). |
+| **Moveable** | An LP in the Metric 3 / `MOVEABLE(lp)` cohort (warm stages, not red, warming predicate per BR-3.5.12, within touch SLA). Today bucket label **Moveable**. |
+| **Momentum** | Insights §3.6 **Section 2** — Direction, pipeline velocity / sparkline, Focus list. |
+| **Off-channel suppression** | GP-marked `off_channel_active_until` on `lp_state` that blocks silence-class signal writes and silence-only Radar inclusions for the window; directional signals still fire. §3.5 BR-3.5.8–BR-3.5.10; LP affordance §3.10. |
 | **OAuth (data sources)** | Per-user grants for Microsoft Graph / Google Workspace / Slack / native CRM read (Affinity or Backstop per §3.4), separate from Firebase auth. |
 | **OOO** | Out of office. Detected and excluded from meaningful-touch. |
 | **One-Way** | Named filter on Lists for LPs whose last contact was a GP-initiated email with no reply. |
-| **Pipeline flag** | G/A/R state per LP from Section 8 §8.7 algorithm. |
+| **Pipeline flag** | G/A/R state per LP from Section 8 §8.7 algorithm. **`red` is overloaded** — negative drift vs re-engagement urgent; consumers SHALL use `pipeline_flag_reason` and recent `lp_signal_log` context (BR-3.5.11). |
 | **Pipeline stage** | Eight canonical LP stages from Section 8 §8.2. |
 | **Re-engagement** | Signal 2 — event-driven detection when an LP inbound arrives after 45+ days of silence. |
 | **RLS** | Row-Level Security. Postgres feature enforcing per-row access policies; used for workspace isolation. |
 | **SOC 2 Type 1** | Service Organization Control attestation; V1 commitment. |
 | **Stage stagnation** | Signal 6 — LP stuck in current pipeline stage longer than typical, with prior-stage history. |
-| **Sub-processor** | Third party that processes customer data on TOMO's behalf (Supabase, Firebase, Vercel, AWS, Vertex AI, Postmark/SES, Slack, Stripe, Sentry, PostHog, Affinity, Backstop). || **Three-Touch** | F7. Three-step sequence (insight → question → respectful close) for qualifying quiet LPs. |
+| **Stalling — watch** | Today **Where the raise stands** bucket: amber `pipeline_flag`, not Moveable. Not the same phrase as Radar **Cooling off**. |
+| **Sub-processor** | Third party that processes customer data on TOMO's behalf (Supabase, Firebase, Vercel, AWS, Vertex AI, Postmark/SES, Slack, Stripe, Sentry, PostHog, Affinity, Backstop). |
+| **Three-Touch** | F7. Three-step sequence (insight → question → respectful close) for qualifying quiet LPs. |
 | **Tier (LP tier)** | GP-set priority on the LP record. T1 / T2 / T3 / unset. Drives missed-reply threshold among other things. |
 | **Tomo agent** | The in-app AI agent. Streamed via Vercel AI SDK, surface-gated tools, confirmation gate on mutations. §3.14. |
 | **Tone profile** | Per-user model derived from sent-mail history during onboarding. Used by every draft generation path. |
@@ -4386,6 +4413,19 @@ Extends §1.3. Alphabetical.
 | **Vertex AI** | Google Cloud's enterprise inference platform. V1 LLM provider via `@ai-sdk/google`. |
 | **Webhook** | Inbound HTTP delivery from a third party (Microsoft Graph subscription, Google Pub/Sub, Affinity, Backstop, Slack, Stripe, Postmark / SES). All signature-verified. |
 | **Workspace** | Multi-tenant unit. Multiple members; identical permissions among members in V1. |
+
+#### A.1 Term disambiguation (daily surfaces)
+
+| Term | What it means | Where it appears |
+|------|----------------|-------------------|
+| **Cooling off** | LPs trending **negative** on directional signals (last 30d) | Radar Modal — **Cooling off** (Appendix I) |
+| **Stalling — watch** | Amber `pipeline_flag`, **not** Moveable | Today **Where the raise stands** |
+| **Gone quiet** | Past meaningful-touch cadence / silence threshold | Radar Modal (renamed from *Quiet beyond cadence*) |
+| **Moveable** | Passes Metric 3 / `MOVEABLE(lp)` | Today bucket; Insights Metric 3; Focus list cohort |
+| **Drifting — act** | `pipeline_flag='red'` (includes re-engagement urgent) | Today bucket |
+| **Focus list** | Top **10** Moveable LPs by Metric 10 score | Insights **Momentum**; Today teaser |
+| **Direction** | Aggregate warming vs cooling | Insights Metric 7; Radar **Heating up** / **Cooling off** |
+| **Momentum** | Insights section 2 label — trajectory + Focus list | Insights page |
 
 ### B. Reference documents
 
@@ -4398,6 +4438,7 @@ Extends §1.3. Alphabetical.
 - `Tomo_MVP3.docx` — historical reference; carries SOC 2 / CASA framing and agent-orchestration tool inventory; superseded for everything else by V1 Final.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
+- `docs/DAILY_SURFACES_OFF_CHANNEL_IMPLEMENTATION_PLAN_2026-05-17.md` — engineering sequencing for Today / Radar / Insights / Relationships URL filters and off-channel suppression.
 - `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md` — implementation plan for the Workflows accordion surface, step-level drawers, and supporting mock-data contract.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 - `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 10).
@@ -4539,8 +4580,8 @@ daily_pipeline_summary [A] (id pk, snapshot_date, day_1_gap_count, day_1_gap_bas
                             pipeline_velocity_avg_days, total_committed, total_soft_commit,
                             total_active_pipeline, cooling_currently_flagged,
                             moveability_count,
-                            today_tile_drifting_act, today_tile_cooling_watch,
-                            today_tile_healthy_on_track, today_tile_genuinely_moveable,
+                            today_tile_drifting_act, today_tile_stalling_watch,
+                            today_tile_healthy_on_track, today_tile_moveable,
                             flag_resolutions_today, currency, snapshot_run_id)
 tomo_action_log [A] (id pk, lp_contact_id → lp_contacts.id, gp_user_id → users.id,
                      action_type, outcome, character_change_pct, time_saved_minutes,
@@ -4665,7 +4706,7 @@ Cross-references §4.2 for full detail. This appendix is the at-a-glance index.
 - Integrations: `/api/integrations/status`
 - CSV: `/api/csv-import`, `/api/csv-import/{id}/mapping`, `/api/csv-import/{id}/dedupe-decisions`, `/api/csv-import/{id}/commit`
 - LP: `/api/lp-contacts`, `/api/lp-contacts/{id}`, `/api/lp-contacts/{id}/notes`, `/api/lp-contacts/{id}/timeline`, `/api/lp-state/{id}`
-- Insights: `/api/insights/{capital,day-1-gap,moveability,concentration,time-recovered,execution-health,lists-intel,raise-momentum,close-list}`
+- Insights: `/api/insights/{capital,day-1-gap,moveability,concentration,time-recovered,execution-health,lists-intel,raise-momentum,close-list}` (`close-list` = Metric 10 **Focus list**; `lists-intel` / `raise-momentum` payloads align with §3.6 **Momentum** section composition)
 - Workflows: `/api/workflows`, `/api/workflows/{id}`, `/api/workflows/{id}/steps`, `/api/workflows/{id}/run`, `/api/workflow-runs/{id}`
 - Reminders: `/api/reminders`, `/api/reminders/{id}`
 - Meetings: `/api/meetings/{id}/prep`, `/api/meetings/{id}/recap`, `/api/meetings/{id}/post-meeting`
@@ -5000,7 +5041,7 @@ Refresh: nightly. Click-through filters Relationships to the same N LPs.
 moveability_count = COUNT(lp_contacts) WHERE
   pipeline_stage IN ('first_meeting','nurturing','active_diligence','soft_commit')
   AND lp_state.pipeline_flag IN ('green','amber')   -- explicitly NOT red
-  AND EXISTS (lp_signal_log row of any directional warming type in last 30 days)
+  AND EXISTS (lp_signal_log row satisfying the warming predicate per BR-3.5.12)
   AND lp_state.days_since_meaningful_touch <= amber_threshold(pipeline_stage)
 
 reup_count             = same with AND prior_fund_investor = true
@@ -5022,8 +5063,8 @@ ACTIVE = lp_contacts WHERE pipeline_stage NOT IN (terminal_stages)
 # MOVEABLE(lp) = same predicate as moveability_count (Metric 3 above)
 
 today_tile_drifting_act       = COUNT lp IN ACTIVE WHERE pipeline_flag = 'red'
-today_tile_genuinely_moveable = COUNT lp IN ACTIVE WHERE MOVEABLE(lp)
-today_tile_cooling_watch      = COUNT lp IN ACTIVE WHERE pipeline_flag = 'amber' AND NOT MOVEABLE(lp)
+today_tile_moveable           = COUNT lp IN ACTIVE WHERE MOVEABLE(lp)
+today_tile_stalling_watch     = COUNT lp IN ACTIVE WHERE pipeline_flag = 'amber' AND NOT MOVEABLE(lp)
 today_tile_healthy_on_track   = COUNT lp IN ACTIVE WHERE pipeline_flag = 'green' AND NOT MOVEABLE(lp)
 ```
 
@@ -5140,7 +5181,7 @@ fat_middle_ratio = three_plus_touches / warm_stage_lps
 fat_middle_cohort = warm_stage_lps WHERE three-plus-touches condition fails
 ```
 
-Gauge zones (V1): 0–30 / 30–60 / 60–100. CTA: "Run Three-Touch Qualification on N LPs" → F7 workflow with cohort pre-loaded. Refresh: nightly.
+Gauge zones (V1): 0–30 / 30–60 / 60–100 still define **severity bands for the numeric ratio** and API payloads. **Insights V1 does not render a Fat Middle gauge** (BR-3.6.9); the **Quiet — Fat Middle** named filter on Relationships / Lists carries the Three-Touch Qualification CTA. Refresh: nightly.
 
 #### Metric 9a — Pipeline velocity
 
@@ -5179,9 +5220,9 @@ total_cooling_caught_30d = COUNT(unique LPs that were flagged amber/red at any p
 
 Refresh: nightly.
 
-#### Metric 10 — 60-Day Close List
+#### Metric 10 — Focus list (ranked Moveable LPs)
 
-Top 7 of the Moveability cohort, ranked by close-probability score:
+Top **10** of the Moveability cohort (**or fewer** when the cohort is smaller than 10), ranked by close-probability score. **Presentation name:** *Focus list* — not a literal 60-day time-to-close prediction; the score is a composite ranking per below.
 
 ```
 score(lp) = stage_weight + intent_weight + signal_weight - silence_penalty
@@ -5204,7 +5245,7 @@ signal_weight:
 silence_penalty:
   if days_since_meaningful_touch > amber_threshold(stage):  -15
 
-return top 7 by score with full LP context
+return top 10 by score with full LP context (empty-state copy per BR-3.6.10 when cohort empty)
 ```
 
 Refresh: nightly. Score is decomposable into components — every row hover shows the decomposition. Recalibration after 30+ closes is V3 territory.
@@ -5265,15 +5306,15 @@ Normative interaction architecture for the unified **Daily Brief + On my radar**
 
 #### I.3 Section taxonomy (order and defaults)
 
-| § | Section title | Default UI state | Direction pill (optional) |
-|---|----------------|------------------|---------------------------|
-| 1 | **Returning to you** | Expanded | — |
-| 2 | **Your commitments approaching** | Expanded | — |
-| 3 | **Outstanding from your LPs** | Expanded | — |
-| 4 | **Heating up** | Expanded | **Positive direction** |
-| 5 | **Cooling off** | **Collapsed** | **Negative direction** |
-| 6 | **Quiet beyond cadence** | **Collapsed** | — |
-| 7 | **Next 7 days at a glance** | Expanded | — |
+| § | Section title | Default UI state | Direction pill (optional) | Sub-labels (Commitments only) |
+|---|----------------|------------------|---------------------------|--------------------------------|
+| 1 | **Commitments** | Expanded | — | **Your commitments** · **Their commitments** · **Coming due** |
+| 2 | **Heating up** | Expanded | **Positive direction** | — |
+| 3 | **Cooling off** | **Collapsed** | **Negative direction** | — |
+| 4 | **Gone quiet** | **Collapsed** | — | — |
+| 5 | **Next 7 days at a glance** | Expanded | — | — |
+
+Sections **1** (**Commitments**) consolidates the former **Returning to you**, **Your commitments approaching**, and **Outstanding from your LPs** sections as **three sibling sub-rails** under one collapsible parent (same primary sources; engineering may render as one section with three grouped lists). Section **4** renames the former **Quiet beyond cadence** heading to **Gone quiet** (plain-language GP label); computation unchanged (**meaningful-touch cadence vs silence**, §8). **Heating up**, **Cooling off**, and **Next 7 days** behaviour is unchanged aside from renumbering.
 
 Sections with **zero** rows: render the section with prescribed empty-state copy **or** omit the section — engineering chooses one strategy per build, documented in release notes; QA verifies consistency.
 
@@ -5300,17 +5341,17 @@ Exact routing is implementation-defined but must land in **Action Drawer** or eq
 
 #### I.6 Badge count (entry point)
 
-The **On my radar** control badge displays **`badgeCount`**: the number of **navigable / actionable** rows across sections **1–7** for the current local day (rows with a `link` or CTA that opens a drawer, approval, or draft flow). **Intel-only** rows (no navigation target) may be excluded unless product toggles **include_intel_rows_in_badge** — default **exclude**. Document the chosen rule in release configuration.
+The **On my radar** control badge displays **`badgeCount`**: the number of **navigable / actionable** rows across sections **1–5** for the current local day (rows with a `link` or CTA that opens a drawer, approval, or draft flow). **Intel-only** rows (no navigation target) may be excluded unless product toggles **include_intel_rows_in_badge** — default **exclude**. Document the chosen rule in release configuration.
 
 #### I.7 Data sources (informative)
 
 | Section | Primary sources (V1 target) |
 |---------|-----------------------------|
-| Returning to you | `reminders` snooze expiry; actions returned from snooze |
-| Your commitments approaching | `commitments`; extracted promises / open loops |
-| Outstanding from your LPs | Inbound obligations; SLA vs stated turnaround |
-| Heating up / Cooling off | `lp_signal_log`; reply velocity; pipeline signals |
-| Quiet beyond cadence | Meaningful-touch cadence vs silence (**§8**) |
+| Commitments — Your commitments | `commitments`; extracted promises / open loops from outbound; Today-queue approvals/blocked (`tomo_action_log`) |
+| Commitments — Their commitments | Inbound obligations; SLA vs stated turnaround |
+| Commitments — Coming due | `commitments.due_at` within window; `reminders` snooze expiry; **Returning-to-you** queue items surfaced as **Coming due** or sibling rail per engineering layout |
+| Heating up / Cooling off | `lp_signal_log`; reply velocity; pipeline signals; **respect `off_channel_active_until` for silence-only Cooling rows** (BR-3.5.8) |
+| Gone quiet | Meaningful-touch cadence vs silence (**§8**); **respect `off_channel_active_until`** (BR-3.5.8) |
 | Next 7 days | Calendar + commitments window |
 
 Snooze-heavy logic depends on reminder infrastructure (**§3.7**, **Story 8.14.4**).
