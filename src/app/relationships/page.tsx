@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpTrayIcon,
@@ -148,7 +148,7 @@ function mergeWithOverrides(
   });
 }
 
-export default function RelationshipsPage() {
+function RelationshipsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { ready } = useRequireSession();
@@ -1549,3 +1549,18 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
+function RelationshipsPageFallback() {
+  return (
+    <div className="flex min-h-[50vh] w-full items-center justify-center bg-[color:var(--tomo-canvas)] px-6 py-12">
+      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">Loading…</p>
+    </div>
+  );
+}
+
+export default function RelationshipsPage() {
+  return (
+    <Suspense fallback={<RelationshipsPageFallback />}>
+      <RelationshipsPageContent />
+    </Suspense>
+  );
+}
