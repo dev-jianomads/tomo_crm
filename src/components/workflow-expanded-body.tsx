@@ -7,6 +7,7 @@ import type {
   WorkflowStepNode,
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
+import { formatWorkflowRunFieldDisplay } from "@/lib/workflow-surface-mock";
 
 export function WorkflowExpandedBody({
   entry,
@@ -272,8 +273,19 @@ function WorkflowRunConfigPreview({ entry }: { entry: WorkflowSurfaceEntry }) {
 
   return (
     <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_55%,var(--tomo-card))] p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-[color:var(--foreground)]">Run parameters</p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-[color:var(--foreground)]">Run parameters</p>
+          {entry.runConfig.editable ? (
+            <span className="rounded-full bg-[color:var(--tomo-teal-evidence-bg)] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--tomo-teal)]">
+              Template
+            </span>
+          ) : (
+            <span className="rounded-full bg-[color:var(--tomo-navy-soft)] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--tomo-mute)]">
+              Locked default
+            </span>
+          )}
+        </div>
         <button type="button" className="text-xs font-medium text-[color:var(--tomo-teal)]">
           Edit parameters →
         </button>
@@ -284,7 +296,7 @@ function WorkflowRunConfigPreview({ entry }: { entry: WorkflowSurfaceEntry }) {
             <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
               {field.label}
             </p>
-            <p className="mt-1 text-xs font-medium text-[color:var(--foreground)]">{field.value}</p>
+            <p className="mt-1 text-xs font-medium text-[color:var(--foreground)]">{formatWorkflowRunFieldDisplay(field)}</p>
             {field.helperText ? <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">{field.helperText}</p> : null}
           </div>
         ))}

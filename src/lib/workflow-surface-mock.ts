@@ -119,15 +119,44 @@ export type WorkflowOutcomeCapture = {
   options: WorkflowOutcomeOption[];
 };
 
+export type WorkflowRunConfigFieldKind = "text" | "textarea" | "select" | "toggle";
+
+export type WorkflowRunConfigField = {
+  id: string;
+  label: string;
+  value: string;
+  helperText?: string;
+  kind?: WorkflowRunConfigFieldKind;
+  options?: Array<{ value: string; label: string }>;
+};
+
 export type WorkflowRunConfig = {
   workflowId: string;
-  fields: Array<{
-    id: string;
-    label: string;
-    value: string;
-    helperText?: string;
-  }>;
+  /** Configurable templates can launch; locked defaults are read-only with history. */
+  editable: boolean;
+  headline?: string;
+  supportingText?: string;
+  fields: WorkflowRunConfigField[];
 };
+
+export function formatWorkflowRunFieldDisplay(field: WorkflowRunConfigField): string {
+  if (field.kind === "select" && field.options?.length) {
+    return field.options.find((o) => o.value === field.value)?.label ?? field.value;
+  }
+  if (field.kind === "toggle") {
+    return field.value === "true" ? "On" : "Off";
+  }
+  return field.value;
+}
+
+/** Shared picklist for template run setup (mock until lists API exists). */
+export const WORKFLOW_RUN_LIST_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "quiet-fat-middle", label: "Quiet - Fat Middle" },
+  { value: "reups-fund-ii", label: "Re-ups - Fund II investors" },
+  { value: "tier-1-2", label: "All Tier 1 + Tier 2" },
+  { value: "london-filtered", label: "London-filtered (trip)" },
+  { value: "north-america-roadshow", label: "North America roadshow - May" },
+];
 
 export type WorkflowSurfaceEntry = {
   id: string;
@@ -551,6 +580,33 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         outcomeSummary: "9 warmer - 4 maintaining - 1 dormant",
       },
     ],
+    runConfig: {
+      workflowId: "wf-f7-three-touch",
+      editable: false,
+      headline: "Tomo default cadence",
+      supportingText:
+        "Step timing and sequence are fixed on locked defaults. Tune email copy per touch in each draft batch step; outbound safety rules always apply.",
+      fields: [
+        {
+          id: "cohort_list",
+          label: "Cohort source list",
+          value: "Quiet - Fat Middle",
+          helperText: "All LPs in the run share the same enrollment and spacing.",
+        },
+        {
+          id: "enrollment",
+          label: "How runs start",
+          value: "Manual from Workflows or Insights when Fat Middle > 0",
+          helperText: "One cohort per run; outcomes captured at the end of the sequence.",
+        },
+        {
+          id: "outbound_safety",
+          label: "Outbound checks",
+          value: "14-day same-message dedup active",
+          helperText: "Cannot be disabled on Tomo defaults.",
+        },
+      ],
+    },
   },
   {
     id: "wf-themed-outreach",
@@ -624,10 +680,32 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     ],
     runConfig: {
       workflowId: "wf-themed-outreach",
+      editable: true,
+      headline: "Launch themed outreach",
+      supportingText: "Pick the list, define the theme or content kernel, and choose whether Tomo sends a light follow-up to non-responders after 7 days.",
       fields: [
-        { id: "list", label: "List", value: "Quiet - Fat Middle" },
-        { id: "theme", label: "Theme", value: "European credit dispersion", helperText: "Free-text content kernel for this run" },
-        { id: "follow_up", label: "Optional follow-up", value: "Enabled after 7 days" },
+        {
+          id: "list",
+          label: "List",
+          value: "quiet-fat-middle",
+          helperText: "LPs on this list become the cohort for this run.",
+          kind: "select",
+          options: WORKFLOW_RUN_LIST_OPTIONS,
+        },
+        {
+          id: "theme",
+          label: "Theme / content kernel",
+          value: "European credit dispersion",
+          helperText: "Free-text kernel Tomo uses to personalize each draft.",
+          kind: "textarea",
+        },
+        {
+          id: "follow_up",
+          label: "Optional 7-day follow-up",
+          value: "true",
+          helperText: "When on, Tomo drafts a single nudge to non-responders after 7 days.",
+          kind: "toggle",
+        },
       ],
     },
   },
@@ -709,10 +787,40 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     ],
     runConfig: {
       workflowId: "wf-trip-orchestrator",
+      editable: true,
+      headline: "Configure trip run",
+      supportingText:
+        "Destination and dates bound outreach and scheduling. Source list is filtered to LPs in or near the destination where possible.",
       fields: [
-        { id: "destination", label: "Destination", value: "London" },
-        { id: "date_window", label: "Date window", value: "June 12-15" },
-        { id: "availability", label: "Scheduling constraint", value: "Only propose times inside trip window" },
+        {
+          id: "destination",
+          label: "Destination",
+          value: "London",
+          helperText: "City or region used for filtering and email context.",
+          kind: "text",
+        },
+        {
+          id: "date_window",
+          label: "Date window",
+          value: "June 12-15",
+          helperText: "Trip dates; scheduling only proposes slots inside this window.",
+          kind: "text",
+        },
+        {
+          id: "source_list",
+          label: "Source list",
+          value: "london-filtered",
+          helperText: "Base list before location filter.",
+          kind: "select",
+          options: WORKFLOW_RUN_LIST_OPTIONS,
+        },
+        {
+          id: "availability",
+          label: "Scheduling constraint",
+          value: "Only propose times inside trip window",
+          helperText: "Narrative constraint passed to the scheduling assistant.",
+          kind: "textarea",
+        },
       ],
     },
   },

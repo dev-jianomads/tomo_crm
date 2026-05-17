@@ -2,6 +2,7 @@
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { WorkflowBatchReview } from "@/components/workflow-batch-review";
+import { WorkflowRunConfigPanel } from "@/components/workflow-run-config-panel";
 import {
   getWorkflowDraftBatch,
   getWorkflowSingleDraftBatch,
@@ -43,7 +44,13 @@ export function WorkflowStepActionDrawer({
       ? draftReviewBatch
         ? "Edits and approvals stay in this browser session until runs sync to the API."
         : "No mock drafts are attached to this step yet."
-      : "Use other steps for settings, outcomes, or run configuration.";
+      : selection?.step.actionType === "run_config"
+        ? selection.entry.runConfig
+          ? selection.entry.runConfig.editable
+            ? "Launch queues a new cohort run with these settings (demo: toast only, session-local)."
+            : "Tomo defaults use a fixed cadence; adjust copy in each draft step. Recent runs are listed below."
+          : "No run configuration is defined for this workflow."
+        : "Use other steps for settings, outcomes, or run configuration.";
 
   return (
     <>
@@ -140,7 +147,7 @@ function StepActionContent({
   }
 
   if (step.actionType === "run_config") {
-    return entry.runConfig ? <RunConfigPreview entry={entry} /> : <EmptyState title="Run configuration" body="This step launches or configures the workflow run." />;
+    return entry.runConfig ? <WorkflowRunConfigPanel entry={entry} /> : <EmptyState title="Run configuration" body="This step launches or configures the workflow run." />;
   }
 
   return <EmptyState title="Read-only step" body="This step is informational and does not require a drawer action." />;
@@ -169,16 +176,6 @@ function OutcomePreview({ outcome }: { outcome: (typeof workflowOutcomeCaptures)
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function RunConfigPreview({ entry }: { entry: WorkflowSurfaceEntry }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {entry.runConfig?.fields.map((field) => (
-        <InfoCard key={field.id} label={field.label} value={field.value} helperText={field.helperText} />
-      ))}
     </div>
   );
 }
