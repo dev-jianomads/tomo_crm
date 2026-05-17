@@ -5,6 +5,10 @@ import { ChevronDownIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outlin
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { WorkflowExpandedBody } from "@/components/workflow-expanded-body";
+import {
+  WorkflowStepActionDrawer,
+  type WorkflowStepActionSelection,
+} from "@/components/workflow-step-action-drawer";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
 import { useRequireSession } from "@/lib/auth";
@@ -46,6 +50,7 @@ function WorkflowsPageContent() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [listQuery, setListQuery] = useState("");
   const [expandedWorkflowId, setExpandedWorkflowId] = useState<string>(workflowSurfaceEntries[1]?.id ?? workflowSurfaceEntries[0]?.id ?? "");
+  const [stepActionSelection, setStepActionSelection] = useState<WorkflowStepActionSelection | null>(null);
   const [workflowEnabledOverrides, setWorkflowEnabledOverrides] = usePersistentState<WorkflowEnabledOverrides>(
     "tomo-workflow-surface-enabled-overrides-v1",
     {}
@@ -107,6 +112,11 @@ function WorkflowsPageContent() {
     },
     [effectiveEnabled, setWorkflowEnabledOverrides]
   );
+
+  const toggleExpandedWorkflow = useCallback((entryId: string) => {
+    setExpandedWorkflowId((prev) => (prev === entryId ? "" : entryId));
+    setStepActionSelection(null);
+  }, []);
 
   const defaultEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default");
   const tailoredEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "configurable_template");
@@ -218,8 +228,9 @@ function WorkflowsPageContent() {
                   entry={entry}
                   enabled={effectiveEnabled(entry)}
                   expanded={expandedWorkflowId === entry.id}
-                  onToggleExpanded={() => setExpandedWorkflowId((prev) => (prev === entry.id ? "" : entry.id))}
+                  onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
                   onToggleEnabled={() => toggleWorkflowEnabled(entry)}
+                  onStepAction={(selection) => setStepActionSelection(selection)}
                 />
               ))}
             </div>
@@ -233,8 +244,9 @@ function WorkflowsPageContent() {
                     entry={entry}
                     enabled={effectiveEnabled(entry)}
                     expanded={expandedWorkflowId === entry.id}
-                    onToggleExpanded={() => setExpandedWorkflowId((prev) => (prev === entry.id ? "" : entry.id))}
+                    onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
                     onToggleEnabled={() => toggleWorkflowEnabled(entry)}
+                    onStepAction={(selection) => setStepActionSelection(selection)}
                   />
                 ))}
               </div>
@@ -242,6 +254,7 @@ function WorkflowsPageContent() {
           </div>
         </main>
       </div>
+      <WorkflowStepActionDrawer selection={stepActionSelection} onClose={() => setStepActionSelection(null)} />
     </div>
   );
 
@@ -295,12 +308,14 @@ function WorkflowAccordionCard({
   expanded,
   onToggleExpanded,
   onToggleEnabled,
+  onStepAction,
 }: {
   entry: WorkflowSurfaceEntry;
   enabled: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
   onToggleEnabled: () => void;
+  onStepAction: (selection: WorkflowStepActionSelection) => void;
 }) {
   const muted = !enabled;
 
@@ -352,7 +367,7 @@ function WorkflowAccordionCard({
         </button>
       </div>
 
-      {expanded ? <WorkflowExpandedBody entry={entry} /> : null}
+      {expanded ? <WorkflowExpandedBody entry={entry} onStepAction={(stepEntry, step) => onStepAction({ entry: stepEntry, step })} /> : null}
     </article>
   );
 }

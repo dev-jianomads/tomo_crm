@@ -8,12 +8,18 @@ import type {
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
 
-export function WorkflowExpandedBody({ entry }: { entry: WorkflowSurfaceEntry }) {
+export function WorkflowExpandedBody({
+  entry,
+  onStepAction,
+}: {
+  entry: WorkflowSurfaceEntry;
+  onStepAction?: (entry: WorkflowSurfaceEntry, step: WorkflowStepNode) => void;
+}) {
   return (
     <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
       {entry.kind === "configurable_template" ? <ConfigurableTemplateBanner entry={entry} /> : null}
       <WorkflowMetaStrip meta={entry.meta} />
-      <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} />
+      <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
       <WorkflowAttentionRow items={entry.attentionItems} />
       <WorkflowStateSummaryPanel summary={entry.stateSummary} />
       {entry.runConfig ? <WorkflowRunConfigPreview entry={entry} /> : null}
@@ -72,7 +78,15 @@ function WorkflowMetaStrip({ meta }: { meta: WorkflowMetaItem[] }) {
   );
 }
 
-function InlineProcessFlow({ steps, triggerLabel }: { steps: WorkflowStepNode[]; triggerLabel: string }) {
+function InlineProcessFlow({
+  steps,
+  triggerLabel,
+  onStepAction,
+}: {
+  steps: WorkflowStepNode[];
+  triggerLabel: string;
+  onStepAction?: (step: WorkflowStepNode) => void;
+}) {
   const flowSteps = steps.length
     ? steps
     : [
@@ -101,7 +115,7 @@ function InlineProcessFlow({ steps, triggerLabel }: { steps: WorkflowStepNode[];
           {flowSteps.map((step, index) => (
             <div key={step.id} className="flex items-start gap-2">
               {index > 0 ? <FlowArrow /> : null}
-              <ProcessNode step={step} />
+              <ProcessNode step={step} onStepAction={onStepAction} />
             </div>
           ))}
         </div>
@@ -120,7 +134,13 @@ function FlowArrow() {
   );
 }
 
-function ProcessNode({ step }: { step: WorkflowStepNode }) {
+function ProcessNode({
+  step,
+  onStepAction,
+}: {
+  step: WorkflowStepNode;
+  onStepAction?: (step: WorkflowStepNode) => void;
+}) {
   const variant =
     step.nodeType === "trigger"
       ? "trigger"
@@ -146,8 +166,9 @@ function ProcessNode({ step }: { step: WorkflowStepNode }) {
   return (
     <button
       type="button"
+      onClick={() => onStepAction?.(step)}
       className={`relative flex h-[112px] w-[178px] flex-col rounded-[var(--tomo-radius-sm)] border px-3 py-2 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--tomo-teal)] ${variantClass}`}
-      title={`Phase 4 route: ${step.actionType}`}
+      title={`Open ${step.actionType.replace("_", " ")}`}
       data-step-action={step.actionType}
     >
       <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
