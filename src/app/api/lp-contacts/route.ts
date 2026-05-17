@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { relationshipsGenerated } from "@/lib/mockData";
 import { filterRelationshipsByFund } from "@/lib/relationshipFundScope";
 import { relationshipToLpContactRecord } from "@/lib/lpContactApi";
+import { getOffChannelActiveUntilIso } from "@/lib/offChannelStore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,14 +29,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "LP contact not found", id }, { status: 404 });
     }
     return NextResponse.json(
-      { contact: relationshipToLpContactRecord(rel) },
+      {
+        contact: relationshipToLpContactRecord(rel, {
+          offChannelActiveUntilIso: getOffChannelActiveUntilIso(rel.id),
+        }),
+      },
       { status: 200, headers: { "Cache-Control": "private, max-age=30" } }
     );
   }
 
   return NextResponse.json(
     {
-      contacts: rows.map(relationshipToLpContactRecord),
+      contacts: rows.map((r) =>
+        relationshipToLpContactRecord(r, { offChannelActiveUntilIso: getOffChannelActiveUntilIso(r.id) }),
+      ),
       meta: {
         count: rows.length,
         fundFilter: fundId,

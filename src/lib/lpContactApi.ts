@@ -15,6 +15,8 @@ export type LpStatePayload = {
   days_in_stage: number;
   days_in_prior_stage: number;
   prior_stage_hint: string;
+  /** SRS `lp_state.off_channel_active_until` — ISO 8601 or null (GP-set; demo store until Postgres). */
+  off_channel_active_until: string | null;
 };
 
 export type FieldProvenance = {
@@ -37,7 +39,10 @@ export type LpContactRecord = {
   };
 };
 
-export function relationshipToLpContactRecord(rel: Relationship): LpContactRecord {
+export function relationshipToLpContactRecord(
+  rel: Relationship,
+  options?: { offChannelActiveUntilIso?: string | null },
+): LpContactRecord {
   const evidence = buildSignalEvidence(rel);
   const prior = mockDaysInPriorStage(rel);
   const pf = derivePipelineFlagMock(rel);
@@ -56,6 +61,7 @@ export function relationshipToLpContactRecord(rel: Relationship): LpContactRecor
       days_in_stage: mockDaysInCurrentStage(rel),
       days_in_prior_stage: prior.days,
       prior_stage_hint: prior.stageHint,
+      off_channel_active_until: options?.offChannelActiveUntilIso ?? null,
     },
     provenance: {
       pipeline_stage: { source: "CRM", updatedAt: "2026-05-01T08:00:00.000Z" },

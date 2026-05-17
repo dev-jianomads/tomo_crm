@@ -17,6 +17,12 @@ Source amendments (product / SRS briefing):
 
 ## Phase A — Spec & schema (production path)
 
+**Implemented in repo (demo + production artefacts):**
+
+- **A1 / A2:** `db/migrations/20260517140000_off_channel_suppression.sql` — `lp_state.off_channel_active_until` + `lp_signal_log` check constraint including `off_channel_marked`.
+- **A3:** `PATCH /api/lp-contacts/[id]/off-channel` — `src/app/api/lp-contacts/[id]/off-channel/route.ts`; demo persistence `src/lib/offChannelStore.ts`; `GET /api/lp-contacts` merges `off_channel_active_until` into `LpStatePayload` (`src/lib/lpContactApi.ts`).
+- **A4 / A5 / A6:** `src/lib/signals/offChannelRules.ts` (+ `src/lib/signals/index.ts`) — pure helpers for nightly worker (`shouldSkipSilenceClassSignalWrite`, `shouldOmitFromGoneQuietCohort`, `applyOffChannelToPipelineFlag`). Wire these into the batch job when it lands; **Signal 2** remains ungated by construction (do not pass `re_engagement` through silence-class skip).
+
 | Step | Deliverable |
 |------|-------------|
 | A1 | Migration: add `lp_state.off_channel_active_until timestamptz null` with comment that GP sets it via API; nightly batch **reads** and must not clear it except via GP mutation endpoint. |
