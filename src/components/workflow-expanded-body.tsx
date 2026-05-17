@@ -1,0 +1,304 @@
+"use client";
+
+import type {
+  WorkflowAttentionItem,
+  WorkflowMetaItem,
+  WorkflowStateSummary,
+  WorkflowStepNode,
+  WorkflowSurfaceEntry,
+} from "@/lib/workflow-surface-mock";
+
+export function WorkflowExpandedBody({ entry }: { entry: WorkflowSurfaceEntry }) {
+  return (
+    <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
+      {entry.kind === "configurable_template" ? <ConfigurableTemplateBanner entry={entry} /> : null}
+      <WorkflowMetaStrip meta={entry.meta} />
+      <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} />
+      <WorkflowAttentionRow items={entry.attentionItems} />
+      <WorkflowStateSummaryPanel summary={entry.stateSummary} />
+      {entry.runConfig ? <WorkflowRunConfigPreview entry={entry} /> : null}
+      <WorkflowRunHistoryPanel runs={entry.runHistory} />
+    </div>
+  );
+}
+
+function ConfigurableTemplateBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
+  return (
+    <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-teal)_7%,var(--tomo-card))] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
+          <span className="font-semibold text-[color:var(--foreground)]">Configurable template.</span>{" "}
+          Parameters change per run; the underlying outreach substrate is shared.
+          {entry.baseTemplateId ? " This is saved from the Themed Outreach base template." : ""}
+        </p>
+        <button
+          type="button"
+          className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-teal)]"
+        >
+          Configure run
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowMetaStrip({ meta }: { meta: WorkflowMetaItem[] }) {
+  if (meta.length === 0) return null;
+
+  return (
+    <div className="grid gap-0 border-b border-[color:var(--tomo-rule-soft)] md:grid-cols-2">
+      {meta.map((item) => (
+        <div
+          key={`${item.label}-${item.value}`}
+          className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+        >
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+            {item.label}
+          </p>
+          <p
+            className={`mt-1 text-xs ${
+              item.tone === "good"
+                ? "text-[color:var(--tomo-status-green)]"
+                : item.tone === "warning"
+                  ? "text-[color:var(--tomo-status-amber-text)]"
+                  : "text-[color:var(--tomo-body)]"
+            }`}
+          >
+            {item.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InlineProcessFlow({ steps, triggerLabel }: { steps: WorkflowStepNode[]; triggerLabel: string }) {
+  const flowSteps = steps.length
+    ? steps
+    : [
+        {
+          id: "trigger",
+          nodeType: "trigger" as const,
+          actionType: "readonly" as const,
+          title: "When",
+          description: triggerLabel,
+          statusLabel: "Trigger",
+        },
+      ];
+
+  return (
+    <div className="px-4 py-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]">
+          Process flow
+        </p>
+        <p className="hidden text-[11px] text-[color:var(--tomo-mute)] sm:block">
+          Step drawers arrive next; nodes are already typed for routing.
+        </p>
+      </div>
+      <div className="overflow-x-auto pb-2">
+        <div className="flex min-w-max items-start gap-2">
+          {flowSteps.map((step, index) => (
+            <div key={step.id} className="flex items-start gap-2">
+              {index > 0 ? <FlowArrow /> : null}
+              <ProcessNode step={step} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="flex h-[112px] items-center text-[color:var(--tomo-rule)]">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M5 12h14M12 5l7 7-7 7" />
+      </svg>
+    </div>
+  );
+}
+
+function ProcessNode({ step }: { step: WorkflowStepNode }) {
+  const variant =
+    step.nodeType === "trigger"
+      ? "trigger"
+      : step.actionType === "draft_batch" || step.actionType === "single_draft"
+        ? "draft"
+        : step.nodeType === "wait"
+          ? "wait"
+          : step.nodeType === "outcome"
+            ? "outcome"
+            : "default";
+
+  const variantClass =
+    variant === "trigger"
+      ? "border-[color:color-mix(in_srgb,var(--tomo-teal)_45%,var(--tomo-rule))] bg-[color:var(--tomo-teal-tint)]"
+      : variant === "draft"
+        ? "border-[color:color-mix(in_srgb,var(--tomo-teal)_35%,var(--tomo-rule))] bg-[color:var(--tomo-card)]"
+        : variant === "wait"
+          ? "border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_70%,var(--tomo-card))]"
+          : variant === "outcome"
+            ? "border-[color:color-mix(in_srgb,var(--tomo-status-amber)_45%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)]"
+            : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]";
+
+  return (
+    <button
+      type="button"
+      className={`relative flex h-[112px] w-[178px] flex-col rounded-[var(--tomo-radius-sm)] border px-3 py-2 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:var(--tomo-teal)] ${variantClass}`}
+      title={`Phase 4 route: ${step.actionType}`}
+      data-step-action={step.actionType}
+    >
+      <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+        {step.timingLabel ?? step.statusLabel ?? step.nodeType}
+      </span>
+      <span className="mt-1 text-sm font-semibold leading-snug text-[color:var(--foreground)]">{step.title}</span>
+      <span className="mt-1 line-clamp-3 text-[11px] leading-snug text-[color:var(--tomo-body)]">{step.description}</span>
+      <span
+        className={`mt-auto self-start rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          variant === "draft"
+            ? "bg-[color:var(--tomo-teal-evidence-bg)] text-[color:var(--tomo-teal)]"
+            : variant === "outcome"
+              ? "bg-[color:var(--tomo-card)] text-[color:var(--tomo-status-amber-text)]"
+              : "bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_70%,var(--tomo-card))] text-[color:var(--tomo-body)]"
+        }`}
+      >
+        {step.actionType === "draft_batch"
+          ? "Batch drafts"
+          : step.actionType === "single_draft"
+            ? "Draft"
+            : step.actionType === "outcome_capture"
+              ? "Outcome"
+              : step.statusLabel ?? step.actionType}
+      </span>
+    </button>
+  );
+}
+
+function WorkflowAttentionRow({ items }: { items: WorkflowAttentionItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_34%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--tomo-status-amber-text)]">
+        {items.map((item, index) => (
+          <span key={item.id} className="flex items-center gap-2">
+            {index > 0 ? <span className="text-[color:var(--tomo-rule)]">·</span> : null}
+            <span>
+              <span className="font-semibold">{item.count}</span> {item.label}
+            </span>
+          </span>
+        ))}
+        <button type="button" className="ml-auto font-medium text-[color:var(--tomo-teal)]">
+          {items[0]?.actionLabel} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowStateSummaryPanel({ summary }: { summary: WorkflowStateSummary }) {
+  return (
+    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-3">
+      <p className="mb-3 text-sm font-semibold text-[color:var(--foreground)]">{summary.title}</p>
+      <div className="grid gap-3 md:grid-cols-3">
+        {summary.segments.map((segment) => (
+          <div key={segment.id} className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] px-3 py-2">
+            <p className="text-xs font-medium text-[color:var(--foreground)]">{segment.label}</p>
+            <div className="mt-2 flex gap-1.5">
+              <StatePill label="drafted" value={segment.drafted} tone="drafted" />
+              <StatePill label="sent" value={segment.sent} tone="sent" />
+              <StatePill label="wait" value={segment.waiting} tone="waiting" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-4 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-mute)]">
+        <span>{summary.replied} replied</span>
+        <span>{summary.readyForOutcome} ready for outcome</span>
+        <span>{summary.skipped} skipped</span>
+      </div>
+    </div>
+  );
+}
+
+function StatePill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "drafted" | "sent" | "waiting";
+}) {
+  const color =
+    tone === "drafted"
+      ? "bg-[color:var(--tomo-teal-evidence-bg)] text-[color:var(--tomo-teal)]"
+      : tone === "sent"
+        ? "bg-[color:var(--tomo-status-green-bg)] text-[color:var(--tomo-status-green)]"
+        : "bg-[color:var(--tomo-card-warm)] text-[color:var(--tomo-mute)]";
+
+  return (
+    <span className={`rounded-full px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] ${color}`}>
+      <span className="font-semibold">{value}</span> {label}
+    </span>
+  );
+}
+
+function WorkflowRunConfigPreview({ entry }: { entry: WorkflowSurfaceEntry }) {
+  if (!entry.runConfig) return null;
+
+  return (
+    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_55%,var(--tomo-card))] p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[color:var(--foreground)]">Run parameters</p>
+        <button type="button" className="text-xs font-medium text-[color:var(--tomo-teal)]">
+          Edit parameters →
+        </button>
+      </div>
+      <div className="grid gap-2 md:grid-cols-3">
+        {entry.runConfig.fields.map((field) => (
+          <div key={field.id} className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-2">
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+              {field.label}
+            </p>
+            <p className="mt-1 text-xs font-medium text-[color:var(--foreground)]">{field.value}</p>
+            {field.helperText ? <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">{field.helperText}</p> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WorkflowRunHistoryPanel({ runs }: { runs: WorkflowSurfaceEntry["runHistory"] }) {
+  if (runs.length === 0) return null;
+
+  return (
+    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
+      <div className="flex items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+        <p className="text-sm font-semibold text-[color:var(--foreground)]">Run history</p>
+        <button type="button" className="text-xs font-medium text-[color:var(--tomo-teal)]">
+          Show all →
+        </button>
+      </div>
+      <div className="divide-y divide-[color:var(--tomo-rule-soft)]">
+        {runs.map((run) => (
+          <div key={run.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[color:var(--foreground)]">{run.listName}</p>
+              <p className="text-xs text-[color:var(--tomo-mute)]">
+                {run.startedAtLabel} · {run.lpCount} LPs
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-xs font-semibold text-[color:var(--foreground)]">{run.statusLabel}</p>
+              <p className="text-xs text-[color:var(--tomo-mute)]">{run.outcomeSummary}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
