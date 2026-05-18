@@ -855,9 +855,9 @@ export default function HomePage() {
                 />
               ) : null}
             </div>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {/* Coming up (title + list) keeps flex-1; raise-stand + focus stay shrink-0 so headings are not crowded */}
-              <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden md:gap-2.5">
+              {/* Three fixed flex shares (basis-0) so all fit in the viewport; each pane scrolls internally */}
+              <div className="flex min-h-0 flex-[1.6] basis-0 flex-col overflow-hidden">
                 <TodayGroup
                   title="Coming up"
                   titleCount={sortedCommitments.length}
@@ -893,10 +893,14 @@ export default function HomePage() {
                   scrollable
                 />
               </div>
-              <div className="mt-5 shrink-0 space-y-3 border-t border-[color:color-mix(in_srgb,var(--tomo-rule)_65%,transparent)] pt-5">
-                <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} />
-                <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
-                  <div className="mb-2 flex items-baseline justify-between gap-2">
+              <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+                  <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} frameless />
+                </div>
+              </div>
+              <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
+                  <div className="mb-2 flex shrink-0 items-baseline justify-between gap-2">
                     <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
                       Focus list
                     </h3>
@@ -908,9 +912,9 @@ export default function HomePage() {
                     </Link>
                   </div>
                   {focusListTeaser.length === 0 ? (
-                    <p className="text-[13px] leading-snug text-[color:var(--tomo-mute)]">No moveable LPs in this snapshot.</p>
+                    <p className="shrink-0 text-[13px] leading-snug text-[color:var(--tomo-mute)]">No moveable LPs in this snapshot.</p>
                   ) : (
-                    <ul className="space-y-1.5">
+                    <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
                       {focusListTeaser.map((row) => (
                         <li key={row.id} className="truncate text-[13px]">
                           <Link

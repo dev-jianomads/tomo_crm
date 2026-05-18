@@ -41,12 +41,17 @@ const ROWS: {
 type Props = {
   breakdown: RaiseStandsBreakdown;
   className?: string;
+  /** Strip outer chrome when wrapped in a scroll / bordered shell (e.g. Today right column). */
+  frameless?: boolean;
 };
 
-export function WhereRaiseStandsCard({ breakdown, className = "" }: Props) {
+export function WhereRaiseStandsCard({ breakdown, className = "", frameless = false }: Props) {
+  const shell = frameless
+    ? "shrink-0 border-0 bg-transparent p-0 shadow-none rounded-none"
+    : "shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]";
   return (
     <section
-      className={`shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)] ${className}`}
+      className={`${shell} ${className}`}
       aria-labelledby="where-raise-stands-heading"
     >
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
