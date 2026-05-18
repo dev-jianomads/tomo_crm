@@ -46,7 +46,7 @@ type Props = {
 export function WhereRaiseStandsCard({ breakdown, className = "" }: Props) {
   return (
     <section
-      className={`mt-3 shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)] ${className}`}
+      className={`shrink-0 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)] ${className}`}
       aria-labelledby="where-raise-stands-heading"
     >
       <div className="mb-2.5 flex items-baseline justify-between gap-2">

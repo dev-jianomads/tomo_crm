@@ -68,6 +68,9 @@ type TodaySelection =
   | { type: "brief"; id: string }
   | null;
 
+/** Inline “Ask Tomo…” bar on Today — off for demo; shell Tomo + API context unchanged. Set false to show again. */
+const HIDE_TODAY_INLINE_TOMO_PROMPT = true;
+
 function workflowLabelForAction(action: ActionItem): string {
   const fromPlaybook = action.workflowPlaybookId
     ? suggestedPlaybooks.find((p) => p.id === action.workflowPlaybookId)?.name
@@ -246,9 +249,10 @@ export default function HomePage() {
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
   const [draggingSplit, setDraggingSplit] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const inlineTomoExpanded = todayChatExpanded && !HIDE_TODAY_INLINE_TOMO_PROMPT;
 
   useEffect(() => {
-    if (!draggingSplit || !todayChatExpanded) return;
+    if (!draggingSplit || !inlineTomoExpanded) return;
     const handleMove = (e: MouseEvent) => {
       const el = splitContainerRef.current;
       if (!el) return;
@@ -268,7 +272,7 @@ export default function HomePage() {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", stop);
     };
-  }, [draggingSplit, todayChatExpanded, setSplitRatio]);
+  }, [draggingSplit, inlineTomoExpanded, setSplitRatio]);
 
   useEffect(() => {
     if (!onMyRadarOpen) return;
@@ -708,15 +712,15 @@ export default function HomePage() {
       >
         {/* Top: Today header + Tomo — surface matches canvas; white only on collapsed/expanded prompt (design/*.html). */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden px-6 py-6 md:px-12 md:py-8"
+          className="flex min-w-0 flex-col overflow-hidden px-4 py-4 md:px-8 md:py-5"
           style={
-            todayChatExpanded
+            inlineTomoExpanded
               ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
               : { flex: "0 0 auto" }
           }
         >
           {/* Matches design/tomo_today_light_v2.html `.top-row` + `.greeting-block` */}
-          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <p
               className="shrink-0 text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]"
               suppressHydrationWarning
@@ -764,7 +768,7 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <div className="mb-3">
+          <div className="mb-2">
             <h1 className="text-[clamp(26px,3.8vw,32px)] font-medium leading-[1.25] tracking-[-0.01em] text-[color:var(--foreground)] [font-family:var(--font-newsreader-display)]">
               {greeting}, {userName}.{" "}
               <span className="text-[color:var(--foreground)]">{greetingIntelLine}</span>
@@ -776,37 +780,39 @@ export default function HomePage() {
               {greetingStampPreview}
             </p>
           </div>
-          {todayChatExpanded ? (
-            <div className="mt-8 flex min-h-[200px] flex-1 flex-col overflow-hidden">
-              <div className="flex shrink-0 items-center justify-end gap-2 pb-1">
-                <button
-                  type="button"
-                  onClick={() => setTodayChatExpanded(false)}
-                  className="inline-flex items-center gap-0.5 text-xs font-medium text-[color:var(--tomo-mute)] hover:text-[color:var(--foreground)]"
-                  aria-label="Collapse Tomo to single-line"
-                >
-                  Collapse
-                  <ChevronUpIcon className="h-3.5 w-3.5" aria-hidden />
-                </button>
+          {!HIDE_TODAY_INLINE_TOMO_PROMPT ? (
+            todayChatExpanded ? (
+              <div className="mt-5 flex min-h-[200px] flex-1 flex-col overflow-hidden">
+                <div className="flex shrink-0 items-center justify-end gap-2 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setTodayChatExpanded(false)}
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-[color:var(--tomo-mute)] hover:text-[color:var(--foreground)]"
+                    aria-label="Collapse Tomo to single-line"
+                  >
+                    Collapse
+                    <ChevronUpIcon className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <TomoChatInline />
+                </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <TomoChatInline />
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setTodayChatExpanded(true)}
-              className="mt-8 flex w-full items-center justify-between gap-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:color-mix(in_srgb,var(--tomo-navy)_18%,var(--tomo-rule))] focus-visible:border-[color:var(--tomo-teal)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--tomo-teal)_22%,transparent)] focus-visible:outline-none"
-              aria-label="Expand Tomo chat"
-            >
-              <span className="text-sm text-[color:var(--tomo-body)]">Ask Tomo about what&apos;s on Today…</span>
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
-            </button>
-          )}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setTodayChatExpanded(true)}
+                className="mt-5 flex w-full items-center justify-between gap-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 text-left shadow-[var(--tomo-shadow-1)] transition hover:border-[color:color-mix(in_srgb,var(--tomo-navy)_18%,var(--tomo-rule))] focus-visible:border-[color:var(--tomo-teal)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--tomo-teal)_22%,transparent)] focus-visible:outline-none"
+                aria-label="Expand Tomo chat"
+              >
+                <span className="text-sm text-[color:var(--tomo-body)]">Ask Tomo about what&apos;s on Today…</span>
+                <ChevronDownIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
+              </button>
+            )
+          ) : null}
         </div>
 
-        {todayChatExpanded ? (
+        {inlineTomoExpanded ? (
           <div
             role="separator"
             aria-label="Resize top and bottom sections"
@@ -819,10 +825,10 @@ export default function HomePage() {
 
         {/* Bottom: attention | coming up (On My Radar is header + modal) */}
         <div
-          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-6 pb-4 pt-10 md:px-12 md:pt-14"
-          style={{ flex: todayChatExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
+          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 pb-3 pt-5 md:px-8 md:pt-6"
+          style={{ flex: inlineTomoExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <TodayGroup
@@ -850,69 +856,74 @@ export default function HomePage() {
               ) : null}
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <TodayGroup
-                title="Coming up"
-                titleCount={sortedCommitments.length}
-                items={sortedCommitments.map((c) => ({
-                  id: c.id,
-                  title: c.title,
-                  meta: c.datetime,
-                  extra: undefined,
-                  type: "commitment" as const,
-                  pills: [] as string[],
-                  commitmentStatusPill:
-                    commitmentOutcomeById[c.id] === "approved"
-                      ? { label: "Prep sent", tone: "green" as const }
-                      : c.commitmentOverdue
-                        ? { label: "Commitment overdue", tone: "red" as const }
-                        : c.prepStatus === "ready"
-                          ? { label: "Prep ready", tone: "peach" as const }
-                          : c.prepStatus === "first_contact"
-                            ? { label: "First meeting", tone: "violet" as const }
-                            : undefined,
-                  comingUpCard: {
-                    company: c.lp,
-                    contactName: c.contactName,
-                    timeLabel: commitmentDayTime(c.datetime),
-                    meetingTitle: c.title,
-                  },
-                  commitmentOverdue: c.commitmentOverdue,
-                  calendarUrl: c.calendarUrl,
-                  linkedInUrl: c.linkedInUrl,
-                }))}
-                activeId={selection?.type === "commitment" ? selection.id : undefined}
-                onSelect={(id) => setSelection({ type: "commitment", id })}
-                scrollable
-              />
-              <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} />
-              <div className="mt-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
-                <div className="mb-2 flex items-baseline justify-between gap-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
-                    Focus list
-                  </h3>
-                  <Link
-                    href="/relationships?raiseStand=genuinely_moveable"
-                    className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]"
-                  >
-                    All moveable →
-                  </Link>
+              {/* Coming up (title + list) keeps flex-1; raise-stand + focus stay shrink-0 so headings are not crowded */}
+              <div className="flex min-h-0 flex-1 flex-col">
+                <TodayGroup
+                  title="Coming up"
+                  titleCount={sortedCommitments.length}
+                  items={sortedCommitments.map((c) => ({
+                    id: c.id,
+                    title: c.title,
+                    meta: c.datetime,
+                    extra: undefined,
+                    type: "commitment" as const,
+                    pills: [] as string[],
+                    commitmentStatusPill:
+                      commitmentOutcomeById[c.id] === "approved"
+                        ? { label: "Prep sent", tone: "green" as const }
+                        : c.commitmentOverdue
+                          ? { label: "Commitment overdue", tone: "red" as const }
+                          : c.prepStatus === "ready"
+                            ? { label: "Prep ready", tone: "peach" as const }
+                            : c.prepStatus === "first_contact"
+                              ? { label: "First meeting", tone: "violet" as const }
+                              : undefined,
+                    comingUpCard: {
+                      company: c.lp,
+                      contactName: c.contactName,
+                      timeLabel: commitmentDayTime(c.datetime),
+                      meetingTitle: c.title,
+                    },
+                    commitmentOverdue: c.commitmentOverdue,
+                    calendarUrl: c.calendarUrl,
+                    linkedInUrl: c.linkedInUrl,
+                  }))}
+                  activeId={selection?.type === "commitment" ? selection.id : undefined}
+                  onSelect={(id) => setSelection({ type: "commitment", id })}
+                  scrollable
+                />
+              </div>
+              <div className="mt-5 shrink-0 space-y-3 border-t border-[color:color-mix(in_srgb,var(--tomo-rule)_65%,transparent)] pt-5">
+                <WhereRaiseStandsCard breakdown={raiseStandsBreakdown} />
+                <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-4 py-3 shadow-[var(--tomo-shadow-1)]">
+                  <div className="mb-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                      Focus list
+                    </h3>
+                    <Link
+                      href="/relationships?raiseStand=genuinely_moveable"
+                      className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]"
+                    >
+                      All moveable →
+                    </Link>
+                  </div>
+                  {focusListTeaser.length === 0 ? (
+                    <p className="text-[13px] leading-snug text-[color:var(--tomo-mute)]">No moveable LPs in this snapshot.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {focusListTeaser.map((row) => (
+                        <li key={row.id} className="truncate text-[13px]">
+                          <Link
+                            href={`/relationships?focus=${encodeURIComponent(row.id)}`}
+                            className="text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
+                          >
+                            {row.line}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                {focusListTeaser.length === 0 ? (
-                  <p className="text-[13px] leading-snug text-[color:var(--tomo-mute)]">No moveable LPs in this snapshot.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {focusListTeaser.map((row) => (
-                      <li key={row.id} className="truncate text-[13px]">
-                        <Link
-                          href={`/relationships?focus=${encodeURIComponent(row.id)}`}
-                          className="text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
-                        >
-                          {row.line}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             </div>
           </div>
@@ -1393,11 +1404,11 @@ function TodayGroup({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <h2 className="tomo-section-title flex shrink-0 flex-wrap items-baseline">
+      <h2 className="tomo-section-title mb-2.5 flex shrink-0 flex-wrap items-baseline">
         <span>{title}</span>
         {titleCount != null ? <span className="tomo-section-title-count">{titleCount}</span> : null}
       </h2>
-      <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto" : ""}`}>
+      <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto pr-0.5" : ""}`}>
         {items.length === 0 && emptyHint ? (
           <p className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] px-3 py-4 text-center text-sm text-[color:var(--tomo-mute)]">
             {emptyHint}
