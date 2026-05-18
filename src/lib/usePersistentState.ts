@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { readFromStorage, writeToStorage } from "./storage";
 
 /**
@@ -21,13 +21,13 @@ export function usePersistentState<T>(
     setReady(true);
   }, [key]);
 
-  const update = (val: T | ((prev: T) => T)) => {
+  const update = useCallback((val: T | ((prev: T) => T)) => {
     setState((prev) => {
       const next = typeof val === "function" ? (val as (prev: T) => T)(prev) : val;
       writeToStorage(key, next);
       return next;
     });
-  };
+  }, [key]);
 
   return [state, update, ready];
 }

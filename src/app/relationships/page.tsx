@@ -37,6 +37,7 @@ import {
   formatFilterSummary,
   EMPTY_CRITERIA,
   parseRaiseStandQueryParam,
+  RAISE_STAND_URL_TO_BUCKET,
   validateAndMergeFilters,
   type StructuredFilterCriteria,
 } from "@/lib/relationshipFilters";
@@ -205,11 +206,40 @@ function RelationshipsPageContent() {
 
   const raiseStandUrl = searchParams.get("raiseStand");
 
+  const replaceRelationshipsSearchParams = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const p = new URLSearchParams(searchParams.toString());
+      mutate(p);
+      const qs = p.toString();
+      router.replace(qs ? `/relationships?${qs}` : "/relationships");
+    },
+    [router, searchParams]
+  );
+
   useEffect(() => {
     const bucket = parseRaiseStandQueryParam(raiseStandUrl);
     if (!bucket) return;
     setFilterCriteria((prev) => validateAndMergeFilters(prev, { raiseStandBucket: bucket }) ?? prev);
   }, [raiseStandUrl, setFilterCriteria]);
+
+  const handleFiltersChange = useCallback(
+    (next: StructuredFilterCriteria) => {
+      const prevBucket = filterCriteria.raiseStandBucket ?? null;
+      const nextBucket = next.raiseStandBucket ?? null;
+      setFilterCriteria(next);
+      if (prevBucket === nextBucket) return;
+      replaceRelationshipsSearchParams((p) => {
+        if (!nextBucket) {
+          p.delete("raiseStand");
+          return;
+        }
+        const entry = Object.entries(RAISE_STAND_URL_TO_BUCKET).find(([, v]) => v === nextBucket);
+        if (entry) p.set("raiseStand", entry[0]);
+        else p.delete("raiseStand");
+      });
+    },
+    [filterCriteria.raiseStandBucket, replaceRelationshipsSearchParams, setFilterCriteria]
+  );
 
   const [createPipelineModalOpen, setCreatePipelineModalOpen] = useState(false);
   const [createPipelineName, setCreatePipelineName] = useState("");
@@ -311,9 +341,12 @@ function RelationshipsPageContent() {
     resizeStartRef.current = { x: e.clientX, width: effectiveColumnWidths[col] };
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilterCriteria(EMPTY_CRITERIA);
-  };
+    replaceRelationshipsSearchParams((p) => {
+      p.delete("raiseStand");
+    });
+  }, [replaceRelationshipsSearchParams, setFilterCriteria]);
 
   const activeFilterFieldCount = Object.keys(filterCriteria).length;
 
@@ -673,7 +706,7 @@ function RelationshipsPageContent() {
       <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-canvas)] px-4 pb-3 pt-3 md:px-8">
         <RelationshipsFilterChat
           currentFilters={filterCriteria}
-          onFiltersChange={setFilterCriteria}
+          onFiltersChange={handleFiltersChange}
           onClearFilters={clearFilters}
         />
       </div>
@@ -1087,7 +1120,7 @@ function RelationshipsPageContent() {
           initialCriteria={filterCriteria}
           workspaceFunds={funds}
           onClose={() => setAdvancedFiltersOpen(false)}
-          onConfirm={(criteria) => setFilterCriteria(criteria)}
+          onConfirm={(criteria) => handleFiltersChange(criteria)}
         />
       ) : null}
       <ContactImportModal
