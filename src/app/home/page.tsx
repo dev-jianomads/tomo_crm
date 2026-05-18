@@ -62,6 +62,10 @@ import { computeRaiseStandsFromRelationships, isGenuinelyMoveableMock } from "@/
 import { commitmentDayTime } from "@/lib/today-commitment-time";
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
+
+const FOCUS_LIST_HEADING_HINT =
+  "Top moveable LPs ranked for follow-up this week. Click a row to open that relationship in Relationships.";
+
 type TodaySelection =
   | { type: "action"; id: string }
   | { type: "commitment"; id: string }
@@ -901,7 +905,10 @@ export default function HomePage() {
               <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
                   <div className="mb-2 flex shrink-0 items-baseline justify-between gap-2">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                    <h3
+                      className="cursor-help text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]"
+                      title={FOCUS_LIST_HEADING_HINT}
+                    >
                       Focus list
                     </h3>
                     <Link

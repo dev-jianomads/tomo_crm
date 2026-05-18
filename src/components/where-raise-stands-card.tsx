@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { RaiseStandsBreakdown } from "@/lib/todayRaiseStands";
 
+/** Native tooltip (hover) — keep concise; browsers may truncate very long strings. */
+const WHERE_RAISE_STANDS_HEADING_HINT =
+  "Active LPs in four mutually exclusive pipeline buckets (moveable, healthy, stalling, drifting). Counts come from your book; click a row to open Relationships with that filter.";
+
 const ROWS: {
   key: keyof RaiseStandsBreakdown;
   label: string;
@@ -55,7 +59,11 @@ export function WhereRaiseStandsCard({ breakdown, className = "", frameless = fa
       aria-labelledby="where-raise-stands-heading"
     >
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <h3 id="where-raise-stands-heading" className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+        <h3
+          id="where-raise-stands-heading"
+          className="cursor-help text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]"
+          title={WHERE_RAISE_STANDS_HEADING_HINT}
+        >
           Where the raise stands
         </h3>
         <Link

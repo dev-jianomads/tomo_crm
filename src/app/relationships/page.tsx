@@ -83,6 +83,24 @@ type RelationshipsViewMode = "list" | "card" | "kanban";
 /** v3 control bar — grouping applies to list/cards only (Kanban is always by stage). */
 type RelationshipsGroupBy = "stage" | "tier" | "owner" | "signal" | "none";
 
+/** Hover copy for grouped list/card headers — row count vs “N of 150” summary. */
+function relationshipGroupedRowHint(
+  groupBy: Exclude<RelationshipsGroupBy, "none">,
+  groupLabel: string,
+  groupSize: number,
+  filteredTotal: number,
+): string {
+  const dimension =
+    groupBy === "stage"
+      ? "pipeline stage"
+      : groupBy === "tier"
+        ? "tier"
+        : groupBy === "owner"
+          ? "owner"
+          : "signal";
+  return `${groupSize} of ${filteredTotal} matching LP${filteredTotal === 1 ? "" : "s"} are in ${dimension} “${groupLabel}”. All group rows sum to ${filteredTotal}.`;
+}
+
 /** List view v3 — `design/tomo_relationships_list_v3.html` */
 const TABLE_COLUMNS: { key: SortColumn; label: string; highlight?: boolean }[] = [
   { key: "lp", label: "LP", highlight: true },
@@ -885,7 +903,17 @@ function RelationshipsPageContent() {
                         <tr className="bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_72%,var(--tomo-card))]">
                           <td
                             colSpan={visibleColumns.length}
-                            className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)]"
+                            className="cursor-help border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)]"
+                            title={
+                              groupBy !== "none"
+                                ? relationshipGroupedRowHint(
+                                    groupBy,
+                                    group.label,
+                                    group.items.length,
+                                    sortedFiltered.length,
+                                  )
+                                : undefined
+                            }
                           >
                             {group.label}
                             <span className="ml-2 font-mono text-[12px] tabular-nums font-semibold normal-case tracking-normal text-[color:var(--tomo-navy)]">
@@ -916,7 +944,19 @@ function RelationshipsPageContent() {
               {groupedForView.map((group) => (
                 <Fragment key={group.key}>
                   {group.label ? (
-                    <div className="col-span-full flex items-baseline gap-2 border-b border-[color:var(--tomo-rule-soft)] pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)] md:col-span-3">
+                    <div
+                      className="col-span-full flex cursor-help items-baseline gap-2 border-b border-[color:var(--tomo-rule-soft)] pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--tomo-mute)] md:col-span-3"
+                      title={
+                        groupBy !== "none"
+                          ? relationshipGroupedRowHint(
+                              groupBy,
+                              group.label,
+                              group.items.length,
+                              sortedFiltered.length,
+                            )
+                          : undefined
+                      }
+                    >
                       <span>{group.label}</span>
                       <span className="font-mono text-[12px] tabular-nums font-semibold normal-case tracking-normal text-[color:var(--tomo-navy)]">
                         {group.items.length}
