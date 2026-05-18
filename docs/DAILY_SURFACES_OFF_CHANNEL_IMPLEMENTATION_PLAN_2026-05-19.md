@@ -1,8 +1,8 @@
-# Daily Surfaces, Insights, Radar Modal & Off-Channel — Implementation Plan — 2026-05-17
+# Daily Surfaces, Insights, Radar Modal & Off-Channel — Implementation Plan — 2026-05-19
 
 ## Purpose
 
-This plan ties together **UI/query work** (Today, Radar Modal, Insights, Relationships navigation) with the **one substantive signals-engine change** for V1: **off-channel suppression**. Normative requirements live in `TOMO_V1_SRS_DRAFT_2026-05-17.md` after the amendment pass; this document is the engineering sequencing note for the `tomo_crm` app and backend workers.
+This plan ties together **UI/query work** (Today, Radar Modal, Insights, Relationships navigation) with the **one substantive signals-engine change** for V1: **off-channel suppression**. Normative requirements live in `TOMO_V1_SRS_DRAFT_2026-05-19.md` after the amendment pass; this document is the engineering sequencing note for the `tomo_crm` app and backend workers.
 
 Source amendments (product / SRS briefing):
 
@@ -13,7 +13,7 @@ Source amendments (product / SRS briefing):
 
 1. **Daily-surfaces amendments do not change signal math** — only labels, section grouping, LIMIT/cap, Insights layout, and navigation into Relationships. Signal definitions, `lp_signal_log` append-only discipline, and Metric 10 **ranking formula** stay as in Section 8 / Section 9.
 2. **Off-channel is the only new signal-batch rule** — a timestamp gate before emitting silence-class observations and before silence-driven Radar cohorts / pipeline-flag outcomes.
-3. **Relationships filter architecture is the main coupling risk** — Today bucket taps and Focus-list teaser require **named or URL-addressable** filter state; avoid one-off query strings per surface.
+3. **Relationships filter architecture is the main coupling risk** — Today bucket taps require **named or URL-addressable** filter state; avoid one-off query strings per surface.
 
 ## Phase A — Spec & schema (production path)
 
@@ -38,8 +38,8 @@ Until Postgres + batch ship, mirror behaviour in mock data and derivations so UX
 
 | Area | Files / notes |
 |------|----------------|
-| Today — Where the raise stands | `src/components/where-raise-stands-card.tsx`, `src/lib/todayRaiseStands.ts` — rename labels (*Stalling — watch*, *Moveable*); optional local `off_channel_active_until` on relationship overrides. |
-| Today — click-throughs | `src/app/home/page.tsx` — link each bucket + Focus teaser to `/relationships` with stable query params; implement deserialisation on Relationships page. |
+| Today — Where the raise stands | `src/components/where-raise-stands-card.tsx`, `src/lib/todayRaiseStands.ts`, `src/components/ui/hover-hint.tsx` — labels (*Stalling — watch*, *Moveable*); bucket + heading hover hints (≤300ms); optional local `off_channel_active_until` on relationship overrides. |
+| Today — click-throughs | `src/app/home/page.tsx` — link each bucket to `/relationships` with stable query params; implement deserialisation on Relationships page. **No Focus list block on Today** (Insights Momentum only). |
 | Radar Modal | `src/lib/radarModalTypes.ts` (new section ids), `src/lib/radarModalSeed.ts`, `src/lib/radarModalDeriveFromToday.ts`, `src/components/radar-modal.tsx` if layout for Commitments sub-rails — consolidate three sections under **Commitments**; rename *Quiet beyond cadence* → **Gone quiet**; filter quiet/cooling-silence cohorts by off-channel when present. |
 | Insights | `src/app/insights/page.tsx` — three sections (*Where your raise stands*, *Momentum*, *What TOMO has done*); remove Fat Middle **gauge** (keep Three-Touch path via Relationships / workflow); hide **Cooling caught** hero; rename Close List → **Focus list**, cap 10. |
 | Relationships | `src/lib/relationshipFilters.ts` (extend criteria for pipeline_flag + moveable + focus list ids), `src/lib/relationshipQuickFilters.ts`, `src/app/relationships/page.tsx` — URL sync; **Fat Middle** named filter already approximated — tighten copy to SRS. |
@@ -59,7 +59,7 @@ Until Postgres + batch ship, mirror behaviour in mock data and derivations so UX
 | Off-channel active | No new silence/stagnation/one-way `lp_signal_log` rows for that LP that night; LP omitted from Gone quiet; silence-only cooling list omissions; directional signals still written. |
 | Re-engagement while off-channel | Signal 2 still fires; urgent red still possible. |
 | Today bucket tap | Relationships opens with correct cohort; counts match tile. |
-| Focus list teaser | Top N (N≤10) moveable by score; empty state when moveable cohort empty. |
+| Where the raise stands hover hints | Heading + each bucket label shows SRS Section 9 hint within ~300ms. |
 
 ## Dependencies & ordering
 
@@ -69,5 +69,5 @@ Until Postgres + batch ship, mirror behaviour in mock data and derivations so UX
 
 ## References
 
-- `TOMO_V1_SRS_DRAFT_2026-05-17.md` — §3.5 (signals), §3.6 (metrics/Insights), §3.8 (Today), §3.10 (LP record), §3.11 (named filters), §6.2 (`lp_state`, `lp_signal_log`), Section 9 (Metric 10 / Today partition), Appendix I (Radar IA), Appendix A (glossary / disambiguation).
+- `TOMO_V1_SRS_DRAFT_2026-05-19.md` — §3.5 (signals), §3.6 (metrics/Insights), §3.8 (Today), §3.10 (LP record), §3.11 (named filters), §6.2 (`lp_state`, `lp_signal_log`), Section 9 (Metric 10 / Today partition / hover hints), Appendix I (Radar IA), Appendix A (glossary / disambiguation).
 - `TOMO_V1_Amendments_Daily_Surfaces (1).md`, `TOMO_V1_Amendments_Off_Channel.md`.

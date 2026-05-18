@@ -1,9 +1,21 @@
 import Link from "next/link";
+import { HoverHint } from "@/components/ui/hover-hint";
 import type { RaiseStandsBreakdown } from "@/lib/todayRaiseStands";
 
-/** Native tooltip (hover) — keep concise; browsers may truncate very long strings. */
 const WHERE_RAISE_STANDS_HEADING_HINT =
-  "Active LPs in four mutually exclusive pipeline buckets (moveable, healthy, stalling, drifting). Counts come from your book; click a row to open Relationships with that filter.";
+  "Active LPs in four buckets that don't overlap. Counts reflect your live pipeline; click a row to open Relationships with that filter.";
+
+/** Bucket hints — aligned with Section 9 Metric 3 + Today tile partition (SRS §3.8 BR-3.8.5). */
+const BUCKET_HINTS: Record<keyof RaiseStandsBreakdown, string> = {
+  genuinelyMoveable:
+    "In active meeting stages, not red-flagged, warming in the last 30 days, and within stage touch SLA — same rules as Insights moveability.",
+  healthyOnTrack:
+    "Green pipeline health and not moveable — on cadence; no urgent warming signal right now.",
+  coolingWatch:
+    "Amber pipeline health but not moveable — engagement is stalling; worth a nudge before it turns red.",
+  driftingAct:
+    "Red pipeline health among active LPs — treat as urgent re-engagement.",
+};
 
 const ROWS: {
   key: keyof RaiseStandsBreakdown;
@@ -59,13 +71,14 @@ export function WhereRaiseStandsCard({ breakdown, className = "", frameless = fa
       aria-labelledby="where-raise-stands-heading"
     >
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <h3
-          id="where-raise-stands-heading"
-          className="cursor-help text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]"
-          title={WHERE_RAISE_STANDS_HEADING_HINT}
-        >
-          Where the raise stands
-        </h3>
+        <HoverHint hint={WHERE_RAISE_STANDS_HEADING_HINT} wide className="min-w-0">
+          <h3
+            id="where-raise-stands-heading"
+            className="cursor-help text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]"
+          >
+            Where the raise stands
+          </h3>
+        </HoverHint>
         <Link
           href="/insights"
           className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]"
@@ -76,13 +89,15 @@ export function WhereRaiseStandsCard({ breakdown, className = "", frameless = fa
       <ul className="space-y-1.5">
         {ROWS.map(({ key, label, dotClass, countClass, href }) => (
           <li key={key} className="flex items-center justify-between gap-3 text-[13px]">
-            <Link
-              href={href}
-              className="flex min-w-0 flex-1 items-center gap-2 text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
-            >
-              <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden />
-              <span className="truncate">{label}</span>
-            </Link>
+            <HoverHint hint={BUCKET_HINTS[key]} wide className="min-w-0 flex-1">
+              <Link
+                href={href}
+                className="flex min-w-0 flex-1 items-center gap-2 text-[color:var(--tomo-body)] underline-offset-2 hover:text-[color:var(--foreground)] hover:underline"
+              >
+                <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+                <span className="truncate">{label}</span>
+              </Link>
+            </HoverHint>
             <Link
               href={href}
               className={`shrink-0 font-mono text-sm tabular-nums font-medium underline-offset-2 hover:underline ${countClass}`}

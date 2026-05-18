@@ -184,7 +184,7 @@ export default function InsightsPage() {
 
               <Metric title="Focus list &amp; Fat Middle cohort" formula={p.fatMiddle.formula}>
                 <p className="text-sm leading-relaxed" style={{ color: C.slate }}>
-                  Metric 10 (Focus list) caps at ten moveable LPs on Today. The Fat Middle diagnostic remains available as a named
+                  Metric 10 (Focus list) caps at ten moveable LPs in Momentum. The Fat Middle diagnostic remains available as a named
                   filter in Relationships — no standalone gauge here.
                 </p>
                 <p className="mt-3 text-sm" style={{ color: C.slate }}>

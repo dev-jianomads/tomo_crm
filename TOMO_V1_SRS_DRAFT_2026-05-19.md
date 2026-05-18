@@ -833,7 +833,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow. Selecting a row opens the **meeting prep drawer** (see §3.9 meeting prep layout; visual reference `design/tomo_drawer_meetingprep_light_v3.html`).
-   - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. **Presentation labels:** *Drifting — act*, *Stalling — watch* (amber, not Moveable), *Moveable*, *Healthy — on track*. Below the four counts, a **Focus list** teaser line links to Relationships filtered to the top-10 Moveable cohort (Metric 10 ordering). The headline **Insights →** control links to `/insights`. Each of the **four counts** is independently tappable and deep-links to Relationships with the **named / URL-addressable** filter state for that bucket (AC-3.8.8). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
+   - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. **Presentation labels:** *Drifting — act*, *Stalling — watch* (amber, not Moveable), *Moveable*, *Healthy — on track*. The section heading and each bucket label expose a **hover hint** with concise copy aligned to the partition rules (show delay ≤300ms; not browser-native `title` tooltips). The headline **Insights →** control links to `/insights`. Each of the **four counts** is independently tappable and deep-links to Relationships with the **named / URL-addressable** filter state for that bucket (AC-3.8.8). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
    - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal. **Gone quiet** and **Cooling off** row generation respects `lp_state.off_channel_active_until` per BR-3.5.8.
 2. **Radar Modal (Daily Brief + On my radar).**
    - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
@@ -862,6 +862,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.8.4 — Empty-state attention queue surfaces a "Nothing pressing today" state with a link to Lists.
 - BR-3.8.5 — **Where the raise stands** counts use the same normative definitions as Section 9 (Metric 3 for the **Moveable** bucket; `lp_state.pipeline_flag` for G/A/R-derived buckets). **Presentation names:** *Stalling — watch* (not "cooling — watch") disambiguates the Today bucket from Radar **Cooling off**. The four buckets are mutually exclusive and sum to the **Today tile cohort** of LPs (non-terminal raise stages per Section 9 Today supplement — production default excludes `pass`, `closed_lost`, and `committed` from *work left*; the mock uses CRM labels **Closed** and **Pass** only).
 - BR-3.8.6 — Radar Modal section titles, collapse defaults, and CTA labels match **Appendix I** unless an explicit **[OPEN]** issue records a product exception.
+- BR-3.8.7 — **Where the raise stands** hover hints on Today use the normative copy in **Section 9 — Today page supplement (hover hints)**; hints appear within **300ms** of pointer hover (or keyboard focus) on the section heading or a bucket label.
 
 **Acceptance criteria.**
 
@@ -873,7 +874,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (**Moveable**, **Healthy — on track**, **Stalling — watch**, **Drifting — act**) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
 - AC-3.8.7 — The in-app Radar Modal implements the section taxonomy and defaults in **Appendix I** (including footer **Brief settings** and **Done**).
 - AC-3.8.8 — Each of the four bucket counts on **Where the raise stands** is independently tappable: **Drifting — act** → Relationships cohort `pipeline_flag='red'` among active LPs; **Stalling — watch** → `pipeline_flag='amber'` AND NOT `MOVEABLE(lp)`; **Moveable** → full Moveable predicate; **Healthy — on track** → `pipeline_flag='green'` AND NOT `MOVEABLE(lp)`. Each filter SHALL be a **named filter and/or URL-addressable** Relationships state (see §3.11 combinator).
-- AC-3.8.9 — The **Focus list** teaser below the four counts shows the prescribed label for the top **10** Moveable LPs (or fewer when the cohort is smaller) and navigates to Relationships filtered to that ordered cohort with rank visible in the LP column per Metric 10 / BR-3.6.10.
+- AC-3.8.9 — Hovering (or focusing) the **Where the raise stands** heading or any bucket label shows the corresponding hint from Section 9 within **300ms**; hint text matches the normative partition definitions for that bucket.
 
 ---
 
@@ -3959,7 +3960,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Draft approval rate trends rolling 30d vs 60d; below 50% triggers a recalibration nudge.
 - AC — Scheduling efficiency shows current and pre-TOMO baseline.
 
-**Story 8.8.7 — Momentum (Direction + velocity + Focus list teaser path).**
+**Story 8.8.7 — Momentum (Direction + velocity + Focus list).**
 *As a GP, I see relationships with clear direction, pipeline velocity, and the ranked Focus list — without a standalone Fat Middle gauge on Insights.*
 
 - AC — Direction count plus the mandate-fit qualifier subset render together in **Momentum**.
@@ -4423,7 +4424,7 @@ Extends §1.3. Alphabetical.
 | **Gone quiet** | Past meaningful-touch cadence / silence threshold | Radar Modal (renamed from *Quiet beyond cadence*) |
 | **Moveable** | Passes Metric 3 / `MOVEABLE(lp)` | Today bucket; Insights Metric 3; Focus list cohort |
 | **Drifting — act** | `pipeline_flag='red'` (includes re-engagement urgent) | Today bucket |
-| **Focus list** | Top **10** Moveable LPs by Metric 10 score | Insights **Momentum**; Today teaser |
+| **Focus list** | Top **10** Moveable LPs by Metric 10 score | Insights **Momentum** only (not shown on Today) |
 | **Direction** | Aggregate warming vs cooling | Insights Metric 7; Radar **Heating up** / **Cooling off** |
 | **Momentum** | Insights section 2 label — trajectory + Focus list | Insights page |
 
@@ -4438,7 +4439,7 @@ Extends §1.3. Alphabetical.
 - `Tomo_MVP3.docx` — historical reference; carries SOC 2 / CASA framing and agent-orchestration tool inventory; superseded for everything else by V1 Final.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
-- `docs/DAILY_SURFACES_OFF_CHANNEL_IMPLEMENTATION_PLAN_2026-05-17.md` — engineering sequencing for Today / Radar / Insights / Relationships URL filters and off-channel suppression.
+- `docs/DAILY_SURFACES_OFF_CHANNEL_IMPLEMENTATION_PLAN_2026-05-19.md` — engineering sequencing for Today / Radar / Insights / Relationships URL filters and off-channel suppression.
 - `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md` — implementation plan for the Workflows accordion surface, step-level drawers, and supporting mock-data contract.
 - `design/tomo_radar_modal_v1.html` — normative visual / IA reference for the Radar Modal (Today).
 - `design/tomo_drawer_meetingprep_light_v3.html` — normative visual reference for the **Coming up** meeting prep drawer on Today (§3.9 item 10).
@@ -5069,6 +5070,16 @@ today_tile_healthy_on_track   = COUNT lp IN ACTIVE WHERE pipeline_flag = 'green'
 ```
 
 Optional materialisation: `daily_pipeline_summary.today_tile_*` columns. Refresh: nightly with metrics batch or compute on Today read.
+
+**Hover hints (Today UI copy — normative, concise):**
+
+| Bucket | Hint |
+|--------|------|
+| **Section heading** | Active LPs in four buckets that don't overlap. Counts reflect your live pipeline; click a row to filter Relationships. |
+| **Moveable** | In active meeting stages, not red-flagged, warming in the last 30 days, and within stage touch SLA — same rules as Insights moveability. |
+| **Healthy — on track** | Green pipeline health and not moveable — on cadence; no urgent warming signal right now. |
+| **Stalling — watch** | Amber pipeline health but not moveable — engagement is stalling; worth a nudge before it turns red. |
+| **Drifting — act** | Red pipeline health among active LPs — treat as urgent re-engagement. |
 
 #### Metric 4 — LP concentration risk
 
