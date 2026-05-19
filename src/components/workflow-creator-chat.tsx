@@ -273,6 +273,8 @@ export function WorkflowCreatorChat({
         : "TOMO — create workflow";
 
   const isActionWizard = variant === "wizard" && wizardStep === "action";
+  /** Action step: big composer until first message, then conversation + single-line input. */
+  const isActionInitialComposer = isActionWizard && messages.length === 0;
 
   const chatSubtitle =
     wizardStep === "trigger"
@@ -324,7 +326,10 @@ export function WorkflowCreatorChat({
                 key={pill.id}
                 type="button"
                 disabled={isStreaming}
-                onClick={() => onActionPillSelect?.(pill)}
+                onClick={() => {
+                  onActionPillSelect?.(pill);
+                  if (messages.length === 0) setInput(pill.instruction);
+                }}
                 className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
               >
                 {pill.label}
@@ -333,63 +338,86 @@ export function WorkflowCreatorChat({
           </div>
         ) : null}
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
-        {!isActionWizard ? (
-          <div className="flex justify-start">
-            <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
-              <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
-            </div>
-          </div>
-        ) : null}
-        {messages.map((msg) => (
-          <ChatBubble key={msg.id} message={msg} />
-        ))}
-        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex justify-start">
-            <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)]" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:150ms]" />
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:300ms]" />
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-      <div className={`flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2 ${isActionWizard ? "items-end" : ""}`}>
-        {isActionWizard ? (
+      {isActionInitialComposer ? (
+        <div className="flex min-h-0 flex-1 flex-col p-3">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Message Tomo…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Describe your action …"
             disabled={isStreaming}
-            rows={5}
-            className="tomo-input min-w-0 flex-1 resize-y py-2 text-sm disabled:opacity-50"
+            rows={8}
+            autoFocus
+            className="tomo-input min-h-[12rem] w-full flex-1 resize-none py-2.5 text-sm leading-relaxed disabled:opacity-50"
           />
-        ) : (
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Message Tomo…"
-            disabled={isStreaming}
-            className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
-          />
-        )}
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={isStreaming || !input.trim()}
-          className="inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
-          aria-label="Send"
-        >
-          <PaperAirplaneIcon className="h-4 w-4" />
-        </button>
-      </div>
-      {messages.length > 0 && (
+          <div className="mt-2 flex shrink-0 items-center justify-end gap-2">
+            <span className="mr-auto text-[10px] text-[color:var(--tomo-mute)]">⌘↵ to send</span>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={isStreaming || !input.trim()}
+              className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+              aria-label="Send"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" />
+              Send
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
+            {!isActionWizard ? (
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
+                  <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
+                </div>
+              </div>
+            ) : null}
+            {messages.map((msg) => (
+              <ChatBubble key={msg.id} message={msg} />
+            ))}
+            {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+              <div className="flex justify-start">
+                <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)]" />
+                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:150ms]" />
+                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--tomo-mute)] [animation-delay:300ms]" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+          <div className="flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+              placeholder="Message Tomo…"
+              disabled={isStreaming}
+              className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={isStreaming || !input.trim()}
+              className="inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+              aria-label="Send"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </>
+      )}
+      {messages.length > 0 && !isActionInitialComposer ? (
         <div className="border-t border-[color:var(--tomo-rule-soft)] px-2 pb-2">
           <button
             type="button"
