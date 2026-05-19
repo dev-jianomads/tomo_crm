@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PaperClipIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import type { Pipeline } from "@/lib/pipelines";
 import type { CustomPlaybookStored } from "@/lib/customPlaybooks";
@@ -9,10 +9,13 @@ import { appendCustomPlaybookWithActionBuild } from "@/lib/customPlaybooks";
 import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
 import {
   buildMockActionBuildLpDrafts,
+  mergeContextWithAttachmentText,
   mockTomoGenerateCohortDraft,
+  WORKFLOW_WIZARD_ACTION_PILLS,
   type WorkflowActionBuildConfig,
   type WorkflowActionBuildLpDraft,
 } from "@/lib/workflow-action-build";
+import { WorkflowWizardFileUpload } from "@/components/workflow-wizard-file-upload";
 import {
   WORKFLOW_CREATE_STEPS,
   canAdvanceFromStep,
@@ -82,6 +85,10 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
 
   const reachable = maxReachableStep(draft);
   const attachmentNames = draft.attachments.map((a) => a.name);
+  const mergedContextText = useMemo(
+    () => mergeContextWithAttachmentText(draft.contextText, draft.attachments),
+    [draft.contextText, draft.attachments]
+  );
 
   const goToStep = (target: WorkflowCreateStep) => {
     const targetIdx = stepIndex(target);
@@ -91,16 +98,23 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
   };
 
   const runTomoGenerate = useCallback(() => {
-    if (!pipeline || !draft.actionSpec) return;
+    if (!pipeline) return;
+    const instruction =
+      draft.tomoInstruction.trim() || (draft.actionSpec ? instructionFromAction(draft.actionSpec) : "");
+    if (!instruction) {
+      toast.error("Describe the action or pick a suggestion first");
+      return;
+    }
     setGenerating(true);
     window.setTimeout(() => {
-      const instruction = draft.tomoInstruction.trim() || instructionFromAction(draft.actionSpec!);
-      const { subject, body } = mockTomoGenerateCohortDraft({
+      const generated = mockTomoGenerateCohortDraft({
         actionName: draft.workflowName.trim(),
-        contextText: draft.contextText,
+        contextText: mergeContextWithAttachmentText(draft.contextText, draft.attachments),
         instruction,
         listName: pipeline.name,
+        trigger: draft.trigger ?? undefined,
       });
+      const { subject, body, actionDescription } = generated;
       const cohort = buildMockActionBuildLpDrafts(pipeline.name).map((d) => ({
         ...d,
         subject,
@@ -108,13 +122,27 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
         status: "ready" as const,
         personalised: false,
       }));
-      setDraft((prev) => ({ ...prev, baseSubject: subject, baseBody: body, lpDrafts: cohort }));
+      const actionSpec =
+        draft.actionSpec ??
+        ({
+          kind: "send_email" as const,
+          subject,
+          body,
+        } satisfies UserWorkflowAction);
+      setDraft((prev) => ({
+        ...prev,
+        baseSubject: subject,
+        baseBody: body,
+        actionDescription,
+        lpDrafts: cohort,
+        actionSpec,
+      }));
       setSelectedLpId(cohort[0]?.id ?? null);
       setGenerating(false);
       setStep("draft");
-      toast.success("Tomo drafted outreach for this cohort");
+      toast.success("Tomo drafted action and outreach");
     }, 700);
-  }, [draft.actionSpec, draft.contextText, draft.tomoInstruction, draft.workflowName, pipeline]);
+  }, [draft.actionSpec, draft.attachments, draft.contextText, draft.tomoInstruction, draft.trigger, draft.workflowName, pipeline]);
 
   const finishBuild = (lpDrafts: WorkflowActionBuildLpDraft[], approveAll: boolean) => {
     if (!pipeline || !draft.trigger || !draft.actionSpec) return;
@@ -123,6 +151,7 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
       contextText: draft.contextText,
       attachments: draft.attachments,
       tomoInstruction: draft.tomoInstruction,
+      actionDescription: draft.actionDescription,
       baseSubject: draft.baseSubject,
       baseBody: draft.baseBody,
       lpDrafts,
@@ -153,17 +182,34 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
     }));
   };
 
-  const addMockAttachment = () => {
+  const selectActionPill = (pill: { id: string; label: string; instruction: string; kind?: string }) => {
     setDraft((prev) => {
-      const n = prev.attachments.length + 1;
+      const actionSpec: UserWorkflowAction =
+        pill.kind === "schedule_meeting" || pill.id === "request_meeting"
+          ? {
+              kind: "schedule_meeting",
+              title: pill.label,
+              datetime: "TBD — confirm when scheduling",
+              notes: pill.instruction,
+            }
+          : {
+              kind: "send_email",
+              subject: `${prev.workflowName.trim() || "Outreach"} — ${pipeline?.name ?? "list"}`,
+              body: pill.instruction,
+            };
       return {
         ...prev,
-        attachments: [
-          ...prev.attachments,
-          { id: `att-${n}`, name: `Context attachment ${n}.pdf`, meta: "420 KB · uploaded in wizard" },
-        ],
+        tomoInstruction: pill.instruction,
+        actionSpec,
       };
     });
+    toast.message(`Selected: ${pill.label}`);
+  };
+
+  const handleDraftNext = () => {
+    setDraft((prev) => ({ ...prev, personaliseEnabled: true }));
+    setSelectedLpId(draft.lpDrafts[0]?.id ?? null);
+    setStep("personalise");
   };
 
   if (!open || !pipeline) return null;
@@ -228,7 +274,7 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
         role="dialog"
         aria-modal="true"
         aria-labelledby="workflow-build-title"
-        className="relative z-[201] my-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(92dvh,calc(100vh-2rem))]"
+        className="relative z-[201] my-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(96dvh,calc(100vh-1rem))] min-h-[min(720px,96dvh)]"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 py-4 sm:px-6">
@@ -291,7 +337,7 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
           </ol>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 min-h-[480px]">
           {createdEntry ? (
             <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
               Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card when
@@ -355,49 +401,26 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
           ) : null}
 
           {step === "action" ? (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <div className="grid min-h-[440px] gap-4 lg:grid-cols-2">
               <div className="space-y-4">
                 <label className="block">
                   <span className="text-xs font-medium text-[color:var(--foreground)]">Context for Tomo</span>
                   <textarea
                     value={draft.contextText}
                     onChange={(e) => setDraft((prev) => ({ ...prev, contextText: e.target.value }))}
-                    rows={4}
+                    rows={6}
                     className="tomo-input mt-1.5 w-full resize-y text-sm"
                     placeholder="Theme, trip dates, talking points, anything Tomo should know…"
                   />
                 </label>
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-[color:var(--foreground)]">Attachments</span>
-                    <button
-                      type="button"
-                      onClick={addMockAttachment}
-                      className="text-xs font-medium text-[color:var(--tomo-teal)]"
-                    >
-                      + Add file (demo)
-                    </button>
-                  </div>
-                  {draft.attachments.length === 0 ? (
-                    <p className="text-xs text-[color:var(--tomo-mute)]">Optional decks, one-pagers, or notes.</p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {draft.attachments.map((a) => (
-                        <li
-                          key={a.id}
-                          className="flex items-center gap-2 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] px-2 py-1.5 text-xs"
-                        >
-                          <PaperClipIcon className="h-3.5 w-3.5 text-[color:var(--tomo-mute)]" />
-                          <span className="font-medium text-[color:var(--foreground)]">{a.name}</span>
-                          <span className="text-[color:var(--tomo-mute)]">{a.meta}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {draft.actionSpec ? (
+                <WorkflowWizardFileUpload
+                  attachments={draft.attachments}
+                  onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
+                  emptyHint="Upload .docx files — text is extracted for Tomo."
+                />
+                {draft.tomoInstruction.trim() || draft.actionSpec ? (
                   <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">
-                    Action confirmed — ready to generate drafts.
+                    Action ready — click Generate drafts when you are set.
                   </p>
                 ) : null}
               </div>
@@ -408,9 +431,11 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
                 wizardStep="action"
                 workflowName={draft.workflowName.trim()}
                 confirmedTrigger={draft.trigger ?? undefined}
-                contextText={draft.contextText}
+                contextText={mergedContextText}
                 attachmentNames={attachmentNames}
                 variant="wizard"
+                actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
+                onActionPillSelect={selectActionPill}
                 onWorkflowCreated={() => {}}
                 onActionConfirmed={(action) => {
                   setDraft((prev) => ({
@@ -424,28 +449,60 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
           ) : null}
 
           {step === "draft" && draft.baseBody ? (
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-[color:var(--tomo-teal)]">Cohort draft (editable)</p>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
-                <input
-                  value={draft.baseSubject}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, baseSubject: e.target.value }))}
-                  className="tomo-input mt-1 w-full text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
+            <div className="space-y-6">
+              <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">Action</h3>
+                <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">
+                  What Tomo will do for each LP when this workflow runs.
+                </p>
                 <textarea
-                  value={draft.baseBody}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, baseBody: e.target.value }))}
-                  rows={8}
-                  className="tomo-input mt-1 w-full resize-y text-sm"
+                  value={draft.actionDescription}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, actionDescription: e.target.value }))}
+                  rows={4}
+                  className="tomo-input mt-3 w-full resize-y text-sm"
                 />
-              </label>
-              <p className="text-xs text-[color:var(--tomo-mute)]">
-                {draft.lpDrafts.length} LP drafts ready — approve all or personalise each.
-              </p>
+              </section>
+              <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
+                    LP draft
+                  </h3>
+                  <button
+                    type="button"
+                    disabled={generating}
+                    onClick={runTomoGenerate}
+                    className="inline-flex items-center gap-1 text-[11px] text-[color:var(--tomo-teal)] disabled:opacity-50"
+                  >
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    Regenerate
+                  </button>
+                </div>
+                <label className="block">
+                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
+                  <input
+                    value={draft.baseSubject}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, baseSubject: e.target.value }))}
+                    className="tomo-input mt-1 w-full text-sm"
+                  />
+                </label>
+                <label className="mt-3 block">
+                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
+                  <textarea
+                    value={draft.baseBody}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, baseBody: e.target.value }))}
+                    rows={10}
+                    className="tomo-input mt-1 w-full resize-y text-sm"
+                  />
+                </label>
+                <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">
+                  {draft.lpDrafts.length} LP drafts — personalise on the next step.
+                </p>
+              </section>
+              <WorkflowWizardFileUpload
+                attachments={draft.attachments}
+                onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
+                label="Attachments for this outreach"
+              />
             </div>
           ) : null}
 
@@ -567,22 +624,14 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
               ) : null}
 
               {step === "draft" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handlePersonalise}
-                    className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-teal)]"
-                  >
-                    Personalise per LP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleApproveAll}
-                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
-                  >
-                    Approve all drafts
-                  </button>
-                </>
+                <button
+                  type="button"
+                  disabled={!canAdvanceFromStep("draft", draft)}
+                  onClick={handleDraftNext}
+                  className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  Next — personalise per LP
+                </button>
               ) : null}
 
               {step === "personalise" ? (

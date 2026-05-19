@@ -24,6 +24,7 @@ export type WorkflowCreateDraft = {
   triggerSummary: string | null;
   triggerConfirmed: boolean;
   actionSpec: UserWorkflowAction | null;
+  actionDescription: string;
   tomoInstruction: string;
   contextText: string;
   attachments: WorkflowActionBuildAttachment[];
@@ -40,6 +41,7 @@ export function initialWorkflowCreateDraft(): WorkflowCreateDraft {
     triggerSummary: null,
     triggerConfirmed: false,
     actionSpec: null,
+    actionDescription: "",
     tomoInstruction: "",
     contextText: "",
     attachments: [],
@@ -61,9 +63,14 @@ export function canAdvanceFromStep(step: WorkflowCreateStep, draft: WorkflowCrea
     case "trigger":
       return draft.triggerConfirmed && Boolean(draft.trigger?.trim());
     case "action":
-      return draft.actionSpec !== null;
+      return Boolean(draft.tomoInstruction.trim() || draft.actionSpec);
     case "draft":
-      return Boolean(draft.baseSubject.trim() && draft.baseBody.trim() && draft.lpDrafts.length > 0);
+      return Boolean(
+        draft.actionDescription.trim() &&
+          draft.baseSubject.trim() &&
+          draft.baseBody.trim() &&
+          draft.lpDrafts.length > 0
+      );
     case "personalise":
       return draft.lpDrafts.length > 0;
     default:

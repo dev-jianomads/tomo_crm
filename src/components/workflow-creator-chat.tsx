@@ -42,6 +42,8 @@ type WorkflowCreatorChatProps = {
   }) => void;
   onAdvanceWizardStep?: () => void;
   onActionConfirmed?: (action: UserWorkflowAction) => void;
+  actionPills?: ReadonlyArray<{ id: string; label: string; instruction: string; kind?: string }>;
+  onActionPillSelect?: (pill: { id: string; label: string; instruction: string; kind?: string }) => void;
   variant?: "compact" | "wizard";
 };
 
@@ -85,6 +87,8 @@ export function WorkflowCreatorChat({
   onTriggerConfirmed,
   onAdvanceWizardStep,
   onActionConfirmed,
+  actionPills,
+  onActionPillSelect,
   variant = "compact",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -238,7 +242,7 @@ export function WorkflowCreatorChat({
     wizardStep === "trigger"
       ? `When should "${workflowName ?? "this workflow"}" run on ${pipeline.name}?`
       : wizardStep === "action"
-        ? `What should Tomo do for each LP on ${pipeline.name}?`
+        ? `Describe the action step for ${pipeline.name}`
         : surfaceContext === "workflows"
           ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
           : "Share a name, trigger, and action for this list.";
@@ -258,7 +262,8 @@ export function WorkflowCreatorChat({
       )
     ) : wizardStep === "action" ? (
       <>
-        Trigger is set. Tell me <strong>what Tomo should do</strong>. Use the context panel for materials.
+        Describe the <strong>action step</strong> — what Tomo should do for each LP when this workflow runs. Use the
+        context panel for .docx materials, or pick a suggestion below.
       </>
     ) : surfaceContext === "workflows" ? (
       <>
@@ -273,7 +278,7 @@ export function WorkflowCreatorChat({
 
   const shellClass =
     variant === "wizard"
-      ? "flex min-h-[280px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+      ? "flex min-h-[380px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
       : "flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]";
 
   return (
@@ -304,6 +309,26 @@ export function WorkflowCreatorChat({
         )}
         <div ref={endRef} />
       </div>
+      {wizardStep === "action" && actionPills?.length ? (
+        <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] px-2 pt-2">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">
+            Suggestions
+          </p>
+          <div className="flex flex-wrap gap-1.5 pb-2">
+            {actionPills.map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                disabled={isStreaming}
+                onClick={() => onActionPillSelect?.(pill)}
+                className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
         <input
           type="text"

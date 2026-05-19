@@ -9,6 +9,8 @@ export type WorkflowActionBuildAttachment = {
   id: string;
   name: string;
   meta: string;
+  /** Plain text extracted from uploaded .docx (wizard). */
+  extractedText?: string;
 };
 
 export type WorkflowActionBuildLpDraft = WorkflowDraft & {
@@ -22,6 +24,8 @@ export type WorkflowActionBuildConfig = {
   contextText: string;
   attachments: WorkflowActionBuildAttachment[];
   tomoInstruction: string;
+  /** Short LLM summary of what happens on the action step. */
+  actionDescription?: string;
   /** Cohort-wide draft Tomo generated before per-LP overrides. */
   baseSubject: string;
   baseBody: string;
@@ -29,6 +33,40 @@ export type WorkflowActionBuildConfig = {
   /** Set when GP chose approve-all without per-LP edits. */
   approvedAllAt?: string;
 };
+
+/** Action-type pills on the wizard Action step (right column). */
+export const WORKFLOW_WIZARD_ACTION_PILLS = [
+  {
+    id: "cover_letter",
+    label: "Draft cover letter",
+    instruction: "Draft a personalized cover letter email for each LP on this list.",
+    kind: "send_email" as const,
+  },
+  {
+    id: "request_meeting",
+    label: "Request meeting",
+    instruction: "Request a brief meeting or call with each LP, proposing times next week.",
+    kind: "schedule_meeting" as const,
+  },
+  {
+    id: "conference",
+    label: "Conference / roadshow",
+    instruction: "Invite each LP to meet at our upcoming conference or roadshow event.",
+    kind: "send_email" as const,
+  },
+] as const;
+
+export function mergeContextWithAttachmentText(
+  contextText: string,
+  attachments: WorkflowActionBuildAttachment[]
+): string {
+  const docBlocks = attachments
+    .filter((a) => a.extractedText?.trim())
+    .map((a) => `--- ${a.name} ---\n${a.extractedText!.trim()}`);
+  if (!docBlocks.length) return contextText.trim();
+  const base = contextText.trim();
+  return [base, ...docBlocks].filter(Boolean).join("\n\n");
+}
 
 export const WORKFLOW_ACTION_BUILD_SUGGESTION_PILLS = [
   "Draft a short cover email",
@@ -90,12 +128,15 @@ export function mockTomoGenerateCohortDraft(params: {
   contextText: string;
   instruction: string;
   listName: string;
-}): { subject: string; body: string } {
+  trigger?: string;
+}): { subject: string; body: string; actionDescription: string } {
   const snippet = params.instruction.trim() || "a concise outreach email";
+  const triggerNote = params.trigger?.trim() ? ` when the workflow runs (${params.trigger.trim()})` : "";
   return {
     subject: `${params.actionName} — ${params.listName}`,
     body: `Hi {{lp_first_name}},\n\n${snippet}.\n\n${
       params.contextText.trim() ? `${params.contextText.trim()}\n\n` : ""
     }Let me know if a short call would be useful.\n\nBest regards,`,
+    actionDescription: `For each LP on ${params.listName}, Tomo will ${snippet.charAt(0).toLowerCase()}${snippet.slice(1)}${triggerNote}.`,
   };
 }
