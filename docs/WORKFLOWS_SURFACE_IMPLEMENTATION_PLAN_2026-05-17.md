@@ -144,14 +144,15 @@ Deliverable: expanding a card gives the operational dashboard inline.
 
 Deliverable: clicking a step on an active card shows read-only monitoring; Close only.
 
-### Phase 4b — Action build wizard (custom create) — **scaffolded**
+### Phase 4b — Create wizard (custom create) — **implemented**
 
-- `workflow-action-build.ts` — types, suggestion pills, mock cohort / per-LP drafts.
-- `workflow-action-build-modal.tsx` — name → context → instruct → review → approve all / personalise.
-- `workflow-build-modal.tsx` — trigger chat (`workflow_creator`) → Action build → persist with `actionBuild`.
+- `workflow-create-draft.ts` — wizard state + step validation.
+- `workflow-build-modal.tsx` — **single large dialog** with header tabs: Name → Trigger (Tomo + confirm) → Action (context + Tomo) → Draft → Personalise.
+- `workflow-action-build.ts` — mock cohort / per-LP drafts (used by draft step).
+- Orchestrator: `confirm_workflow_trigger` / `confirm_workflow_action` when `workflowCreator.wizardStep` is set.
 - `customPlaybooks.appendCustomPlaybookWithActionBuild()`.
 
-Deliverable: **New workflow** saves only after Action build; runtime send approval stays in Action Drawer.
+Deliverable: **New workflow** saves only after draft approval; runtime send approval stays in Action Drawer.
 
 ### Phase 5 — Batch review (Action Drawer / runtime only)
 

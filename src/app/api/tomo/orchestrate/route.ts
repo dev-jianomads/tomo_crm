@@ -30,6 +30,7 @@ import {
   createUserWorkflowInputSchema,
   isUserWorkflowActionComplete,
   trimUserWorkflowAction,
+  userWorkflowActionSchema,
 } from "@/lib/custom-playbook-schema";
 
 // ── Context types ────────────────────────────────────────────────────────────
@@ -75,6 +76,12 @@ export type OrchestratorContext = {
     filterSummary?: string;
     /** Workflows page: list already chosen in the left rail — only elicit trigger + action; derive name. */
     listPreselected?: boolean;
+    /** Workflows create wizard step — gates tools and prompt. Omit on Lists pipeline custom flow. */
+    wizardStep?: "trigger" | "action";
+    workflowName?: string;
+    confirmedTrigger?: string;
+    contextText?: string;
+    attachmentNames?: string[];
   };
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
@@ -173,35 +180,83 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       lines.push(``, `relationshipLookup: empty — no relationships in current view. Suggest the user filter or show all before updating.`);
     }
   } else if (surface === "workflow_creator") {
-    lines.push(
-      ``,
-      `You are in **workflow creator** mode. The user is defining a new user-defined workflow.`,
-      ``,
-      `You have exactly one tool: **create_user_workflow**. Call it only when you have **name**, **trigger**, and a complete **action** object.`,
-      ``,
-      `- **name** — short title for the workflow`,
-      `- **trigger** — when or why it runs (schedule, event, or condition)`,
-      `- **action** — a typed object with **kind** and all required fields for that kind:`,
-      `  - **send_email** — subject (string) and body (string; full draft or content the user wants sent)`,
-      `  - **schedule_meeting** — title, datetime (ISO or explicit date+time+timezone); optional notes`,
-      `  - **schedule_call** — title, datetime; optional agenda`,
-      `  - **other** — label + details for anything else (CRM update, Slack, etc.)`,
-      ``,
-      `Do not call the tool until every required field for the chosen kind is known. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
-      ``,
-      `The pre-selected list (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different list unless they explicitly want to cancel.`,
-      `After a successful tool call, confirm briefly in plain language; do not claim server-side database persistence (the client applies the result).`,
-      ``,
-      `Keep replies concise.`,
-    );
     const wc = context.workflowCreator;
+    const wizardStep = wc?.wizardStep;
+
+    if (wizardStep === "trigger") {
+      lines.push(
+        ``,
+        `You are in **workflow creator — trigger step**. The workflow **name** is already set by the user.`,
+        ``,
+        `You have exactly one tool: **confirm_workflow_trigger**. Call it when you can propose a clear one-line **trigger** (when or why the workflow runs).`,
+        ``,
+        `Infer schedule, event, or condition from the user's messages. Propose the trigger in plain language. Ask the user to confirm or correct before calling the tool.`,
+        `Do **not** ask for email subject/body, meeting logistics, or action details — those come in a later step.`,
+        `Do **not** ask for the workflow name.`,
+        ``,
+        `After calling the tool, confirm briefly. The client shows a confirmation card.`,
+        `Keep replies concise.`,
+      );
+    } else if (wizardStep === "action") {
+      lines.push(
+        ``,
+        `You are in **workflow creator — action step**. Name and trigger are already set.`,
+        ``,
+        `You have exactly one tool: **confirm_workflow_action**. Call it when the **action** kind and required fields are clear.`,
+        ``,
+        `Action kinds:`,
+        `  - **send_email** — subject + body (outline or template; per-LP drafts are generated later)`,
+        `  - **schedule_meeting** — title, datetime; optional notes`,
+        `  - **schedule_call** — title, datetime; optional agenda`,
+        `  - **other** — label + details`,
+        ``,
+        `Use any **context text** or **attachment names** in context. Do not ask which list to use.`,
+        `Do not ask about the trigger again unless the user wants to change it.`,
+        `Keep replies concise.`,
+      );
+    } else {
+      lines.push(
+        ``,
+        `You are in **workflow creator** mode. The user is defining a new user-defined workflow.`,
+        ``,
+        `You have exactly one tool: **create_user_workflow**. Call it only when you have **name**, **trigger**, and a complete **action** object.`,
+        ``,
+        `- **name** — short title for the workflow`,
+        `- **trigger** — when or why it runs (schedule, event, or condition)`,
+        `- **action** — a typed object with **kind** and all required fields for that kind:`,
+        `  - **send_email** — subject (string) and body (string; full draft or content the user wants sent)`,
+        `  - **schedule_meeting** — title, datetime (ISO or explicit date+time+timezone); optional notes`,
+        `  - **schedule_call** — title, datetime; optional agenda`,
+        `  - **other** — label + details for anything else (CRM update, Slack, etc.)`,
+        ``,
+        `Do not call the tool until every required field for the chosen kind is known. If something is missing or vague, ask one brief follow-up instead of calling the tool.`,
+        ``,
+        `The pre-selected list (in context) will be linked by the app when the tool result is applied — do not ask the user to pick a different list unless they explicitly want to cancel.`,
+        `After a successful tool call, confirm briefly in plain language; do not claim server-side database persistence (the client applies the result).`,
+        ``,
+        `Keep replies concise.`,
+      );
+    }
+
     if (wc) {
       lines.push(
         ``,
         `Pre-selected list: "${wc.pipelineName}" (id: ${wc.pipelineId}).`,
         wc.filterSummary ? `Filter summary: ${wc.filterSummary}` : `No filter summary provided.`,
       );
-      if (wc.listPreselected) {
+      if (wc.workflowName?.trim()) {
+        lines.push(``, `Workflow name (fixed for this wizard): "${wc.workflowName.trim()}".`);
+      }
+      if (wizardStep === "action" && wc.confirmedTrigger?.trim()) {
+        lines.push(``, `Confirmed trigger: "${wc.confirmedTrigger.trim()}".`);
+      }
+      if (wizardStep === "action" && wc.contextText?.trim()) {
+        lines.push(``, `User context text:\n${wc.contextText.trim()}`);
+      }
+      if (wizardStep === "action" && wc.attachmentNames?.length) {
+        lines.push(``, `Uploaded attachments: ${wc.attachmentNames.join(", ")}`);
+      }
+      if (wc.listPreselected && !wizardStep) {
         lines.push(
           ``,
           `The user is on the Workflows page and already selected this list. Do **not** ask which list to use.`,
@@ -423,30 +478,71 @@ export async function POST(req: Request) {
   const tools: Record<string, any> = {};
 
   if (surface === "workflow_creator") {
-    const pipelineIdForCreator = context.workflowCreator?.pipelineId;
-    tools.create_user_workflow = tool({
-      description:
-        "Finalize a new user-defined workflow. Call when name, trigger, and action (typed object: send_email | schedule_meeting | schedule_call | other) are complete. The client persists and links the pre-selected list.",
-      inputSchema: createUserWorkflowInputSchema,
-      execute: async ({ name, trigger, action }) => {
-        const nameT = name.trim();
-        const triggerT = trigger.trim();
-        const actionT = trimUserWorkflowAction(action);
-        if (!nameT || !triggerT || !isUserWorkflowActionComplete(actionT)) {
+    const wc = context.workflowCreator;
+    const wizardStep = wc?.wizardStep;
+
+    if (wizardStep === "trigger") {
+      tools.confirm_workflow_trigger = tool({
+        description:
+          "Propose the workflow trigger for user confirmation. Call when schedule, event, or condition is clear.",
+        inputSchema: z.object({
+          trigger: z.string().min(1).describe("One-line when/why the workflow runs"),
+          summary: z.string().optional().describe("Optional short explanation for the user"),
+        }),
+        execute: async ({ trigger, summary }) => {
+          const triggerT = trigger.trim();
+          if (!triggerT) {
+            return { success: false as const, error: "trigger must be non-empty" };
+          }
           return {
-            success: false as const,
-            error: "name, trigger, and action (all required fields for the action kind) must be non-empty after trimming",
+            success: true as const,
+            trigger: triggerT,
+            summary: summary?.trim() || null,
           };
-        }
-        return {
-          success: true as const,
-          name: nameT,
-          trigger: triggerT,
-          action: actionT,
-          pipelineId: pipelineIdForCreator ?? null,
-        };
-      },
-    });
+        },
+      });
+    } else if (wizardStep === "action") {
+      tools.confirm_workflow_action = tool({
+        description:
+          "Finalize the workflow action kind and fields for the action step. Call when action type and required fields are known.",
+        inputSchema: userWorkflowActionSchema,
+        execute: async (action) => {
+          const actionT = trimUserWorkflowAction(action);
+          if (!isUserWorkflowActionComplete(actionT)) {
+            return {
+              success: false as const,
+              error: "action must have all required fields for its kind",
+            };
+          }
+          return { success: true as const, action: actionT };
+        },
+      });
+    } else {
+      const pipelineIdForCreator = wc?.pipelineId;
+      tools.create_user_workflow = tool({
+        description:
+          "Finalize a new user-defined workflow. Call when name, trigger, and action (typed object: send_email | schedule_meeting | schedule_call | other) are complete. The client persists and links the pre-selected list.",
+        inputSchema: createUserWorkflowInputSchema,
+        execute: async ({ name, trigger, action }) => {
+          const nameT = name.trim();
+          const triggerT = trigger.trim();
+          const actionT = trimUserWorkflowAction(action);
+          if (!nameT || !triggerT || !isUserWorkflowActionComplete(actionT)) {
+            return {
+              success: false as const,
+              error: "name, trigger, and action (all required fields for the action kind) must be non-empty after trimming",
+            };
+          }
+          return {
+            success: true as const,
+            name: nameT,
+            trigger: triggerT,
+            action: actionT,
+            pipelineId: pipelineIdForCreator ?? null,
+          };
+        },
+      });
+    }
   }
 
   if (surface === "general" || surface === "filter") {

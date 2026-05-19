@@ -11,16 +11,30 @@ import {
   appendCustomPlaybook,
   createUserWorkflowInputSchema,
   type CustomPlaybookStored,
+  type UserWorkflowAction,
+  userWorkflowActionSchema,
 } from "@/lib/customPlaybooks";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const confirmTriggerSchema = z.object({
+  trigger: z.string().min(1),
+  summary: z.string().optional(),
+});
 
 type WorkflowCreatorChatProps = {
   pipeline: Pipeline;
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
-  /** When set, Tomo tool output opens Action build instead of persisting immediately. */
   onWorkflowDraftReady?: (input: import("@/lib/custom-playbook-schema").CreateUserWorkflowInput) => void;
-  /** When set from `/workflows`, list is fixed — collect trigger + action only (name derived for the tool). */
   surfaceContext?: "pipeline" | "workflows";
+  wizardStep?: "trigger" | "action";
+  workflowName?: string;
+  confirmedTrigger?: string;
+  contextText?: string;
+  attachmentNames?: string[];
+  onTriggerProposed?: (payload: { trigger: string; summary: string | null }) => void;
+  onActionConfirmed?: (action: UserWorkflowAction) => void;
+  variant?: "compact" | "wizard";
 };
 
 function ChatBubble({ message }: { message: UIMessage }) {
@@ -54,6 +68,14 @@ export function WorkflowCreatorChat({
   onWorkflowCreated,
   onWorkflowDraftReady,
   surfaceContext = "pipeline",
+  wizardStep,
+  workflowName,
+  confirmedTrigger,
+  contextText,
+  attachmentNames,
+  onTriggerProposed,
+  onActionConfirmed,
+  variant = "compact",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const processedToolCallIds = useRef<Set<string>>(new Set());
@@ -71,10 +93,28 @@ export function WorkflowCreatorChat({
         pipelineId: pipeline.id,
         pipelineName: pipeline.name,
         ...(filterSummary ? { filterSummary } : {}),
-        ...(surfaceContext === "workflows" ? { listPreselected: true as const } : {}),
+        ...(surfaceContext === "workflows" && !wizardStep ? { listPreselected: true as const } : {}),
+        ...(wizardStep ? { wizardStep } : {}),
+        ...(workflowName?.trim() ? { workflowName: workflowName.trim() } : {}),
+        ...(wizardStep === "action" && confirmedTrigger?.trim()
+          ? { confirmedTrigger: confirmedTrigger.trim() }
+          : {}),
+        ...(wizardStep === "action" && contextText?.trim() ? { contextText: contextText.trim() } : {}),
+        ...(wizardStep === "action" && attachmentNames?.length ? { attachmentNames } : {}),
       },
     }),
-    [orchestratorPage, pipeline.id, pipeline.name, filterSummary, surfaceContext]
+    [
+      orchestratorPage,
+      pipeline.id,
+      pipeline.name,
+      filterSummary,
+      surfaceContext,
+      wizardStep,
+      workflowName,
+      confirmedTrigger,
+      contextText,
+      attachmentNames,
+    ]
   );
 
   const transport = useMemo(
@@ -89,7 +129,6 @@ export function WorkflowCreatorChat({
   const { messages, sendMessage, status, setMessages } = useChat({
     transport,
     onToolCall: ({ toolCall }) => {
-      if (toolCall.toolName !== "create_user_workflow") return;
       const tcId =
         "toolCallId" in toolCall && typeof toolCall.toolCallId === "string"
           ? toolCall.toolCallId
@@ -98,6 +137,32 @@ export function WorkflowCreatorChat({
         if (processedToolCallIds.current.has(tcId)) return;
         processedToolCallIds.current.add(tcId);
       }
+
+      if (toolCall.toolName === "confirm_workflow_trigger") {
+        const parsed = confirmTriggerSchema.safeParse(toolCall.input);
+        if (!parsed.success) {
+          toast.error("Could not confirm trigger — try describing when this should run again.");
+          return;
+        }
+        onTriggerProposed?.({
+          trigger: parsed.data.trigger.trim(),
+          summary: parsed.data.summary?.trim() || null,
+        });
+        return;
+      }
+
+      if (toolCall.toolName === "confirm_workflow_action") {
+        const parsed = userWorkflowActionSchema.safeParse(toolCall.input);
+        if (!parsed.success) {
+          toast.error("Could not confirm action — check required fields for your action type.");
+          return;
+        }
+        onActionConfirmed?.(parsed.data);
+        return;
+      }
+
+      if (toolCall.toolName !== "create_user_workflow") return;
+
       const raw = toolCall.input as unknown;
       const parsed = createUserWorkflowInputSchema.safeParse(raw);
       if (!parsed.success) {
@@ -135,33 +200,58 @@ export function WorkflowCreatorChat({
     );
   };
 
+  const chatTitle =
+    wizardStep === "trigger"
+      ? "TOMO — define trigger"
+      : wizardStep === "action"
+        ? "TOMO — define action"
+        : "TOMO — create workflow";
+
+  const chatSubtitle =
+    wizardStep === "trigger"
+      ? `When should "${workflowName ?? "this workflow"}" run on ${pipeline.name}?`
+      : wizardStep === "action"
+        ? `What should Tomo do for each LP on ${pipeline.name}?`
+        : surfaceContext === "workflows"
+          ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
+          : "Share a name, trigger, and action for this list.";
+
+  const introCopy =
+    wizardStep === "trigger" ? (
+      <>
+        Workflow <strong>{workflowName}</strong> is named. Describe <strong>when</strong> it should run. I’ll propose a
+        trigger for you to confirm.
+      </>
+    ) : wizardStep === "action" ? (
+      <>
+        Trigger is set. Tell me <strong>what Tomo should do</strong>. Use the context panel for materials.
+      </>
+    ) : surfaceContext === "workflows" ? (
+      <>
+        List <strong>{pipeline.name}</strong> is set. Tell me <strong>trigger</strong> and <strong>action</strong>.
+      </>
+    ) : (
+      <>
+        I’ll ask for <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong> for &quot;
+        {pipeline.name}&quot;.
+      </>
+    );
+
+  const shellClass =
+    variant === "wizard"
+      ? "flex min-h-[280px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+      : "flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]";
+
   return (
-    <div className="flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
+    <div className={shellClass}>
       <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
-        <p className="text-xs font-medium text-[color:var(--foreground)]">TOMO — create workflow</p>
-        <p className="text-[11px] text-[color:var(--tomo-mute)]">
-          {surfaceContext === "workflows"
-            ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
-            : "Share a name, trigger, and action for this list."}
-        </p>
+        <p className="text-xs font-medium text-[color:var(--foreground)]">{chatTitle}</p>
+        <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
         <div className="flex justify-start">
           <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
-            <p className="text-sm text-[color:var(--foreground)]">
-              {surfaceContext === "workflows" ? (
-                <>
-                  List <strong>{pipeline.name}</strong> is already set. Tell me the <strong>trigger</strong> (when it
-                  runs) and the <strong>action</strong> (what Tomo should do). I’ll pick a short workflow name when we
-                  finalize.
-                </>
-              ) : (
-                <>
-                  I’ll ask for a short <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong>. When
-                  we’re aligned, I’ll finalize the workflow for list &quot;{pipeline.name}&quot;.
-                </>
-              )}
-            </p>
+            <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
           </div>
         </div>
         {messages.map((msg) => (
