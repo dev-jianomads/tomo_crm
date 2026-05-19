@@ -31,6 +31,15 @@ export function saveCustomPlaybooks(playbooks: CustomPlaybookStored[]): void {
   writeToStorage(CUSTOM_PLAYBOOKS_STORAGE_KEY, playbooks);
 }
 
+/** Remove a user-built workflow from local storage (mock persistence). */
+export function removeCustomPlaybook(id: string): boolean {
+  const list = loadCustomPlaybooks();
+  const next = list.filter((pb) => pb.id !== id);
+  if (next.length === list.length) return false;
+  saveCustomPlaybooks(next);
+  return true;
+}
+
 /**
  * Append one custom playbook after validating non-empty name/trigger and complete action spec.
  * @returns the stored entry, or null if validation fails

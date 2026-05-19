@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
-import { ChevronDownIcon, MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -12,8 +12,11 @@ import {
 } from "@/components/workflow-step-action-drawer";
 import { WorkflowBuildModal } from "@/components/workflow-build-modal";
 import type { PlaybookPipelineOverrides } from "@/components/link-workflow-modal-v1";
-import { customPlaybookToSurfaceEntry } from "@/lib/custom-playbook-surface";
-import { loadCustomPlaybooks, type CustomPlaybookStored } from "@/lib/customPlaybooks";
+import {
+  customPlaybookToSurfaceEntry,
+  isUserCustomWorkflowEntry,
+} from "@/lib/custom-playbook-surface";
+import { loadCustomPlaybooks, removeCustomPlaybook, type CustomPlaybookStored } from "@/lib/customPlaybooks";
 import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
@@ -27,7 +30,14 @@ import {
   type WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
 
-type WorkflowEnabledOverrides = Record<string, boolean>;
+type WorkflowActivationOverrides = Record<string, boolean>;
+type HiddenWorkflowIds = string[];
+
+type WorkflowDeleteTarget = {
+  id: string;
+  name: string;
+  kind: "tailored" | "custom";
+};
 
 const WORKFLOW_ALIASES: Record<string, string> = {
   "pb-post-meeting": "wf-post-meeting-execution",
@@ -57,10 +67,13 @@ function WorkflowsPageContent() {
   const [listQuery, setListQuery] = useState("");
   const [expandedWorkflowId, setExpandedWorkflowId] = useState<string>(workflowSurfaceEntries[1]?.id ?? workflowSurfaceEntries[0]?.id ?? "");
   const [stepActionSelection, setStepActionSelection] = useState<WorkflowStepActionSelection | null>(null);
-  const [workflowEnabledOverrides, setWorkflowEnabledOverrides] = usePersistentState<WorkflowEnabledOverrides>(
-    "tomo-workflow-surface-enabled-overrides-v1",
-    {}
+  const [workflowActivationOverrides, setWorkflowActivationOverrides] =
+    usePersistentState<WorkflowActivationOverrides>("tomo-workflow-surface-activation-overrides-v1", {});
+  const [hiddenWorkflowIds, setHiddenWorkflowIds] = usePersistentState<HiddenWorkflowIds>(
+    "tomo-workflow-surface-hidden-ids-v1",
+    []
   );
+  const [deleteTarget, setDeleteTarget] = useState<WorkflowDeleteTarget | null>(null);
   const [customPlaybooks, setCustomPlaybooks] = useCustomPlaybooksPersistentState();
   const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
     "tomo-playbook-pipeline-overrides",
@@ -117,18 +130,51 @@ function WorkflowsPageContent() {
     return pipelines.filter((pipeline) => pipeline.name.toLowerCase().includes(q));
   }, [listQuery, pipelines]);
 
-  const effectiveEnabled = useCallback(
-    (entry: WorkflowSurfaceEntry) => workflowEnabledOverrides[entry.id] ?? entry.status === "active",
-    [workflowEnabledOverrides]
+  const isCustomActivated = useCallback(
+    (entryId: string) => workflowActivationOverrides[entryId] === true,
+    [workflowActivationOverrides]
   );
 
-  const toggleWorkflowEnabled = useCallback(
-    (entry: WorkflowSurfaceEntry) => {
-      const next = !effectiveEnabled(entry);
-      setWorkflowEnabledOverrides((prev) => ({ ...prev, [entry.id]: next }));
+  const activateCustomWorkflow = useCallback(
+    (entryId: string) => {
+      setWorkflowActivationOverrides((prev) => ({ ...prev, [entryId]: true }));
+      toast.success("Workflow activated on this list");
     },
-    [effectiveEnabled, setWorkflowEnabledOverrides]
+    [setWorkflowActivationOverrides]
   );
+
+  const confirmDeleteWorkflow = useCallback(() => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === "custom") {
+      removeCustomPlaybook(deleteTarget.id);
+      setPlaybookOverrides((prev) => {
+        const next = { ...prev };
+        delete next[deleteTarget.id];
+        return next;
+      });
+      setWorkflowActivationOverrides((prev) => {
+        const next = { ...prev };
+        delete next[deleteTarget.id];
+        return next;
+      });
+      setCustomPlaybooks(loadCustomPlaybooks());
+    } else {
+      setHiddenWorkflowIds((prev) => (prev.includes(deleteTarget.id) ? prev : [...prev, deleteTarget.id]));
+    }
+    if (expandedWorkflowId === deleteTarget.id) {
+      setExpandedWorkflowId("");
+      setStepActionSelection(null);
+    }
+    toast.success(`Removed "${deleteTarget.name}" from this list`);
+    setDeleteTarget(null);
+  }, [
+    deleteTarget,
+    expandedWorkflowId,
+    setCustomPlaybooks,
+    setHiddenWorkflowIds,
+    setPlaybookOverrides,
+    setWorkflowActivationOverrides,
+  ]);
 
   const toggleExpandedWorkflow = useCallback((entryId: string) => {
     setExpandedWorkflowId((prev) => (prev === entryId ? "" : entryId));
@@ -136,14 +182,16 @@ function WorkflowsPageContent() {
   }, []);
 
   const defaultEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default");
-  const tailoredEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "configurable_template");
+  const tailoredEntries = workflowSurfaceEntries.filter(
+    (entry) => entry.kind === "configurable_template" && !hiddenWorkflowIds.includes(entry.id)
+  );
 
   const customEntriesForList = useMemo(() => {
     if (!selectedPipelineId) return [];
     return customPlaybooks
       .filter((pb) => playbookOverrides[pb.id]?.pipelineId === selectedPipelineId)
-      .map(customPlaybookToSurfaceEntry);
-  }, [customPlaybooks, selectedPipelineId, playbookOverrides]);
+      .map((pb) => customPlaybookToSurfaceEntry(pb, isCustomActivated(pb.id)));
+  }, [customPlaybooks, selectedPipelineId, playbookOverrides, isCustomActivated]);
 
   const allDisplayEntries = useMemo(
     () => [...workflowSurfaceEntries, ...customEntriesForList],
@@ -159,12 +207,11 @@ function WorkflowsPageContent() {
         ...prev,
         [entry.id]: { pipelineId: selectedPipelineId },
       }));
-      setWorkflowEnabledOverrides((prev) => ({ ...prev, [entry.id]: false }));
       setCustomPlaybooks(loadCustomPlaybooks());
       setExpandedWorkflowId(entry.id);
       toast.success(`Saved "${entry.name}" on this list`);
     },
-    [selectedPipelineId, setPlaybookOverrides, setWorkflowEnabledOverrides, setCustomPlaybooks]
+    [selectedPipelineId, setPlaybookOverrides, setCustomPlaybooks]
   );
 
   const listContent = (
@@ -279,33 +326,33 @@ function WorkflowsPageContent() {
           <div className="min-h-0 flex-1 overflow-y-auto px-7 py-5">
             <WorkflowSectionDivider
               label="Tomo defaults"
-              count={`${defaultEntries.length} workflows · structurally locked · content editable per run`}
+              count={`${defaultEntries.length} workflows · active · monitor only`}
             />
             <div className="space-y-3">
               {defaultEntries.map((entry) => (
                 <WorkflowAccordionCard
                   key={entry.id}
                   entry={entry}
-                  enabled={effectiveEnabled(entry)}
                   expanded={expandedWorkflowId === entry.id}
                   onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
-                  onToggleEnabled={() => toggleWorkflowEnabled(entry)}
                   onStepAction={(selection) => setStepActionSelection(selection)}
                 />
               ))}
             </div>
 
             <div className="mt-6">
-              <WorkflowSectionDivider label="Tailored" count={`${tailoredEntries.length} workflows · parameterized per run`} />
+              <WorkflowSectionDivider
+                label="Tailored"
+                count={`${tailoredEntries.length} workflows · active on this list · monitor only`}
+              />
               <div className="space-y-3">
                 {tailoredEntries.map((entry) => (
                   <WorkflowAccordionCard
                     key={entry.id}
                     entry={entry}
-                    enabled={effectiveEnabled(entry)}
                     expanded={expandedWorkflowId === entry.id}
                     onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
-                    onToggleEnabled={() => toggleWorkflowEnabled(entry)}
+                    onRequestDelete={() => setDeleteTarget({ id: entry.id, name: entry.name, kind: "tailored" })}
                     onStepAction={(selection) => setStepActionSelection(selection)}
                   />
                 ))}
@@ -316,17 +363,19 @@ function WorkflowsPageContent() {
               <div className="mt-6">
                 <WorkflowSectionDivider
                   label="Built on this list"
-                  count={`${customEntriesForList.length} custom workflow${customEntriesForList.length === 1 ? "" : "s"} · saved until toggled on`}
+                  count={`${customEntriesForList.length} custom workflow${customEntriesForList.length === 1 ? "" : "s"} · activate or delete`}
                 />
                 <div className="space-y-3">
                   {customEntriesForList.map((entry) => (
                     <WorkflowAccordionCard
                       key={entry.id}
                       entry={entry}
-                      enabled={effectiveEnabled(entry)}
                       expanded={expandedWorkflowId === entry.id}
                       onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
-                      onToggleEnabled={() => toggleWorkflowEnabled(entry)}
+                      onRequestDelete={() => setDeleteTarget({ id: entry.id, name: entry.name, kind: "custom" })}
+                      onActivateCustom={
+                        !isCustomActivated(entry.id) ? () => activateCustomWorkflow(entry.id) : undefined
+                      }
                       onStepAction={(selection) => setStepActionSelection(selection)}
                     />
                   ))}
@@ -343,6 +392,11 @@ function WorkflowsPageContent() {
         onWorkflowCreated={handleWorkflowBuilt}
       />
       <WorkflowStepActionDrawer selection={stepActionSelection} onClose={() => setStepActionSelection(null)} />
+      <WorkflowDeleteConfirmDialog
+        target={deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteWorkflow}
+      />
     </div>
   );
 
@@ -392,20 +446,21 @@ function WorkflowSectionDivider({ label, count }: { label: string; count: string
 
 function WorkflowAccordionCard({
   entry,
-  enabled,
   expanded,
   onToggleExpanded,
-  onToggleEnabled,
+  onRequestDelete,
+  onActivateCustom,
   onStepAction,
 }: {
   entry: WorkflowSurfaceEntry;
-  enabled: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
-  onToggleEnabled: () => void;
+  onRequestDelete?: () => void;
+  onActivateCustom?: () => void;
   onStepAction: (selection: WorkflowStepActionSelection) => void;
 }) {
-  const muted = !enabled;
+  const customSaved = isUserCustomWorkflowEntry(entry) && entry.status === "inactive";
+  const showDelete = entry.kind !== "locked_default" && Boolean(onRequestDelete);
 
   return (
     <article
@@ -413,11 +468,25 @@ function WorkflowAccordionCard({
         expanded
           ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-card)] ring-1 ring-[color:color-mix(in_srgb,var(--tomo-teal)_18%,transparent)]"
           : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule))]"
-      } ${muted ? "opacity-70" : ""}`}
+      } ${customSaved ? "opacity-90" : ""}`}
       data-testid={`workflow-accordion-card-${entry.id}`}
     >
       <div className="flex min-h-[72px] items-stretch">
-        <ActiveToggle enabled={enabled} onToggle={onToggleEnabled} />
+        {showDelete ? (
+          <div className="flex shrink-0 items-center justify-center border-r border-[color:var(--tomo-rule-soft)] px-3">
+            <button
+              type="button"
+              aria-label={`Delete ${entry.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRequestDelete?.();
+              }}
+              className="rounded-[var(--tomo-radius-sm)] p-1.5 text-[color:var(--tomo-mute)] transition hover:bg-[color:var(--tomo-status-red-bg)] hover:text-[color:var(--tomo-status-red)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)]"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
         <button type="button" onClick={onToggleExpanded} className="min-w-0 flex-1 px-4 py-3 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-[family-name:var(--font-newsreader)] text-[17px] font-medium leading-snug text-[color:var(--foreground)] [font-variation-settings:'opsz'_20]">
@@ -455,33 +524,67 @@ function WorkflowAccordionCard({
         </button>
       </div>
 
-      {expanded ? <WorkflowExpandedBody entry={entry} onStepAction={(stepEntry, step) => onStepAction({ entry: stepEntry, step })} /> : null}
+      {expanded ? (
+        <WorkflowExpandedBody
+          entry={entry}
+          customSaved={customSaved}
+          onActivateCustom={onActivateCustom}
+          onStepAction={(stepEntry, step) => onStepAction({ entry: stepEntry, step })}
+        />
+      ) : null}
     </article>
   );
 }
 
-function ActiveToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function WorkflowDeleteConfirmDialog({
+  target,
+  onCancel,
+  onConfirm,
+}: {
+  target: WorkflowDeleteTarget | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!target) return null;
+
   return (
-    <div className="flex shrink-0 items-center justify-center border-r border-[color:var(--tomo-rule-soft)] px-3">
+    <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
       <button
         type="button"
-        role="switch"
-        aria-checked={enabled}
-        aria-label={enabled ? "Active: on" : "Active: off"}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle();
-        }}
-        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)] focus-visible:ring-offset-1 ${
-          enabled ? "bg-[color:var(--tomo-status-green)]" : "bg-[color:color-mix(in_srgb,var(--tomo-mute)_42%,var(--tomo-rule))]"
-        }`}
+        className="absolute inset-0 bg-[color:rgba(28,43,58,0.30)] backdrop-blur-[2px]"
+        aria-label="Close dialog"
+        onClick={onCancel}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workflow-delete-title"
+        className="relative z-[211] w-full max-w-md rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-5 shadow-[var(--tomo-modal-shadow)]"
       >
-        <span
-          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-[color:var(--tomo-card)] shadow transition-transform ${
-            enabled ? "translate-x-4" : "translate-x-0"
-          }`}
-        />
-      </button>
+        <h2 id="workflow-delete-title" className="font-[family-name:var(--font-newsreader)] text-lg font-medium text-[color:var(--foreground)]">
+          Remove workflow?
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[color:var(--tomo-body)]">
+          <span className="font-semibold text-[color:var(--foreground)]">{target.name}</span> will be removed from
+          this list. This cannot be undone in the demo.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-body)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-status-red)] bg-[color:var(--tomo-status-red)] px-3 py-1.5 text-xs font-medium text-white"
+          >
+            Delete workflow
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

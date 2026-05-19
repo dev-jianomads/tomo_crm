@@ -9,14 +9,21 @@ import type {
 
 export function WorkflowExpandedBody({
   entry,
+  customSaved = false,
+  onActivateCustom,
   onStepAction,
 }: {
   entry: WorkflowSurfaceEntry;
+  customSaved?: boolean;
+  onActivateCustom?: () => void;
   onStepAction?: (entry: WorkflowSurfaceEntry, step: WorkflowStepNode) => void;
 }) {
+  const monitorOnly = entry.status === "active" && !customSaved;
+
   return (
     <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
-      {entry.kind === "configurable_template" ? <ConfigurableTemplateBanner entry={entry} /> : null}
+      {customSaved ? <CustomSavedBanner onActivate={onActivateCustom} /> : null}
+      {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
       <WorkflowMetaStrip meta={entry.meta} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
       <WorkflowAttentionRow items={entry.attentionItems} />
@@ -25,20 +32,34 @@ export function WorkflowExpandedBody({
   );
 }
 
-function ConfigurableTemplateBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
+function MonitorOnlyBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
+  return (
+    <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_35%,var(--tomo-card))] px-4 py-3">
+      <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
+        <span className="font-semibold text-[color:var(--foreground)]">Active on this list.</span> Monitor
+        in-flight LPs, review drafts, and capture outcomes — structure and parameters are read-only while running.
+        {entry.kind === "configurable_template" && entry.baseTemplateId
+          ? " Saved from the Themed Outreach base template."
+          : null}
+      </p>
+    </div>
+  );
+}
+
+function CustomSavedBanner({ onActivate }: { onActivate?: () => void }) {
   return (
     <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-teal)_7%,var(--tomo-card))] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
-          <span className="font-semibold text-[color:var(--foreground)]">Configurable template.</span>{" "}
-          Parameters change per run; the underlying outreach substrate is shared.
-          {entry.baseTemplateId ? " This is saved from the Themed Outreach base template." : ""}
+          <span className="font-semibold text-[color:var(--foreground)]">Saved on this list.</span> V1 custom workflows
+          are trigger plus one action. Activate when you are ready to run; delete removes the workflow from this list.
         </p>
         <button
           type="button"
-          className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-teal)]"
+          onClick={onActivate}
+          className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
         >
-          Configure run
+          Activate
         </button>
       </div>
     </div>
@@ -104,7 +125,7 @@ function InlineProcessFlow({
           Process flow
         </p>
         <p className="hidden text-[11px] text-[color:var(--tomo-mute)] sm:block">
-          Step drawers arrive next; nodes are already typed for routing.
+          Click a step to review drafts, outcomes, or monitoring detail.
         </p>
       </div>
       <div className="overflow-x-auto pb-2">

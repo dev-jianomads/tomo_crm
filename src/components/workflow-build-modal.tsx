@@ -61,8 +61,8 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           {createdEntry ? (
             <p className="mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
-              Saved <span className="font-semibold">{createdEntry.name}</span> on this list. It starts off — toggle on when
-              you are ready to run.
+              Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card
+              when you are ready to run.
             </p>
           ) : null}
           <WorkflowCreatorChat

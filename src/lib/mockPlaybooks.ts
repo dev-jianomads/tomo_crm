@@ -85,7 +85,7 @@ export const tomoDefaultWorkflows: TomoDefaultWorkflow[] = [
     id: "td-post-meeting-execution",
     name: "Post-Meeting Execution",
     trigger: "LP calendar event completed",
-    action: "Prep brief → capture form → follow-up draft within 30 minutes",
+    action: "Capture form → follow-up draft within 30 minutes after meeting ends",
     enabled: true,
   },
   {
