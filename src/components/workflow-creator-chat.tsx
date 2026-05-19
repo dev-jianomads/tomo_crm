@@ -285,35 +285,6 @@ export function WorkflowCreatorChat({
           ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
           : "Share a name, trigger, and action for this list.";
 
-  const actionWizardIntro =
-    contextText?.trim() || attachmentNames?.length
-      ? actionPromptConfirmed && confirmedActionInstruction?.trim()
-        ? (
-            <>
-              Prompt locked in. Click <strong>Generate drafts</strong> below when you&apos;re ready — that&apos;s where
-              Tomo writes the cohort email.
-            </>
-          )
-        : (
-            <>
-              I&apos;ve read your context{attachmentNames?.length ? " and attachments" : ""}. Describe the outreach
-              you want — I&apos;ll summarise and optimise it into a prompt, <strong>not</strong> the email itself.
-            </>
-          )
-      : actionPromptConfirmed && confirmedActionInstruction?.trim()
-        ? (
-            <>
-              Prompt locked in. Click <strong>Generate drafts</strong> below to create the cohort email on the Draft
-              step.
-            </>
-          )
-        : (
-            <>
-              Describe what Tomo should do for each LP on <strong>{pipeline.name}</strong>. I&apos;ll refine your
-              description into an optimised prompt — the actual draft is generated on the next step.
-            </>
-          );
-
   const introCopy =
     wizardStep === "trigger" ? (
       triggerConfirmed && confirmedTrigger ? (
@@ -369,9 +340,6 @@ export function WorkflowCreatorChat({
       </div>
       {isActionInitialComposer ? (
         <div className="flex min-h-0 flex-1 flex-col p-3">
-          <div className="mb-3 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule-soft))] bg-[color:color-mix(in_srgb,var(--tomo-teal-tint)_40%,var(--tomo-card))] px-3 py-2">
-            <p className="text-sm text-[color:var(--foreground)]">{actionWizardIntro}</p>
-          </div>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -410,13 +378,7 @@ export function WorkflowCreatorChat({
                   <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
                 </div>
               </div>
-            ) : (
-              <div className="flex justify-start">
-                <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule-soft))] bg-[color:color-mix(in_srgb,var(--tomo-teal-tint)_40%,var(--tomo-card))] px-3 py-2">
-                  <p className="text-sm text-[color:var(--foreground)]">{actionWizardIntro}</p>
-                </div>
-              </div>
-            )}
+            ) : null}
             {isActionWizard && actionPromptConfirmed && confirmedActionInstruction?.trim() ? (
               <div className="flex justify-start">
                 <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2.5">
