@@ -498,21 +498,6 @@ function WorkflowAccordionCard({
       data-testid={`workflow-accordion-card-${entry.id}`}
     >
       <div className="flex min-h-[72px] items-stretch">
-        {showDelete ? (
-          <div className="flex shrink-0 items-center justify-center border-r border-[color:var(--tomo-rule-soft)] px-3">
-            <button
-              type="button"
-              aria-label={`Delete ${entry.name}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                onRequestDelete?.();
-              }}
-              className="rounded-[var(--tomo-radius-sm)] p-1.5 text-[color:var(--tomo-mute)] transition hover:bg-[color:var(--tomo-status-red-bg)] hover:text-[color:var(--tomo-status-red)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)]"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null}
         <button type="button" onClick={onToggleExpanded} className="min-w-0 flex-1 px-4 py-3 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-[family-name:var(--font-newsreader)] text-[17px] font-medium leading-snug text-[color:var(--foreground)] [font-variation-settings:'opsz'_20]">
@@ -548,6 +533,21 @@ function WorkflowAccordionCard({
             <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180 text-[color:var(--tomo-teal)]" : ""}`} />
           </span>
         </button>
+        {showDelete ? (
+          <div className="flex shrink-0 items-center justify-center border-l border-[color:var(--tomo-rule-soft)] px-3">
+            <button
+              type="button"
+              aria-label={`Delete ${entry.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRequestDelete?.();
+              }}
+              className="rounded-[var(--tomo-radius-sm)] p-1.5 text-[color:var(--tomo-mute)] transition hover:bg-[color:var(--tomo-status-red-bg)] hover:text-[color:var(--tomo-status-red)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)]"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {expanded ? (
