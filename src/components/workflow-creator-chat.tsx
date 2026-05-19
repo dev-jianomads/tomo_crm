@@ -20,6 +20,7 @@ import { z } from "zod";
 const confirmTriggerSchema = z.object({
   trigger: z.string().min(1),
   summary: z.string().optional(),
+  inferred_default_time: z.string().optional(),
 });
 
 type WorkflowCreatorChatProps = {
@@ -30,9 +31,16 @@ type WorkflowCreatorChatProps = {
   wizardStep?: "trigger" | "action";
   workflowName?: string;
   confirmedTrigger?: string;
+  /** Trigger step: trigger already applied via confirm_workflow_trigger. */
+  triggerConfirmed?: boolean;
   contextText?: string;
   attachmentNames?: string[];
-  onTriggerProposed?: (payload: { trigger: string; summary: string | null }) => void;
+  onTriggerConfirmed?: (payload: {
+    trigger: string;
+    summary: string | null;
+    inferredDefaultTime: string | null;
+  }) => void;
+  onAdvanceWizardStep?: () => void;
   onActionConfirmed?: (action: UserWorkflowAction) => void;
   variant?: "compact" | "wizard";
 };
@@ -71,9 +79,11 @@ export function WorkflowCreatorChat({
   wizardStep,
   workflowName,
   confirmedTrigger,
+  triggerConfirmed,
   contextText,
   attachmentNames,
-  onTriggerProposed,
+  onTriggerConfirmed,
+  onAdvanceWizardStep,
   onActionConfirmed,
   variant = "compact",
 }: WorkflowCreatorChatProps) {
@@ -96,6 +106,9 @@ export function WorkflowCreatorChat({
         ...(surfaceContext === "workflows" && !wizardStep ? { listPreselected: true as const } : {}),
         ...(wizardStep ? { wizardStep } : {}),
         ...(workflowName?.trim() ? { workflowName: workflowName.trim() } : {}),
+        ...(wizardStep === "trigger" && triggerConfirmed && confirmedTrigger?.trim()
+          ? { triggerAlreadyConfirmed: true as const, confirmedTrigger: confirmedTrigger.trim() }
+          : {}),
         ...(wizardStep === "action" && confirmedTrigger?.trim()
           ? { confirmedTrigger: confirmedTrigger.trim() }
           : {}),
@@ -112,6 +125,7 @@ export function WorkflowCreatorChat({
       wizardStep,
       workflowName,
       confirmedTrigger,
+      triggerConfirmed,
       contextText,
       attachmentNames,
     ]
@@ -141,13 +155,19 @@ export function WorkflowCreatorChat({
       if (toolCall.toolName === "confirm_workflow_trigger") {
         const parsed = confirmTriggerSchema.safeParse(toolCall.input);
         if (!parsed.success) {
-          toast.error("Could not confirm trigger — try describing when this should run again.");
+          toast.error("Could not set trigger — try describing when this should run again.");
           return;
         }
-        onTriggerProposed?.({
+        onTriggerConfirmed?.({
           trigger: parsed.data.trigger.trim(),
           summary: parsed.data.summary?.trim() || null,
+          inferredDefaultTime: parsed.data.inferred_default_time?.trim() || null,
         });
+        return;
+      }
+
+      if (toolCall.toolName === "advance_workflow_wizard_step") {
+        onAdvanceWizardStep?.();
         return;
       }
 
@@ -198,6 +218,13 @@ export function WorkflowCreatorChat({
         body: { context: workflowCreatorBody },
       }
     );
+
+    if (wizardStep === "trigger" && triggerConfirmed && onAdvanceWizardStep) {
+      const affirmative = /^(yes|yep|yeah|sure|ok|okay|continue|next|let'?s go|go ahead)\s*[.!?]*$/i.test(trimmed);
+      if (affirmative) {
+        window.setTimeout(() => onAdvanceWizardStep(), 400);
+      }
+    }
   };
 
   const chatTitle =
@@ -218,10 +245,17 @@ export function WorkflowCreatorChat({
 
   const introCopy =
     wizardStep === "trigger" ? (
-      <>
-        Workflow <strong>{workflowName}</strong> is named. Describe <strong>when</strong> it should run. I’ll propose a
-        trigger for you to confirm.
-      </>
+      triggerConfirmed && confirmedTrigger ? (
+        <>
+          Trigger is set to <strong>{confirmedTrigger}</strong>. Say <strong>yes</strong> when you’re ready to configure
+          the action.
+        </>
+      ) : (
+        <>
+          When should <strong>{workflowName}</strong> run? Give a date (and time if you care). If you only give a date,
+          I’ll use <strong>9:00 AM</strong> local time.
+        </>
+      )
     ) : wizardStep === "action" ? (
       <>
         Trigger is set. Tell me <strong>what Tomo should do</strong>. Use the context panel for materials.

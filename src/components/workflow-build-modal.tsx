@@ -325,47 +325,30 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
                 workflowName={draft.workflowName.trim()}
                 variant="wizard"
                 onWorkflowCreated={() => {}}
-                onTriggerProposed={(payload) => {
+                confirmedTrigger={draft.trigger ?? undefined}
+                triggerConfirmed={draft.triggerConfirmed}
+                onTriggerConfirmed={(payload) => {
                   setDraft((prev) => ({
                     ...prev,
                     trigger: payload.trigger,
                     triggerSummary: payload.summary,
-                    triggerConfirmed: false,
+                    triggerConfirmed: true,
                   }));
+                  if (payload.inferredDefaultTime) {
+                    toast.message(`Using ${payload.inferredDefaultTime} — say a different time in chat to change it.`);
+                  }
+                }}
+                onAdvanceWizardStep={() => {
+                  setActionChatKey((k) => k + 1);
+                  setStep("action");
                 }}
               />
-              {draft.trigger && !draft.triggerConfirmed ? (
-                <div className="rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_35%,var(--tomo-rule))] bg-[color:var(--tomo-teal-tint)] p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                    Proposed trigger
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-[color:var(--foreground)]">{draft.trigger}</p>
-                  {draft.triggerSummary ? (
-                    <p className="mt-1 text-xs text-[color:var(--tomo-body)]">{draft.triggerSummary}</p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDraft((prev) => ({ ...prev, triggerConfirmed: true }))}
-                      className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-3 py-1.5 text-xs font-medium text-white"
-                    >
-                      Confirm trigger
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDraft((prev) => ({ ...prev, trigger: null, triggerSummary: null, triggerConfirmed: false }))
-                      }
-                      className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs text-[color:var(--tomo-body)]"
-                    >
-                      Revise in chat
-                    </button>
-                  </div>
-                </div>
-              ) : null}
               {draft.triggerConfirmed && draft.trigger ? (
                 <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">
-                  Trigger confirmed: <span className="font-medium">{draft.trigger}</span>
+                  Trigger set: <span className="font-medium">{draft.trigger}</span>
+                  {draft.triggerSummary ? (
+                    <span className="mt-0.5 block text-[color:var(--tomo-body)]">{draft.triggerSummary}</span>
+                  ) : null}
                 </p>
               ) : null}
             </div>
@@ -557,14 +540,18 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
               ) : null}
 
               {step === "trigger" ? (
-                <button
-                  type="button"
-                  disabled={!canAdvanceFromStep("trigger", draft)}
-                  onClick={handleNext}
-                  className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                >
-                  Next
-                </button>
+                draft.triggerConfirmed ? (
+                  <span className="text-[11px] text-[color:var(--tomo-mute)]">
+                    Say <strong className="text-[color:var(--tomo-body)]">yes</strong> in chat to continue — or{" "}
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="font-medium text-[color:var(--tomo-teal)] underline-offset-2 hover:underline"
+                    >
+                      Next
+                    </button>
+                  </span>
+                ) : null
               ) : null}
 
               {step === "action" ? (

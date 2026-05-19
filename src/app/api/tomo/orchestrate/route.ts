@@ -80,6 +80,8 @@ export type OrchestratorContext = {
     wizardStep?: "trigger" | "action";
     workflowName?: string;
     confirmedTrigger?: string;
+    /** Trigger step: client already applied confirm_workflow_trigger. */
+    triggerAlreadyConfirmed?: boolean;
     contextText?: string;
     attachmentNames?: string[];
   };
@@ -184,17 +186,31 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     const wizardStep = wc?.wizardStep;
 
     if (wizardStep === "trigger") {
+      const triggerSet = Boolean(wc?.triggerAlreadyConfirmed && wc?.confirmedTrigger?.trim());
       lines.push(
         ``,
-        `You are in **workflow creator — trigger step**. The workflow **name** is already set by the user.`,
+        `You are in **workflow creator — trigger step**. The workflow **name** is already set.`,
         ``,
-        `You have exactly one tool: **confirm_workflow_trigger**. Call it when you can propose a clear one-line **trigger** (when or why the workflow runs).`,
+        triggerSet
+          ? `The trigger is **already set**: "${wc!.confirmedTrigger!.trim()}". Do **not** call confirm_workflow_trigger again unless the user wants to change the schedule.`
+          : `Your job is to **set the trigger in one pass** — do not ask the user to re-confirm a date they already gave.`,
         ``,
-        `Infer schedule, event, or condition from the user's messages. Propose the trigger in plain language. Ask the user to confirm or correct before calling the tool.`,
-        `Do **not** ask for email subject/body, meeting logistics, or action details — those come in a later step.`,
-        `Do **not** ask for the workflow name.`,
+        `Tools:`,
+        triggerSet
+          ? `- **advance_workflow_wizard_step** — call when the user clearly agrees to continue (yes, yep, sure, continue, next, let's go).`
+          : `- **confirm_workflow_trigger** — call as soon as you have enough to schedule (date, event, or condition).`,
+        triggerSet ? `` : `- **advance_workflow_wizard_step** — only after confirm_workflow_trigger ran and the user agrees to continue.`,
         ``,
-        `After calling the tool, confirm briefly. The client shows a confirmation card.`,
+        `Scheduling rules:`,
+        `- If the user gives a **date without a time**, put **9:00 AM** in the trigger string (use "local time" unless they specify a timezone) and mention that default **once** in your reply. Do **not** ask "Is the trigger May 26?" if they already said that date.`,
+        `- Only ask about **time** if they may want something other than 9:00 AM — one short question maximum.`,
+        `- If they give **date and time**, use exactly that in the trigger.`,
+        ``,
+        triggerSet
+          ? `Ask once: "Ready to configure the action? Say **yes** to continue." When they agree, call **advance_workflow_wizard_step** (do not tell them to click Next).`
+          : `After **confirm_workflow_trigger**, say the trigger is set in one short sentence, note 9:00 AM only if you inferred it, then ask: "Ready to configure the action? Say **yes** to continue."`,
+        ``,
+        `Do **not** ask for email, meetings, or action details on this step.`,
         `Keep replies concise.`,
       );
     } else if (wizardStep === "action") {
@@ -482,24 +498,43 @@ export async function POST(req: Request) {
     const wizardStep = wc?.wizardStep;
 
     if (wizardStep === "trigger") {
-      tools.confirm_workflow_trigger = tool({
+      const triggerAlreadyConfirmed = Boolean(wc?.triggerAlreadyConfirmed);
+
+      if (!triggerAlreadyConfirmed) {
+        tools.confirm_workflow_trigger = tool({
+          description:
+            "Set the workflow trigger. Call as soon as the user gives a schedulable date/event — do not wait for redundant confirmation. Default to 9:00 AM local time when no time is given.",
+          inputSchema: z.object({
+            trigger: z
+              .string()
+              .min(1)
+              .describe("One-line when the workflow runs, including date and time if scheduled"),
+            summary: z.string().optional().describe("Optional note, e.g. that 9:00 AM was assumed"),
+            inferred_default_time: z
+              .string()
+              .optional()
+              .describe("e.g. 9:00 AM — include when time was not specified by the user"),
+          }),
+          execute: async ({ trigger, summary, inferred_default_time }) => {
+            const triggerT = trigger.trim();
+            if (!triggerT) {
+              return { success: false as const, error: "trigger must be non-empty" };
+            }
+            return {
+              success: true as const,
+              trigger: triggerT,
+              summary: summary?.trim() || null,
+              inferred_default_time: inferred_default_time?.trim() || null,
+            };
+          },
+        });
+      }
+
+      tools.advance_workflow_wizard_step = tool({
         description:
-          "Propose the workflow trigger for user confirmation. Call when schedule, event, or condition is clear.",
-        inputSchema: z.object({
-          trigger: z.string().min(1).describe("One-line when/why the workflow runs"),
-          summary: z.string().optional().describe("Optional short explanation for the user"),
-        }),
-        execute: async ({ trigger, summary }) => {
-          const triggerT = trigger.trim();
-          if (!triggerT) {
-            return { success: false as const, error: "trigger must be non-empty" };
-          }
-          return {
-            success: true as const,
-            trigger: triggerT,
-            summary: summary?.trim() || null,
-          };
-        },
+          "Move to the Action step after the trigger is set and the user agreed to continue (yes, continue, next, etc.).",
+        inputSchema: z.object({}),
+        execute: async () => ({ success: true as const }),
       });
     } else if (wizardStep === "action") {
       tools.confirm_workflow_action = tool({
