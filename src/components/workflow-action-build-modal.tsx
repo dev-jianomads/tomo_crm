@@ -7,7 +7,6 @@ import type { CreateUserWorkflowInput } from "@/lib/custom-playbook-schema";
 import {
   WORKFLOW_ACTION_BUILD_SUGGESTION_PILLS,
   buildMockActionBuildLpDrafts,
-  mockTomoGenerateCohortDraft,
   type WorkflowActionBuildConfig,
   type WorkflowActionBuildLpDraft,
 } from "@/lib/workflow-action-build";
@@ -50,31 +49,46 @@ export function WorkflowActionBuildModal({
     [lpDrafts, selectedLpId]
   );
 
-  const runTomoGenerate = useCallback(() => {
+  const runTomoGenerate = useCallback(async () => {
+    if (!instruction.trim()) {
+      toast.error("Describe the action first");
+      return;
+    }
     setGenerating(true);
-    window.setTimeout(() => {
-      const { subject, body } = mockTomoGenerateCohortDraft({
-        actionName: actionName.trim() || workflowName,
-        contextText,
-        instruction,
-        listName,
+    try {
+      const res = await fetch("/api/tomo/generate-workflow-cohort-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflowName: actionName.trim() || workflowName,
+          listName,
+          instruction,
+          contextText,
+          trigger,
+        }),
       });
+      if (!res.ok) throw new Error("failed");
+      const generated = (await res.json()) as { subject: string; body: string; usedLlm?: boolean };
+      const { subject, body } = generated;
       setBaseSubject(subject);
       setBaseBody(body);
       const cohort = buildMockActionBuildLpDrafts(listName).map((d) => ({
         ...d,
         subject,
-        body: body.replace("{{lp_first_name}}", d.lpName.split(" ")[0] ?? "there"),
+        body: body.replace(/\{\{lp_first_name\}\}/g, d.lpName.split(" ")[0] ?? "there"),
         status: "ready" as const,
         personalised: false,
       }));
       setLpDrafts(cohort);
       setSelectedLpId(cohort[0]?.id ?? null);
-      setGenerating(false);
       setPhase("review");
-      toast.success("Tomo drafted outreach for this cohort");
-    }, 700);
-  }, [actionName, contextText, instruction, listName, workflowName]);
+      toast.success(generated.usedLlm ? "Tomo drafted outreach for this cohort" : "Draft ready");
+    } catch {
+      toast.error("Could not generate drafts");
+    } finally {
+      setGenerating(false);
+    }
+  }, [actionName, contextText, instruction, listName, trigger, workflowName]);
 
   const handleApproveAll = () => {
     const approved = lpDrafts.map((d) => ({ ...d, status: "approved" as const }));

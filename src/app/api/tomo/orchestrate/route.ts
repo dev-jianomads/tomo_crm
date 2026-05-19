@@ -31,6 +31,7 @@ import {
   isUserWorkflowActionComplete,
   trimUserWorkflowAction,
   userWorkflowActionSchema,
+  workflowActionPromptSchema,
 } from "@/lib/custom-playbook-schema";
 
 // ── Context types ────────────────────────────────────────────────────────────
@@ -84,6 +85,9 @@ export type OrchestratorContext = {
     triggerAlreadyConfirmed?: boolean;
     contextText?: string;
     attachmentNames?: string[];
+    /** Action step: client already applied confirm_workflow_action_prompt. */
+    actionPromptAlreadyConfirmed?: boolean;
+    confirmedActionInstruction?: string;
   };
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
@@ -216,18 +220,25 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
     } else if (wizardStep === "action") {
       lines.push(
         ``,
-        `You are in **workflow creator — action step**. Name and trigger are already set.`,
+        `You are in **workflow creator — action step**. Workflow **name** and **trigger** are already set.`,
         ``,
-        `You have exactly one tool: **confirm_workflow_action**. Call it when the **action** kind and required fields are clear.`,
+        `Your job is to help the GP define a clear **action creation prompt** — instructions Tomo will use on the **Draft** step to generate a cohort email template for each LP on this list.`,
         ``,
-        `Action kinds:`,
-        `  - **send_email** — subject + body (outline or template; per-LP drafts are generated later)`,
-        `  - **schedule_meeting** — title, datetime; optional notes`,
-        `  - **schedule_call** — title, datetime; optional agenda`,
-        `  - **other** — label + details`,
+        `Tools:`,
+        `- **confirm_workflow_action_prompt** — call when the prompt is specific enough to generate drafts (instruction + optional action_description).`,
         ``,
-        `Use any **context text** or **attachment names** in context. Do not ask which list to use.`,
-        `Do not ask about the trigger again unless the user wants to change it.`,
+        `Conversation rules:`,
+        `- Use **context text** and **attachment names** from context. Ask brief clarifying questions (tone, emphasis, CTA, length) until the prompt is ready.`,
+        `- Do **not** write the full email draft here — that happens when the GP clicks **Generate drafts** on the next step.`,
+        `- Do not ask about the trigger or list again unless the user wants to change them.`,
+        `- If the user picks a suggestion pill or gives a clear intent, refine it with at most one follow-up, then confirm.`,
+        ``,
+        `When the prompt is ready, call **confirm_workflow_action_prompt** with:`,
+        `- **instruction** — the full prompt (what to write, how to personalize, constraints, references to context/attachments)`,
+        `- **action_description** — one short sentence for the process-flow node (what Tomo does for each LP)`,
+        `- **action_kind** — usually \`send_email\`; use meeting/call/other only if that matches the intent`,
+        ``,
+        `After confirming, say the action prompt is set and tell them to click **Generate drafts** (do not say the email is already written).`,
         `Keep replies concise.`,
       );
     } else {
@@ -271,6 +282,13 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
       }
       if (wizardStep === "action" && wc.attachmentNames?.length) {
         lines.push(``, `Uploaded attachments: ${wc.attachmentNames.join(", ")}`);
+      }
+      if (wizardStep === "action" && wc.actionPromptAlreadyConfirmed && wc.confirmedActionInstruction?.trim()) {
+        lines.push(
+          ``,
+          `Action prompt is **already confirmed**: "${wc.confirmedActionInstruction.trim()}"`,
+          `Do not call confirm_workflow_action_prompt again unless the user wants to change it. Remind them to click **Generate drafts** when ready.`,
+        );
       }
       if (wc.listPreselected && !wizardStep) {
         lines.push(
@@ -537,19 +555,21 @@ export async function POST(req: Request) {
         execute: async () => ({ success: true as const }),
       });
     } else if (wizardStep === "action") {
-      tools.confirm_workflow_action = tool({
+      tools.confirm_workflow_action_prompt = tool({
         description:
-          "Finalize the workflow action kind and fields for the action step. Call when action type and required fields are known.",
-        inputSchema: userWorkflowActionSchema,
-        execute: async (action) => {
-          const actionT = trimUserWorkflowAction(action);
-          if (!isUserWorkflowActionComplete(actionT)) {
-            return {
-              success: false as const,
-              error: "action must have all required fields for its kind",
-            };
+          "Finalize the action creation prompt for cohort draft generation. Call when instruction is clear enough for the Draft step LLM.",
+        inputSchema: workflowActionPromptSchema,
+        execute: async ({ instruction, action_description, action_kind }) => {
+          const instructionT = instruction.trim();
+          if (!instructionT) {
+            return { success: false as const, error: "instruction must be non-empty" };
           }
-          return { success: true as const, action: actionT };
+          return {
+            success: true as const,
+            instruction: instructionT,
+            action_description: action_description?.trim() || null,
+            action_kind: action_kind ?? "send_email",
+          };
         },
       });
     } else {

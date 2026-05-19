@@ -13,6 +13,7 @@ import {
   type CustomPlaybookStored,
   type UserWorkflowAction,
   userWorkflowActionSchema,
+  workflowActionPromptSchema,
 } from "@/lib/customPlaybooks";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -42,8 +43,16 @@ type WorkflowCreatorChatProps = {
   }) => void;
   onAdvanceWizardStep?: () => void;
   onActionConfirmed?: (action: UserWorkflowAction) => void;
+  onActionPromptConfirmed?: (payload: {
+    instruction: string;
+    actionDescription: string | null;
+    actionKind: "send_email" | "schedule_meeting" | "schedule_call" | "other";
+  }) => void;
   actionPills?: ReadonlyArray<{ id: string; label: string; instruction: string; kind?: string }>;
   onActionPillSelect?: (pill: { id: string; label: string; instruction: string; kind?: string }) => void;
+  /** Action wizard: prompt confirmed via Tomo tool or suggestion pill. */
+  actionPromptConfirmed?: boolean;
+  confirmedActionInstruction?: string;
   variant?: "compact" | "wizard";
 };
 
@@ -87,8 +96,11 @@ export function WorkflowCreatorChat({
   onTriggerConfirmed,
   onAdvanceWizardStep,
   onActionConfirmed,
+  onActionPromptConfirmed,
   actionPills,
   onActionPillSelect,
+  actionPromptConfirmed,
+  confirmedActionInstruction,
   variant = "compact",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -118,6 +130,12 @@ export function WorkflowCreatorChat({
           : {}),
         ...(wizardStep === "action" && contextText?.trim() ? { contextText: contextText.trim() } : {}),
         ...(wizardStep === "action" && attachmentNames?.length ? { attachmentNames } : {}),
+        ...(wizardStep === "action" && actionPromptConfirmed && confirmedActionInstruction?.trim()
+          ? {
+              actionPromptAlreadyConfirmed: true as const,
+              confirmedActionInstruction: confirmedActionInstruction.trim(),
+            }
+          : {}),
       },
     }),
     [
@@ -132,6 +150,8 @@ export function WorkflowCreatorChat({
       triggerConfirmed,
       contextText,
       attachmentNames,
+      actionPromptConfirmed,
+      confirmedActionInstruction,
     ]
   );
 
@@ -172,6 +192,20 @@ export function WorkflowCreatorChat({
 
       if (toolCall.toolName === "advance_workflow_wizard_step") {
         onAdvanceWizardStep?.();
+        return;
+      }
+
+      if (toolCall.toolName === "confirm_workflow_action_prompt") {
+        const parsed = workflowActionPromptSchema.safeParse(toolCall.input);
+        if (!parsed.success) {
+          toast.error("Could not confirm action prompt — try describing the outreach again.");
+          return;
+        }
+        onActionPromptConfirmed?.({
+          instruction: parsed.data.instruction.trim(),
+          actionDescription: parsed.data.action_description?.trim() || null,
+          actionKind: parsed.data.action_kind ?? "send_email",
+        });
         return;
       }
 
@@ -238,6 +272,8 @@ export function WorkflowCreatorChat({
         ? "TOMO — define action"
         : "TOMO — create workflow";
 
+  const isActionWizard = variant === "wizard" && wizardStep === "action";
+
   const chatSubtitle =
     wizardStep === "trigger"
       ? `When should "${workflowName ?? "this workflow"}" run on ${pipeline.name}?`
@@ -260,11 +296,6 @@ export function WorkflowCreatorChat({
           I’ll use <strong>9:00 AM</strong> local time.
         </>
       )
-    ) : wizardStep === "action" ? (
-      <>
-        Describe the <strong>action step</strong> — what Tomo should do for each LP when this workflow runs. Use the
-        context panel for .docx / .pdf materials, or pick a suggestion below.
-      </>
     ) : surfaceContext === "workflows" ? (
       <>
         List <strong>{pipeline.name}</strong> is set. Tell me <strong>trigger</strong> and <strong>action</strong>.
@@ -285,14 +316,31 @@ export function WorkflowCreatorChat({
     <div className={shellClass}>
       <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
         <p className="text-xs font-medium text-[color:var(--foreground)]">{chatTitle}</p>
-        <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p>
+        {!isActionWizard ? <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p> : null}
+        {isActionWizard && actionPills?.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {actionPills.map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                disabled={isStreaming}
+                onClick={() => onActionPillSelect?.(pill)}
+                className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
-        <div className="flex justify-start">
-          <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
-            <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
+        {!isActionWizard ? (
+          <div className="flex justify-start">
+            <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
+              <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
+            </div>
           </div>
-        </div>
+        ) : null}
         {messages.map((msg) => (
           <ChatBubble key={msg.id} message={msg} />
         ))}
@@ -309,36 +357,28 @@ export function WorkflowCreatorChat({
         )}
         <div ref={endRef} />
       </div>
-      {wizardStep === "action" && actionPills?.length ? (
-        <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] px-2 pt-2">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--tomo-mute)]">
-            Suggestions
-          </p>
-          <div className="flex flex-wrap gap-1.5 pb-2">
-            {actionPills.map((pill) => (
-              <button
-                key={pill.id}
-                type="button"
-                disabled={isStreaming}
-                onClick={() => onActionPillSelect?.(pill)}
-                className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
-              >
-                {pill.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      <div className="flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-          placeholder="Message Tomo…"
-          disabled={isStreaming}
-          className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
-        />
+      <div className={`flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2 ${isActionWizard ? "items-end" : ""}`}>
+        {isActionWizard ? (
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+            placeholder="Message Tomo…"
+            disabled={isStreaming}
+            rows={5}
+            className="tomo-input min-w-0 flex-1 resize-y py-2 text-sm disabled:opacity-50"
+          />
+        ) : (
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+            placeholder="Message Tomo…"
+            disabled={isStreaming}
+            className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
+          />
+        )}
         <button
           type="button"
           onClick={handleSend}

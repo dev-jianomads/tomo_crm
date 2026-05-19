@@ -13,7 +13,6 @@ import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
 import {
   buildMockActionBuildLpDrafts,
   mergeContextWithAttachmentText,
-  mockTomoGenerateCohortDraft,
   WORKFLOW_WIZARD_ACTION_PILLS,
   type WorkflowActionBuildConfig,
   type WorkflowActionBuildLpDraft,
@@ -117,52 +116,78 @@ export function WorkflowBuildModal({
     if (targetIdx <= reachableIdx || target === step) setStep(target);
   };
 
-  const runTomoGenerate = useCallback(() => {
+  const runTomoGenerate = useCallback(async () => {
     if (!pipeline) return;
-    const instruction =
-      draft.tomoInstruction.trim() || (draft.actionSpec ? instructionFromAction(draft.actionSpec) : "");
+    const instruction = draft.tomoInstruction.trim();
     if (!instruction) {
-      toast.error("Describe the action or pick a suggestion first");
+      toast.error("Complete the action prompt with Tomo first");
       return;
     }
     setGenerating(true);
-    window.setTimeout(() => {
-      const generated = mockTomoGenerateCohortDraft({
-        actionName: draft.workflowName.trim(),
-        contextText: mergeContextWithAttachmentText(draft.contextText, draft.attachments),
-        instruction,
-        listName: pipeline.name,
-        trigger: draft.trigger ?? undefined,
+    try {
+      const res = await fetch("/api/tomo/generate-workflow-cohort-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflowName: draft.workflowName.trim(),
+          listName: pipeline.name,
+          instruction,
+          contextText: mergeContextWithAttachmentText(draft.contextText, draft.attachments),
+          trigger: draft.trigger ?? undefined,
+          attachmentNames: draft.attachments.map((a) => a.name),
+        }),
       });
+      if (!res.ok) {
+        throw new Error("Draft generation failed");
+      }
+      const generated = (await res.json()) as {
+        subject: string;
+        body: string;
+        actionDescription: string;
+        usedLlm?: boolean;
+      };
       const { subject, body, actionDescription } = generated;
       const cohort = buildMockActionBuildLpDrafts(pipeline.name).map((d) => ({
         ...d,
         subject,
-        body: body.replace("{{lp_first_name}}", d.lpName.split(" ")[0] ?? "there"),
+        body: body.replace(/\{\{lp_first_name\}\}/g, d.lpName.split(" ")[0] ?? "there"),
         status: "ready" as const,
         personalised: false,
       }));
       const actionSpec =
-        draft.actionSpec ??
-        ({
-          kind: "send_email" as const,
-          subject,
-          body,
-        } satisfies UserWorkflowAction);
+        draft.actionSpec?.kind === "send_email"
+          ? { ...draft.actionSpec, subject, body }
+          : ({
+              kind: "send_email" as const,
+              subject,
+              body,
+            } satisfies UserWorkflowAction);
       setDraft((prev) => ({
         ...prev,
         baseSubject: subject,
         baseBody: body,
-        actionDescription,
+        actionDescription: prev.actionDescription.trim() || actionDescription,
         lpDrafts: cohort,
         actionSpec,
       }));
       setSelectedLpId(cohort[0]?.id ?? null);
-      setGenerating(false);
       setStep("draft");
-      toast.success("Tomo drafted action and outreach");
-    }, 700);
-  }, [draft.actionSpec, draft.attachments, draft.contextText, draft.tomoInstruction, draft.trigger, draft.workflowName, pipeline]);
+      toast.success(generated.usedLlm ? "Tomo drafted your cohort email" : "Draft ready (offline template — add OPENAI_API_KEY for LLM)");
+    } catch {
+      toast.error("Could not generate drafts — try again");
+    } finally {
+      setGenerating(false);
+    }
+  }, [
+    draft.actionSpec,
+    draft.actionDescription,
+    draft.attachments,
+    draft.contextText,
+    draft.tomoInstruction,
+    draft.trigger,
+    draft.workflowName,
+    pipeline,
+  ]);
 
   const finishBuild = (lpDrafts: WorkflowActionBuildLpDraft[], approveAll: boolean) => {
     if (!pipeline || !draft.trigger || !draft.actionSpec) return;
@@ -220,6 +245,8 @@ export function WorkflowBuildModal({
       return {
         ...prev,
         tomoInstruction: pill.instruction,
+        actionPromptConfirmed: true,
+        actionDescription: pill.label,
         actionSpec,
       };
     });
@@ -438,9 +465,9 @@ export function WorkflowBuildModal({
                   onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
                   emptyHint="Upload .docx or .pdf — text is extracted for Tomo."
                 />
-                {draft.tomoInstruction.trim() || draft.actionSpec ? (
+                {draft.actionPromptConfirmed && draft.tomoInstruction.trim() ? (
                   <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">
-                    Action ready — click Generate drafts when you are set.
+                    Action prompt ready — click Generate drafts when you are set.
                   </p>
                 ) : null}
               </div>
@@ -455,13 +482,50 @@ export function WorkflowBuildModal({
                 attachmentNames={attachmentNames}
                 variant="wizard"
                 actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
+                actionPromptConfirmed={draft.actionPromptConfirmed}
+                confirmedActionInstruction={draft.tomoInstruction}
                 onActionPillSelect={selectActionPill}
                 onWorkflowCreated={() => {}}
+                onActionPromptConfirmed={({ instruction, actionDescription, actionKind }) => {
+                  setDraft((prev) => {
+                    const actionSpec: UserWorkflowAction =
+                      actionKind === "schedule_meeting"
+                        ? {
+                            kind: "schedule_meeting",
+                            title: prev.workflowName.trim() || "Meeting",
+                            datetime: "TBD — confirm when scheduling",
+                            notes: instruction,
+                          }
+                        : actionKind === "schedule_call"
+                          ? {
+                              kind: "schedule_call",
+                              title: prev.workflowName.trim() || "Call",
+                              datetime: "TBD — confirm when scheduling",
+                              agenda: instruction,
+                            }
+                          : actionKind === "other"
+                            ? { kind: "other", label: "Action", details: instruction }
+                            : {
+                                kind: "send_email",
+                                subject: `${prev.workflowName.trim() || "Outreach"} — ${pipeline.name}`,
+                                body: instruction,
+                              };
+                    return {
+                      ...prev,
+                      tomoInstruction: instruction,
+                      actionPromptConfirmed: true,
+                      actionDescription: actionDescription ?? prev.actionDescription,
+                      actionSpec,
+                    };
+                  });
+                  toast.success("Action prompt set");
+                }}
                 onActionConfirmed={(action) => {
                   setDraft((prev) => ({
                     ...prev,
                     actionSpec: action,
                     tomoInstruction: prev.tomoInstruction.trim() || instructionFromAction(action),
+                    actionPromptConfirmed: true,
                   }));
                 }}
               />

@@ -147,9 +147,10 @@ Deliverable: clicking a step on an active card shows read-only monitoring; Close
 ### Phase 4b — Create wizard (custom create) — **implemented**
 
 - `workflow-create-draft.ts` — wizard state + step validation (`name` | `trigger` | `action` | `draft` | `personalise`).
-- `workflow-build-modal.tsx` — **single large dialog** (`max-w-5xl`) with header tabs: Name → Trigger (Tomo + `confirm_workflow_trigger` / `advance_workflow_wizard_step`) → Action (context + **.docx/.pdf upload** + Tomo + `confirm_workflow_action`) → Draft (editable action + LP email) → Personalise (master–detail).
+- `workflow-build-modal.tsx` — **single large dialog** (`max-w-5xl`) with header tabs: Name → Trigger (Tomo + `confirm_workflow_trigger` / `advance_workflow_wizard_step`) → Action (context + **.docx/.pdf upload** + Tomo orchestration + `confirm_workflow_action_prompt`) → Draft (LLM cohort draft via `/api/tomo/generate-workflow-cohort-draft`) → Personalise (master–detail).
 - `workflow-wizard-file-upload.tsx` + `parse-workflow-documents.ts` — client-side mammoth (docx) + pdf.js (pdf text layer).
-- `workflow-action-build.ts` — mock cohort / per-LP drafts, action pills, `mergeContextWithAttachmentText`.
+- `workflow-cohort-draft.ts` + `generate-workflow-cohort-draft/route.ts` — structured LLM cohort template generation for the Draft step.
+- `workflow-action-build.ts` — per-LP draft scaffolding, action pills, `mergeContextWithAttachmentText`, offline template fallback.
 - Orchestrator: wizard tools when `workflowCreator.wizardStep` is set; legacy `create_user_workflow` retained for Lists pipeline attach only.
 - `customPlaybooks.appendCustomPlaybookWithActionBuild()` on **Save & finish**.
 

@@ -50,6 +50,24 @@ export const createUserWorkflowInputSchema = z.object({
 
 export type CreateUserWorkflowInput = z.infer<typeof createUserWorkflowInputSchema>;
 
+/** Action-step wizard: finalized prompt for cohort draft generation (Draft step). */
+export const workflowActionPromptSchema = z.object({
+  instruction: z
+    .string()
+    .min(1)
+    .describe("Complete action creation prompt Tomo uses on the Draft step to generate cohort outreach"),
+  action_description: z
+    .string()
+    .optional()
+    .describe("One short sentence for the process-flow action node"),
+  action_kind: z
+    .enum(["send_email", "schedule_meeting", "schedule_call", "other"])
+    .optional()
+    .describe("Primary action type; default send_email for outreach"),
+});
+
+export type WorkflowActionPrompt = z.infer<typeof workflowActionPromptSchema>;
+
 export type CustomPlaybookStored = {
   id: string;
   name: string;

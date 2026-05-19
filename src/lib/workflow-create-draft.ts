@@ -24,6 +24,7 @@ export type WorkflowCreateDraft = {
   triggerSummary: string | null;
   triggerConfirmed: boolean;
   actionSpec: UserWorkflowAction | null;
+  actionPromptConfirmed: boolean;
   actionDescription: string;
   tomoInstruction: string;
   contextText: string;
@@ -41,6 +42,7 @@ export function initialWorkflowCreateDraft(): WorkflowCreateDraft {
     triggerSummary: null,
     triggerConfirmed: false,
     actionSpec: null,
+    actionPromptConfirmed: false,
     actionDescription: "",
     tomoInstruction: "",
     contextText: "",
@@ -63,7 +65,7 @@ export function canAdvanceFromStep(step: WorkflowCreateStep, draft: WorkflowCrea
     case "trigger":
       return draft.triggerConfirmed && Boolean(draft.trigger?.trim());
     case "action":
-      return Boolean(draft.tomoInstruction.trim() || draft.actionSpec);
+      return draft.actionPromptConfirmed && Boolean(draft.tomoInstruction.trim());
     case "draft":
       return Boolean(
         draft.actionDescription.trim() &&
@@ -107,6 +109,7 @@ export function workflowCreateDraftFromStored(pb: CustomPlaybookStored): Workflo
     triggerSummary: null,
     triggerConfirmed: true,
     actionSpec,
+    actionPromptConfirmed: Boolean(ab?.tomoInstruction?.trim()),
     actionDescription: ab?.actionDescription?.trim() || ab?.actionName?.trim() || pb.action,
     tomoInstruction: ab?.tomoInstruction?.trim() || "",
     contextText: ab?.contextText ?? "",
