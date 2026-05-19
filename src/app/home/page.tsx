@@ -635,7 +635,7 @@ export default function HomePage() {
       minute: "2-digit",
       hour12: true,
     });
-    return `Computed ${t.replace(/\s/g, "").toLowerCase()} · 90-day window`;
+    return `Updated ${t.replace(/\s/g, "").toLowerCase()}`;
   }, []);
 
   const userName = useMemo(() => {
