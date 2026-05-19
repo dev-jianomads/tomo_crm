@@ -11,18 +11,22 @@ export function WorkflowExpandedBody({
   entry,
   customSaved = false,
   onActivateCustom,
+  onEditAction,
   onStepAction,
 }: {
   entry: WorkflowSurfaceEntry;
   customSaved?: boolean;
   onActivateCustom?: () => void;
+  onEditAction?: () => void;
   onStepAction?: (entry: WorkflowSurfaceEntry, step: WorkflowStepNode) => void;
 }) {
   const monitorOnly = entry.status === "active" && !customSaved;
 
   return (
     <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
-      {customSaved ? <CustomSavedBanner onActivate={onActivateCustom} /> : null}
+      {customSaved ? (
+        <CustomSavedBanner onActivate={onActivateCustom} onEditAction={onEditAction} />
+      ) : null}
       {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
       <WorkflowMetaStrip meta={entry.meta} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
@@ -46,21 +50,37 @@ function MonitorOnlyBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
   );
 }
 
-function CustomSavedBanner({ onActivate }: { onActivate?: () => void }) {
+function CustomSavedBanner({
+  onActivate,
+  onEditAction,
+}: {
+  onActivate?: () => void;
+  onEditAction?: () => void;
+}) {
   return (
     <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-teal)_7%,var(--tomo-card))] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
           <span className="font-semibold text-[color:var(--foreground)]">Saved on this list.</span> V1 custom workflows
-          are trigger plus one action. Activate when you are ready to run; delete removes the workflow from this list.
+          are trigger plus one action. Edit action to change trigger, context, or drafts; activate when ready to run.
         </p>
-        <button
-          type="button"
-          onClick={onActivate}
-          className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
-        >
-          Activate
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid="workflow-edit-action-cta"
+            onClick={onEditAction}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--tomo-teal)]"
+          >
+            Edit action
+          </button>
+          <button
+            type="button"
+            onClick={onActivate}
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[color:var(--tomo-teal-muted)]"
+          >
+            Activate
+          </button>
+        </div>
       </div>
     </div>
   );

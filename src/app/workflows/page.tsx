@@ -80,6 +80,7 @@ function WorkflowsPageContent() {
     {}
   );
   const [buildModalOpen, setBuildModalOpen] = useState(false);
+  const [editingPlaybook, setEditingPlaybook] = useState<CustomPlaybookStored | null>(null);
 
   useEffect(() => {
     if (selectedPipelineId || pipelines.length === 0) return;
@@ -209,9 +210,19 @@ function WorkflowsPageContent() {
       }));
       setCustomPlaybooks(loadCustomPlaybooks());
       setExpandedWorkflowId(entry.id);
-      toast.success(`Saved "${entry.name}" on this list`);
+      setEditingPlaybook(null);
     },
     [selectedPipelineId, setPlaybookOverrides, setCustomPlaybooks]
+  );
+
+  const openEditWorkflow = useCallback(
+    (playbookId: string) => {
+      const pb = customPlaybooks.find((p) => p.id === playbookId);
+      if (!pb) return;
+      setEditingPlaybook(pb);
+      setBuildModalOpen(true);
+    },
+    [customPlaybooks]
   );
 
   const listContent = (
@@ -295,7 +306,10 @@ function WorkflowsPageContent() {
                 type="button"
                 data-testid="workflows-new-workflow-cta"
                 disabled={!selectedPipeline}
-                onClick={() => setBuildModalOpen(true)}
+                onClick={() => {
+                  setEditingPlaybook(null);
+                  setBuildModalOpen(true);
+                }}
                 title={selectedPipeline ? undefined : "Select a list on the left first"}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3.5 py-2 text-xs font-medium text-white transition enabled:hover:bg-[color:var(--tomo-teal-muted)] disabled:cursor-not-allowed disabled:border-[color:var(--tomo-rule)] disabled:bg-[color:var(--tomo-navy-soft)] disabled:text-[color:var(--tomo-mute)]"
               >
@@ -376,6 +390,11 @@ function WorkflowsPageContent() {
                       onActivateCustom={
                         !isCustomActivated(entry.id) ? () => activateCustomWorkflow(entry.id) : undefined
                       }
+                      onEditAction={
+                        !isCustomActivated(entry.id)
+                          ? () => openEditWorkflow(entry.id)
+                          : undefined
+                      }
                       onStepAction={(selection) => setStepActionSelection(selection)}
                     />
                   ))}
@@ -388,7 +407,11 @@ function WorkflowsPageContent() {
       <WorkflowBuildModal
         open={buildModalOpen}
         pipeline={selectedPipeline}
-        onClose={() => setBuildModalOpen(false)}
+        editEntry={editingPlaybook}
+        onClose={() => {
+          setBuildModalOpen(false);
+          setEditingPlaybook(null);
+        }}
         onWorkflowCreated={handleWorkflowBuilt}
       />
       <WorkflowStepActionDrawer selection={stepActionSelection} onClose={() => setStepActionSelection(null)} />
@@ -450,6 +473,7 @@ function WorkflowAccordionCard({
   onToggleExpanded,
   onRequestDelete,
   onActivateCustom,
+  onEditAction,
   onStepAction,
 }: {
   entry: WorkflowSurfaceEntry;
@@ -457,6 +481,7 @@ function WorkflowAccordionCard({
   onToggleExpanded: () => void;
   onRequestDelete?: () => void;
   onActivateCustom?: () => void;
+  onEditAction?: () => void;
   onStepAction: (selection: WorkflowStepActionSelection) => void;
 }) {
   const customSaved = isUserCustomWorkflowEntry(entry) && entry.status === "inactive";
@@ -529,6 +554,7 @@ function WorkflowAccordionCard({
           entry={entry}
           customSaved={customSaved}
           onActivateCustom={onActivateCustom}
+          onEditAction={onEditAction}
           onStepAction={(stepEntry, step) => onStepAction({ entry: stepEntry, step })}
         />
       ) : null}

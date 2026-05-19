@@ -1,19 +1,22 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { PaperClipIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import type { WorkflowActionBuildAttachment } from "@/lib/workflow-action-build";
-import { extractTextFromDocx, formatFileSize, isDocxFile } from "@/lib/parse-docx";
-
-const DOCX_ACCEPT =
-  ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+import {
+  extractTextFromWorkflowDocument,
+  formatFileSize,
+  getWorkflowDocumentKind,
+  isSupportedWorkflowDocument,
+  WORKFLOW_DOCUMENT_ACCEPT,
+} from "@/lib/parse-workflow-documents";
 
 export function WorkflowWizardFileUpload({
   attachments,
   onChange,
   label = "Attachments",
-  emptyHint = "Optional .docx briefs, one-pagers, or notes.",
+  emptyHint = "Optional .docx or .pdf briefs, one-pagers, or notes.",
 }: {
   attachments: WorkflowActionBuildAttachment[];
   onChange: (next: WorkflowActionBuildAttachment[]) => void;
@@ -21,39 +24,49 @@ export function WorkflowWizardFileUpload({
   emptyHint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [parsing, setParsing] = useState(false);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
 
+    setParsing(true);
     const next = [...attachments];
-    for (const file of Array.from(files)) {
-      if (!isDocxFile(file)) {
-        toast.error(`${file.name} is not a .docx file`);
-        continue;
-      }
-      try {
-        const extractedText = await extractTextFromDocx(file);
-        if (!extractedText) {
-          toast.error(`${file.name} had no readable text`);
+
+    try {
+      for (const file of Array.from(files)) {
+        if (!isSupportedWorkflowDocument(file)) {
+          toast.error(`${file.name} must be a .docx or .pdf file`);
           continue;
         }
-        const id =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? `att-${crypto.randomUUID()}`
-            : `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        next.push({
-          id,
-          name: file.name,
-          meta: `${formatFileSize(file.size)} · parsed`,
-          extractedText,
-        });
-        toast.success(`Added ${file.name}`);
-      } catch {
-        toast.error(`Could not read ${file.name}`);
+        const kind = getWorkflowDocumentKind(file);
+        try {
+          const extractedText = await extractTextFromWorkflowDocument(file);
+          if (!extractedText) {
+            toast.error(
+              `${file.name} had no extractable text${kind === "pdf" ? " (scanned PDFs are not supported yet)" : ""}`
+            );
+            continue;
+          }
+          const id =
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? `att-${crypto.randomUUID()}`
+              : `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          next.push({
+            id,
+            name: file.name,
+            meta: `${formatFileSize(file.size)} · ${kind} · parsed`,
+            extractedText,
+          });
+          toast.success(`Added ${file.name}`);
+        } catch {
+          toast.error(`Could not read ${file.name}`);
+        }
       }
+      onChange(next);
+    } finally {
+      setParsing(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
-    onChange(next);
-    if (inputRef.current) inputRef.current.value = "";
   };
 
   const remove = (id: string) => {
@@ -66,16 +79,17 @@ export function WorkflowWizardFileUpload({
         <span className="text-xs font-medium text-[color:var(--foreground)]">{label}</span>
         <button
           type="button"
+          disabled={parsing}
           onClick={() => inputRef.current?.click()}
-          className="text-xs font-medium text-[color:var(--tomo-teal)]"
+          className="text-xs font-medium text-[color:var(--tomo-teal)] disabled:opacity-50"
         >
-          + Add file
+          {parsing ? "Reading file…" : "+ Add file"}
         </button>
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept={DOCX_ACCEPT}
+        accept={WORKFLOW_DOCUMENT_ACCEPT}
         multiple
         className="sr-only"
         onChange={(e) => void handleFiles(e.target.files)}

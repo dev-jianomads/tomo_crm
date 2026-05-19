@@ -9,7 +9,7 @@ export type WorkflowActionBuildAttachment = {
   id: string;
   name: string;
   meta: string;
-  /** Plain text extracted from uploaded .docx (wizard). */
+  /** Plain text extracted from uploaded .docx / .pdf (wizard). */
   extractedText?: string;
 };
 

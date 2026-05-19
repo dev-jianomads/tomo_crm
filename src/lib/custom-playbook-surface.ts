@@ -37,7 +37,10 @@ export function customPlaybookToSurfaceEntry(
         id: `${c.id}-step-${index}`,
         nodeType: "action" as const,
         actionType: "readonly" as const,
-        title: step.name,
+        title:
+          index === 0 && c.actionBuild?.actionDescription?.trim()
+            ? c.actionBuild.actionDescription.trim()
+            : step.name,
         description: step.description,
         statusLabel: "Action",
       })),

@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import type { Pipeline } from "@/lib/pipelines";
-import type { CustomPlaybookStored } from "@/lib/customPlaybooks";
-import { appendCustomPlaybookWithActionBuild } from "@/lib/customPlaybooks";
+import {
+  appendCustomPlaybookWithActionBuild,
+  updateCustomPlaybookWithActionBuild,
+  type CustomPlaybookStored,
+} from "@/lib/customPlaybooks";
 import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
 import {
   buildMockActionBuildLpDrafts,
@@ -22,6 +25,7 @@ import {
   initialWorkflowCreateDraft,
   maxReachableStep,
   stepIndex,
+  workflowCreateDraftFromStored,
   type WorkflowCreateDraft,
   type WorkflowCreateStep,
 } from "@/lib/workflow-create-draft";
@@ -30,6 +34,8 @@ import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
 export type WorkflowBuildModalProps = {
   open: boolean;
   pipeline: Pipeline | null;
+  /** When set, wizard updates this saved custom workflow instead of creating a new one. */
+  editEntry?: CustomPlaybookStored | null;
   onClose: () => void;
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
 };
@@ -47,7 +53,14 @@ function instructionFromAction(action: UserWorkflowAction): string {
   }
 }
 
-export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated }: WorkflowBuildModalProps) {
+export function WorkflowBuildModal({
+  open,
+  pipeline,
+  editEntry = null,
+  onClose,
+  onWorkflowCreated,
+}: WorkflowBuildModalProps) {
+  const isEditMode = Boolean(editEntry?.id);
   const [step, setStep] = useState<WorkflowCreateStep>("name");
   const [draft, setDraft] = useState<WorkflowCreateDraft>(() => initialWorkflowCreateDraft());
   const [createdEntry, setCreatedEntry] = useState<CustomPlaybookStored | null>(null);
@@ -59,15 +72,22 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
   useEffect(() => {
     if (!open) return;
     queueMicrotask(() => {
-      setStep("name");
-      setDraft(initialWorkflowCreateDraft());
+      if (editEntry) {
+        const hydrated = workflowCreateDraftFromStored(editEntry);
+        setDraft(hydrated);
+        setStep(maxReachableStep(hydrated));
+        setSelectedLpId(hydrated.lpDrafts[0]?.id ?? null);
+      } else {
+        setStep("name");
+        setDraft(initialWorkflowCreateDraft());
+        setSelectedLpId(null);
+      }
       setCreatedEntry(null);
       setGenerating(false);
-      setSelectedLpId(null);
       setTriggerChatKey((k) => k + 1);
       setActionChatKey((k) => k + 1);
     });
-  }, [open, pipeline?.id]);
+  }, [open, pipeline?.id, editEntry?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -157,17 +177,17 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
       lpDrafts,
       ...(approveAll ? { approvedAllAt: new Date().toISOString() } : {}),
     };
-    const entry = appendCustomPlaybookWithActionBuild(
-      { name: draft.workflowName.trim(), trigger: draft.trigger, action: draft.actionSpec },
-      actionBuild
-    );
+    const input = { name: draft.workflowName.trim(), trigger: draft.trigger, action: draft.actionSpec };
+    const entry = isEditMode && editEntry
+      ? updateCustomPlaybookWithActionBuild(editEntry.id, input, actionBuild)
+      : appendCustomPlaybookWithActionBuild(input, actionBuild);
     if (!entry) {
       toast.error("Could not save workflow");
       return;
     }
     setCreatedEntry(entry);
     onWorkflowCreated(entry);
-    toast.success(`Saved ${entry.name}`);
+    toast.success(isEditMode ? `Updated ${entry.name}` : `Saved ${entry.name}`);
   };
 
   const updateSelectedDraft = (patch: Partial<WorkflowActionBuildLpDraft>) => {
@@ -281,7 +301,7 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-teal)]">
-                New workflow · {pipeline.name}
+                {isEditMode ? "Edit workflow" : "New workflow"} · {pipeline.name}
               </p>
               <h2
                 id="workflow-build-title"
@@ -416,7 +436,7 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
                 <WorkflowWizardFileUpload
                   attachments={draft.attachments}
                   onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
-                  emptyHint="Upload .docx files — text is extracted for Tomo."
+                  emptyHint="Upload .docx or .pdf — text is extracted for Tomo."
                 />
                 {draft.tomoInstruction.trim() || draft.actionSpec ? (
                   <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">

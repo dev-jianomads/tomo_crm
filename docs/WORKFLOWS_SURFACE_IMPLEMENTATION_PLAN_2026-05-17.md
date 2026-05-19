@@ -57,7 +57,7 @@ Process-flow steps still declare an `actionType` for mock routing and future sav
 - `outcome_capture`: outcome surface where specified
 - `readonly`: optional tooltip only
 
-**Action build** (custom create) is a separate modal after trigger chat — not a step click.
+**Create wizard** (custom create) is the unified five-step dialog — not a step click on active cards.
 
 The generic workflow detail drawer is not the primary interaction when a user clicks a workflow card.
 
@@ -146,13 +146,14 @@ Deliverable: clicking a step on an active card shows read-only monitoring; Close
 
 ### Phase 4b — Create wizard (custom create) — **implemented**
 
-- `workflow-create-draft.ts` — wizard state + step validation.
-- `workflow-build-modal.tsx` — **single large dialog** with header tabs: Name → Trigger (Tomo + confirm) → Action (context + Tomo) → Draft → Personalise.
-- `workflow-action-build.ts` — mock cohort / per-LP drafts (used by draft step).
-- Orchestrator: `confirm_workflow_trigger` / `confirm_workflow_action` when `workflowCreator.wizardStep` is set.
-- `customPlaybooks.appendCustomPlaybookWithActionBuild()`.
+- `workflow-create-draft.ts` — wizard state + step validation (`name` | `trigger` | `action` | `draft` | `personalise`).
+- `workflow-build-modal.tsx` — **single large dialog** (`max-w-5xl`) with header tabs: Name → Trigger (Tomo + `confirm_workflow_trigger` / `advance_workflow_wizard_step`) → Action (context + **.docx/.pdf upload** + Tomo + `confirm_workflow_action`) → Draft (editable action + LP email) → Personalise (master–detail).
+- `workflow-wizard-file-upload.tsx` + `parse-workflow-documents.ts` — client-side mammoth (docx) + pdf.js (pdf text layer).
+- `workflow-action-build.ts` — mock cohort / per-LP drafts, action pills, `mergeContextWithAttachmentText`.
+- Orchestrator: wizard tools when `workflowCreator.wizardStep` is set; legacy `create_user_workflow` retained for Lists pipeline attach only.
+- `customPlaybooks.appendCustomPlaybookWithActionBuild()` on **Save & finish**.
 
-Deliverable: **New workflow** saves only after draft approval; runtime send approval stays in Action Drawer.
+Deliverable: **New workflow** persists only after wizard completion; runtime send approval stays in Action Drawer.
 
 ### Phase 5 — Batch review (Action Drawer / runtime only)
 
@@ -195,12 +196,12 @@ Deliverable: templates can be configured and launched from the Workflows surface
 1. Mock data contract.
 2. Four-card accordion shell (trigger-first, active seeded cards, delete not toggle).
 3. F7 expanded body + monitor drawer on step click.
-4. Action build wizard wired into build modal (custom workflows).
+4. Five-step create wizard wired into build modal (custom workflows).
 5. Post-Meeting expanded body.
 6. Themed Outreach and Trip Orchestrator expanded bodies.
 7. Run/config modals (list header; not primary on active expanded cards).
 8. Production API wiring (use `docs/WORKFLOW_SURFACE_API_MAPPING_2026-05-17.md` + `src/lib/workflow-surface-api-mapping.ts`).
 
-**Current proof point:** accordion expansion + monitor-only step drawer + custom **New workflow** → trigger chat → Action build → saved card.
+**Current proof point:** accordion expansion + monitor-only step drawer + custom **New workflow** five-step wizard → saved card.
 
 **Deferred:** batch approve/edit in Workflows step drawer for active cards (superseded by monitor-only + Action Drawer).

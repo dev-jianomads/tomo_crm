@@ -263,7 +263,7 @@ export function WorkflowCreatorChat({
     ) : wizardStep === "action" ? (
       <>
         Describe the <strong>action step</strong> — what Tomo should do for each LP when this workflow runs. Use the
-        context panel for .docx materials, or pick a suggestion below.
+        context panel for .docx / .pdf materials, or pick a suggestion below.
       </>
     ) : surfaceContext === "workflows" ? (
       <>

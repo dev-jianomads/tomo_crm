@@ -2,7 +2,7 @@
  * State for the unified Workflows "New workflow" create wizard.
  */
 
-import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
+import type { CustomPlaybookStored, UserWorkflowAction } from "@/lib/custom-playbook-schema";
 import type {
   WorkflowActionBuildAttachment,
   WorkflowActionBuildLpDraft,
@@ -84,4 +84,36 @@ export function maxReachableStep(draft: WorkflowCreateDraft): WorkflowCreateStep
   if (!canAdvanceFromStep("action", draft)) return "action";
   if (!canAdvanceFromStep("draft", draft)) return "draft";
   return draft.personaliseEnabled ? "personalise" : "draft";
+}
+
+/** Hydrate wizard state when editing a saved custom workflow. */
+export function workflowCreateDraftFromStored(pb: CustomPlaybookStored): WorkflowCreateDraft {
+  const ab = pb.actionBuild;
+  let actionSpec = pb.actionSpec ?? null;
+  const baseSubject =
+    ab?.baseSubject?.trim() ||
+    (actionSpec?.kind === "send_email" ? actionSpec.subject : "");
+  const baseBody =
+    ab?.baseBody?.trim() || (actionSpec?.kind === "send_email" ? actionSpec.body : "");
+  if (!actionSpec && baseSubject && baseBody) {
+    actionSpec = { kind: "send_email", subject: baseSubject, body: baseBody };
+  }
+  const lpDrafts = ab?.lpDrafts ?? [];
+  const personalised = lpDrafts.some((d) => d.personalised);
+
+  return {
+    workflowName: pb.name,
+    trigger: pb.trigger,
+    triggerSummary: null,
+    triggerConfirmed: true,
+    actionSpec,
+    actionDescription: ab?.actionDescription?.trim() || ab?.actionName?.trim() || pb.action,
+    tomoInstruction: ab?.tomoInstruction?.trim() || "",
+    contextText: ab?.contextText ?? "",
+    attachments: ab?.attachments ?? [],
+    baseSubject,
+    baseBody,
+    lpDrafts,
+    personaliseEnabled: personalised || Boolean(ab && !ab.approvedAllAt && lpDrafts.length > 0),
+  };
 }

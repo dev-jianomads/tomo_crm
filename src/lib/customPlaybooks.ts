@@ -81,6 +81,34 @@ export function appendCustomPlaybookWithActionBuild(
   return list[idx];
 }
 
+/** Update an existing custom workflow after re-opening the create wizard. */
+export function updateCustomPlaybookWithActionBuild(
+  id: string,
+  input: CreateUserWorkflowInput,
+  actionBuild: WorkflowActionBuildConfig
+): CustomPlaybookStored | null {
+  const name = input.name.trim();
+  const trigger = input.trigger.trim();
+  const actionSpec = trimUserWorkflowAction(input.action);
+  if (!name || !trigger || !isUserWorkflowActionComplete(actionSpec)) return null;
+
+  const list = loadCustomPlaybooks();
+  const idx = list.findIndex((p) => p.id === id);
+  if (idx === -1) return null;
+
+  const action = summarizeUserWorkflowAction(actionSpec);
+  list[idx] = {
+    ...list[idx],
+    name,
+    trigger,
+    action,
+    actionSpec,
+    actionBuild,
+  };
+  saveCustomPlaybooks(list);
+  return list[idx];
+}
+
 /** Minimal process definition for the workflows UI (trigger + single action step). */
 export function workflowDefinitionFromCustomStored(c: CustomPlaybookStored): WorkflowDefinition {
   if (c.actionSpec) {
