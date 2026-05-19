@@ -2,6 +2,7 @@
  * User-created workflow types + validation (no localStorage — safe for API routes).
  */
 
+import type { WorkflowActionBuildConfig } from "./workflow-action-build";
 import { z } from "zod";
 
 export const CUSTOM_PLAYBOOKS_STORAGE_KEY = "tomo-custom-playbooks-v1";
@@ -57,6 +58,8 @@ export type CustomPlaybookStored = {
   action: string;
   /** Structured action when created via the updated tool; absent on older stored rows. */
   actionSpec?: UserWorkflowAction;
+  /** Action build wizard output (context, attachments, cohort + per-LP drafts). */
+  actionBuild?: WorkflowActionBuildConfig;
   createdAt: string;
 };
 

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { Pipeline } from "@/lib/pipelines";
-import type { CustomPlaybookStored } from "@/lib/customPlaybooks";
+import type { CreateUserWorkflowInput, CustomPlaybookStored } from "@/lib/customPlaybooks";
+import { appendCustomPlaybookWithActionBuild } from "@/lib/customPlaybooks";
+import type { WorkflowActionBuildConfig } from "@/lib/workflow-action-build";
+import { WorkflowActionBuildModal } from "@/components/workflow-action-build-modal";
 import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
 
 export type WorkflowBuildModalProps = {
@@ -12,12 +15,20 @@ export type WorkflowBuildModalProps = {
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
 };
 
+type BuildPhase = "trigger_chat" | "action_build" | "done";
+
 export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated }: WorkflowBuildModalProps) {
+  const [phase, setPhase] = useState<BuildPhase>("trigger_chat");
+  const [pendingInput, setPendingInput] = useState<CreateUserWorkflowInput | null>(null);
   const [createdEntry, setCreatedEntry] = useState<CustomPlaybookStored | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    queueMicrotask(() => setCreatedEntry(null));
+    queueMicrotask(() => {
+      setPhase("trigger_chat");
+      setPendingInput(null);
+      setCreatedEntry(null);
+    });
   }, [open, pipeline?.id]);
 
   useEffect(() => {
@@ -31,51 +42,87 @@ export function WorkflowBuildModal({ open, pipeline, onClose, onWorkflowCreated 
 
   if (!open || !pipeline) return null;
 
-  const handleCreated = (entry: CustomPlaybookStored) => {
+  const handleDraftReady = (input: CreateUserWorkflowInput) => {
+    setPendingInput(input);
+    setPhase("action_build");
+  };
+
+  const handleActionBuildComplete = (result: {
+    workflowInput: CreateUserWorkflowInput;
+    actionBuild: WorkflowActionBuildConfig;
+  }) => {
+    const entry = appendCustomPlaybookWithActionBuild(result.workflowInput, result.actionBuild);
+    if (!entry) return;
     setCreatedEntry(entry);
+    setPhase("done");
     onWorkflowCreated(entry);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center"
-      data-testid="workflow-build-modal"
-    >
-      <button
-        type="button"
-        className="fixed inset-0 bg-[color:rgba(28,43,58,0.30)] backdrop-blur-[2px]"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
+    <>
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="workflow-build-title"
-        className="relative z-[201] my-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(88dvh,calc(100vh-2rem))]"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center"
+        data-testid="workflow-build-modal"
       >
-        <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 pb-4 pt-5 sm:px-6">
-          <WorkflowBuildModalHeader pipeline={pipeline} onClose={onClose} />
-        </div>
+        <button
+          type="button"
+          className="fixed inset-0 bg-[color:rgba(28,43,58,0.30)] backdrop-blur-[2px]"
+          aria-label="Close dialog"
+          onClick={onClose}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="workflow-build-title"
+          className="relative z-[201] my-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(88dvh,calc(100vh-2rem))]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 pb-4 pt-5 sm:px-6">
+            <WorkflowBuildModalHeader pipeline={pipeline} onClose={onClose} />
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-          {createdEntry ? (
-            <p className="mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
-              Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card
-              when you are ready to run.
-            </p>
-          ) : null}
-          <WorkflowCreatorChat
-            key={pipeline.id}
-            pipeline={pipeline}
-            surfaceContext="workflows"
-            onWorkflowCreated={handleCreated}
-          />
-        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            {createdEntry ? (
+              <p className="mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
+                Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card
+                when you are ready to run.
+              </p>
+            ) : (
+              <p className="mb-3 text-xs text-[color:var(--tomo-mute)]">
+                Step 1: describe the <strong className="text-[color:var(--foreground)]">trigger</strong> with Tomo. Step
+                2: configure the <strong className="text-[color:var(--foreground)]">action</strong> (context, instruct,
+                drafts).
+              </p>
+            )}
+            {phase === "trigger_chat" ? (
+              <WorkflowCreatorChat
+                key={pipeline.id}
+                pipeline={pipeline}
+                surfaceContext="workflows"
+                onWorkflowDraftReady={handleDraftReady}
+                onWorkflowCreated={onWorkflowCreated}
+              />
+            ) : null}
+          </div>
 
-        <WorkflowBuildModalFooter createdEntry={createdEntry} onClose={onClose} />
+          <WorkflowBuildModalFooter createdEntry={createdEntry} onClose={onClose} />
+        </div>
       </div>
-    </div>
+
+      {pendingInput && phase === "action_build" ? (
+        <WorkflowActionBuildModal
+          open
+          listName={pipeline.name}
+          workflowName={pendingInput.name}
+          trigger={pendingInput.trigger}
+          onClose={() => {
+            setPhase("trigger_chat");
+            setPendingInput(null);
+          }}
+          onComplete={handleActionBuildComplete}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -95,7 +142,7 @@ function WorkflowBuildModalHeader({ pipeline, onClose }: { pipeline: Pipeline; o
           </h2>
           <p className="mt-1 text-sm text-[color:var(--tomo-body)]">
             <span className="font-medium text-[color:var(--foreground)]">{pipeline.name}</span>
-            <span className="text-[color:var(--tomo-mute)]"> is already selected — Tomo only needs a trigger and action.</span>
+            <span className="text-[color:var(--tomo-mute)]"> — trigger via chat, then configure the action.</span>
           </p>
         </div>
         <button

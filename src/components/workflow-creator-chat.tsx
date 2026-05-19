@@ -17,6 +17,8 @@ import { toast } from "sonner";
 type WorkflowCreatorChatProps = {
   pipeline: Pipeline;
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
+  /** When set, Tomo tool output opens Action build instead of persisting immediately. */
+  onWorkflowDraftReady?: (input: import("@/lib/custom-playbook-schema").CreateUserWorkflowInput) => void;
   /** When set from `/workflows`, list is fixed — collect trigger + action only (name derived for the tool). */
   surfaceContext?: "pipeline" | "workflows";
 };
@@ -50,6 +52,7 @@ function ChatBubble({ message }: { message: UIMessage }) {
 export function WorkflowCreatorChat({
   pipeline,
   onWorkflowCreated,
+  onWorkflowDraftReady,
   surfaceContext = "pipeline",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -99,6 +102,10 @@ export function WorkflowCreatorChat({
       const parsed = createUserWorkflowInputSchema.safeParse(raw);
       if (!parsed.success) {
         toast.error("Could not create workflow — check name, trigger, and action fields for your action type.");
+        return;
+      }
+      if (onWorkflowDraftReady) {
+        onWorkflowDraftReady(parsed.data);
         return;
       }
       const entry = appendCustomPlaybook(parsed.data);

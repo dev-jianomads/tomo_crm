@@ -28,9 +28,10 @@ Each card shows:
 - workflow name
 - default / configurable-template badge
 - short flow summary
-- active toggle
 - high-level stats such as running now, done last 30d, awaiting approval, skipped
 - `View flow` / `Hide flow` affordance
+- **No on/off toggle** in V1 (seeded + active custom = always active on list; saved custom shows **Activate** in expanded body)
+- **Delete** (trash + confirm) for Tailored + user custom only
 
 ### Expanded Workflow Card
 
@@ -43,18 +44,22 @@ The expanded body should remain inline on `/workflows` and include:
 - recent run history
 - Tomo prompt scoped to workflow-level edits or questions
 
-### Step Click Behavior
+### Step Click Behavior (V1 — active workflows)
 
-Process-flow steps should declare an action type. Clicking a step routes to the correct secondary surface:
+On **active** Workflows-surface cards, clicking any actionable step opens a **monitor-only** drawer (`workflow-step-action-drawer.tsx` + `workflow-step-monitor-panel.tsx`): metrics, frozen parameters, LP status table, Close. **No** approve / edit / send in this drawer.
 
-- `draft_batch`: opens batch LP draft review drawer
-- `single_draft`: opens single-draft drawer
-- `settings`: opens step config tray / drawer
-- `outcome_capture`: opens outcome capture drawer
-- `run_config`: opens run setup / configuration modal
-- `readonly`: no drawer; optional tooltip or expanded description only
+Live-run draft approval routes through the **Action Drawer** (§3.9 SRS), not the Workflows step drawer.
 
-The current generic workflow detail drawer should not be the primary interaction when a user clicks a workflow card.
+Process-flow steps still declare an `actionType` for mock routing and future saved-workflow edit paths:
+
+- `draft_batch` / `single_draft` (active): monitor drawer only
+- `settings` / `run_config`: monitor or blocked on active cards per SRS
+- `outcome_capture`: outcome surface where specified
+- `readonly`: optional tooltip only
+
+**Action build** (custom create) is a separate modal after trigger chat — not a step click.
+
+The generic workflow detail drawer is not the primary interaction when a user clicks a workflow card.
 
 ## Mock Data Requirements
 
@@ -131,28 +136,29 @@ Deliverable: `/workflows` visually and behaviorally matches the reference card-l
 
 Deliverable: expanding a card gives the operational dashboard inline.
 
-### Phase 4 — Step Interaction Routing
+### Phase 4 — Monitor-only step drawer (active workflows) — **scaffolded**
 
-- Add step-action routing from process-flow nodes.
-- Route draft steps to draft-review drawers.
-- Route settings / structure affordances to config drawers.
-- Route outcome steps to outcome capture.
-- Keep locked defaults structurally locked while allowing content settings where specified.
+- `workflow-step-monitoring-mock.ts` — per-step monitoring payloads.
+- `workflow-step-monitor-panel.tsx` — metrics, parameters, LP table.
+- `workflow-step-action-drawer.tsx` — replaces draft-approval UI for active step clicks.
 
-Deliverable: users can move from workflow-level understanding to step-level action.
+Deliverable: clicking a step on an active card shows read-only monitoring; Close only.
 
-### Phase 5 — Batch Review Drawer
+### Phase 4b — Action build wizard (custom create) — **scaffolded**
 
-- Implement the primary batch review drawer from the reference mock.
-- Support:
-  - batch-wide Tomo edits
-  - per-LP draft expansion and editing
-  - per-draft Tomo edits
-  - attachment chips
-  - approve one / approve all
-  - status handling for ready, edited, approved, skipped
+- `workflow-action-build.ts` — types, suggestion pills, mock cohort / per-LP drafts.
+- `workflow-action-build-modal.tsx` — name → context → instruct → review → approve all / personalise.
+- `workflow-build-modal.tsx` — trigger chat (`workflow_creator`) → Action build → persist with `actionBuild`.
+- `customPlaybooks.appendCustomPlaybookWithActionBuild()`.
 
-Deliverable: F7 and outreach draft steps can be reviewed at LP level without leaving the workflow page.
+Deliverable: **New workflow** saves only after Action build; runtime send approval stays in Action Drawer.
+
+### Phase 5 — Batch review (Action Drawer / runtime only)
+
+- Batch LP draft review for **in-flight runs** lives in the **Action Drawer**, not the Workflows step drawer (SRS BR-3.12.12).
+- Reference mock (`tomo_workflows_v8.html`) batch drawer patterns inform Action Drawer UX, not active-workflow step clicks.
+
+Deliverable: F7 and outreach live-run drafts reviewed via Action Drawer per §3.9.
 
 ### Phase 6 — Run / Config Modals
 
@@ -186,12 +192,14 @@ Deliverable: templates can be configured and launched from the Workflows surface
 ## Recommended Build Order
 
 1. Mock data contract.
-2. Four-card accordion shell.
-3. F7 expanded body.
-4. F7 draft step to batch review drawer.
+2. Four-card accordion shell (trigger-first, active seeded cards, delete not toggle).
+3. F7 expanded body + monitor drawer on step click.
+4. Action build wizard wired into build modal (custom workflows).
 5. Post-Meeting expanded body.
 6. Themed Outreach and Trip Orchestrator expanded bodies.
-7. Run/config modals.
+7. Run/config modals (list header; not primary on active expanded cards).
 8. Production API wiring (use `docs/WORKFLOW_SURFACE_API_MAPPING_2026-05-17.md` + `src/lib/workflow-surface-api-mapping.ts`).
 
-The highest-value proof point is F7 accordion expansion plus a clickable draft step that opens the batch LP draft drawer.
+**Current proof point:** accordion expansion + monitor-only step drawer + custom **New workflow** → trigger chat → Action build → saved card.
+
+**Deferred:** batch approve/edit in Workflows step drawer for active cards (superseded by monitor-only + Action Drawer).

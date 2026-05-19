@@ -5,6 +5,7 @@
 
 import type { WorkflowDefinition } from "./workflow-templates";
 import { readFromStorage, writeToStorage } from "./storage";
+import type { WorkflowActionBuildConfig } from "./workflow-action-build";
 import {
   CUSTOM_PLAYBOOKS_STORAGE_KEY,
   type CreateUserWorkflowInput,
@@ -63,6 +64,21 @@ export function appendCustomPlaybook(input: CreateUserWorkflowInput): CustomPlay
   list.push(entry);
   saveCustomPlaybooks(list);
   return entry;
+}
+
+/** Persist workflow after Action build wizard completes. */
+export function appendCustomPlaybookWithActionBuild(
+  input: CreateUserWorkflowInput,
+  actionBuild: WorkflowActionBuildConfig
+): CustomPlaybookStored | null {
+  const entry = appendCustomPlaybook(input);
+  if (!entry) return null;
+  const list = loadCustomPlaybooks();
+  const idx = list.findIndex((p) => p.id === entry.id);
+  if (idx === -1) return entry;
+  list[idx] = { ...list[idx], actionBuild };
+  saveCustomPlaybooks(list);
+  return list[idx];
 }
 
 /** Minimal process definition for the workflows UI (trigger + single action step). */
