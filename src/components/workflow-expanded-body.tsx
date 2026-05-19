@@ -3,11 +3,9 @@
 import type {
   WorkflowAttentionItem,
   WorkflowMetaItem,
-  WorkflowStateSummary,
   WorkflowStepNode,
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
-import { formatWorkflowRunFieldDisplay } from "@/lib/workflow-surface-mock";
 
 export function WorkflowExpandedBody({
   entry,
@@ -22,8 +20,6 @@ export function WorkflowExpandedBody({
       <WorkflowMetaStrip meta={entry.meta} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
       <WorkflowAttentionRow items={entry.attentionItems} />
-      <WorkflowStateSummaryPanel summary={entry.stateSummary} />
-      {entry.runConfig ? <WorkflowRunConfigPreview entry={entry} /> : null}
       <WorkflowRunHistoryPanel runs={entry.runHistory} />
     </div>
   );
@@ -215,91 +211,6 @@ function WorkflowAttentionRow({ items }: { items: WorkflowAttentionItem[] }) {
         <button type="button" className="ml-auto font-medium text-[color:var(--tomo-teal)]">
           {items[0]?.actionLabel} →
         </button>
-      </div>
-    </div>
-  );
-}
-
-function WorkflowStateSummaryPanel({ summary }: { summary: WorkflowStateSummary }) {
-  return (
-    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-3">
-      <p className="mb-3 text-sm font-semibold text-[color:var(--foreground)]">{summary.title}</p>
-      <div className="grid gap-3 md:grid-cols-3">
-        {summary.segments.map((segment) => (
-          <div key={segment.id} className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] px-3 py-2">
-            <p className="text-xs font-medium text-[color:var(--foreground)]">{segment.label}</p>
-            <div className="mt-2 flex gap-1.5">
-              <StatePill label="drafted" value={segment.drafted} tone="drafted" />
-              <StatePill label="sent" value={segment.sent} tone="sent" />
-              <StatePill label="wait" value={segment.waiting} tone="waiting" />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-4 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-mute)]">
-        <span>{summary.replied} replied</span>
-        <span>{summary.readyForOutcome} ready for outcome</span>
-        <span>{summary.skipped} skipped</span>
-      </div>
-    </div>
-  );
-}
-
-function StatePill({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "drafted" | "sent" | "waiting";
-}) {
-  const color =
-    tone === "drafted"
-      ? "bg-[color:var(--tomo-teal-evidence-bg)] text-[color:var(--tomo-teal)]"
-      : tone === "sent"
-        ? "bg-[color:var(--tomo-status-green-bg)] text-[color:var(--tomo-status-green)]"
-        : "bg-[color:var(--tomo-card-warm)] text-[color:var(--tomo-mute)]";
-
-  return (
-    <span className={`rounded-full px-2 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] ${color}`}>
-      <span className="font-semibold">{value}</span> {label}
-    </span>
-  );
-}
-
-function WorkflowRunConfigPreview({ entry }: { entry: WorkflowSurfaceEntry }) {
-  if (!entry.runConfig) return null;
-
-  return (
-    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_55%,var(--tomo-card))] p-3">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-[color:var(--foreground)]">Run parameters</p>
-          {entry.runConfig.editable ? (
-            <span className="rounded-full bg-[color:var(--tomo-teal-evidence-bg)] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--tomo-teal)]">
-              Template
-            </span>
-          ) : (
-            <span className="rounded-full bg-[color:var(--tomo-navy-soft)] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--tomo-mute)]">
-              Locked default
-            </span>
-          )}
-        </div>
-        <button type="button" className="text-xs font-medium text-[color:var(--tomo-teal)]">
-          Edit parameters →
-        </button>
-      </div>
-      <div className="grid gap-2 md:grid-cols-3">
-        {entry.runConfig.fields.map((field) => (
-          <div key={field.id} className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-2">
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
-              {field.label}
-            </p>
-            <p className="mt-1 text-xs font-medium text-[color:var(--foreground)]">{formatWorkflowRunFieldDisplay(field)}</p>
-            {field.helperText ? <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">{field.helperText}</p> : null}
-          </div>
-        ))}
       </div>
     </div>
   );
