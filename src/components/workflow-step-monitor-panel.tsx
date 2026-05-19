@@ -1,7 +1,23 @@
 "use client";
 
 import type { WorkflowStepNode, WorkflowSurfaceEntry } from "@/lib/workflow-surface-mock";
-import { getWorkflowStepMonitoring } from "@/lib/workflow-step-monitoring-mock";
+import {
+  getWorkflowStepMonitoring,
+  type WorkflowStepLpRow,
+  type WorkflowStepMetricKey,
+} from "@/lib/workflow-step-monitoring-mock";
+
+const METRIC_LABELS: Record<WorkflowStepMetricKey, string> = {
+  drafted: "Drafted",
+  sent: "Sent",
+  replied: "Replied",
+  skipped: "Skipped",
+};
+
+function formatLpStatus(status: WorkflowStepLpRow["emailStatus"]): string {
+  if (status === "draft") return "Drafted";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 export function WorkflowStepMonitorPanel({
   entry,
@@ -11,48 +27,45 @@ export function WorkflowStepMonitorPanel({
   step: WorkflowStepNode;
 }) {
   const monitoring = getWorkflowStepMonitoring(entry, step);
+  const metrics = monitoring.visibleMetrics ?? [];
+  const showParameters = monitoring.showParameters !== false && Boolean(monitoring.parameters?.length);
+  const showLpTable = monitoring.showLpTable !== false && Boolean(monitoring.lpRows?.length);
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))] bg-[color:color-mix(in_srgb,var(--tomo-teal)_6%,var(--tomo-card))] px-3 py-2.5">
-        <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
-          <span className="font-semibold text-[color:var(--foreground)]">Monitor only.</span> View trigger,
-          parameters, and per-LP send status. Approve drafts and capture outcomes in Action Drawer.
-        </p>
-      </div>
+      {metrics.length > 0 ? (
+        <div
+          className={`grid gap-2 ${
+            metrics.length <= 2
+              ? "grid-cols-2"
+              : metrics.length <= 4
+                ? "grid-cols-2 sm:grid-cols-4"
+                : "grid-cols-3 sm:grid-cols-6"
+          }`}
+        >
+          {metrics.map((key) => (
+            <div
+              key={key}
+              className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-2 py-2 text-center"
+            >
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
+                {monitoring.metrics[key]}
+              </p>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-[8px] uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                {METRIC_LABELS[key]}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {(
-          [
-            ["Drafted", monitoring.metrics.drafted],
-            ["Approved", monitoring.metrics.approved],
-            ["Sent", monitoring.metrics.sent],
-            ["Waiting", monitoring.metrics.waiting],
-            ["Replied", monitoring.metrics.replied],
-            ["Skipped", monitoring.metrics.skipped],
-          ] as const
-        ).map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-2 py-2 text-center"
-          >
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
-              {value}
-            </p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[8px] uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
-              {label}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {monitoring.parameters?.length ? (
+      {showParameters ? (
         <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
           <p className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]">
             Parameters
           </p>
           <dl className="divide-y divide-[color:var(--tomo-rule-soft)]">
-            {monitoring.parameters.map((p) => (
+            {monitoring.parameters!.map((p) => (
               <div key={p.label} className="flex gap-3 px-3 py-2 text-xs">
                 <dt className="w-28 shrink-0 font-medium text-[color:var(--tomo-mute)]">{p.label}</dt>
                 <dd className="min-w-0 text-[color:var(--tomo-body)]">{p.value}</dd>
@@ -62,7 +75,7 @@ export function WorkflowStepMonitorPanel({
         </div>
       ) : null}
 
-      {monitoring.lpRows?.length ? (
+      {showLpTable ? (
         <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
           <p className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]">
             LPs on this step
@@ -79,11 +92,11 @@ export function WorkflowStepMonitorPanel({
                 </tr>
               </thead>
               <tbody>
-                {monitoring.lpRows.map((row) => (
+                {monitoring.lpRows!.map((row) => (
                   <tr key={row.id} className="border-b border-[color:var(--tomo-rule-soft)] last:border-0">
                     <td className="px-3 py-2 font-medium text-[color:var(--foreground)]">{row.lpName}</td>
                     <td className="px-3 py-2 text-[color:var(--tomo-body)]">{row.firmName}</td>
-                    <td className="px-3 py-2 capitalize text-[color:var(--tomo-body)]">{row.emailStatus}</td>
+                    <td className="px-3 py-2 text-[color:var(--tomo-body)]">{formatLpStatus(row.emailStatus)}</td>
                     <td className="px-3 py-2 text-[color:var(--tomo-mute)]">{row.sentAtLabel ?? "—"}</td>
                     <td className="px-3 py-2 text-[color:var(--tomo-mute)]">{row.repliedAtLabel ?? "—"}</td>
                   </tr>

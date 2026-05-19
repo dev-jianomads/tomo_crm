@@ -421,8 +421,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
       },
     ],
     attentionItems: [
-      { id: "post-capture-pending", label: "capture pending", count: 1, actionLabel: "Open capture", stepId: "post-capture-form" },
-      { id: "post-draft-pending", label: "follow-up draft waiting", count: 1, actionLabel: "Review draft", stepId: "post-follow-up-draft" },
+      { id: "post-capture-pending", label: "capture pending", count: 1, actionLabel: "View", stepId: "post-capture-form" },
     ],
     stateSummary: {
       title: "Recent meetings last 7 days",
@@ -539,9 +538,8 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
       },
     ],
     attentionItems: [
-      { id: "f7-drafts", label: "drafts awaiting approval", count: 3, actionLabel: "Review now", stepId: "f7-touch-1" },
-      { id: "f7-replies", label: "LPs replied", count: 2, actionLabel: "Review replies" },
-      { id: "f7-outcome", label: "ready for outcome capture", count: 1, actionLabel: "Capture outcome", stepId: "f7-outcome" },
+      { id: "f7-replies", label: "LPs replied", count: 2, actionLabel: "View" },
+      { id: "f7-outcome", label: "ready for outcome capture", count: 1, actionLabel: "View", stepId: "f7-outcome" },
     ],
     stateSummary: {
       title: "Where the 14 in-flight LPs are right now",
@@ -607,10 +605,10 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     status: "active",
     badgeLabel: "Tailored",
     triggerLabel: "GP picks a List and provides a theme or content kernel",
-    summary: "Themed insight outreach - batch review - optional 7-day follow-up to non-responders",
+    summary: "Themed insight outreach - optional 7-day follow-up to non-responders",
     stats: [
       { label: "Running now", value: "6" },
-      { label: "Awaiting approval", value: "2", tone: "warning" },
+      { label: "Replied", value: "4", tone: "good" },
     ],
     meta: [
       { label: "Last run", value: "European credit dispersion - started 3 May" },
@@ -652,10 +650,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         timingLabel: "Day 7",
       },
     ],
-    attentionItems: [
-      { id: "themed-drafts", label: "drafts awaiting approval", count: 2, actionLabel: "Review drafts", stepId: "themed-batch-draft" },
-      { id: "themed-replies", label: "LPs replied", count: 4, actionLabel: "Review replies" },
-    ],
+    attentionItems: [{ id: "themed-replies", label: "LPs replied", count: 4, actionLabel: "View" }],
     stateSummary: {
       title: "Where the 6 in-flight LPs are right now",
       segments: [
@@ -760,8 +755,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
       },
     ],
     attentionItems: [
-      { id: "trip-drafts", label: "drafts awaiting approval", count: 2, actionLabel: "Review drafts", stepId: "trip-draft-outreach" },
-      { id: "trip-replies", label: "replies to action", count: 5, actionLabel: "Review replies", stepId: "trip-scheduling" },
+      { id: "trip-replies", label: "replies to action", count: 5, actionLabel: "View", stepId: "trip-scheduling" },
     ],
     stateSummary: {
       title: "London trip - where the 8 LPs are right now",

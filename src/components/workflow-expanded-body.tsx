@@ -6,6 +6,7 @@ import type {
   WorkflowStepNode,
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
+import { visibleWorkflowAttentionItems, visibleWorkflowMeta } from "@/lib/workflow-surface-display";
 
 export function WorkflowExpandedBody({
   entry,
@@ -28,9 +29,9 @@ export function WorkflowExpandedBody({
         <CustomSavedBanner onActivate={onActivateCustom} onEditAction={onEditAction} />
       ) : null}
       {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
-      <WorkflowMetaStrip meta={entry.meta} />
+      <WorkflowMetaStrip meta={visibleWorkflowMeta(entry.meta)} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
-      <WorkflowAttentionRow items={entry.attentionItems} />
+      <WorkflowMonitoringStrip items={visibleWorkflowAttentionItems(entry.attentionItems)} />
       <WorkflowRunHistoryPanel runs={entry.runHistory} />
     </div>
   );
@@ -41,7 +42,7 @@ function MonitorOnlyBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
     <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_35%,var(--tomo-card))] px-4 py-3">
       <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
         <span className="font-semibold text-[color:var(--foreground)]">Active on this list.</span> Monitor
-        in-flight LPs, review drafts, and capture outcomes — structure and parameters are read-only while running.
+        in-flight LPs and capture outcomes — structure and parameters are read-only while running.
         {entry.kind === "configurable_template" && entry.baseTemplateId
           ? " Saved from the Themed Outreach base template."
           : null}
@@ -145,7 +146,7 @@ function InlineProcessFlow({
           Process flow
         </p>
         <p className="hidden text-[11px] text-[color:var(--tomo-mute)] sm:block">
-          Click a step to review drafts, outcomes, or monitoring detail.
+          Click a step to open monitoring detail for that step.
         </p>
       </div>
       <div className="overflow-x-auto pb-2">
@@ -235,23 +236,20 @@ function ProcessNode({
   );
 }
 
-function WorkflowAttentionRow({ items }: { items: WorkflowAttentionItem[] }) {
+function WorkflowMonitoringStrip({ items }: { items: WorkflowAttentionItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_34%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--tomo-status-amber-text)]">
+    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))] px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--tomo-body)]">
         {items.map((item, index) => (
           <span key={item.id} className="flex items-center gap-2">
             {index > 0 ? <span className="text-[color:var(--tomo-rule)]">·</span> : null}
             <span>
-              <span className="font-semibold">{item.count}</span> {item.label}
+              <span className="font-semibold text-[color:var(--foreground)]">{item.count}</span> {item.label}
             </span>
           </span>
         ))}
-        <button type="button" className="ml-auto font-medium text-[color:var(--tomo-teal)]">
-          {items[0]?.actionLabel} →
-        </button>
       </div>
     </div>
   );

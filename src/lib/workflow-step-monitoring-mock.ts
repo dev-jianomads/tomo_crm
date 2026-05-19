@@ -8,35 +8,63 @@ export type WorkflowStepLpRow = {
   id: string;
   lpName: string;
   firmName: string;
-  emailStatus: "draft" | "approved" | "sent" | "replied" | "skipped" | "waiting";
+  emailStatus: "draft" | "sent" | "replied" | "skipped";
   sentAtLabel?: string;
   repliedAtLabel?: string;
 };
 
+export type WorkflowStepMetricKey = "drafted" | "sent" | "replied" | "skipped";
+
 export type WorkflowStepMonitoring = {
   stepId: string;
   status: "idle" | "running" | "complete";
-  metrics: {
-    drafted: number;
-    approved: number;
-    sent: number;
-    waiting: number;
-    replied: number;
-    skipped: number;
-  };
+  metrics: Record<WorkflowStepMetricKey, number>;
+  visibleMetrics?: WorkflowStepMetricKey[];
+  showParameters?: boolean;
+  showLpTable?: boolean;
   /** Resolved trigger / run parameters (read-only). */
   parameters?: Array<{ label: string; value: string }>;
   lpRows?: WorkflowStepLpRow[];
   footnote?: string;
 };
 
-function demoLpRows(prefix: string): WorkflowStepLpRow[] {
+function demoSendLpRows(prefix: string): WorkflowStepLpRow[] {
   return [
-    { id: `${prefix}-1`, lpName: "Charly Malek", firmName: "UBS HFS", emailStatus: "sent", sentAtLabel: "today 9:12am", repliedAtLabel: "today 11:04am" },
-    { id: `${prefix}-2`, lpName: "Marie-Claude Dumas", firmName: "Wellcome Trust", emailStatus: "sent", sentAtLabel: "today 9:12am" },
-    { id: `${prefix}-3`, lpName: "James McIntyre", firmName: "Future Fund", emailStatus: "waiting" },
-    { id: `${prefix}-4`, lpName: "Edoardo Lanzavecchia", firmName: "Lingotto", emailStatus: "approved" },
+    {
+      id: `${prefix}-1`,
+      lpName: "Charly Malek",
+      firmName: "UBS HFS",
+      emailStatus: "sent",
+      sentAtLabel: "today 9:12am",
+      repliedAtLabel: "today 11:04am",
+    },
+    {
+      id: `${prefix}-2`,
+      lpName: "Marie-Claude Dumas",
+      firmName: "Wellcome Trust",
+      emailStatus: "sent",
+      sentAtLabel: "today 9:12am",
+    },
+    {
+      id: `${prefix}-3`,
+      lpName: "James McIntyre",
+      firmName: "Future Fund",
+      emailStatus: "draft",
+    },
+    {
+      id: `${prefix}-4`,
+      lpName: "Edoardo Lanzavecchia",
+      firmName: "Lingotto",
+      emailStatus: "replied",
+      sentAtLabel: "yesterday 4:30pm",
+      repliedAtLabel: "today 8:15am",
+    },
   ];
+}
+
+function isFollowUpStep(step: WorkflowStepNode): boolean {
+  const haystack = `${step.id} ${step.title} ${step.description}`.toLowerCase();
+  return haystack.includes("follow-up") || haystack.includes("follow up") || haystack.includes("non-responder");
 }
 
 /** Mock monitoring for a clicked process-flow step. */
@@ -44,11 +72,20 @@ export function getWorkflowStepMonitoring(
   entry: WorkflowSurfaceEntry,
   step: WorkflowStepNode
 ): WorkflowStepMonitoring {
+  const emptyMetrics: Record<WorkflowStepMetricKey, number> = {
+    drafted: 0,
+    sent: 0,
+    replied: 0,
+    skipped: 0,
+  };
+
   if (step.nodeType === "trigger") {
     return {
       stepId: step.id,
       status: "complete",
-      metrics: { drafted: 0, approved: 0, sent: 0, waiting: 0, replied: 0, skipped: 0 },
+      metrics: emptyMetrics,
+      showParameters: true,
+      showLpTable: false,
       parameters: [
         { label: "Trigger", value: entry.triggerLabel },
         ...(entry.runConfig?.fields.map((f) => ({ label: f.label, value: f.value })) ?? []),
@@ -57,22 +94,43 @@ export function getWorkflowStepMonitoring(
     };
   }
 
-  if (step.actionType === "draft_batch" || step.actionType === "single_draft") {
-    return {
-      stepId: step.id,
-      status: "running",
-      metrics: { drafted: 4, approved: 2, sent: 2, waiting: 1, replied: 1, skipped: 0 },
-      lpRows: demoLpRows(step.id),
-      footnote: "Pending approvals open in Action Drawer — this panel is monitor-only.",
-    };
-  }
-
   if (step.nodeType === "wait") {
     return {
       stepId: step.id,
       status: "running",
-      metrics: { drafted: 0, approved: 0, sent: 6, waiting: 4, replied: 2, skipped: 0 },
+      metrics: emptyMetrics,
+      showParameters: true,
+      showLpTable: false,
+      visibleMetrics: [],
       parameters: [{ label: "Wait window", value: step.timingLabel ?? "—" }],
+    };
+  }
+
+  if (step.actionType === "draft_batch" || step.actionType === "single_draft") {
+    if (isFollowUpStep(step)) {
+      return {
+        stepId: step.id,
+        status: "running",
+        metrics: { drafted: 4, sent: 2, replied: 0, skipped: 0 },
+        visibleMetrics: ["drafted", "sent"],
+        showParameters: true,
+        showLpTable: false,
+        parameters: [
+          { label: "Draft template", value: "Generic follow-up nudge from workflow defaults" },
+          { label: "Audience", value: "Non-responders from prior send step" },
+          { label: "Timing", value: step.timingLabel ?? "Per workflow schedule" },
+        ],
+      };
+    }
+
+    return {
+      stepId: step.id,
+      status: "running",
+      metrics: { drafted: 4, sent: 2, replied: 1, skipped: 0 },
+      visibleMetrics: ["drafted", "sent", "replied", "skipped"],
+      showParameters: false,
+      showLpTable: true,
+      lpRows: demoSendLpRows(step.id),
     };
   }
 
@@ -80,7 +138,10 @@ export function getWorkflowStepMonitoring(
     return {
       stepId: step.id,
       status: "running",
-      metrics: { drafted: 0, approved: 0, sent: 8, waiting: 0, replied: 3, skipped: 1 },
+      metrics: { drafted: 0, sent: 8, replied: 3, skipped: 1 },
+      visibleMetrics: ["sent", "replied", "skipped"],
+      showParameters: true,
+      showLpTable: false,
       parameters: [
         { label: "Warmer than expected", value: "3" },
         { label: "Maintaining", value: "4" },
@@ -93,7 +154,9 @@ export function getWorkflowStepMonitoring(
   return {
     stepId: step.id,
     status: "idle",
-    metrics: { drafted: 0, approved: 0, sent: 0, waiting: 0, replied: 0, skipped: 0 },
+    metrics: emptyMetrics,
+    showParameters: false,
+    showLpTable: false,
     footnote: "No monitoring data for this step yet.",
   };
 }

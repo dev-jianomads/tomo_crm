@@ -25,6 +25,7 @@ import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { getPipelineMembers, isManualList } from "@/lib/pipelines";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { usePipelines } from "@/lib/use-pipelines";
+import { visibleWorkflowStats } from "@/lib/workflow-surface-display";
 import {
   workflowSurfaceEntries,
   type WorkflowSurfaceEntry,
@@ -432,7 +433,7 @@ function WorkflowsPageContent() {
       detailContent={null}
       detailVisible={false}
       contextTitle={expandedEntry?.name}
-      assistantChips={expandedEntry ? ["Summarize activity", "Review waiting drafts", "Tune cadence"] : undefined}
+      assistantChips={expandedEntry ? ["Summarize activity", "Show in-flight LPs", "Tune cadence"] : undefined}
     />
   );
 }
@@ -532,7 +533,7 @@ function WorkflowAccordionCard({
           className="flex min-w-[220px] shrink-0 items-center justify-end gap-6 border-l border-[color:var(--tomo-rule-soft)] px-4 py-3 text-right"
           aria-expanded={expanded}
         >
-          {entry.stats.map((stat) => (
+          {visibleWorkflowStats(entry.stats).map((stat) => (
             <span key={stat.label}>
               <span className="block font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
                 {stat.value}
