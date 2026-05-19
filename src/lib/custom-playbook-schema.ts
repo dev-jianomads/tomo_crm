@@ -55,7 +55,9 @@ export const workflowActionPromptSchema = z.object({
   instruction: z
     .string()
     .min(1)
-    .describe("Complete action creation prompt Tomo uses on the Draft step to generate cohort outreach"),
+    .describe(
+      "Optimised meta-prompt for the Draft step — tone, structure, length, personalization, CTA, context usage. Not the email itself."
+    ),
   action_description: z
     .string()
     .optional()

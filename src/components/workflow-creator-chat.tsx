@@ -280,10 +280,39 @@ export function WorkflowCreatorChat({
     wizardStep === "trigger"
       ? `When should "${workflowName ?? "this workflow"}" run on ${pipeline.name}?`
       : wizardStep === "action"
-        ? `Describe the action step for ${pipeline.name}`
+        ? `I'll optimise your prompt — the email draft comes on the next step`
         : surfaceContext === "workflows"
           ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
           : "Share a name, trigger, and action for this list.";
+
+  const actionWizardIntro =
+    contextText?.trim() || attachmentNames?.length
+      ? actionPromptConfirmed && confirmedActionInstruction?.trim()
+        ? (
+            <>
+              Prompt locked in. Click <strong>Generate drafts</strong> below when you&apos;re ready — that&apos;s where
+              Tomo writes the cohort email.
+            </>
+          )
+        : (
+            <>
+              I&apos;ve read your context{attachmentNames?.length ? " and attachments" : ""}. Describe the outreach
+              you want — I&apos;ll summarise and optimise it into a prompt, <strong>not</strong> the email itself.
+            </>
+          )
+      : actionPromptConfirmed && confirmedActionInstruction?.trim()
+        ? (
+            <>
+              Prompt locked in. Click <strong>Generate drafts</strong> below to create the cohort email on the Draft
+              step.
+            </>
+          )
+        : (
+            <>
+              Describe what Tomo should do for each LP on <strong>{pipeline.name}</strong>. I&apos;ll refine your
+              description into an optimised prompt — the actual draft is generated on the next step.
+            </>
+          );
 
   const introCopy =
     wizardStep === "trigger" ? (
@@ -318,7 +347,7 @@ export function WorkflowCreatorChat({
     <div className={shellClass}>
       <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
         <p className="text-xs font-medium text-[color:var(--foreground)]">{chatTitle}</p>
-        {!isActionWizard ? <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p> : null}
+        <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p>
         {isActionWizard && actionPills?.length ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {actionPills.map((pill) => (
@@ -340,6 +369,9 @@ export function WorkflowCreatorChat({
       </div>
       {isActionInitialComposer ? (
         <div className="flex min-h-0 flex-1 flex-col p-3">
+          <div className="mb-3 rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule-soft))] bg-[color:color-mix(in_srgb,var(--tomo-teal-tint)_40%,var(--tomo-card))] px-3 py-2">
+            <p className="text-sm text-[color:var(--foreground)]">{actionWizardIntro}</p>
+          </div>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -349,7 +381,7 @@ export function WorkflowCreatorChat({
                 handleSend();
               }
             }}
-            placeholder="Describe your action …"
+            placeholder="Describe the outreach you want Tomo to write on the Draft step…"
             disabled={isStreaming}
             rows={8}
             autoFocus
@@ -376,6 +408,24 @@ export function WorkflowCreatorChat({
               <div className="flex justify-start">
                 <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
                   <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule-soft))] bg-[color:color-mix(in_srgb,var(--tomo-teal-tint)_40%,var(--tomo-card))] px-3 py-2">
+                  <p className="text-sm text-[color:var(--foreground)]">{actionWizardIntro}</p>
+                </div>
+              </div>
+            )}
+            {isActionWizard && actionPromptConfirmed && confirmedActionInstruction?.trim() ? (
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-status-green)]">
+                    Optimised prompt
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[color:var(--foreground)]">
+                    {confirmedActionInstruction.trim()}
+                  </p>
                 </div>
               </div>
             ) : null}

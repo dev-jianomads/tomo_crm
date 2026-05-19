@@ -240,17 +240,17 @@ export function WorkflowBuildModal({
           : {
               kind: "send_email",
               subject: `${prev.workflowName.trim() || "Outreach"} — ${pipeline?.name ?? "list"}`,
-              body: pill.instruction,
+              body: "",
             };
       return {
         ...prev,
-        tomoInstruction: pill.instruction,
-        actionPromptConfirmed: true,
+        tomoInstruction: "",
+        actionPromptConfirmed: false,
         actionDescription: pill.label,
         actionSpec,
       };
     });
-    toast.message(`Selected: ${pill.label}`);
+    toast.message(`Selected: ${pill.label} — tell Tomo how to refine it`);
   };
 
   const handleDraftNext = () => {
@@ -466,10 +466,33 @@ export function WorkflowBuildModal({
                   emptyHint="Upload .docx or .pdf — text is extracted for Tomo."
                 />
                 {draft.actionPromptConfirmed && draft.tomoInstruction.trim() ? (
-                  <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">
-                    Action prompt ready — click Generate drafts when you are set.
+                  <div className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-status-green)]">
+                      Optimised prompt — ready for Draft step
+                    </p>
+                    <textarea
+                      value={draft.tomoInstruction}
+                      onChange={(e) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          tomoInstruction: e.target.value,
+                          actionPromptConfirmed: e.target.value.trim().length > 0,
+                        }))
+                      }
+                      rows={5}
+                      className="tomo-input mt-2 w-full resize-y text-sm"
+                    />
+                    <p className="mt-2 text-xs text-[color:var(--tomo-body)]">
+                      Tomo will use this prompt to generate the cohort email on the next step. Edit if needed, then
+                      click <span className="font-medium text-[color:var(--foreground)]">Generate drafts</span>.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[color:var(--tomo-mute)]">
+                    Use Tomo on the right to refine your action prompt. The email draft is generated on the Draft step,
+                    not here.
                   </p>
-                ) : null}
+                )}
               </div>
               <WorkflowCreatorChat
                 key={`action-${actionChatKey}`}
