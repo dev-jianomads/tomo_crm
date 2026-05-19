@@ -109,7 +109,7 @@ Non-goals for v1: server-side persistence, editing custom workflows in a separat
 
 ## Phase 4 — Dialog: Custom tab + chat + kill switch
 
-**Status:** Done — `ENABLE_WORKFLOW_CREATOR` on `pipeline/page.tsx`; `UseInWorkflowDialog` tabs **Existing** | **Custom**; `src/components/workflow-creator-chat.tsx` (`useChat` + `workflow_creator` surface, `onToolCall` → `appendCustomPlaybook` + parent `setPlaybookOverrides` + toast); **Open in Workflows** after create; shared `tomo-playbook-pipeline-overrides` via `usePersistentState` on pipeline page.
+**Status:** Done (orchestrator + chat). **UI wiring (May 2026):** custom build lives on `/workflows` — **New workflow** CTA + `WorkflowBuildModal` + `surfaceContext="workflows"` / `listPreselected`; Lists **Run workflow** modal links existing workflows only (no create tab). See SRS §3.12 / Story 8.7.8.
 
 **File:** `src/app/pipeline/page.tsx` (or extract `UseInWorkflowDialog` + `WorkflowCreatorChat` to `src/components/`)
 

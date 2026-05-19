@@ -1,6 +1,6 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Document status:** DRAFT v0.3 — workflow surface accordion UX refresh for engineering and PM review.
+**Document status:** DRAFT v0.4 — workflow surface accordion UX + list-scoped custom workflow build (engineering and PM review).
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
 **Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Workflows Surface Implementation Plan (17.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
 **Scope rule:** the body of this document covers V1 only. V2/V3 capability matrix, deferred features, and forward-compatibility notes are in Appendix C.
@@ -117,7 +117,7 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 - A nine-signal behavioural engine (per Section 8) that fires nightly batch and event-driven signal observations against email and calendar metadata and writes to an append-only signal log.
 - A ten-metric Insights page (per Section 9) computed nightly with selected event-driven recomputation.
 - A reminders engine covering open loops, missed replies, and commitments.
-- The Today screen, Action Drawer with draft approvals, Relationships page, Lists, Workflows (with four V1 workflow entries: two locked defaults plus two configurable templates), Insights, Activity, Search, and Settings.
+- The Today screen, Action Drawer with draft approvals, Relationships page, Lists, Workflows (four seeded V1 workflow entries — two locked defaults plus two configurable templates — plus GP-built **custom workflows** scoped to a selected list), Insights, Activity, Search, and Settings.
 - A meeting lifecycle covering prep brief generation, transcript and AI-recap ingestion (Microsoft Teams and Google Meet), the ~10-field post-meeting capture prompt, and follow-up draft generation.
 - Daily Brief delivery via in-app, email, and Slack (push only; no Slack-native operating model in V1).
 - SOC 2 Type 1 and CASA Tier 2 compliance posture sufficient for institutional security diligence.
@@ -280,7 +280,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 7. **Reminders engine** — open loops, missed replies, commitments; tier-aware thresholds; Action Drawer routing.
 8. **Today / Daily Brief** — daily-rhythm landing surface with attention queue, commitments, brief, and inline Tomo chat. Daily Brief delivered also via email and Slack push at user-selected time.
 9. **Action Drawer and approvals** — drafts, post-meeting capture, scheduling threads, follow-up reminders, meeting prep briefs; human-in-the-loop on every outbound.
-10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow editor with four V1 workflow entries: Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, and Trip Orchestrator.
+10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow control room at `/workflows` with four seeded V1 entries (Post-Meeting Execution, F7 Three-Touch Qualification, Themed Outreach, Trip Orchestrator) and Tomo-assisted **custom workflow build** tied to the list selected in the Workflows left rail.
 11. **Meeting lifecycle** — prep brief, transcript ingestion (Teams + Meet) with AI recap fallback, post-meeting capture (~10 fields, <60 seconds), follow-up draft.
 12. **Tomo agent orchestration** — surface-gated tool calls; CRM updates, draft replies, filter relationships, workflow editing, post-meeting capture. All mutations require user confirmation.
 
@@ -1065,29 +1065,31 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.11.4 — The Lists index shows **New list** and **Import cohort** in the top utility row with **visual parity** to `design/tomo_lists_v1.html`; both controls are **disabled placeholders** in V1 (no navigation, no modal, `aria-disabled` or equivalent) until their flows ship.
 - AC-3.11.5 — A **manual** saved list persists with **no structured filter** and renders the **Manual** / **LPs in list** copy pattern from the mock; a **live** list renders **Live** / **LPs matching** and a human-readable filter summary line.
 - AC-3.11.6 — **List detail** shows a **drawer actions** row per `design/tomo_lists_v1.html`: primary **Run workflow**, **Export CSV** where cohort export is implemented in the build, **Amend list**; **Ask Tomo about this cohort** and **Delete list** are **disabled placeholders** in V1 (visual parity to the mock, no navigation) until those flows ship.
-- AC-3.11.7 — **Run workflow** opens the **link workflow** modal in the same document: eyebrow *Run workflow on this list*, title *Pick a workflow*, **System defaults** and **Custom** tabs (with counts), selectable playbook option cards (trigger kind, summary, supporting meta), cohort / dedupe context in the footer, **Cancel**, and continuation into **Workflows** after the GP confirms a playbook **linked to the current list** for configuration or run setup. Roadmap-only system playbooks remain **non-selectable** in the picker.
+- AC-3.11.7 — **Run workflow** opens the **link workflow** modal in the same document: eyebrow *Run workflow on this list*, title *Pick a workflow*, **System defaults** and **Custom** tabs (with counts), selectable playbook option cards (trigger kind, summary, supporting meta), cohort / dedupe context in the footer, **Cancel**, and continuation into **Workflows** after the GP confirms a playbook **linked to the current list** for configuration or run setup. The **Custom** tab lists **existing** GP-built custom workflows only; **creating** a new custom workflow is initiated from **Workflows** via **New workflow** (§3.12), not from this modal. Roadmap-only system playbooks remain **non-selectable** in the picker.
 
 ---
 
 ### 3.12. Workflows (playbooks)
 
-**Description.** Workflows are guided multi-step playbooks that earn a Workflows-surface slot only when they span hours or days, preserve meaningful state between steps, and capture an outcome at the end. V1 ships four Workflows-surface entries: two locked defaults (**Post-Meeting Execution**, **F7 Three-Touch Qualification**) and two configurable templates (**Themed Outreach**, **Trip Orchestrator**). Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, re-engagement, and scheduling live outside the Workflows surface unless they are invoked through the shared workflow substrate described here. Tomo agent edits workflows via the `update_workflow` tool. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
+**Description.** Workflows are guided multi-step playbooks that earn a Workflows-surface slot only when they span hours or days, preserve meaningful state between steps, and capture an outcome at the end. V1 ships four **seeded** Workflows-surface entries: two locked defaults (**Post-Meeting Execution**, **F7 Three-Touch Qualification**) and two configurable templates (**Themed Outreach**, **Trip Orchestrator**). GPs may additionally define **user custom workflows** (`workflow_kind='user_custom'`) scoped to a **selected list** on `/workflows`; these appear in a **Built on this list** section below the seeded cards. Warm Intro Tracker, DDQ Response Engine, Update → Follow-Up, re-engagement, and scheduling live outside the Workflows surface unless they are invoked through the shared workflow substrate described here. Tomo agent edits seeded/configurable workflows via the `update_workflow` tool and creates custom workflows via the `create_user_workflow` tool on the isolated `workflow_creator` orchestrator surface. Workflow runs are per-LP. Outbound deduplication prevents two workflows from sending two messages to the same LP for the same trigger.
 
-**Design reference.** `design/tomo_workflows_v8.html` is authoritative for the list-detail workflow layout, locked/default card treatment, accordion expansion pattern, inline process-flow visualisation, run modal, batch review affordances, and in-flight state summaries. Its card inventory is reference-only and must be interpreted through the V1 scope in this section: replace **Update → Follow-Up** and **DDQ Response Engine** with configurable-template entries for **Themed Outreach** and **Trip Orchestrator**, while retaining Post-Meeting Execution and F7 Three-Touch as locked defaults. Implementation phasing and mock-data requirements are recorded in `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md`.
+**Design reference.** `design/tomo_workflows_v8.html` is authoritative for the list-scoped workflow control room (left **Your lists** rail, list header, Tomo defaults / Tailored sections), locked/default card treatment, accordion expansion pattern, inline process-flow visualisation, run modal, batch review affordances, and in-flight state summaries. Its card inventory is reference-only and must be interpreted through the V1 scope in this section: replace **Update → Follow-Up** and **DDQ Response Engine** with configurable-template entries for **Themed Outreach** and **Trip Orchestrator**, while retaining Post-Meeting Execution and F7 Three-Touch as locked defaults. Implementation phasing and mock-data requirements are recorded in `docs/WORKFLOWS_SURFACE_IMPLEMENTATION_PLAN_2026-05-17.md`. Mock repository components: `workflow-build-modal.tsx`, `workflow-creator-chat.tsx`, `custom-playbook-surface.ts`.
 
 **Inputs / triggers.**
 
-- User loads `/workflows`.
+- User loads `/workflows` and selects a list in the left rail.
+- User clicks **New workflow** (list header CTA; disabled until a list is selected) or opens `/workflows?build=1` with a list context to launch the build modal.
 - User triggers a workflow on an LP or a list.
 - `lp_calendar_events.status='completed'` triggers Post-Meeting Execution for LP meetings.
 - F7 is manually run on a Fat Middle LP / list, or auto-suggested when the Fat Middle filter contains > 0 LPs.
 - User manually configures Themed Outreach or Trip Orchestrator.
 - Trip Orchestrator may be auto-suggested when TOMO detects a multi-day calendar block in a city different from the GP's primary location.
 - User edits a workflow via the visual editor or Tomo chat.
+- User builds a custom workflow on the currently selected list (Tomo chat collects **trigger** and **action**; list is not re-asked).
 
 **Processing.**
 
-1. **Workflow definition.** Stored in `workflows` + `workflow_steps`. `trigger_type` ∈ (manual / signal / event / scheduled). `target_list_filter_jsonb` carries the filter applied at run time. `template_id` / `base_template_id` and `parameters_jsonb` allow saved configurations to share one base workflow implementation.
+1. **Workflow definition.** Stored in `workflows` + `workflow_steps`. `trigger_type` ∈ (manual / signal / event / scheduled). `target_list_filter_jsonb` carries the filter applied at run time (for live lists) or explicit list membership (for manual lists). `template_id` / `base_template_id` and `parameters_jsonb` allow saved configurations to share one base workflow implementation. User custom workflows store `workflow_kind='user_custom'`, a human-readable `trigger` string, and a typed primary `action` (send email, schedule meeting/call, or other) in `parameters_jsonb` / step config; production also persists the owning list id (mock: `tomo-playbook-pipeline-overrides`; target: `parameters_jsonb.list_id` or `workflows.lp_list_id` when `lp_lists` lands).
 2. **V1 workflow entries.** Seeded at workspace creation:
    - **Post-Meeting Execution** — locked default; triggered on completed LP meetings; prep brief in advance, post-meeting capture within minutes, follow-up draft within 30 minutes. Capture output informs follow-up, Signal 6 stagnation tracking, and `mandate_fit`.
    - **F7 Three-Touch Qualification** — locked default; three sequential drafts across roughly 14 days (insight → question → respectful close), with each later draft referencing earlier touch context and final outcome capture.
@@ -1099,11 +1101,14 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - Steps execute in order. `step_type='wait'` introduces a delay (`wait_duration_hours`); `step_type='action_draft'` generates a draft and surfaces in Action Drawer with `requires_approval=true` (default V1 — human-in-the-loop on every outbound).
    - GP approves/edits/dismisses per §3.9. Approval advances the run.
 5. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
-6. **Accordion workflow control room.** Located at `/workflows`. The default interaction is not workflow-card → generic detail drawer. Each workflow card expands inline as an accordion to show workflow-level operating context: meta strip, visual process flow, attention row, in-flight state summary, and run history.
-7. **Step-level drawers / modals.** Clicking a specific process-flow step opens the appropriate secondary surface for granular work: batch LP draft review, single-draft review, step settings, outcome capture, or run configuration. The drawer is scoped to the selected step, not the whole workflow record.
-8. **Visual editor.** Expanded workflow cards render steps as a process flow (mock has `workflow-process-flow.tsx`). Locked defaults expose content settings only; configurable templates expose parameters and future-run structure.
-9. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Real streaming via `/api/tomo/orchestrate` (only surface in mock with real streaming).
-10. **Outcome capture.** At workflow run completion, F7 captures one of: warmer than expected / maintaining but non-committal / genuinely dormant. Outreach templates capture engagement outcomes (reply, scheduling accepted, declined, no response) on `workflow_runs.outcome` / output JSON as appropriate.
+6. **List-scoped layout.** `/workflows` shows a left **Your lists** rail (search + select), a list header (LP count, live/manual, filter summary), and workflow cards for the selected list context. Seeded entries (Tomo defaults, Tailored) are global per workspace; custom builds appear only under **Built on this list** for the list they were created against.
+7. **Build custom workflow.** **New workflow** opens a modal with Tomo (`surface=workflow_creator`). The list in the left rail is injected into orchestrator context (`workflowCreator.listPreselected=true`); Tomo elicits **trigger** and **action** only and derives a short **name** when calling `create_user_workflow`. On success the client persists the workflow, links it to the selected list, sets `is_active=false` (saved / off) by default, expands the new card, and shows a success toast. Deep link: `?build=1` opens the modal when a list is selected.
+8. **Active vs saved (toggle).** Each workflow card exposes an on/off toggle mapped to `workflows.is_active`. **Saved (off):** workflow is configured but not executing — GP may edit trigger/action structure for custom workflows and run parameters for templates (mock: full edit gating is staged; V1 production MUST enforce read-only monitoring on active locked defaults per BR-3.12.7). **Active (on):** workflow runs execute per LP; GP monitors in-flight state, approves drafts, and captures outcomes — structural edits are blocked on locked defaults; template structure edits SHOULD be blocked while runs are in flight.
+9. **Accordion workflow control room.** The default interaction is not workflow-card → generic detail drawer. Each workflow card expands inline as an accordion to show workflow-level operating context: meta strip, visual process flow, attention row, in-flight state summary, and run history.
+10. **Step-level drawers / modals.** Clicking a specific process-flow step opens the appropriate secondary surface for granular work: batch LP draft review, single-draft review, step settings, outcome capture, or run configuration. The drawer is scoped to the selected step, not the whole workflow record.
+11. **Visual editor.** Expanded workflow cards render steps as a process flow (mock has `workflow-process-flow.tsx`). Locked defaults expose content settings only; configurable templates expose parameters and future-run structure; user custom workflows render a minimal trigger + single-action process flow in V1.
+12. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Custom workflow **creation** uses the isolated `workflow_creator` surface in the build modal, not `update_workflow`. Real streaming via `/api/tomo/orchestrate`.
+13. **Outcome capture.** At workflow run completion, F7 captures one of: warmer than expected / maintaining but non-committal / genuinely dormant. Outreach templates capture engagement outcomes (reply, scheduling accepted, declined, no response) on `workflow_runs.outcome` / output JSON as appropriate.
 
 **Outputs.**
 
@@ -1121,6 +1126,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.12.4 — F7 Three-Touch is the **default-on workflow** per V1 Final Decision #2 — the framework's V1 NON-NEGOTIABLE.
 - BR-3.12.5 — Workflow-surface inclusion requires multi-step sequencing over hours or days, meaningful state between steps, and outcome capture. Single-moment Action Drawer flows, signal-triggered drafts, and reminder nudges do not receive workflow slots.
 - BR-3.12.6 — Themed Outreach is the canonical configurable outreach implementation. Trip Orchestrator and V1 fund-update behaviour are saved configurations / parameter sets, not bespoke workflow engines.
+- BR-3.12.7 — A user custom workflow is always created in the context of exactly one list selected on `/workflows`; the build flow MUST NOT ask the GP to pick a different list. Tomo derives the workflow **name** from trigger + action unless the GP supplies one explicitly.
+- BR-3.12.8 — Newly created custom workflows default to **saved (inactive)** (`is_active=false`); the GP toggles on when ready to run. Lists **Run workflow** links existing workflows only; it does not create new ones.
+- BR-3.12.9 — While a workflow is **active**, locked defaults forbid structural step edits; operational work (draft review, outcome capture, run monitoring) proceeds through step-level drawers. While **saved**, custom workflows remain editable (trigger/action/name) until activated; configurable templates remain parameter-editable.
 
 **Acceptance criteria.**
 
@@ -1133,6 +1141,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.12.7 — Themed Outreach and Trip Orchestrator runs use the same base template / worker path with different `parameters_jsonb`, prompt template, and reply-handling configuration.
 - AC-3.12.8 — A fund-update run can be saved and invoked as a Themed Outreach configuration, but no first-class Fund Update workflow card or structured content-block UI appears in V1.
 - AC-3.12.9 — Warm Intro Tracker, DDQ Response Engine, re-engagement drafts, and scheduling replies never appear as Workflows-surface cards in V1; they route through Action Drawer, Signals, and Reminders per §3.9.
+- AC-3.12.10 — With a list selected on `/workflows`, **New workflow** opens the build modal; Tomo collects **trigger** and **action** (not list selection); a successful `create_user_workflow` tool call persists a `user_custom` workflow, links it to the selected list, defaults the card toggle to **off**, and shows the workflow under **Built on this list**.
+- AC-3.12.11 — `/workflows?build=1` with `pipelineId` / `openList` set opens the build modal for that list after the page loads.
+- AC-3.12.12 — From Lists, **Run workflow** → **Custom** tab shows only workflows already built for that list (or workspace); empty state directs the GP to **New workflow** on `/workflows`.
 
 ---
 
@@ -1227,13 +1238,13 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 **Processing.**
 
-1. **Endpoint.** `POST /api/tomo/orchestrate` is the unified endpoint. Streaming via Vercel AI SDK. Surface parameter `(home | workflows | drawer | relationships | lists | targets | activity | materials | search | settings | insights | today)` gates the tool set.
+1. **Endpoint.** `POST /api/tomo/orchestrate` is the unified endpoint. Streaming via Vercel AI SDK. Surface parameter `(home | workflows | workflow_creator | drawer | relationships | lists | targets | activity | materials | search | settings | insights | today)` gates the tool set.
 2. **Tools (canonical names from mock).**
    - `filter_relationships` — read-only; returns a filter spec the UI applies.
    - `update_workflow` — mutation; surface=workflows; requires confirmation.
    - `update_crm` — mutation; surfaces=drawer/relationships/today; requires confirmation.
    - `draft_reply` — generative; mutation on send; requires GP send.
-   - `create_user_workflow` — mutation; surface=workflows; requires confirmation.
+   - `create_user_workflow` — mutation; surface=**workflow_creator** only (build modal on `/workflows`); input: `name`, `trigger`, typed `action`; client persists and links `workflowCreator.pipelineId` from context; requires GP confirmation via Tomo conversation completion (tool call is the commit point in mock).
    - `capture_post_meeting` — mutation; surface=drawer; requires confirmation per field.
    - `compose_meeting_prep` — generative; produces a brief; non-mutating beyond inserting a `briefs` row.
 3. **Tool gating.** A surface that doesn't list a tool in its allow-list cannot invoke it. This is enforced server-side regardless of what the model emits.
@@ -1263,6 +1274,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.14.3 — An `update_crm` proposal showing "Set Peter's mandate_fit to confirmed_fit?" requires explicit confirm before the field is written.
 - AC-3.14.4 — Calling `update_workflow` from `surface=relationships` returns a 403 because Workflows is the only surface that allows it.
 - AC-3.14.5 — Every Tomo response leaves an `agent_tool_calls` row visible in the audit log within 1 second of completion.
+- AC-3.14.6 — `create_user_workflow` is rejected with HTTP 403 when `surface≠workflow_creator`; it is not callable from `surface=workflows`, Today, or Lists.
+- AC-3.14.7 — When `workflowCreator.listPreselected=true`, the orchestrator system prompt instructs Tomo not to ask which list to use and to derive `name` from trigger + action when sufficient.
 
 ---
 
@@ -1425,6 +1438,7 @@ This section specifies the contracts between TOMO V1 and the systems and humans 
 **Interaction patterns.**
 
 - **Lists surface (index + list detail).** Follow `design/tomo_lists_v1.html` for layout, section structure, list row geometry (icon column, filter / description block, live–manual pill, counts, workflow line), drawer IA (funnel, **LP row table**, workflows, **drawer actions**, **link workflow** modal), and disabled **New list** / **Import cohort** placeholders (§3.11 AC-3.11.3–AC-3.11.7).
+- **Workflows surface (`/workflows`).** Follow `design/tomo_workflows_v8.html` for list-scoped control room: left **Your lists** rail, list header with **New workflow** CTA, **Tomo defaults** and **Tailored** seeded cards, **Built on this list** for `user_custom` workflows, per-card active toggle, and accordion expansion with step-level drawers (§3.12 AC-3.12.4–AC-3.12.12). Custom workflow creation uses the build modal + `workflow_creator` surface only.
 - **Manual Update Principle.** GP edits CRM fields by talking to Tomo in plain language ("Peter sized at $25M") OR by direct field-edit on the LP card. Tomo's proposal always renders a confirm/cancel before write. Per Tomo MVP3 / Section 8 §3.10 / §3.14.
 - **Single-prompt rule.** Post-meeting capture surfaces once per meeting. No re-nag.
 - **Confirmation gates.** Every mutation requires explicit user click. No auto-send, no auto-mutate.
@@ -3099,7 +3113,7 @@ Workflow definition (locked default, configurable template, saved configuration,
 | `description` | text | null | | | |
 | `workflow_kind` | text | not null | `'user_custom'` | check in (`'locked_default'`, `'configurable_template'`, `'saved_configuration'`, `'user_custom'`) | Controls edit affordances on `/workflows` |
 | `template_id` | uuid | null | | fk → `workflows.id` | Base template for saved configurations (e.g. Trip Orchestrator → Themed Outreach) |
-| `parameters_jsonb` | jsonb | not null | `'{}'` | | Cohort, prompt-template, reply-handler, trip window, saved fund-update config |
+| `parameters_jsonb` | jsonb | not null | `'{}'` | | Cohort, prompt-template, reply-handler, trip window, saved fund-update config; for `user_custom`: typed `action` spec + optional `list_id` / list link |
 | `is_default` | boolean | not null | `false` | | True for the four V1 seed entries |
 | `is_active` | boolean | not null | `true` | | |
 | `trigger_type` | text | not null | | check in (`'manual'`, `'signal'`, `'event'`, `'scheduled'`) | |
@@ -3362,7 +3376,7 @@ One row per workspace per connected Slack workspace. Slack OAuth grants the work
 |---|---|---|---|---|---|
 | `id` | uuid | not null | `gen_random_uuid()` | pk | |
 | `user_id` | uuid | not null | | fk → `users.id` | |
-| `surface` | text | not null | | check in (`'home'`, `'workflows'`, `'relationships'`, `'lists'`, `'targets'`, `'activity'`, `'materials'`, `'search'`, `'settings'`, `'insights'`, `'drawer'`, `'today'`) | |
+| `surface` | text | not null | | check in (`'home'`, `'workflows'`, `'workflow_creator'`, `'relationships'`, `'lists'`, `'targets'`, `'activity'`, `'materials'`, `'search'`, `'settings'`, `'insights'`, `'drawer'`, `'today'`) | |
 | `tool_name` | text | not null | | check in (`'filter_relationships'`, `'update_workflow'`, `'update_crm'`, `'draft_reply'`, `'create_user_workflow'`, `'capture_post_meeting'`, `'compose_meeting_prep'`, `'other'`) | |
 | `arguments_jsonb` | jsonb | not null | | | The tool call arguments |
 | `result_jsonb` | jsonb | null | | | The tool call result |
@@ -3914,6 +3928,15 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Run log rows source from `workflow_runs` and `workflow_step_runs`.
 - AC — Click-through to a step shows the generated draft, send timestamp, skip reason if deduped, and outcome classification.
 
+**Story 8.7.8 — Build custom workflow on selected list.**
+*As a GP, I can define a new custom workflow for the list I already selected on `/workflows`, without re-picking the audience.*
+
+- AC — **New workflow** in the list header opens a Tomo build modal; the modal shows the selected list name and states that only **trigger** and **action** are needed.
+- AC — Tomo uses `surface=workflow_creator` and may call `create_user_workflow` when trigger, action (all required fields for the action kind), and a derivable name are known.
+- AC — On create, the workflow appears under **Built on this list**, toggle defaults to **off**, and the card expands.
+- AC — Toggling **on** activates the workflow for runs on that list; toggling **off** returns it to saved state without deleting the definition.
+- AC — Lists **Run workflow** does not offer custom-workflow creation; it only links existing system or custom workflows (§3.11 AC-3.11.7).
+
 ---
 
 ### 8.8. Insights
@@ -4207,6 +4230,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 *As a GP, the agent only offers tool calls appropriate to the page I'm on.*
 
 - AC — `update_workflow` is callable only on Workflows; calling it from Relationships returns 403 even if the model emits it.
+- AC — `create_user_workflow` is callable only on `workflow_creator`; calling it from Workflows inline chat or Lists returns 403 even if the model emits it.
 
 **Story 8.15.2 — Confirmation gate.**
 *As a GP, every mutation Tomo proposes requires my explicit confirm.*
