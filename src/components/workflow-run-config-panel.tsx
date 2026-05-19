@@ -72,7 +72,6 @@ function LockedRunConfigView({ entry, config }: { entry: WorkflowSurfaceEntry; c
                 <p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-mute)]">
                   {run.startedAtLabel} · {run.lpCount} LPs · {run.statusLabel}
                 </p>
-                <p className="mt-1 text-xs text-[color:var(--tomo-body)]">{run.outcomeSummary}</p>
               </li>
             ))}
           </ul>

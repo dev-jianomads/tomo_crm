@@ -76,7 +76,8 @@ export type WorkflowRunSummary = {
   startedAtLabel: string;
   lpCount: number;
   statusLabel: string;
-  outcomeSummary: string;
+  /** Optional secondary run detail; omitted in V1 monitor UI (metrics-only run history). */
+  outcomeSummary?: string;
 };
 
 export type WorkflowDraftAttachment = {
@@ -404,7 +405,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         nodeType: "action",
         actionType: "settings",
         title: "Capture form",
-        description: "Outcome, commitments, next steps",
+        description: "",
         timingLabel: "+60s",
         statusLabel: "You",
         locked: true,
@@ -440,7 +441,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "today 2:00pm",
         lpCount: 1,
         statusLabel: "In progress",
-        outcomeSummary: "Awaiting capture form",
       },
       {
         id: "run-post-cppib",
@@ -448,7 +448,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "today 11:00am",
         lpCount: 1,
         statusLabel: "Complete",
-        outcomeSummary: "Follow-up approved 1h ago",
       },
     ],
   },
@@ -531,8 +530,8 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         id: "f7-outcome",
         nodeType: "outcome",
         actionType: "outcome_capture",
-        title: "Pick the outcome",
-        description: "Warmer, maintaining, or dormant",
+        title: "Outcome",
+        description: "",
         statusLabel: "You",
         locked: true,
       },
@@ -559,7 +558,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "started 12 May",
         lpCount: 18,
         statusLabel: "14 running",
-        outcomeSummary: "3 done - 1 skipped",
       },
       {
         id: "run-f7-reups",
@@ -567,7 +565,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "started 28 Apr",
         lpCount: 14,
         statusLabel: "All complete",
-        outcomeSummary: "9 warmer - 4 maintaining - 1 dormant",
       },
     ],
     runConfig: {
@@ -649,8 +646,20 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         description: "Optional light nudge for non-replies",
         timingLabel: "Day 7",
       },
+      {
+        id: "themed-outcome",
+        nodeType: "outcome",
+        actionType: "outcome_capture",
+        title: "Outcome",
+        description: "",
+        statusLabel: "You",
+        locked: true,
+      },
     ],
-    attentionItems: [{ id: "themed-replies", label: "LPs replied", count: 4, actionLabel: "View" }],
+    attentionItems: [
+      { id: "themed-replies", label: "LPs replied", count: 4, actionLabel: "View" },
+      { id: "themed-outcome", label: "ready for outcome capture", count: 2, actionLabel: "View", stepId: "themed-outcome" },
+    ],
     stateSummary: {
       title: "Where the 6 in-flight LPs are right now",
       segments: [
@@ -668,7 +677,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "23 Apr",
         lpCount: 87,
         statusLabel: "Complete",
-        outcomeSummary: "64 replies - 23 silent",
       },
     ],
     runConfig: {
@@ -753,9 +761,19 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         description: "Light nudge to LPs who have not replied before the trip window closes",
         timingLabel: "Before trip",
       },
+      {
+        id: "trip-outcome",
+        nodeType: "outcome",
+        actionType: "outcome_capture",
+        title: "Outcome",
+        description: "",
+        statusLabel: "You",
+        locked: true,
+      },
     ],
     attentionItems: [
       { id: "trip-replies", label: "replies to action", count: 5, actionLabel: "View", stepId: "trip-scheduling" },
+      { id: "trip-outcome", label: "ready for outcome capture", count: 1, actionLabel: "View", stepId: "trip-outcome" },
     ],
     stateSummary: {
       title: "London trip - where the 8 LPs are right now",
@@ -775,7 +793,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "started 8 May",
         lpCount: 12,
         statusLabel: "8 running",
-        outcomeSummary: "3 meetings scheduled - 5 in scheduling",
       },
       {
         id: "run-trip-ny",
@@ -783,7 +800,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         startedAtLabel: "5 May",
         lpCount: 22,
         statusLabel: "Complete",
-        outcomeSummary: "9 meetings scheduled - 4 declined - 9 silent",
       },
     ],
     runConfig: {

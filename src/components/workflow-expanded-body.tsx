@@ -214,7 +214,9 @@ function ProcessNode({
         {step.timingLabel ?? step.statusLabel ?? step.nodeType}
       </span>
       <span className="mt-1 text-sm font-semibold leading-snug text-[color:var(--foreground)]">{step.title}</span>
-      <span className="mt-1 line-clamp-3 text-[11px] leading-snug text-[color:var(--tomo-body)]">{step.description}</span>
+      {step.description ? (
+        <span className="mt-1 line-clamp-3 text-[11px] leading-snug text-[color:var(--tomo-body)]">{step.description}</span>
+      ) : null}
       <span
         className={`mt-auto self-start rounded-full px-2 py-0.5 text-[10px] font-medium ${
           variant === "draft"
@@ -277,7 +279,6 @@ function WorkflowRunHistoryPanel({ runs }: { runs: WorkflowSurfaceEntry["runHist
             </div>
             <div className="shrink-0 text-right">
               <p className="text-xs font-semibold text-[color:var(--foreground)]">{run.statusLabel}</p>
-              <p className="text-xs text-[color:var(--tomo-mute)]">{run.outcomeSummary}</p>
             </div>
           </div>
         ))}

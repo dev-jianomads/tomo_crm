@@ -44,7 +44,9 @@ export function WorkflowStepActionDrawer({
                   <h2 className="mt-1 font-[family-name:var(--font-newsreader)] text-2xl font-medium leading-tight text-[color:var(--foreground)] [font-variation-settings:'opsz'_28]">
                     {selection.step.title}
                   </h2>
-                  <p className="mt-1 text-sm text-[color:var(--tomo-body)]">{selection.step.description}</p>
+                  {selection.step.description ? (
+                    <p className="mt-1 text-sm text-[color:var(--tomo-body)]">{selection.step.description}</p>
+                  ) : null}
                 </div>
                 <button
                   type="button"
