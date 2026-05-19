@@ -622,16 +622,6 @@ export default function HomePage() {
     return "Good evening";
   }, []);
 
-  /** One-line briefing signal under the greeting — echoes design/tomo_today_light_v2.html `.greeting .intel`. */
-  const greetingIntelLine = useMemo(() => {
-    const pool = sortedActionItems.filter(isTodayAttentionSlot);
-    const outreach = pool.find((a) => a.type === "outreach");
-    if (outreach?.evidence?.[0]?.trim()) return outreach.evidence[0].trim();
-    const best = pool.find((a) => a.evidence?.[0]?.trim());
-    if (best?.evidence?.[0]) return best.evidence[0].trim();
-    return "Momentum and execution loops mirror What needs your attention and Coming up.";
-  }, [sortedActionItems]);
-
   const todayEyebrowLabel = useMemo(() => {
     const d = new Date();
     const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
@@ -704,7 +694,7 @@ export default function HomePage() {
       >
         {/* Top: Today header + Tomo — surface matches canvas; white only on collapsed/expanded prompt (design/*.html). */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden px-4 py-4 md:px-8 md:py-5"
+          className="flex min-w-0 flex-col overflow-hidden px-4 py-3 md:px-8 md:py-4"
           style={
             inlineTomoExpanded
               ? { flex: `${splitRatio} 1 0`, minHeight: 160 }
@@ -712,7 +702,7 @@ export default function HomePage() {
           }
         >
           {/* Matches design/tomo_today_light_v2.html `.top-row` + `.greeting-block` */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <p
               className="shrink-0 text-[11px] font-medium uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]"
               suppressHydrationWarning
@@ -760,13 +750,12 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <div className="mb-2">
-            <h1 className="text-[clamp(26px,3.8vw,32px)] font-medium leading-[1.25] tracking-[-0.01em] text-[color:var(--foreground)] [font-family:var(--font-newsreader-display)]">
-              {greeting}, {userName}.{" "}
-              <span className="text-[color:var(--foreground)]">{greetingIntelLine}</span>
+          <div className="mb-1">
+            <h1 className="text-[clamp(20px,2.6vw,24px)] font-medium leading-[1.2] tracking-[-0.01em] text-[color:var(--foreground)] [font-family:var(--font-newsreader-display)]">
+              {greeting}, {userName}
             </h1>
             <p
-              className="mt-2.5 font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]"
+              className="mt-1 font-mono text-[10px] font-normal uppercase tracking-[0.18em] text-[color:var(--tomo-mute)]"
               suppressHydrationWarning
             >
               {greetingStampPreview}
@@ -817,10 +806,10 @@ export default function HomePage() {
 
         {/* Bottom: attention | coming up (On My Radar is header + modal) */}
         <div
-          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 pb-3 pt-5 md:px-8 md:pt-6"
+          className="flex min-h-[120px] min-w-0 flex-1 flex-col overflow-hidden px-4 pb-3 pt-3 md:px-8 md:pt-4"
           style={{ flex: inlineTomoExpanded ? `${100 - splitRatio} 1 0` : "1 1 0" }}
         >
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <TodayGroup
@@ -847,7 +836,7 @@ export default function HomePage() {
                 />
               ) : null}
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden md:gap-2.5">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden md:gap-2">
               {/* Two fixed flex shares (basis-0) so both fit in the viewport; each pane scrolls internally */}
               <div className="flex min-h-0 flex-[1.6] basis-0 flex-col overflow-hidden">
                 <TodayGroup
@@ -1369,7 +1358,7 @@ function TodayGroup({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <h2 className="tomo-section-title mb-2.5 flex shrink-0 flex-wrap items-baseline">
+      <h2 className="tomo-section-title mb-2 flex shrink-0 flex-wrap items-baseline">
         <span>{title}</span>
         {titleCount != null ? <span className="tomo-section-title-count">{titleCount}</span> : null}
       </h2>

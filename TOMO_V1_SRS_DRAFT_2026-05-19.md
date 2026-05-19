@@ -829,12 +829,12 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Processing.**
 
 1. **Today page sections.**
-   - Greeting: time-of-day-aware, personalised ("Good morning, Geoffrey").
+   - Greeting: time-of-day-aware, personalised first name only (e.g. *Good morning, Geoffrey*) — **no** appended intelligence sentence in the header; relationship narrative lives in the **Radar Modal** summary and section rows.
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Sorted by priority (re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval). Capped at "today" — older items collapse into a "Previous (N)" control per the user-story template §38.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow. Selecting a row opens the **meeting prep drawer** (see §3.9 meeting prep layout; visual reference `design/tomo_drawer_meetingprep_light_v3.html`).
    - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. **Presentation labels:** *Drifting — act*, *Stalling — watch* (amber, not Moveable), *Moveable*, *Healthy — on track*. The section heading and each bucket label expose a **hover hint** with concise copy aligned to the partition rules (show delay ≤300ms; not browser-native `title` tooltips). The headline **Insights →** control links to `/insights`. Each of the **four counts** is independently tappable and deep-links to Relationships with the **named / URL-addressable** filter state for that bucket (AC-3.8.8). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
-   - **On my radar**: small intelligence-line callouts on the page ("Frank Ieraci's reply time halved this week — CPPIB is accelerating.") — sourced from the same signal pool as the **Heating up** / **Cooling off** threads in the Radar Modal where applicable (`lp_signal_log` and related state); callouts are a **subset** of intelligence surfaced in full in the modal. **Gone quiet** and **Cooling off** row generation respects `lp_state.off_channel_active_until` per BR-3.5.8.
+   - **On my radar** (entry control + modal): intelligence is surfaced in the **Radar Modal** (narrative summary + collapsible sections per Appendix I), not as inline sentences in the Today header. **Gone quiet** and **Cooling off** row generation respects `lp_state.off_channel_active_until` per BR-3.5.8.
 2. **Radar Modal (Daily Brief + On my radar).**
    - Trigger: first page load of the local day (compared against the per-user `last_daily_brief_seen_local_date`).
    - **Normative section taxonomy** (order, default collapsed state, CTA dictionary): **Appendix I — Radar Modal IA (v1)**.
@@ -3741,11 +3741,11 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Commitments come from `commitments` rows with `status='open'` and `due_at <= tomorrow`.
 
 **Story 8.4.4 — On my radar.**
-*As a GP, I see small intelligence-line callouts on Today and the full **On my radar** experience inside the Radar Modal.*
+*As a GP, I open **On my radar** from Today and get the full daily intelligence brief in the Radar Modal.*
 
-- AC — **Inline callouts** on the Today page are sourced from `lp_signal_log` (and related LP state) where directional intelligence applies; at minimum, observations that appear in **Heating up** / **Cooling off** in the Radar Modal may be summarized inline when space-constrained.
-- AC — Each inline callout cites a specific LP and observation (e.g. "Frank Ieraci's reply time halved this week — CPPIB is accelerating").
-- AC — The **Radar Modal** (Story 8.4.1) surfaces the complete multi-section view per **Appendix I**, not only positive signals.
+- AC — The Today header greeting is **time-of-day + first name only** (no appended intelligence sentence).
+- AC — The **Radar Modal** (Story 8.4.1) surfaces the complete multi-section view per **Appendix I**, including narrative summary and LP-specific observations (e.g. heating / cooling threads).
+- AC — Modal rows cite specific LPs and observations sourced from `lp_signal_log` and related LP state where applicable.
 
 **Story 8.4.5 — Inline Tomo on Today.**
 *As a GP, I can chat with Tomo on Today, with the agent receiving structured context for what's on the page.*
