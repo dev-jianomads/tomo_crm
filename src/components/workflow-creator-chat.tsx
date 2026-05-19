@@ -17,6 +17,8 @@ import { toast } from "sonner";
 type WorkflowCreatorChatProps = {
   pipeline: Pipeline;
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
+  /** When set from `/workflows`, list is fixed — collect trigger + action only (name derived for the tool). */
+  surfaceContext?: "pipeline" | "workflows";
 };
 
 function ChatBubble({ message }: { message: UIMessage }) {
@@ -45,30 +47,40 @@ function ChatBubble({ message }: { message: UIMessage }) {
 /**
  * Tomo chat for Lists “Use in workflow” → Custom. Surface workflow_creator + create_user_workflow (typed action).
  */
-export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCreatorChatProps) {
+export function WorkflowCreatorChat({
+  pipeline,
+  onWorkflowCreated,
+  surfaceContext = "pipeline",
+}: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const processedToolCallIds = useRef<Set<string>>(new Set());
   const [input, setInput] = useState("");
 
   const filterSummary = formatFilterSummary(pipeline.filterCriteria) || undefined;
 
+  const orchestratorPage = surfaceContext === "workflows" ? ("workflows" as const) : ("pipeline" as const);
+
+  const workflowCreatorBody = useMemo(
+    () => ({
+      surface: "workflow_creator" as const,
+      page: orchestratorPage,
+      workflowCreator: {
+        pipelineId: pipeline.id,
+        pipelineName: pipeline.name,
+        ...(filterSummary ? { filterSummary } : {}),
+        ...(surfaceContext === "workflows" ? { listPreselected: true as const } : {}),
+      },
+    }),
+    [orchestratorPage, pipeline.id, pipeline.name, filterSummary, surfaceContext]
+  );
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/tomo/orchestrate",
-        body: {
-          context: {
-            surface: "workflow_creator" as const,
-            page: "pipeline" as const,
-            workflowCreator: {
-              pipelineId: pipeline.id,
-              pipelineName: pipeline.name,
-              ...(filterSummary ? { filterSummary } : {}),
-            },
-          },
-        },
+        body: { context: workflowCreatorBody },
       }),
-    [pipeline.id, pipeline.name, filterSummary]
+    [workflowCreatorBody]
   );
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -111,17 +123,7 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
     sendMessage(
       { text: trimmed },
       {
-        body: {
-          context: {
-            surface: "workflow_creator" as const,
-            page: "pipeline" as const,
-            workflowCreator: {
-              pipelineId: pipeline.id,
-              pipelineName: pipeline.name,
-              ...(filterSummary ? { filterSummary } : {}),
-            },
-          },
-        },
+        body: { context: workflowCreatorBody },
       }
     );
   };
@@ -130,14 +132,28 @@ export function WorkflowCreatorChat({ pipeline, onWorkflowCreated }: WorkflowCre
     <div className="flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]">
       <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
         <p className="text-xs font-medium text-[color:var(--foreground)]">TOMO — create workflow</p>
-        <p className="text-[11px] text-[color:var(--tomo-mute)]">Share a name, trigger, and action for this list.</p>
+        <p className="text-[11px] text-[color:var(--tomo-mute)]">
+          {surfaceContext === "workflows"
+            ? `Describe when this runs and what Tomo should do on "${pipeline.name}".`
+            : "Share a name, trigger, and action for this list."}
+        </p>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
         <div className="flex justify-start">
           <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
             <p className="text-sm text-[color:var(--foreground)]">
-              I’ll ask for a short <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong>. When
-              we’re aligned, I’ll finalize the workflow for list &quot;{pipeline.name}&quot;.
+              {surfaceContext === "workflows" ? (
+                <>
+                  List <strong>{pipeline.name}</strong> is already set. Tell me the <strong>trigger</strong> (when it
+                  runs) and the <strong>action</strong> (what Tomo should do). I’ll pick a short workflow name when we
+                  finalize.
+                </>
+              ) : (
+                <>
+                  I’ll ask for a short <strong>name</strong>, <strong>trigger</strong>, and <strong>action</strong>. When
+                  we’re aligned, I’ll finalize the workflow for list &quot;{pipeline.name}&quot;.
+                </>
+              )}
             </p>
           </div>
         </div>

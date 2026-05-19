@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
-import { ChevronDownIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { WorkflowExpandedBody } from "@/components/workflow-expanded-body";
@@ -9,6 +10,11 @@ import {
   WorkflowStepActionDrawer,
   type WorkflowStepActionSelection,
 } from "@/components/workflow-step-action-drawer";
+import { WorkflowBuildModal } from "@/components/workflow-build-modal";
+import type { PlaybookPipelineOverrides } from "@/components/link-workflow-modal-v1";
+import { customPlaybookToSurfaceEntry } from "@/lib/custom-playbook-surface";
+import { loadCustomPlaybooks, type CustomPlaybookStored } from "@/lib/customPlaybooks";
+import { useCustomPlaybooksPersistentState } from "@/lib/use-custom-playbooks-state";
 import { useFunds } from "@/components/fund-provider";
 import { useRelationships } from "@/components/relationships-provider";
 import { useRequireSession } from "@/lib/auth";
@@ -55,6 +61,12 @@ function WorkflowsPageContent() {
     "tomo-workflow-surface-enabled-overrides-v1",
     {}
   );
+  const [customPlaybooks, setCustomPlaybooks] = useCustomPlaybooksPersistentState();
+  const [playbookOverrides, setPlaybookOverrides] = usePersistentState<PlaybookPipelineOverrides>(
+    "tomo-playbook-pipeline-overrides",
+    {}
+  );
+  const [buildModalOpen, setBuildModalOpen] = useState(false);
 
   useEffect(() => {
     if (selectedPipelineId || pipelines.length === 0) return;
@@ -65,12 +77,17 @@ function WorkflowsPageContent() {
     const params = new URLSearchParams(window.location.search);
     const incomingWorkflow = normalizeWorkflowId(params.get("workflow") ?? params.get("playbook") ?? params.get("tomoDefault"));
     const incomingList = params.get("openList") ?? params.get("pipelineId");
+    const openBuild = params.get("build") === "1";
 
-    if (incomingWorkflow && workflowSurfaceEntries.some((entry) => entry.id === incomingWorkflow)) {
-      queueMicrotask(() => setExpandedWorkflowId(incomingWorkflow));
+    if (incomingWorkflow) {
+      const normalized = normalizeWorkflowId(incomingWorkflow) ?? incomingWorkflow;
+      queueMicrotask(() => setExpandedWorkflowId(normalized));
     }
     if (incomingList && pipelines.some((pipeline) => pipeline.id === incomingList)) {
       queueMicrotask(() => setSelectedPipelineId(incomingList));
+    }
+    if (openBuild) {
+      queueMicrotask(() => setBuildModalOpen(true));
     }
   }, [pipelines]);
 
@@ -120,7 +137,35 @@ function WorkflowsPageContent() {
 
   const defaultEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default");
   const tailoredEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "configurable_template");
-  const expandedEntry = workflowSurfaceEntries.find((entry) => entry.id === expandedWorkflowId) ?? null;
+
+  const customEntriesForList = useMemo(() => {
+    if (!selectedPipelineId) return [];
+    return customPlaybooks
+      .filter((pb) => playbookOverrides[pb.id]?.pipelineId === selectedPipelineId)
+      .map(customPlaybookToSurfaceEntry);
+  }, [customPlaybooks, selectedPipelineId, playbookOverrides]);
+
+  const allDisplayEntries = useMemo(
+    () => [...workflowSurfaceEntries, ...customEntriesForList],
+    [customEntriesForList]
+  );
+
+  const expandedEntry = allDisplayEntries.find((entry) => entry.id === expandedWorkflowId) ?? null;
+
+  const handleWorkflowBuilt = useCallback(
+    (entry: CustomPlaybookStored) => {
+      if (!selectedPipelineId) return;
+      setPlaybookOverrides((prev) => ({
+        ...prev,
+        [entry.id]: { pipelineId: selectedPipelineId },
+      }));
+      setWorkflowEnabledOverrides((prev) => ({ ...prev, [entry.id]: false }));
+      setCustomPlaybooks(loadCustomPlaybooks());
+      setExpandedWorkflowId(entry.id);
+      toast.success(`Saved "${entry.name}" on this list`);
+    },
+    [selectedPipelineId, setPlaybookOverrides, setWorkflowEnabledOverrides, setCustomPlaybooks]
+  );
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col bg-[color:var(--tomo-bg)]">
@@ -190,12 +235,27 @@ function WorkflowsPageContent() {
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:color-mix(in_srgb,var(--tomo-card-warm)_70%,var(--tomo-bg))]">
           <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-7 py-5">
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]">
-              List{selectedPipeline ? ` · ${selectedPipeline.name}` : ""}
-            </p>
-            <h1 className="mt-1 font-[family-name:var(--font-newsreader)] text-[28px] font-medium leading-none text-[color:var(--foreground)] [font-variation-settings:'opsz'_28]">
-              {selectedPipeline?.name ?? "Select a list"}
-            </h1>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.22em] text-[color:var(--tomo-mute)]">
+                  List{selectedPipeline ? ` · ${selectedPipeline.name}` : ""}
+                </p>
+                <h1 className="mt-1 font-[family-name:var(--font-newsreader)] text-[28px] font-medium leading-none text-[color:var(--foreground)] [font-variation-settings:'opsz'_28]">
+                  {selectedPipeline?.name ?? "Select a list"}
+                </h1>
+              </div>
+              <button
+                type="button"
+                data-testid="workflows-new-workflow-cta"
+                disabled={!selectedPipeline}
+                onClick={() => setBuildModalOpen(true)}
+                title={selectedPipeline ? undefined : "Select a list on the left first"}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3.5 py-2 text-xs font-medium text-white transition enabled:hover:bg-[color:var(--tomo-teal-muted)] disabled:cursor-not-allowed disabled:border-[color:var(--tomo-rule)] disabled:bg-[color:var(--tomo-navy-soft)] disabled:text-[color:var(--tomo-mute)]"
+              >
+                <PlusIcon className="h-3.5 w-3.5" aria-hidden />
+                New workflow
+              </button>
+            </div>
             <div className="mt-3 flex flex-wrap items-center gap-3 font-[family-name:var(--font-jetbrains-mono)] text-[10px] tracking-[0.08em] text-[color:var(--tomo-mute)]">
               {selectedPipelineMeta ? (
                 <>
@@ -251,9 +311,37 @@ function WorkflowsPageContent() {
                 ))}
               </div>
             </div>
+
+            {customEntriesForList.length > 0 ? (
+              <div className="mt-6">
+                <WorkflowSectionDivider
+                  label="Built on this list"
+                  count={`${customEntriesForList.length} custom workflow${customEntriesForList.length === 1 ? "" : "s"} · saved until toggled on`}
+                />
+                <div className="space-y-3">
+                  {customEntriesForList.map((entry) => (
+                    <WorkflowAccordionCard
+                      key={entry.id}
+                      entry={entry}
+                      enabled={effectiveEnabled(entry)}
+                      expanded={expandedWorkflowId === entry.id}
+                      onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
+                      onToggleEnabled={() => toggleWorkflowEnabled(entry)}
+                      onStepAction={(selection) => setStepActionSelection(selection)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </main>
       </div>
+      <WorkflowBuildModal
+        open={buildModalOpen}
+        pipeline={selectedPipeline}
+        onClose={() => setBuildModalOpen(false)}
+        onWorkflowCreated={handleWorkflowBuilt}
+      />
       <WorkflowStepActionDrawer selection={stepActionSelection} onClose={() => setStepActionSelection(null)} />
     </div>
   );

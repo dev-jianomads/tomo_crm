@@ -275,7 +275,7 @@ export function LinkWorkflowModalV1({
               })}
             </div>
           ) : customPlaybooks.length === 0 ? (
-            <p className="text-sm text-[color:var(--tomo-mute)]">No custom workflows yet. Create one from Workflows.</p>
+            <p className="text-sm text-[color:var(--tomo-mute)]">No custom workflows yet. Use New workflow on the Workflows page.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {customPlaybooks.map((c) => {

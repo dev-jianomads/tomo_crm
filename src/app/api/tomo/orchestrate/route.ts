@@ -73,6 +73,8 @@ export type OrchestratorContext = {
     pipelineId: string;
     pipelineName: string;
     filterSummary?: string;
+    /** Workflows page: list already chosen in the left rail — only elicit trigger + action; derive name. */
+    listPreselected?: boolean;
   };
   assistanceContext?: TomoAssistance | null;
   currentFilters?: Partial<StructuredFilterCriteria>;
@@ -173,7 +175,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
   } else if (surface === "workflow_creator") {
     lines.push(
       ``,
-      `You are in **workflow creator** mode. The user is defining a new user-defined workflow from the Lists page dialog.`,
+      `You are in **workflow creator** mode. The user is defining a new user-defined workflow.`,
       ``,
       `You have exactly one tool: **create_user_workflow**. Call it only when you have **name**, **trigger**, and a complete **action** object.`,
       ``,
@@ -199,6 +201,13 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
         `Pre-selected list: "${wc.pipelineName}" (id: ${wc.pipelineId}).`,
         wc.filterSummary ? `Filter summary: ${wc.filterSummary}` : `No filter summary provided.`,
       );
+      if (wc.listPreselected) {
+        lines.push(
+          ``,
+          `The user is on the Workflows page and already selected this list. Do **not** ask which list to use.`,
+          `Elicit **trigger** and **action** in conversation. Derive a concise **name** (3–6 words) from trigger + action when calling the tool — only ask for name separately if trigger/action are too vague to name.`,
+        );
+      }
     } else {
       lines.push(``, `workflowCreator context was not sent — ask the user to reopen the dialog from Lists if needed.`);
     }
