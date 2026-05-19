@@ -427,7 +427,7 @@ export function WorkflowCreatorChat({
             Clear chat
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
