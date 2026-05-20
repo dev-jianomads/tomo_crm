@@ -1,5 +1,5 @@
 /**
- * Draft state for a workflow leg sub-wizard (follow-up: trigger → action → draft).
+ * Draft state for a workflow leg sub-wizard (follow-up: single build view).
  */
 
 import type { UserWorkflowAction, WorkflowLeg } from "@/lib/custom-playbook-schema";
@@ -15,12 +15,10 @@ import type {
 } from "@/lib/workflow-action-build";
 import { summarizeUserWorkflowAction } from "@/lib/custom-playbook-schema";
 
-export type WorkflowLegStep = "trigger" | "action" | "draft";
+export type WorkflowLegStep = "build";
 
 export const WORKFLOW_LEG_STEPS: Array<{ id: WorkflowLegStep; label: string }> = [
-  { id: "trigger", label: "Follow-up trigger" },
-  { id: "action", label: "Follow-up action" },
-  { id: "draft", label: "Follow-up draft" },
+  { id: "build", label: "Follow-up" },
 ];
 
 export type WorkflowLegDraft = {
@@ -60,30 +58,31 @@ export function legStepIndex(step: WorkflowLegStep): number {
   return WORKFLOW_LEG_STEPS.findIndex((s) => s.id === step);
 }
 
+export function canGenerateLegDrafts(draft: WorkflowLegDraft): boolean {
+  return draft.triggerConfirmed && Boolean(draft.trigger.trim()) && Boolean(draft.tomoInstruction.trim());
+}
+
+export function hasGeneratedLegDrafts(draft: WorkflowLegDraft): boolean {
+  return Boolean(
+    draft.actionDescription.trim() &&
+      draft.baseSubject.trim() &&
+      draft.baseBody.trim() &&
+      draft.lpDrafts.length > 0 &&
+      draft.actionSpec?.kind === "send_email"
+  );
+}
+
 export function canAdvanceLegStep(step: WorkflowLegStep, draft: WorkflowLegDraft): boolean {
   switch (step) {
-    case "trigger":
-      return draft.triggerConfirmed && Boolean(draft.trigger.trim());
-    case "action":
-      return draft.actionPromptConfirmed && Boolean(draft.tomoInstruction.trim());
-    case "draft":
-      return Boolean(
-        draft.actionDescription.trim() &&
-          draft.baseSubject.trim() &&
-          draft.baseBody.trim() &&
-          draft.lpDrafts.length > 0 &&
-          draft.actionSpec?.kind === "send_email"
-      );
+    case "build":
+      return hasGeneratedLegDrafts(draft);
     default:
       return false;
   }
 }
 
-export function maxReachableLegStep(draft: WorkflowLegDraft): WorkflowLegStep {
-  if (!canAdvanceLegStep("trigger", draft)) return "trigger";
-  if (!canAdvanceLegStep("action", draft)) return "action";
-  if (!canAdvanceLegStep("draft", draft)) return "draft";
-  return "draft";
+export function maxReachableLegStep(_draft: WorkflowLegDraft): WorkflowLegStep {
+  return "build";
 }
 
 export function workflowLegDraftFromStored(leg: WorkflowLeg): WorkflowLegDraft {
@@ -115,7 +114,7 @@ export function workflowLegDraftFromStored(leg: WorkflowLeg): WorkflowLegDraft {
 }
 
 export function workflowLegDraftToStored(draft: WorkflowLegDraft): WorkflowLeg | null {
-  if (!canAdvanceLegStep("draft", draft) || !draft.actionSpec || draft.actionSpec.kind !== "send_email") {
+  if (!hasGeneratedLegDrafts(draft) || !draft.actionSpec || draft.actionSpec.kind !== "send_email") {
     return null;
   }
 

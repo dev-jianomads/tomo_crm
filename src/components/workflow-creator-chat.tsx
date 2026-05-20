@@ -59,7 +59,7 @@ type WorkflowCreatorChatProps = {
   /** Action wizard: GP sent a new refine message — unlock prompt until Tomo re-confirms. */
   onActionPromptRevoked?: () => void;
   onStreamingChange?: (streaming: boolean) => void;
-  variant?: "compact" | "wizard";
+  variant?: "compact" | "wizard" | "wizardCondensed";
 };
 
 function ChatBubble({ message }: { message: UIMessage }) {
@@ -294,7 +294,8 @@ export function WorkflowCreatorChat({
         ? "TOMO — define action"
         : "TOMO — create workflow";
 
-  const isActionWizard = variant === "wizard" && wizardStep === "action";
+  const isActionWizard =
+    (variant === "wizard" || variant === "wizardCondensed") && wizardStep === "action";
   /** Action step: big composer until first message, then conversation + single-line input. */
   const isActionInitialComposer = isActionWizard && messages.length === 0;
 
@@ -332,11 +333,15 @@ export function WorkflowCreatorChat({
     );
 
   const shellClass =
-    variant === "wizard"
+    variant === "wizardCondensed"
       ? isActionWizard
-        ? "flex h-full min-h-[28rem] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
-        : "flex min-h-[380px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
-      : "flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]";
+        ? "flex min-h-[14rem] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+        : "flex min-h-[220px] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+      : variant === "wizard"
+        ? isActionWizard
+          ? "flex h-full min-h-[28rem] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+          : "flex min-h-[380px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+        : "flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]";
 
   const actionSendLabel = isActionWizard ? "Refine" : "Send";
   const actionSendHint = isActionWizard ? "⌘↵ to refine" : "⌘↵ to send";
@@ -412,10 +417,12 @@ export function WorkflowCreatorChat({
                 handleSend();
               }
             }}
-            placeholder="Describe the outreach you want Tomo to write on the Draft step…"
+            placeholder="Describe the outreach you want Tomo to write…"
             disabled={isStreaming}
             autoFocus
-            className="tomo-input h-[12rem] w-full flex-none resize-none py-2.5 text-sm leading-relaxed disabled:opacity-50"
+            className={`tomo-input w-full flex-none resize-none py-2.5 text-sm leading-relaxed disabled:opacity-50 ${
+              variant === "wizardCondensed" ? "h-[7rem]" : "h-[12rem]"
+            }`}
           />
           {actionToolbar}
         </div>

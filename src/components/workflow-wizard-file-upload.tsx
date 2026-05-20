@@ -17,11 +17,14 @@ export function WorkflowWizardFileUpload({
   onChange,
   label = "Attachments",
   emptyHint = "Optional .docx or .pdf briefs, one-pagers, or notes.",
+  compact = false,
 }: {
   attachments: WorkflowActionBuildAttachment[];
   onChange: (next: WorkflowActionBuildAttachment[]) => void;
   label?: string;
   emptyHint?: string;
+  /** Icon-only add control for condensed build layout. */
+  compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [parsing, setParsing] = useState(false);
@@ -73,10 +76,59 @@ export function WorkflowWizardFileUpload({
     onChange(attachments.filter((a) => a.id !== id));
   };
 
+  if (compact) {
+    return (
+      <div className="inline-flex flex-wrap items-center gap-1.5">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={WORKFLOW_DOCUMENT_ACCEPT}
+          multiple
+          className="sr-only"
+          onChange={(e) => void handleFiles(e.target.files)}
+        />
+        <button
+          type="button"
+          disabled={parsing}
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] px-2.5 py-1.5 text-xs text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] disabled:opacity-50"
+          aria-label="Add attachment"
+        >
+          <PaperClipIcon className="h-4 w-4 text-[color:var(--tomo-mute)]" aria-hidden />
+          {parsing ? "Reading…" : attachments.length > 0 ? `Files (${attachments.length})` : "Attach"}
+        </button>
+        {attachments.length > 0 ? (
+          <ul className="flex flex-wrap gap-1">
+            {attachments.map((a) => (
+              <li
+                key={a.id}
+                className="inline-flex max-w-[10rem] items-center gap-0.5 rounded-full border border-[color:var(--tomo-rule-soft)] px-2 py-0.5 text-[10px]"
+              >
+                <span className="truncate font-medium">{a.name}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(a.id)}
+                  className="shrink-0 text-[color:var(--tomo-mute)] hover:text-[color:var(--foreground)]"
+                  aria-label={`Remove ${a.name}`}
+                >
+                  <XMarkIcon className="h-3 w-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-[color:var(--foreground)]">{label}</span>
+        {label ? (
+          <span className="text-xs font-medium text-[color:var(--foreground)]">{label}</span>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           disabled={parsing}

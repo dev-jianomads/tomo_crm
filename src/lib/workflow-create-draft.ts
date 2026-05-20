@@ -8,13 +8,11 @@ import type {
   WorkflowActionBuildLpDraft,
 } from "@/lib/workflow-action-build";
 
-export type WorkflowCreateStep = "name" | "trigger" | "action" | "draft" | "personalise";
+export type WorkflowCreateStep = "name" | "build" | "personalise";
 
 export const WORKFLOW_CREATE_STEPS: Array<{ id: WorkflowCreateStep; label: string }> = [
   { id: "name", label: "Name" },
-  { id: "trigger", label: "Trigger" },
-  { id: "action", label: "Action" },
-  { id: "draft", label: "Draft" },
+  { id: "build", label: "Build" },
   { id: "personalise", label: "Personalise" },
 ];
 
@@ -58,21 +56,25 @@ export function stepIndex(step: WorkflowCreateStep): number {
   return WORKFLOW_CREATE_STEPS.findIndex((s) => s.id === step);
 }
 
+/** Enough to call cohort draft generation (no locked optimised prompt). */
+export function canGenerateWorkflowDrafts(draft: WorkflowCreateDraft): boolean {
+  return Boolean(draft.trigger?.trim()) && Boolean(draft.tomoInstruction.trim());
+}
+
+export function hasGeneratedWorkflowDrafts(draft: WorkflowCreateDraft): boolean {
+  return Boolean(
+    draft.baseBody.trim() &&
+      draft.baseSubject.trim() &&
+      draft.lpDrafts.length > 0
+  );
+}
+
 export function canAdvanceFromStep(step: WorkflowCreateStep, draft: WorkflowCreateDraft): boolean {
   switch (step) {
     case "name":
       return draft.workflowName.trim().length >= 2;
-    case "trigger":
-      return draft.triggerConfirmed && Boolean(draft.trigger?.trim());
-    case "action":
-      return draft.actionPromptConfirmed && Boolean(draft.tomoInstruction.trim());
-    case "draft":
-      return Boolean(
-        draft.actionDescription.trim() &&
-          draft.baseSubject.trim() &&
-          draft.baseBody.trim() &&
-          draft.lpDrafts.length > 0
-      );
+    case "build":
+      return hasGeneratedWorkflowDrafts(draft);
     case "personalise":
       return draft.lpDrafts.length > 0;
     default:
@@ -82,10 +84,8 @@ export function canAdvanceFromStep(step: WorkflowCreateStep, draft: WorkflowCrea
 
 export function maxReachableStep(draft: WorkflowCreateDraft): WorkflowCreateStep {
   if (!canAdvanceFromStep("name", draft)) return "name";
-  if (!canAdvanceFromStep("trigger", draft)) return "trigger";
-  if (!canAdvanceFromStep("action", draft)) return "action";
-  if (!canAdvanceFromStep("draft", draft)) return "draft";
-  return draft.personaliseEnabled ? "personalise" : "draft";
+  if (!hasGeneratedWorkflowDrafts(draft)) return "build";
+  return draft.personaliseEnabled ? "personalise" : "build";
 }
 
 /** Hydrate wizard state when editing a saved custom workflow. */
@@ -107,7 +107,7 @@ export function workflowCreateDraftFromStored(pb: CustomPlaybookStored): Workflo
     workflowName: pb.name,
     trigger: pb.trigger,
     triggerSummary: null,
-    triggerConfirmed: true,
+    triggerConfirmed: Boolean(pb.trigger?.trim()),
     actionSpec,
     actionPromptConfirmed: Boolean(ab?.tomoInstruction?.trim()),
     actionDescription: ab?.actionDescription?.trim() || ab?.actionName?.trim() || pb.action,

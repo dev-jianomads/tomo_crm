@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import type { Pipeline } from "@/lib/pipelines";
 import {
@@ -17,10 +17,11 @@ import {
   type WorkflowActionBuildConfig,
   type WorkflowActionBuildLpDraft,
 } from "@/lib/workflow-action-build";
-import { WorkflowWizardFileUpload } from "@/components/workflow-wizard-file-upload";
 import {
   WORKFLOW_CREATE_STEPS,
   canAdvanceFromStep,
+  canGenerateWorkflowDrafts,
+  hasGeneratedWorkflowDrafts,
   initialWorkflowCreateDraft,
   maxReachableStep,
   stepIndex,
@@ -30,14 +31,12 @@ import {
 } from "@/lib/workflow-create-draft";
 import {
   initialWorkflowLegDraft,
-  maxReachableLegStep,
   workflowLegDraftFromStored,
   workflowLegDraftToStored,
   type WorkflowLegDraft,
-  type WorkflowLegStep,
 } from "@/lib/workflow-leg-draft";
 import { WorkflowLegWizard } from "@/components/workflow-leg-wizard";
-import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
+import { WorkflowCondensedBuildPanel } from "@/components/workflow-condensed-build-panel";
 import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
 import {
   formatAvailabilityContext,
@@ -47,7 +46,6 @@ import {
 export type WorkflowBuildModalProps = {
   open: boolean;
   pipeline: Pipeline | null;
-  /** When set, wizard updates this saved custom workflow instead of creating a new one. */
   editEntry?: CustomPlaybookStored | null;
   onClose: () => void;
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
@@ -77,13 +75,12 @@ export function WorkflowBuildModal({
   const [buildPhase, setBuildPhase] = useState<"primary" | "followUp">("primary");
   const [editSection, setEditSection] = useState<"primary" | "followUp">("primary");
   const [step, setStep] = useState<WorkflowCreateStep>("name");
-  const [legStep, setLegStep] = useState<WorkflowLegStep>("trigger");
   const [draft, setDraft] = useState<WorkflowCreateDraft>(() => initialWorkflowCreateDraft());
   const [followUpDraft, setFollowUpDraft] = useState<WorkflowLegDraft>(() => initialWorkflowLegDraft());
-  const [createdEntry, setCreatedEntry] = useState<CustomPlaybookStored | null>(null);
+  const [savedPrimaryEntry, setSavedPrimaryEntry] = useState<CustomPlaybookStored | null>(null);
+  const [followUpPromptOpen, setFollowUpPromptOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [selectedLpId, setSelectedLpId] = useState<string | null>(null);
-  const [triggerChatKey, setTriggerChatKey] = useState(0);
   const [actionChatKey, setActionChatKey] = useState(0);
   const [availabilitySlots, setAvailabilitySlots] = useState<SchedulingSlotModel[]>([]);
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
@@ -102,9 +99,6 @@ export function WorkflowBuildModal({
         );
         setEditSection("primary");
         setBuildPhase("primary");
-        setLegStep(
-          editEntry.followUp ? maxReachableLegStep(workflowLegDraftFromStored(editEntry.followUp)) : "trigger"
-        );
       } else {
         setStep("name");
         setDraft(initialWorkflowCreateDraft());
@@ -112,11 +106,10 @@ export function WorkflowBuildModal({
         setSelectedLpId(null);
         setBuildPhase("primary");
         setEditSection("primary");
-        setLegStep("trigger");
       }
-      setCreatedEntry(null);
+      setSavedPrimaryEntry(null);
+      setFollowUpPromptOpen(false);
       setGenerating(false);
-      setTriggerChatKey((k) => k + 1);
       setActionChatKey((k) => k + 1);
       setAvailabilitySlots([]);
       setAvailabilityModalOpen(false);
@@ -126,11 +119,11 @@ export function WorkflowBuildModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !followUpPromptOpen) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, followUpPromptOpen]);
 
   const selectedDraft = useMemo(
     () => draft.lpDrafts.find((d) => d.id === selectedLpId) ?? draft.lpDrafts[0],
@@ -138,13 +131,13 @@ export function WorkflowBuildModal({
   );
 
   const reachable = maxReachableStep(draft);
+  const draftPanelVisible = hasGeneratedWorkflowDrafts(draft);
   const attachmentNames = draft.attachments.map((a) => a.name);
   const mergedContextText = useMemo(
     () => mergeContextWithAttachmentText(draft.contextText, draft.attachments),
     [draft.contextText, draft.attachments]
   );
 
-  /** Context + attachments + calendar slots — sent to Tomo only, not shown in the left textarea. */
   const orchestratorContextText = useMemo(() => {
     const availability = formatAvailabilityContext(availabilitySlots);
     if (!availability) return mergedContextText;
@@ -163,7 +156,11 @@ export function WorkflowBuildModal({
     if (!pipeline) return;
     const instruction = draft.tomoInstruction.trim();
     if (!instruction) {
-      toast.error("Complete the action prompt with Tomo first");
+      toast.error("Describe the outreach in the action section first");
+      return;
+    }
+    if (!draft.trigger?.trim()) {
+      toast.error("Add a trigger before generating drafts");
       return;
     }
     setGenerating(true);
@@ -180,9 +177,7 @@ export function WorkflowBuildModal({
           attachmentNames: draft.attachments.map((a) => a.name),
         }),
       });
-      if (!res.ok) {
-        throw new Error("Draft generation failed");
-      }
+      if (!res.ok) throw new Error("Draft generation failed");
       const generated = (await res.json()) as {
         subject: string;
         body: string;
@@ -212,10 +207,14 @@ export function WorkflowBuildModal({
         actionDescription: prev.actionDescription.trim() || actionDescription,
         lpDrafts: cohort,
         actionSpec,
+        triggerConfirmed: true,
       }));
       setSelectedLpId(cohort[0]?.id ?? null);
-      setStep("draft");
-      toast.success(generated.usedLlm ? "Tomo drafted your cohort email" : "Draft ready (offline template — add OPENAI_API_KEY for LLM)");
+      toast.success(
+        generated.usedLlm
+          ? "Tomo drafted your cohort email"
+          : "Draft ready (offline template — add OPENAI_API_KEY for LLM)"
+      );
     } catch {
       toast.error("Could not generate drafts — try again");
     } finally {
@@ -223,7 +222,6 @@ export function WorkflowBuildModal({
     }
   }, [
     draft.actionSpec,
-    draft.actionDescription,
     draft.attachments,
     draft.tomoInstruction,
     draft.trigger,
@@ -232,16 +230,12 @@ export function WorkflowBuildModal({
     pipeline,
   ]);
 
-  const finishBuild = (
+  const persistPrimary = (
     lpDrafts: WorkflowActionBuildLpDraft[],
     approveAll: boolean,
-    options?: {
-      fromPersonaliseStep?: boolean;
-      followUp?: WorkflowLeg | null;
-      closeOnSave?: boolean;
-    }
-  ) => {
-    if (!pipeline || !draft.trigger || !draft.actionSpec) return;
+    followUp?: WorkflowLeg | null
+  ): CustomPlaybookStored | null => {
+    if (!pipeline || !draft.trigger?.trim() || !draft.actionSpec) return null;
     const actionBuild: WorkflowActionBuildConfig = {
       actionName: draft.workflowName.trim(),
       contextText: draft.contextText,
@@ -253,35 +247,17 @@ export function WorkflowBuildModal({
       lpDrafts,
       ...(approveAll ? { approvedAllAt: new Date().toISOString() } : {}),
     };
-    const input = { name: draft.workflowName.trim(), trigger: draft.trigger, action: draft.actionSpec };
-    const saveOptions =
-      options?.followUp !== undefined ? { followUp: options.followUp } : undefined;
-    const entry = isEditMode && editEntry
-      ? updateCustomPlaybookWithActionBuild(editEntry.id, input, actionBuild, saveOptions)
+    const input = { name: draft.workflowName.trim(), trigger: draft.trigger.trim(), action: draft.actionSpec };
+    const saveOptions = followUp !== undefined ? { followUp } : undefined;
+    const existingId = savedPrimaryEntry?.id ?? editEntry?.id;
+    const entry = existingId
+      ? updateCustomPlaybookWithActionBuild(existingId, input, actionBuild, saveOptions)
       : appendCustomPlaybookWithActionBuild(input, actionBuild, saveOptions);
-    if (!entry) {
-      toast.error("Could not save workflow");
-      return;
+    if (entry) {
+      onWorkflowCreated(entry);
+      if (!savedPrimaryEntry?.id && !editEntry?.id) setSavedPrimaryEntry(entry);
     }
-    onWorkflowCreated(entry);
-    const hasFollowUp = Boolean(entry.followUp);
-    if (options?.fromPersonaliseStep || options?.closeOnSave) {
-      toast.success(hasFollowUp ? "Workflow and follow-up saved" : "Workflow saved", {
-        description: "Activate from the workflow card when ready.",
-      });
-      onClose();
-      return;
-    }
-    setCreatedEntry(entry);
-    toast.success(
-      isEditMode
-        ? hasFollowUp
-          ? `Updated ${entry.name} (with follow-up)`
-          : `Updated ${entry.name}`
-        : hasFollowUp
-          ? `Saved ${entry.name} (with follow-up)`
-          : `Saved ${entry.name}`
-    );
+    return entry;
   };
 
   const updateSelectedDraft = (patch: Partial<WorkflowActionBuildLpDraft>) => {
@@ -345,50 +321,41 @@ export function WorkflowBuildModal({
     };
   }, [draft]);
 
-  if (!open || !pipeline) return null;
-
-  const handleNext = () => {
-    if (step === "name" && canAdvanceFromStep("name", draft)) {
-      setStep("trigger");
-      return;
-    }
-    if (step === "trigger" && canAdvanceFromStep("trigger", draft)) {
-      setActionChatKey((k) => k + 1);
-      setStep("action");
-      return;
-    }
-    if (step === "action" && canAdvanceFromStep("action", draft)) runTomoGenerate();
-  };
-
-  const handleBack = () => {
-    if (step === "trigger") setStep("name");
-    else if (step === "action") setStep("trigger");
-    else if (step === "draft") setStep("action");
-    else if (step === "personalise") setStep("draft");
-  };
-
-  const reachableIdx = stepIndex(reachable);
-  const currentStepIdx = stepIndex(step);
-
-  const handlePersonalise = () => {
-    setDraft((prev) => ({ ...prev, personaliseEnabled: true }));
-    setSelectedLpId(draft.lpDrafts[0]?.id ?? null);
-    setStep("personalise");
-  };
-
-  const handleApproveAll = () => {
-    const approved = draft.lpDrafts.map((d) => ({ ...d, status: "approved" as const }));
-    finishBuild(approved, true);
-  };
+  const activeEntry = savedPrimaryEntry ?? editEntry;
 
   const handleSavePersonalised = () => {
-    finishBuild(draft.lpDrafts, false, { fromPersonaliseStep: true });
+    const entry = persistPrimary(draft.lpDrafts, false);
+    if (!entry) {
+      toast.error("Could not save workflow");
+      return;
+    }
+    const offerFollowUp = buildPhase === "primary" && !entry.followUp;
+    if (offerFollowUp) {
+      setSavedPrimaryEntry(entry);
+      setFollowUpPromptOpen(true);
+      return;
+    }
+    toast.success(entry.followUp ? "Workflow and follow-up saved" : "Workflow saved", {
+      description: "Activate from the workflow card when ready.",
+    });
+    onClose();
   };
 
-  const handleAddFollowUp = () => {
+  const handleFollowUpPromptNo = () => {
+    setFollowUpPromptOpen(false);
+    toast.success("Workflow saved", {
+      description: "Activate from the workflow card when ready.",
+    });
+    onClose();
+  };
+
+  const handleFollowUpPromptYes = () => {
+    setFollowUpPromptOpen(false);
     setFollowUpDraft(initialWorkflowLegDraft());
-    setLegStep("trigger");
     setBuildPhase("followUp");
+    setEditSection("followUp");
+    setActionChatKey((k) => k + 1);
+    toast.message("Configure your follow-up — same build layout as the primary step.");
   };
 
   const handleSaveWithFollowUp = () => {
@@ -397,15 +364,24 @@ export function WorkflowBuildModal({
       toast.error("Complete the follow-up draft before saving");
       return;
     }
-    finishBuild(draft.lpDrafts, true, { followUp: leg, closeOnSave: true });
+    const entry = persistPrimary(draft.lpDrafts, true, leg);
+    if (!entry) {
+      toast.error("Could not save workflow");
+      return;
+    }
+    toast.success("Workflow and follow-up saved", {
+      description: "Activate from the workflow card when ready.",
+    });
+    onClose();
   };
 
   const handleRemoveFollowUp = () => {
     if (!editEntry) return;
-    finishBuild(draft.lpDrafts, Boolean(draft.lpDrafts.every((d) => d.status === "approved")), {
-      followUp: null,
-      closeOnSave: true,
-    });
+    const entry = persistPrimary(draft.lpDrafts, Boolean(draft.lpDrafts.every((d) => d.status === "approved")), null);
+    if (!entry) return;
+    toast.success("Follow-up removed");
+    setFollowUpDraft(initialWorkflowLegDraft());
+    onClose();
   };
 
   const switchEditSection = (section: "primary" | "followUp") => {
@@ -415,288 +391,237 @@ export function WorkflowBuildModal({
       setStep(maxReachableStep(draft));
     } else {
       setBuildPhase("followUp");
-      setLegStep(maxReachableLegStep(followUpDraft));
+      setActionChatKey((k) => k + 1);
     }
   };
 
+  if (!open || !pipeline) return null;
+
+  const handleNext = () => {
+    if (step === "name" && canAdvanceFromStep("name", draft)) setStep("build");
+  };
+
+  const handleBack = () => {
+    if (step === "personalise") setStep("build");
+    else if (step === "build") setStep("name");
+  };
+
+  const reachableIdx = stepIndex(reachable);
+  const currentStepIdx = stepIndex(step);
+  const showPrimaryStepper = buildPhase === "primary" && editSection === "primary";
+
   const stepTitle =
     buildPhase === "followUp"
-      ? "Add follow-up"
+      ? "Follow-up"
       : step === "personalise"
         ? "Personalise per LP"
-        : step === "draft"
-          ? "Review cohort draft"
-          : "Build for this list";
+        : step === "build"
+          ? "Build for this list"
+          : "Name your workflow";
+
+  const primaryTriggerSection = (
+    <>
+      <input
+        value={draft.trigger ?? ""}
+        onChange={(e) => {
+          const v = e.target.value;
+          setDraft((prev) => ({
+            ...prev,
+            trigger: v,
+            triggerConfirmed: v.trim().length > 0,
+          }));
+        }}
+        className="tomo-input w-full text-sm"
+        placeholder={`e.g. May 26, 2026, 9:00 AM — ${pipeline.name}`}
+      />
+      <p className="text-xs text-[color:var(--tomo-mute)]">
+        When should <span className="font-medium text-[color:var(--foreground)]">{draft.workflowName.trim() || "this workflow"}</span>{" "}
+        run on {pipeline.name}? If you only provide a date, we assume 9:00 AM local time.
+      </p>
+    </>
+  );
 
   return (
     <>
-    <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center"
-      data-testid="workflow-build-modal"
-    >
-      <button
-        type="button"
-        className="fixed inset-0 bg-[color:rgba(28,43,58,0.30)] backdrop-blur-[2px]"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="workflow-build-title"
-        className="relative z-[201] my-auto flex w-full max-w-7xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(96dvh,calc(100vh-1rem))] min-h-[min(720px,96dvh)]"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center"
+        data-testid="workflow-build-modal"
       >
-        <header className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 py-4 sm:px-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-teal)]">
-                {isEditMode ? "Edit workflow" : "New workflow"} · {pipeline.name}
-              </p>
-              <h2
-                id="workflow-build-title"
-                className="mt-1 font-[family-name:var(--font-newsreader)] text-xl font-medium text-[color:var(--foreground)]"
-              >
-                {stepTitle}
-              </h2>
-              {draft.workflowName.trim() ? (
-                <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
-                  <span className="font-medium text-[color:var(--tomo-body)]">{draft.workflowName.trim()}</span>
-                  {draft.triggerConfirmed && draft.trigger ? (
-                    <>
-                      {" "}
-                      · Trigger: <span className="text-[color:var(--tomo-body)]">{draft.trigger}</span>
-                    </>
-                  ) : null}
+        <button
+          type="button"
+          className="fixed inset-0 bg-[color:rgba(28,43,58,0.30)] backdrop-blur-[2px]"
+          aria-label="Close dialog"
+          onClick={onClose}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="workflow-build-title"
+          className="relative z-[201] my-auto flex w-full max-w-7xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(96dvh,calc(100vh-1rem))] min-h-[min(720px,96dvh)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[color:var(--tomo-teal)]">
+                  {isEditMode ? "Edit workflow" : "New workflow"} · {pipeline.name}
                 </p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded p-1 text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)]"
-              aria-label="Close"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-          {isEditMode ? (
-            <div
-              className="mt-3 flex flex-wrap gap-2"
-              role="tablist"
-              aria-label="Edit workflow section"
-              data-testid="workflow-build-edit-sections"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={editSection === "primary"}
-                onClick={() => switchEditSection("primary")}
-                className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
-                  editSection === "primary"
-                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
-                    : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
-                }`}
-              >
-                Primary
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={editSection === "followUp"}
-                onClick={() => switchEditSection("followUp")}
-                className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
-                  editSection === "followUp"
-                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
-                    : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
-                }`}
-              >
-                Follow-up{editEntry?.followUp ? "" : " (add)"}
-              </button>
-            </div>
-          ) : null}
-          {buildPhase === "primary" ? (
-          <ol className="mt-4 flex flex-wrap gap-2">
-            {WORKFLOW_CREATE_STEPS.map((s, i) => {
-              const isActive = s.id === step;
-              const isReachable =
-                i <= reachableIdx || (s.id === "personalise" && (draft.personaliseEnabled || step === "personalise"));
-              return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    disabled={!isReachable && !isActive}
-                    onClick={() => goToStep(s.id)}
-                    className={`rounded-full border px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.12em] transition ${
-                      isActive
-                        ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
-                        : isReachable
-                          ? "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
-                          : "cursor-not-allowed border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-mute)] opacity-50"
-                    }`}
-                  >
-                    {i + 1}. {s.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-          ) : null}
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 min-h-[480px]">
-          {buildPhase === "followUp" && !createdEntry ? (
-            <WorkflowLegWizard
-              pipeline={pipeline}
-              workflowName={draft.workflowName}
-              primaryActionBuild={primaryActionBuildForLeg}
-              primaryTrigger={draft.trigger ?? undefined}
-              draft={followUpDraft}
-              onDraftChange={setFollowUpDraft}
-              step={legStep}
-              onStepChange={setLegStep}
-              onBackFromTrigger={
-                !isEditMode ? () => {
-                  setBuildPhase("primary");
-                  setStep("personalise");
-                } : undefined
-              }
-              onBackLeg={() => {
-                if (isEditMode) switchEditSection("primary");
-                else {
-                  setBuildPhase("primary");
-                  setStep("personalise");
-                }
-              }}
-              onSaveFollowUp={handleSaveWithFollowUp}
-            />
-          ) : null}
-
-          {createdEntry ? (
-            <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
-              Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card when
-              you are ready to run.
-            </p>
-          ) : null}
-
-          {buildPhase === "primary" && step === "name" ? (
-            <label className="block">
-              <span className="text-xs font-medium text-[color:var(--foreground)]">Workflow name</span>
-              <input
-                value={draft.workflowName}
-                onChange={(e) => setDraft((prev) => ({ ...prev, workflowName: e.target.value }))}
-                className="tomo-input mt-1.5 w-full text-sm"
-                placeholder="e.g. London trip outreach"
-                autoFocus
-              />
-              <p className="mt-1.5 text-xs text-[color:var(--tomo-mute)]">
-                Shown on the workflow card for <span className="font-medium text-[color:var(--foreground)]">{pipeline.name}</span>.
-              </p>
-            </label>
-          ) : null}
-
-          {buildPhase === "primary" && step === "trigger" ? (
-            <div className="space-y-4">
-              <WorkflowCreatorChat
-                key={`trigger-${triggerChatKey}`}
-                pipeline={pipeline}
-                surfaceContext="workflows"
-                wizardStep="trigger"
-                workflowName={draft.workflowName.trim()}
-                variant="wizard"
-                onWorkflowCreated={() => {}}
-                confirmedTrigger={draft.trigger ?? undefined}
-                triggerConfirmed={draft.triggerConfirmed}
-                onTriggerConfirmed={(payload) => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    trigger: payload.trigger,
-                    triggerSummary: payload.summary,
-                    triggerConfirmed: true,
-                  }));
-                  if (payload.inferredDefaultTime) {
-                    toast.message(`Using ${payload.inferredDefaultTime} — say a different time in chat to change it.`);
-                  }
-                }}
-                onAdvanceWizardStep={() => {
-                  setActionChatKey((k) => k + 1);
-                  setStep("action");
-                }}
-              />
-              {draft.triggerConfirmed && draft.trigger ? (
-                <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-xs text-[color:var(--tomo-status-green)]">
-                  Trigger set: <span className="font-medium">{draft.trigger}</span>
-                  {draft.triggerSummary ? (
-                    <span className="mt-0.5 block text-[color:var(--tomo-body)]">{draft.triggerSummary}</span>
-                  ) : null}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {buildPhase === "primary" && step === "action" ? (
-            <div className="grid min-h-[28rem] gap-4 lg:grid-cols-2 lg:items-stretch">
-              <div className="flex flex-col gap-4">
-                <label className="block">
-                  <span className="text-xs font-medium text-[color:var(--foreground)]">Context for Tomo</span>
-                  <textarea
-                    value={draft.contextText}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, contextText: e.target.value }))}
-                    className="tomo-input mt-1.5 h-[12rem] w-full resize-none text-sm"
-                    placeholder="Theme, trip dates, talking points, anything Tomo should know…"
-                  />
-                </label>
-                <WorkflowWizardFileUpload
-                  attachments={draft.attachments}
-                  onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
-                  emptyHint=""
-                />
-                {draft.actionPromptConfirmed && draft.tomoInstruction.trim() ? (
-                  <div className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-status-green)]">
-                      Optimised prompt — ready for Draft step
-                    </p>
-                    <textarea
-                      value={draft.tomoInstruction}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setDraft((prev) => ({
-                          ...prev,
-                          tomoInstruction: v,
-                          actionPromptConfirmed: v.trim().length > 0 && prev.actionPromptConfirmed,
-                        }));
-                      }}
-                      rows={5}
-                      className="tomo-input mt-2 w-full resize-y text-sm"
-                    />
-                    <p className="mt-2 text-xs text-[color:var(--tomo-body)]">
-                      Tomo will use this prompt to generate the cohort email on the next step. Edit if needed, then
-                      click <span className="font-medium text-[color:var(--foreground)]">Generate drafts</span>.
-                    </p>
-                  </div>
+                <h2
+                  id="workflow-build-title"
+                  className="mt-1 font-[family-name:var(--font-newsreader)] text-xl font-medium text-[color:var(--foreground)]"
+                >
+                  {stepTitle}
+                </h2>
+                {draft.workflowName.trim() ? (
+                  <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
+                    <span className="font-medium text-[color:var(--tomo-body)]">{draft.workflowName.trim()}</span>
+                    {draft.trigger?.trim() ? (
+                      <>
+                        {" "}
+                        · Trigger: <span className="text-[color:var(--tomo-body)]">{draft.trigger}</span>
+                      </>
+                    ) : null}
+                  </p>
                 ) : null}
               </div>
-              <WorkflowCreatorChat
-                key={`action-${actionChatKey}`}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded p-1 text-[color:var(--tomo-mute)] hover:bg-[color:var(--tomo-navy-soft)]"
+                aria-label="Close"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            {isEditMode ? (
+              <div
+                className="mt-3 flex flex-wrap gap-2"
+                role="tablist"
+                aria-label="Edit workflow section"
+                data-testid="workflow-build-edit-sections"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={editSection === "primary"}
+                  onClick={() => switchEditSection("primary")}
+                  className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
+                    editSection === "primary"
+                      ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
+                      : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
+                  }`}
+                >
+                  Primary
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={editSection === "followUp"}
+                  onClick={() => switchEditSection("followUp")}
+                  className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
+                    editSection === "followUp"
+                      ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
+                      : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
+                  }`}
+                >
+                  Follow-up{activeEntry?.followUp || editEntry?.followUp ? "" : " (add)"}
+                </button>
+              </div>
+            ) : null}
+            {showPrimaryStepper ? (
+              <ol className="mt-4 flex flex-wrap gap-2">
+                {WORKFLOW_CREATE_STEPS.map((s, i) => {
+                  const isActive = s.id === step;
+                  const isReachable =
+                    i <= reachableIdx ||
+                    (s.id === "personalise" && (draft.personaliseEnabled || step === "personalise"));
+                  return (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        disabled={!isReachable && !isActive}
+                        onClick={() => goToStep(s.id)}
+                        className={`rounded-full border px-2.5 py-1 font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.12em] transition ${
+                          isActive
+                            ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
+                            : isReachable
+                              ? "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
+                              : "cursor-not-allowed border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-mute)] opacity-50"
+                        }`}
+                      >
+                        {i + 1}. {s.label}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : null}
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 min-h-[480px]">
+            {buildPhase === "followUp" && (editSection === "followUp" || !isEditMode) ? (
+              <WorkflowLegWizard
                 pipeline={pipeline}
-                surfaceContext="workflows"
-                wizardStep="action"
+                workflowName={draft.workflowName}
+                primaryActionBuild={primaryActionBuildForLeg}
+                primaryTrigger={draft.trigger ?? undefined}
+                draft={followUpDraft}
+                onDraftChange={setFollowUpDraft}
+                onBackLeg={() => {
+                  if (isEditMode) switchEditSection("primary");
+                  else {
+                    setBuildPhase("primary");
+                    setStep("personalise");
+                  }
+                }}
+                onSaveFollowUp={handleSaveWithFollowUp}
+              />
+            ) : null}
+
+            {buildPhase === "primary" && step === "name" ? (
+              <label className="block">
+                <span className="text-xs font-medium text-[color:var(--foreground)]">Workflow name</span>
+                <input
+                  value={draft.workflowName}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, workflowName: e.target.value }))}
+                  className="tomo-input mt-1.5 w-full text-sm"
+                  placeholder="e.g. London trip outreach"
+                  autoFocus
+                />
+                <p className="mt-1.5 text-xs text-[color:var(--tomo-mute)]">
+                  Shown on the workflow card for{" "}
+                  <span className="font-medium text-[color:var(--foreground)]">{pipeline.name}</span>.
+                </p>
+              </label>
+            ) : null}
+
+            {buildPhase === "primary" && step === "build" ? (
+              <WorkflowCondensedBuildPanel
+                pipeline={pipeline}
                 workflowName={draft.workflowName.trim()}
-                confirmedTrigger={draft.trigger ?? undefined}
-                contextText={orchestratorContextText}
-                attachmentNames={attachmentNames}
-                variant="wizard"
-                actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
-                actionPromptConfirmed={draft.actionPromptConfirmed}
-                confirmedActionInstruction={draft.tomoInstruction}
+                triggerSection={primaryTriggerSection}
+                contextText={draft.contextText}
+                onContextTextChange={(v) => setDraft((prev) => ({ ...prev, contextText: v }))}
+                attachments={draft.attachments}
+                onAttachmentsChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
                 onOpenAvailability={() => setAvailabilityModalOpen(true)}
                 availabilitySlotCount={availabilitySlots.length}
+                actionChatKey={actionChatKey}
+                confirmedTrigger={draft.trigger ?? undefined}
+                orchestratorContextText={orchestratorContextText}
+                attachmentNames={attachmentNames}
+                actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
+                tomoInstruction={draft.tomoInstruction}
+                actionPromptConfirmed={draft.actionPromptConfirmed}
+                actionChatStreaming={actionChatStreaming}
+                generating={generating}
+                canGenerateDrafts={canGenerateWorkflowDrafts(draft)}
+                onGenerateDrafts={() => void runTomoGenerate()}
+                onActionPillSelect={selectActionPill}
                 onStreamingChange={setActionChatStreaming}
                 onActionPromptRevoked={() =>
                   setDraft((prev) => ({ ...prev, actionPromptConfirmed: false }))
                 }
-                onActionPillSelect={selectActionPill}
-                onWorkflowCreated={() => {}}
                 onActionPromptConfirmed={({ instruction, actionDescription, actionKind }) => {
                   setDraft((prev) => {
                     const actionSpec: UserWorkflowAction =
@@ -739,262 +664,212 @@ export function WorkflowBuildModal({
                     actionPromptConfirmed: true,
                   }));
                 }}
+                draftVisible={draftPanelVisible}
+                actionDescription={draft.actionDescription}
+                onActionDescriptionChange={(v) => setDraft((prev) => ({ ...prev, actionDescription: v }))}
+                baseSubject={draft.baseSubject}
+                onBaseSubjectChange={(v) => setDraft((prev) => ({ ...prev, baseSubject: v }))}
+                baseBody={draft.baseBody}
+                onBaseBodyChange={(v) => setDraft((prev) => ({ ...prev, baseBody: v }))}
+                lpDraftCount={draft.lpDrafts.length}
+                showDraftAttachments
               />
-            </div>
-          ) : null}
+            ) : null}
 
-          {buildPhase === "primary" && step === "draft" && draft.baseBody ? (
-            <div className="space-y-6">
-              <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">Action</h3>
-                <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">
-                  What Tomo will do for each LP when this workflow runs.
-                </p>
-                <textarea
-                  value={draft.actionDescription}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, actionDescription: e.target.value }))}
-                  rows={4}
-                  className="tomo-input mt-3 w-full resize-y text-sm"
-                />
-              </section>
-              <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                    LP draft
-                  </h3>
+            {buildPhase === "primary" && step === "personalise" && selectedDraft ? (
+              <div className="flex min-h-[360px] gap-0 overflow-hidden rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)]">
+                <ul className="w-[220px] shrink-0 overflow-y-auto border-r border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))]">
+                  {draft.lpDrafts.map((d) => (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLpId(d.id)}
+                        className={`w-full border-l-2 px-3 py-2.5 text-left text-xs transition ${
+                          selectedDraft.id === d.id
+                            ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-card)]"
+                            : "border-transparent hover:bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_50%,transparent)]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 font-semibold text-[color:var(--foreground)]">{d.lpName}</p>
+                          {d.personalised ? (
+                            <span className="shrink-0 rounded-full bg-[color:var(--tomo-teal-tint)] px-1.5 py-0.5 text-[9px] font-medium text-[color:var(--tomo-teal)]">
+                              Edited
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="truncate text-[color:var(--tomo-mute)]">{d.firmName}</p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="min-w-0 flex-1 p-4">
+                  <p className="text-sm font-semibold text-[color:var(--foreground)]">
+                    {selectedDraft.lpName} · {selectedDraft.firmName}
+                  </p>
+                  <label className="mt-3 block">
+                    <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
+                    <input
+                      value={selectedDraft.subject}
+                      onChange={(e) => updateSelectedDraft({ subject: e.target.value })}
+                      className="tomo-input mt-1 w-full text-sm"
+                    />
+                  </label>
+                  <label className="mt-3 block">
+                    <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
+                    <textarea
+                      value={selectedDraft.body}
+                      onChange={(e) => updateSelectedDraft({ body: e.target.value })}
+                      rows={10}
+                      className="tomo-input mt-1 w-full resize-y text-sm"
+                    />
+                  </label>
                   <button
                     type="button"
-                    disabled={generating}
-                    onClick={runTomoGenerate}
-                    className="inline-flex items-center gap-1 text-[11px] text-[color:var(--tomo-teal)] disabled:opacity-50"
-                  >
-                    <SparklesIcon className="h-3.5 w-3.5" />
-                    Regenerate
-                  </button>
-                </div>
-                <label className="block">
-                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
-                  <input
-                    value={draft.baseSubject}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, baseSubject: e.target.value }))}
-                    className="tomo-input mt-1 w-full text-sm"
-                  />
-                </label>
-                <label className="mt-3 block">
-                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
-                  <textarea
-                    value={draft.baseBody}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, baseBody: e.target.value }))}
-                    rows={10}
-                    className="tomo-input mt-1 w-full resize-y text-sm"
-                  />
-                </label>
-                <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">
-                  {draft.lpDrafts.length} LP drafts — personalise on the next step.
-                </p>
-              </section>
-              <WorkflowWizardFileUpload
-                attachments={draft.attachments}
-                onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
-                label="Attachments for this outreach"
-              />
-            </div>
-          ) : null}
-
-          {buildPhase === "primary" && step === "personalise" && selectedDraft ? (
-            <div className="flex min-h-[360px] gap-0 overflow-hidden rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)]">
-              <ul className="w-[220px] shrink-0 overflow-y-auto border-r border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))]">
-                {draft.lpDrafts.map((d) => (
-                  <li key={d.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedLpId(d.id)}
-                      className={`w-full border-l-2 px-3 py-2.5 text-left text-xs transition ${
-                        selectedDraft.id === d.id
-                          ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-card)]"
-                          : "border-transparent hover:bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_50%,transparent)]"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="min-w-0 font-semibold text-[color:var(--foreground)]">{d.lpName}</p>
-                        {d.personalised ? (
-                          <span className="shrink-0 rounded-full bg-[color:var(--tomo-teal-tint)] px-1.5 py-0.5 text-[9px] font-medium text-[color:var(--tomo-teal)]">
-                            Edited
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="truncate text-[color:var(--tomo-mute)]">{d.firmName}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="min-w-0 flex-1 p-4">
-                <p className="text-sm font-semibold text-[color:var(--foreground)]">
-                  {selectedDraft.lpName} · {selectedDraft.firmName}
-                </p>
-                <label className="mt-3 block">
-                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
-                  <input
-                    value={selectedDraft.subject}
-                    onChange={(e) => updateSelectedDraft({ subject: e.target.value })}
-                    className="tomo-input mt-1 w-full text-sm"
-                  />
-                </label>
-                <label className="mt-3 block">
-                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
-                  <textarea
-                    value={selectedDraft.body}
-                    onChange={(e) => updateSelectedDraft({ body: e.target.value })}
-                    rows={10}
-                    className="tomo-input mt-1 w-full resize-y text-sm"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateSelectedDraft({
-                      subject: draft.baseSubject,
-                      body: draft.baseBody.replace("{{lp_first_name}}", selectedDraft.lpName.split(" ")[0] ?? "there"),
-                      personalised: false,
-                      status: "ready",
-                    })
-                  }
-                  className="mt-2 text-xs text-[color:var(--tomo-teal)]"
-                >
-                  Reset to Tomo draft
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[color:var(--tomo-rule-soft)] px-5 py-3 sm:px-6">
-          <button type="button" onClick={onClose} className="text-xs text-[color:var(--tomo-mute)]">
-            {createdEntry ? "Done" : "Cancel"}
-          </button>
-          {!createdEntry && buildPhase === "primary" ? (
-            <div className="flex flex-wrap gap-2">
-              {step !== "name" && currentStepIdx > 0 ? (
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs"
-                >
-                  Back
-                </button>
-              ) : null}
-
-              {step === "name" ? (
-                <button
-                  type="button"
-                  disabled={!canAdvanceFromStep("name", draft)}
-                  onClick={handleNext}
-                  className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                >
-                  Next
-                </button>
-              ) : null}
-
-              {step === "trigger" ? (
-                draft.triggerConfirmed ? (
-                  <span className="text-[11px] text-[color:var(--tomo-mute)]">
-                    Say <strong className="text-[color:var(--tomo-body)]">yes</strong> in chat to continue — or{" "}
-                    <button
-                      type="button"
-                      onClick={handleNext}
-                      className="font-medium text-[color:var(--tomo-teal)] underline-offset-2 hover:underline"
-                    >
-                      Next
-                    </button>
-                  </span>
-                ) : null
-              ) : null}
-
-              {step === "action" ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {!canAdvanceFromStep("action", draft) && !generating && !actionChatStreaming ? (
-                    <span className="text-[11px] text-[color:var(--tomo-mute)]">
-                      Say <strong className="text-[color:var(--tomo-body)]">yes</strong> when Tomo’s optimised prompt
-                      looks right
-                    </span>
-                  ) : null}
-                  {actionChatStreaming && !generating ? (
-                    <span className="text-[11px] text-[color:var(--tomo-mute)]">Tomo is refining…</span>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={
-                      !canAdvanceFromStep("action", draft) || generating || actionChatStreaming
+                    onClick={() =>
+                      updateSelectedDraft({
+                        subject: draft.baseSubject,
+                        body: draft.baseBody.replace(
+                          "{{lp_first_name}}",
+                          selectedDraft.lpName.split(" ")[0] ?? "there"
+                        ),
+                        personalised: false,
+                        status: "ready",
+                      })
                     }
-                    onClick={handleNext}
-                    className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    className="mt-2 text-xs text-[color:var(--tomo-teal)]"
                   >
-                    <SparklesIcon className="h-3.5 w-3.5" />
-                    {generating ? "Drafting…" : "Generate drafts"}
+                    Reset to Tomo draft
                   </button>
                 </div>
-              ) : null}
+              </div>
+            ) : null}
+          </div>
 
-              {step === "draft" ? (
-                <button
-                  type="button"
-                  disabled={!canAdvanceFromStep("draft", draft)}
-                  onClick={handleDraftNext}
-                  className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                >
-                  Next — personalise per LP
-                </button>
-              ) : null}
-
-              {step === "personalise" ? (
-                <>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[color:var(--tomo-rule-soft)] px-5 py-3 sm:px-6">
+            <button type="button" onClick={onClose} className="text-xs text-[color:var(--tomo-mute)]">
+              Cancel
+            </button>
+            {buildPhase === "primary" ? (
+              <div className="flex flex-wrap gap-2">
+                {step !== "name" && currentStepIdx > 0 ? (
                   <button
                     type="button"
-                    onClick={handleAddFollowUp}
-                    className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-[color:var(--tomo-teal)]"
-                    data-testid="workflow-add-follow-up"
+                    onClick={handleBack}
+                    className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs"
                   >
-                    Add follow-up
+                    Back
                   </button>
+                ) : null}
+
+                {step === "name" ? (
+                  <button
+                    type="button"
+                    disabled={!canAdvanceFromStep("name", draft)}
+                    onClick={handleNext}
+                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                ) : null}
+
+                {step === "build" && draftPanelVisible ? (
+                  <button
+                    type="button"
+                    onClick={handleDraftNext}
+                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                  >
+                    Next — personalise per LP
+                  </button>
+                ) : null}
+
+                {step === "personalise" ? (
                   <button
                     type="button"
                     onClick={handleSavePersonalised}
                     className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                    data-testid="workflow-save-finish"
                   >
                     Save & finish
                   </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-          {!createdEntry && buildPhase === "followUp" && isEditMode && editEntry?.followUp ? (
-            <button
-              type="button"
-              onClick={handleRemoveFollowUp}
-              className="text-xs text-[color:var(--tomo-status-red)]"
-            >
-              Remove follow-up
-            </button>
-          ) : null}
-        </footer>
+                ) : null}
+              </div>
+            ) : null}
+            {buildPhase === "followUp" && isEditMode && editEntry?.followUp ? (
+              <button
+                type="button"
+                onClick={handleRemoveFollowUp}
+                className="text-xs text-[color:var(--tomo-status-red)]"
+              >
+                Remove follow-up
+              </button>
+            ) : null}
+          </footer>
+        </div>
       </div>
-    </div>
-    <SchedulingFindTimeModal
-      mode="multi"
-      stackAboveModal
-      open={availabilityModalOpen}
-      onClose={() => setAvailabilityModalOpen(false)}
-      weekAnchor={new Date()}
-      initialSelected={availabilitySlots}
-      onConfirmSlots={(slots) => {
-        setAvailabilitySlots(slots);
-        if (slots.length > 0) {
-          toast.success(
-            `${slots.length} availability slot${slots.length === 1 ? "" : "s"} added for Tomo`
-          );
-        }
-      }}
-    />
+
+      {followUpPromptOpen ? (
+        <div
+          className="fixed inset-0 z-[210] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="follow-up-prompt-title"
+          data-testid="workflow-follow-up-prompt"
+        >
+          <button
+            type="button"
+            className="fixed inset-0 bg-[color:rgba(28,43,58,0.40)]"
+            aria-label="Dismiss"
+            onClick={handleFollowUpPromptNo}
+          />
+          <div className="relative z-[211] w-full max-w-md rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] p-5 shadow-[var(--tomo-modal-shadow)]">
+            <h3
+              id="follow-up-prompt-title"
+              className="font-[family-name:var(--font-newsreader)] text-lg font-medium text-[color:var(--foreground)]"
+            >
+              Add a follow-up step?
+            </h3>
+            <p className="mt-2 text-sm text-[color:var(--tomo-body)]">
+              Tomo can draft a nudge after no reply, or a reply when an LP responds — configured on the same build
+              screen as your primary outreach.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleFollowUpPromptNo}
+                className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-4 py-1.5 text-xs"
+              >
+                No thanks
+              </button>
+              <button
+                type="button"
+                onClick={handleFollowUpPromptYes}
+                className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                data-testid="workflow-follow-up-prompt-yes"
+              >
+                Add follow-up
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <SchedulingFindTimeModal
+        mode="multi"
+        stackAboveModal
+        open={availabilityModalOpen}
+        onClose={() => setAvailabilityModalOpen(false)}
+        weekAnchor={new Date()}
+        initialSelected={availabilitySlots}
+        onConfirmSlots={(slots) => {
+          setAvailabilitySlots(slots);
+          if (slots.length > 0) {
+            toast.success(
+              `${slots.length} availability slot${slots.length === 1 ? "" : "s"} added for Tomo`
+            );
+          }
+        }}
+      />
     </>
   );
 }

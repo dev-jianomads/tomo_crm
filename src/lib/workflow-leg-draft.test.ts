@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  canAdvanceLegStep,
+  hasGeneratedLegDrafts,
   initialWorkflowLegDraft,
   workflowLegDraftToStored,
 } from "./workflow-leg-draft";
@@ -35,7 +35,7 @@ describe("workflow-leg-draft", () => {
         },
       ],
     };
-    assert.ok(canAdvanceLegStep("draft", draft));
+    assert.ok(hasGeneratedLegDrafts(draft));
     const stored = workflowLegDraftToStored(draft);
     assert.ok(stored);
     assert.equal(stored?.triggerSpec?.kind, "wait");
