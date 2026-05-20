@@ -34,7 +34,11 @@ export function WorkflowExpandedBody({
   return (
     <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
       {customSaved ? (
-        <CustomSavedBanner onActivate={onActivateCustom} onEditAction={onEditAction} />
+        <CustomSavedBanner
+          hasFollowUp={entry.steps.some((s) => s.id.endsWith("-follow-up"))}
+          onActivate={onActivateCustom}
+          onEditAction={onEditAction}
+        />
       ) : null}
       {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
       <WorkflowMetaStrip meta={visibleWorkflowMeta(entry.meta)} />
@@ -65,9 +69,11 @@ function MonitorOnlyBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
 }
 
 function CustomSavedBanner({
+  hasFollowUp = false,
   onActivate,
   onEditAction,
 }: {
+  hasFollowUp?: boolean;
   onActivate?: () => void;
   onEditAction?: () => void;
 }) {
@@ -75,8 +81,10 @@ function CustomSavedBanner({
     <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-teal)_7%,var(--tomo-card))] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
-          <span className="font-semibold text-[color:var(--foreground)]">Saved on this list.</span> V1 custom workflows
-          are trigger plus one action. Edit action to change trigger, context, or drafts; activate when ready to run.
+          <span className="font-semibold text-[color:var(--foreground)]">Saved on this list.</span>{" "}
+          {hasFollowUp
+            ? "V1 custom workflows are a launch trigger, primary action, and optional follow-up (wait or on reply). Edit action to change primary or follow-up; activate when ready to run."
+            : "V1 custom workflows are a launch trigger plus one primary action. Edit action to change trigger, context, or drafts; activate when ready to run."}
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button

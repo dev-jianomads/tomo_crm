@@ -193,11 +193,11 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Step 5: **Add follow-up** / **Save & finish** (`data-testid="workflow-add-follow-up"`).
 - [x] Edit flow: **Primary** | **Follow-up** tabs when inactive (`data-testid="workflow-build-edit-sections"`).
 
-### Phase 2 — Surface + process diagram (1–2d)
+### Phase 2 — Surface + process diagram (1–2d) ✅
 
-- [ ] Update `workflowDefinitionFromCustomStored` / `customPlaybookToSurfaceEntry` (4–5 nodes, 2 segments).
-- [ ] Wait node `timingLabel` from `days`.
-- [ ] Banner: “trigger + primary action + optional follow-up”.
+- [x] Update `workflowDefinitionFromCustomStored` / `customPlaybookToSurfaceEntry` (4 nodes with wait follow-up; 3 with on-reply).
+- [x] Wait node `timingLabel` from `days` (`followUpWaitTimingLabel` → e.g. `7d`).
+- [x] Banner copy for primary-only vs primary + follow-up (`workflow-expanded-body.tsx`).
 
 ### Phase 3 — Launch + step runs (2–3d)
 

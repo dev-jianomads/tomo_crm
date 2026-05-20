@@ -3,7 +3,7 @@
  * Stored in localStorage only — no server persistence in mock mode.
  */
 
-import type { WorkflowDefinition } from "./workflow-templates";
+import type { WorkflowDefinition, WorkflowStep } from "./workflow-templates";
 import { readFromStorage, writeToStorage } from "./storage";
 import type { WorkflowActionBuildConfig } from "./workflow-action-build";
 import {
@@ -161,26 +161,57 @@ export function updateCustomPlaybookWithActionBuild(
   return list[idx];
 }
 
-/** Minimal process definition for the workflows UI (trigger + single action step). */
-export function workflowDefinitionFromCustomStored(c: CustomPlaybookStored): WorkflowDefinition {
+function primaryWorkflowStep(c: CustomPlaybookStored): WorkflowStep {
   if (c.actionSpec) {
     return {
-      title: c.name,
-      triggerKind: "EVENT",
-      trigger: c.trigger,
-      steps: [
-        {
-          name: actionStepName(c.actionSpec),
-          type: "action",
-          description: formatActionSpecForWorkflowDescription(c.actionSpec),
-        },
-      ],
+      name: actionStepName(c.actionSpec),
+      type: "action",
+      description: formatActionSpecForWorkflowDescription(c.actionSpec),
     };
+  }
+  return { name: "Action", type: "action", description: c.action };
+}
+
+function followUpWorkflowSteps(followUp: NonNullable<CustomPlaybookStored["followUp"]>): WorkflowStep[] {
+  const steps: WorkflowStep[] = [];
+  const spec = followUp.triggerSpec;
+  if (spec?.kind === "wait") {
+    steps.push({
+      name: "Wait",
+      type: "wait",
+      duration: `${spec.days} day${spec.days === 1 ? "" : "s"}`,
+      description: "No reply after primary send",
+      condition: "No reply",
+    });
+  }
+  if (followUp.actionSpec?.kind === "send_email") {
+    steps.push({
+      name: followUp.actionBuild?.actionDescription?.trim() || "Follow-up email",
+      type: "action",
+      description: formatActionSpecForWorkflowDescription(followUp.actionSpec),
+      condition: spec?.kind === "on_inbound_reply" ? "When LP replies" : "No reply after wait",
+    });
+  } else {
+    steps.push({
+      name: "Follow-up",
+      type: "action",
+      description: followUp.action,
+      condition: spec?.kind === "on_inbound_reply" ? "When LP replies" : undefined,
+    });
+  }
+  return steps;
+}
+
+/** Process definition for markdown / detail views (primary + optional wait + follow-up). */
+export function workflowDefinitionFromCustomStored(c: CustomPlaybookStored): WorkflowDefinition {
+  const steps: WorkflowStep[] = [primaryWorkflowStep(c)];
+  if (c.followUp && validateStoredFollowUp(c.followUp).ok) {
+    steps.push(...followUpWorkflowSteps(c.followUp));
   }
   return {
     title: c.name,
     triggerKind: "EVENT",
     trigger: c.trigger,
-    steps: [{ name: "Action", type: "action", description: c.action }],
+    steps,
   };
 }
