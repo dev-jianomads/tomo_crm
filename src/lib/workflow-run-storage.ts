@@ -3,6 +3,7 @@
  */
 
 import { readFromStorage, writeToStorage } from "./storage";
+import { stepPlanToLaunchParameters } from "./workflow-launch-plan";
 import type {
   CohortLaunchRecord,
   LaunchCohortInput,
@@ -45,12 +46,15 @@ export function saveWorkflowRunsStore(store: WorkflowRunsStore): void {
 }
 
 export function launchWorkflowCohort(
-  input: LaunchCohortInput,
-  options?: { initialWorkflowStepId?: string }
-): LaunchCohortResult & { cohort: CohortLaunchRecord } {
+  input: LaunchCohortInput
+): LaunchCohortResult & { cohort: CohortLaunchRecord; stepRuns: WorkflowStepRunRecord[] } {
   const store = loadWorkflowRunsStore();
+  const launchParameters = input.stepPlan
+    ? stepPlanToLaunchParameters(input.stepPlan, input.launchParameters ?? {})
+    : (input.launchParameters ?? {});
+
   const { cohort, runs, stepRuns, skippedLpContactIds } = buildCohortLaunch(
-    { ...input, initialWorkflowStepId: options?.initialWorkflowStepId ?? input.initialWorkflowStepId },
+    { ...input, launchParameters },
     store.runs
   );
 
@@ -66,6 +70,7 @@ export function launchWorkflowCohort(
     workflowRunIds: runs.map((r) => r.id),
     skippedLpContactIds,
     cohort,
+    stepRuns,
   };
 }
 

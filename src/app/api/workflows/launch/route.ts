@@ -11,6 +11,14 @@ const launchBodySchema = z.object({
   launchParameters: z.record(z.string(), z.string()).optional(),
   startedByUserId: z.string().optional(),
   initialWorkflowStepId: z.string().optional(),
+  stepPlan: z
+    .object({
+      primaryStepId: z.string().min(1),
+      followUpStepId: z.string().optional(),
+      followUpTriggerKind: z.enum(["wait", "on_inbound_reply"]).optional(),
+      followUpWaitDays: z.number().int().positive().optional(),
+    })
+    .optional(),
   /** Existing runs for dedup (production: load from DB). */
   existingRuns: z
     .array(
@@ -64,9 +72,19 @@ export async function POST(request: Request) {
       launchParameters: parsed.data.launchParameters,
       startedByUserId: parsed.data.startedByUserId,
       initialWorkflowStepId: parsed.data.initialWorkflowStepId,
+      stepPlan: parsed.data.stepPlan,
     },
     existing
   );
+
+  const primaryStepRuns = stepRuns.filter(
+    (sr) =>
+      sr.workflowStepId ===
+      (parsed.data.stepPlan?.primaryStepId ?? parsed.data.initialWorkflowStepId)
+  );
+  const followUpStepRuns = parsed.data.stepPlan?.followUpStepId
+    ? stepRuns.filter((sr) => sr.workflowStepId === parsed.data.stepPlan!.followUpStepId)
+    : [];
 
   const runHistory = cohortLaunchesToRunSummaries([cohort], runs);
 
@@ -74,6 +92,9 @@ export async function POST(request: Request) {
     cohortLaunchId: cohort.id,
     workflowRunIds: runs.map((r) => r.id),
     workflowStepRunIds: stepRuns.map((sr) => sr.id),
+    primaryStepRunIds: primaryStepRuns.map((sr) => sr.id),
+    followUpStepRunIds: followUpStepRuns.map((sr) => sr.id),
+    registeredFollowUp: Boolean(parsed.data.stepPlan?.followUpStepId),
     skippedLpContactIds,
     enrolledCount: runs.length,
     runHistoryRow: runHistory[0] ?? null,

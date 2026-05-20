@@ -2,6 +2,7 @@
  * Merge session-local cohort launches into workflow surface DTOs.
  */
 
+import { resolvePrimaryWorkflowStepId } from "./workflow-launch-plan";
 import { getWorkflowRunsForWorkflow } from "./workflow-run-storage";
 import { cohortLaunchesToRunSummaries } from "./workflow-runs";
 import type { WorkflowRunSummary, WorkflowSurfaceEntry } from "./workflow-surface-mock";
@@ -17,9 +18,9 @@ export function mergeEntryRunHistory(
   return [...novel, ...entry.runHistory];
 }
 
+/** Active step at launch — always the primary action step when present. */
 export function resolveInitialWorkflowStepId(entry: WorkflowSurfaceEntry): string | undefined {
-  const firstAction = entry.steps.find((s) => s.nodeType === "action" && s.actionType !== "outcome_capture");
-  return firstAction?.id;
+  return resolvePrimaryWorkflowStepId(entry);
 }
 
 export function enrichWorkflowSurfaceEntry(

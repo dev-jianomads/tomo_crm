@@ -65,6 +65,10 @@ export type WorkflowStepRunRecord = {
     sentAt?: string;
     repliedAt?: string;
     inboundInteractionId?: string;
+    /** Follow-up leg registered at launch; advanced in Phase 4. */
+    deferredLeg?: "follow_up";
+    followUpTriggerKind?: "wait" | "on_inbound_reply";
+    followUpWaitDays?: number;
   };
 };
 
@@ -83,6 +87,14 @@ export type WorkflowTaggedInteraction = {
   isMeaningfulTouch?: boolean;
 };
 
+/** Registered workflow step ids at launch (Phase 3 follow-up). */
+export type WorkflowLaunchStepPlan = {
+  primaryStepId: string;
+  followUpStepId?: string;
+  followUpTriggerKind?: "wait" | "on_inbound_reply";
+  followUpWaitDays?: number;
+};
+
 export type LaunchCohortInput = {
   workspaceId: string;
   workflowId: string;
@@ -91,8 +103,10 @@ export type LaunchCohortInput = {
   lpContactIds: string[];
   launchParameters?: Record<string, string>;
   startedByUserId?: string;
-  /** First send step id from workflow definition (mock: first action step). */
+  /** Active step at launch — must be primary action step id. */
   initialWorkflowStepId?: string;
+  /** When set, also registers a deferred follow-up step run per LP. */
+  stepPlan?: WorkflowLaunchStepPlan;
 };
 
 export type LaunchCohortResult = {
@@ -179,14 +193,32 @@ export function buildCohortLaunch(
       startedByUserId: input.startedByUserId,
     });
 
-    if (input.initialWorkflowStepId) {
+    const plan = input.stepPlan;
+    const primaryStepId = plan?.primaryStepId ?? input.initialWorkflowStepId;
+
+    if (primaryStepId) {
       stepRuns.push({
         id: newWorkflowStepRunId(),
         workflowRunId,
-        workflowStepId: input.initialWorkflowStepId,
+        workflowStepId: primaryStepId,
         status: "pending",
         startedAt,
         outputJsonb: {},
+      });
+    }
+
+    if (plan?.followUpStepId) {
+      stepRuns.push({
+        id: newWorkflowStepRunId(),
+        workflowRunId,
+        workflowStepId: plan.followUpStepId,
+        status: "pending",
+        startedAt,
+        outputJsonb: {
+          deferredLeg: "follow_up",
+          ...(plan.followUpTriggerKind ? { followUpTriggerKind: plan.followUpTriggerKind } : {}),
+          ...(plan.followUpWaitDays != null ? { followUpWaitDays: plan.followUpWaitDays } : {}),
+        },
       });
     }
   }

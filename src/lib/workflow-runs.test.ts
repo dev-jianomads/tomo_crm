@@ -133,4 +133,36 @@ describe("workflow-runs", () => {
     assert.equal(isActiveWorkflowRunStatus("running"), true);
     assert.equal(isActiveWorkflowRunStatus("completed"), false);
   });
+
+  it("registers primary and deferred follow-up step runs at launch", () => {
+    const { runs, stepRuns } = buildCohortLaunch(
+      {
+        workspaceId: "ws-1",
+        workflowId: "pb-custom-1",
+        listId: "list-1",
+        listName: "Fat Middle",
+        lpContactIds: ["lp-a"],
+        stepPlan: {
+          primaryStepId: "pb-custom-1-primary",
+          followUpStepId: "pb-custom-1-follow-up",
+          followUpTriggerKind: "wait",
+          followUpWaitDays: 7,
+        },
+        initialWorkflowStepId: "pb-custom-1-primary",
+      },
+      []
+    );
+
+    assert.equal(runs.length, 1);
+    assert.equal(stepRuns.length, 2);
+
+    const primary = stepRuns.find((sr) => sr.workflowStepId === "pb-custom-1-primary");
+    const followUp = stepRuns.find((sr) => sr.workflowStepId === "pb-custom-1-follow-up");
+    assert.ok(primary);
+    assert.equal(primary?.status, "pending");
+    assert.ok(followUp);
+    assert.equal(followUp?.outputJsonb.deferredLeg, "follow_up");
+    assert.equal(followUp?.outputJsonb.followUpTriggerKind, "wait");
+    assert.equal(followUp?.outputJsonb.followUpWaitDays, 7);
+  });
 });

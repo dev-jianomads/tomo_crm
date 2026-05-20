@@ -23,6 +23,8 @@ import { useRelationships } from "@/components/relationships-provider";
 import { useRequireSession } from "@/lib/auth";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { getPipelineMembers, isManualList } from "@/lib/pipelines";
+import { resolveLaunchInputFromEntry } from "@/lib/workflow-launch-plan";
+import { launchWorkflowCohort } from "@/lib/workflow-run-storage";
 import { enrichWorkflowSurfaceEntry } from "@/lib/workflow-surface-launches";
 import type { WorkflowLaunchContext } from "@/components/workflow-run-config-panel";
 import { usePersistentState } from "@/lib/usePersistentState";
@@ -140,14 +142,6 @@ function WorkflowsPageContent() {
     [workflowActivationOverrides]
   );
 
-  const activateCustomWorkflow = useCallback(
-    (entryId: string) => {
-      setWorkflowActivationOverrides((prev) => ({ ...prev, [entryId]: true }));
-      toast.success("Workflow activated on this list");
-    },
-    [setWorkflowActivationOverrides]
-  );
-
   const confirmDeleteWorkflow = useCallback(() => {
     if (!deleteTarget) return;
     if (deleteTarget.kind === "custom") {
@@ -221,6 +215,64 @@ function WorkflowsPageContent() {
       lpContactIds: members.map((m) => m.id),
     };
   }, [relationships, selectedPipeline]);
+
+  const activateCustomWorkflow = useCallback(
+    (entryId: string) => {
+      if (!selectedPipeline || !launchContext) {
+        toast.error("Select a list with LPs before activating");
+        return;
+      }
+
+      const pb = customPlaybooks.find((p) => p.id === entryId);
+      if (!pb) return;
+
+      const surface = customPlaybookToSurfaceEntry(pb, false);
+      const resolved = resolveLaunchInputFromEntry(surface, pb);
+      if (!resolved) {
+        toast.error("Could not resolve workflow steps for launch");
+        return;
+      }
+
+      const result = launchWorkflowCohort({
+        workspaceId: "demo-workspace",
+        workflowId: entryId,
+        listId: launchContext.listId,
+        listName: launchContext.listName,
+        lpContactIds: launchContext.lpContactIds,
+        initialWorkflowStepId: resolved.initialWorkflowStepId,
+        stepPlan: resolved.stepPlan,
+      });
+
+      const enrolled = result.workflowRunIds.length;
+      const skipped = result.skippedLpContactIds.length;
+      const followUpRegistered = Boolean(resolved.stepPlan.followUpStepId);
+
+      if (enrolled === 0) {
+        toast.warning("No new runs created", {
+          description:
+            skipped > 0
+              ? `${skipped} LP${skipped === 1 ? "" : "s"} already in an active run for this workflow.`
+              : "The list has no eligible LPs.",
+        });
+        return;
+      }
+
+      setWorkflowActivationOverrides((prev) => ({ ...prev, [entryId]: true }));
+      setLaunchRefreshTick((t) => t + 1);
+      toast.success(
+        followUpRegistered
+          ? `Activated — ${enrolled} LP${enrolled === 1 ? "" : "s"} enrolled (primary + follow-up registered)`
+          : `Activated — ${enrolled} LP${enrolled === 1 ? "" : "s"} enrolled`,
+        {
+          description:
+            skipped > 0
+              ? `${skipped} skipped (already active). Approve primary sends in Action Drawer.`
+              : "Approve primary sends in Action Drawer.",
+        }
+      );
+    },
+    [customPlaybooks, launchContext, selectedPipeline, setWorkflowActivationOverrides]
+  );
 
   const allDisplayEntries = useMemo(
     () => [...defaultEntries, ...tailoredEntries, ...customEntriesForList],

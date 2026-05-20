@@ -199,10 +199,12 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Wait node `timingLabel` from `days` (`followUpWaitTimingLabel` → e.g. `7d`).
 - [x] Banner copy for primary-only vs primary + follow-up (`workflow-expanded-body.tsx`).
 
-### Phase 3 — Launch + step runs (2–3d)
+### Phase 3 — Launch + step runs (2–3d) ✅
 
-- [ ] Launch API: primary step run at launch; follow-up step definition registered.
-- [ ] `resolveInitialWorkflowStepId` → primary only.
+- [x] Launch API + `buildCohortLaunch` — primary step run active; follow-up step run registered (`deferredLeg` in `output_jsonb`).
+- [x] `resolveInitialWorkflowStepId` / `resolveLaunchInputFromEntry` → primary step id (`-primary` suffix for custom).
+- [x] Custom **Activate** enrolls cohort via `launchWorkflowCohort` with `stepPlan`.
+- [x] `stepPlan` serialized in `launch_parameters` (`primary_step_id`, `follow_up_step_id`, etc.).
 
 ### Phase 4 — Advancement + attribution (2–3d)
 

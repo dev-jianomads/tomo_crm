@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { launchWorkflowCohort } from "@/lib/workflow-run-storage";
-import { resolveInitialWorkflowStepId } from "@/lib/workflow-surface-launches";
+import { resolveLaunchInputFromEntry } from "@/lib/workflow-launch-plan";
 import {
   formatWorkflowRunFieldDisplay,
   type WorkflowRunConfig,
@@ -212,6 +212,12 @@ function LaunchRunFooter({
       return;
     }
 
+    const resolved = resolveLaunchInputFromEntry(entry);
+    if (!resolved) {
+      toast.error("Could not resolve workflow steps for launch");
+      return;
+    }
+
     const result = launchWorkflowCohort({
       workspaceId: launchContext.workspaceId ?? "demo-workspace",
       workflowId: config.workflowId,
@@ -219,7 +225,8 @@ function LaunchRunFooter({
       listName: launchContext.listName,
       lpContactIds: launchContext.lpContactIds,
       launchParameters: launchParameters ?? {},
-      initialWorkflowStepId: resolveInitialWorkflowStepId(entry),
+      initialWorkflowStepId: resolved.initialWorkflowStepId,
+      stepPlan: resolved.stepPlan,
     });
 
     const skipped = result.skippedLpContactIds.length;
