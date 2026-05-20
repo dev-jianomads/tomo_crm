@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import type { UIMessage } from "ai";
 import type { Pipeline } from "@/lib/pipelines";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
@@ -53,6 +53,9 @@ type WorkflowCreatorChatProps = {
   /** Action wizard: prompt confirmed via Tomo tool or suggestion pill. */
   actionPromptConfirmed?: boolean;
   confirmedActionInstruction?: string;
+  /** Action wizard: open calendar picker for GP availability (silent context). */
+  onOpenAvailability?: () => void;
+  availabilitySlotCount?: number;
   variant?: "compact" | "wizard";
 };
 
@@ -101,6 +104,8 @@ export function WorkflowCreatorChat({
   onActionPillSelect,
   actionPromptConfirmed,
   confirmedActionInstruction,
+  onOpenAvailability,
+  availabilitySlotCount = 0,
   variant = "compact",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -294,8 +299,8 @@ export function WorkflowCreatorChat({
         </>
       ) : (
         <>
-          When should <strong>{workflowName}</strong> run? Give a date (and time if you care). If you only give a date,
-          I’ll use <strong>9:00 AM</strong> local time.
+          When should the <strong>{workflowName}</strong> workflow be triggered? If you only provide a date, I will
+          assume first thing in the morning, 9am local time.
         </>
       )
     ) : surfaceContext === "workflows" ? (
@@ -311,8 +316,49 @@ export function WorkflowCreatorChat({
 
   const shellClass =
     variant === "wizard"
-      ? "flex min-h-[380px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+      ? isActionWizard
+        ? "flex h-full min-h-[28rem] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+        : "flex min-h-[380px] flex-1 flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
       : "flex min-h-[220px] max-h-[40vh] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-shadow-1)]";
+
+  const actionSendLabel = isActionWizard ? "Refine" : "Send";
+  const actionSendHint = isActionWizard ? "⌘↵ to refine" : "⌘↵ to send";
+
+  const actionToolbar = (
+    <div className="mt-2 flex shrink-0 items-center justify-end gap-2">
+      <span className="mr-auto text-[10px] text-[color:var(--tomo-mute)]">{actionSendHint}</span>
+      {isActionWizard && onOpenAvailability ? (
+        <button
+          type="button"
+          onClick={onOpenAvailability}
+          disabled={isStreaming}
+          className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+        >
+          <CalendarDaysIcon className="h-4 w-4 text-[color:var(--tomo-mute)]" aria-hidden />
+          Availability
+          {availabilitySlotCount > 0 ? (
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-teal)]">
+              ({availabilitySlotCount})
+            </span>
+          ) : null}
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={isStreaming || !input.trim()}
+        className={
+          isActionWizard
+            ? "inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+            : "inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+        }
+        aria-label={actionSendLabel}
+      >
+        <PaperAirplaneIcon className="h-4 w-4" />
+        {isActionWizard ? actionSendLabel : null}
+      </button>
+    </div>
+  );
 
   return (
     <div className={shellClass}>
@@ -351,23 +397,10 @@ export function WorkflowCreatorChat({
             }}
             placeholder="Describe the outreach you want Tomo to write on the Draft step…"
             disabled={isStreaming}
-            rows={8}
             autoFocus
-            className="tomo-input min-h-[12rem] w-full flex-1 resize-none py-2.5 text-sm leading-relaxed disabled:opacity-50"
+            className="tomo-input h-[12rem] w-full flex-none resize-none py-2.5 text-sm leading-relaxed disabled:opacity-50"
           />
-          <div className="mt-2 flex shrink-0 items-center justify-end gap-2">
-            <span className="mr-auto text-[10px] text-[color:var(--tomo-mute)]">⌘↵ to send</span>
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={isStreaming || !input.trim()}
-              className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
-              aria-label="Send"
-            >
-              <PaperAirplaneIcon className="h-4 w-4" />
-              Send
-            </button>
-          </div>
+          {actionToolbar}
         </div>
       ) : (
         <>
@@ -407,25 +440,49 @@ export function WorkflowCreatorChat({
             )}
             <div ref={endRef} />
           </div>
-          <div className="flex shrink-0 gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-              placeholder="Message Tomo…"
-              disabled={isStreaming}
-              className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
-            />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={isStreaming || !input.trim()}
-              className="inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
-              aria-label="Send"
-            >
-              <PaperAirplaneIcon className="h-4 w-4" />
-            </button>
+          <div className="flex shrink-0 flex-col gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+                placeholder="Message Tomo…"
+                disabled={isStreaming}
+                className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
+              />
+              {isActionWizard && onOpenAvailability ? (
+                <button
+                  type="button"
+                  onClick={onOpenAvailability}
+                  disabled={isStreaming}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2.5 py-2 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+                  aria-label="Availability"
+                >
+                  <CalendarDaysIcon className="h-4 w-4 text-[color:var(--tomo-mute)]" aria-hidden />
+                  <span className="hidden sm:inline">Availability</span>
+                  {availabilitySlotCount > 0 ? (
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-teal)]">
+                      ({availabilitySlotCount})
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={isStreaming || !input.trim()}
+                className={
+                  isActionWizard
+                    ? "inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+                    : "inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+                }
+                aria-label={actionSendLabel}
+              >
+                <PaperAirplaneIcon className="h-4 w-4" />
+                {isActionWizard ? actionSendLabel : null}
+              </button>
+            </div>
           </div>
         </>
       )}

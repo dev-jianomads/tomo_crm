@@ -94,9 +94,10 @@ export function WorkflowWizardFileUpload({
         className="sr-only"
         onChange={(e) => void handleFiles(e.target.files)}
       />
-      {attachments.length === 0 ? (
+      {attachments.length === 0 && emptyHint ? (
         <p className="text-xs text-[color:var(--tomo-mute)]">{emptyHint}</p>
-      ) : (
+      ) : null}
+      {attachments.length > 0 ? (
         <ul className="space-y-1.5">
           {attachments.map((a) => (
             <li
@@ -119,7 +120,7 @@ export function WorkflowWizardFileUpload({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }

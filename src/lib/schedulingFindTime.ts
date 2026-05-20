@@ -89,6 +89,20 @@ const HOURS = [9, 10, 11, 12, 13, 14, 15, 16] as const;
 /**
  * @param anchor Any date in the desired week (or that week’s Sunday); columns use real calendar dates.
  */
+export function schedulingSlotKey(slot: Pick<SchedulingSlotModel, "dateKey" | "hour24">): string {
+  return `${slot.dateKey}@${slot.hour24}`;
+}
+
+/** Silent orchestrator context from GP-selected calendar slots (workflow action refine). */
+export function formatAvailabilityContext(slots: SchedulingSlotModel[]): string {
+  if (slots.length === 0) return "";
+  const sorted = [...slots].sort(
+    (a, b) => a.dateKey.localeCompare(b.dateKey) || a.hour24 - b.hour24
+  );
+  const lines = sorted.map((s) => `- ${s.dayMedium} at ${s.timeEtLabel}`);
+  return `GP calendar availability (from calendar integration — use when refining outreach):\n${lines.join("\n")}`;
+}
+
 export function buildSchedulingWeekGrid(anchor: Date = SCHEDULING_SCENARIO_ANCHOR): SchedulingSlotModel[] {
   const start = startOfWeekSunday(anchor);
   const slots: SchedulingSlotModel[] = [];

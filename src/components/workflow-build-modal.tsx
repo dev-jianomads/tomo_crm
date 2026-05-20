@@ -29,6 +29,11 @@ import {
   type WorkflowCreateStep,
 } from "@/lib/workflow-create-draft";
 import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
+import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
+import {
+  formatAvailabilityContext,
+  type SchedulingSlotModel,
+} from "@/lib/schedulingFindTime";
 
 export type WorkflowBuildModalProps = {
   open: boolean;
@@ -67,6 +72,8 @@ export function WorkflowBuildModal({
   const [selectedLpId, setSelectedLpId] = useState<string | null>(null);
   const [triggerChatKey, setTriggerChatKey] = useState(0);
   const [actionChatKey, setActionChatKey] = useState(0);
+  const [availabilitySlots, setAvailabilitySlots] = useState<SchedulingSlotModel[]>([]);
+  const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +92,8 @@ export function WorkflowBuildModal({
       setGenerating(false);
       setTriggerChatKey((k) => k + 1);
       setActionChatKey((k) => k + 1);
+      setAvailabilitySlots([]);
+      setAvailabilityModalOpen(false);
     });
   }, [open, pipeline?.id, editEntry?.id]);
 
@@ -109,6 +118,14 @@ export function WorkflowBuildModal({
     [draft.contextText, draft.attachments]
   );
 
+  /** Context + attachments + calendar slots — sent to Tomo only, not shown in the left textarea. */
+  const orchestratorContextText = useMemo(() => {
+    const availability = formatAvailabilityContext(availabilitySlots);
+    if (!availability) return mergedContextText;
+    if (!mergedContextText.trim()) return availability;
+    return `${mergedContextText.trim()}\n\n${availability}`;
+  }, [mergedContextText, availabilitySlots]);
+
   const goToStep = (target: WorkflowCreateStep) => {
     const targetIdx = stepIndex(target);
     const reachableIdx = stepIndex(reachable);
@@ -132,7 +149,7 @@ export function WorkflowBuildModal({
           workflowName: draft.workflowName.trim(),
           listName: pipeline.name,
           instruction,
-          contextText: mergeContextWithAttachmentText(draft.contextText, draft.attachments),
+          contextText: orchestratorContextText,
           trigger: draft.trigger ?? undefined,
           attachmentNames: draft.attachments.map((a) => a.name),
         }),
@@ -182,10 +199,10 @@ export function WorkflowBuildModal({
     draft.actionSpec,
     draft.actionDescription,
     draft.attachments,
-    draft.contextText,
     draft.tomoInstruction,
     draft.trigger,
     draft.workflowName,
+    orchestratorContextText,
     pipeline,
   ]);
 
@@ -307,6 +324,7 @@ export function WorkflowBuildModal({
         : "Build for this list";
 
   return (
+    <>
     <div
       className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center"
       data-testid="workflow-build-modal"
@@ -448,22 +466,21 @@ export function WorkflowBuildModal({
           ) : null}
 
           {step === "action" ? (
-            <div className="grid min-h-[440px] gap-4 lg:grid-cols-2">
-              <div className="space-y-4">
+            <div className="grid min-h-[28rem] gap-4 lg:grid-cols-2 lg:items-stretch">
+              <div className="flex flex-col gap-4">
                 <label className="block">
                   <span className="text-xs font-medium text-[color:var(--foreground)]">Context for Tomo</span>
                   <textarea
                     value={draft.contextText}
                     onChange={(e) => setDraft((prev) => ({ ...prev, contextText: e.target.value }))}
-                    rows={6}
-                    className="tomo-input mt-1.5 w-full resize-y text-sm"
+                    className="tomo-input mt-1.5 h-[12rem] w-full resize-none text-sm"
                     placeholder="Theme, trip dates, talking points, anything Tomo should know…"
                   />
                 </label>
                 <WorkflowWizardFileUpload
                   attachments={draft.attachments}
                   onChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
-                  emptyHint="Upload .docx or .pdf — text is extracted for Tomo."
+                  emptyHint=""
                 />
                 {draft.actionPromptConfirmed && draft.tomoInstruction.trim() ? (
                   <div className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] p-3">
@@ -487,12 +504,7 @@ export function WorkflowBuildModal({
                       click <span className="font-medium text-[color:var(--foreground)]">Generate drafts</span>.
                     </p>
                   </div>
-                ) : (
-                  <p className="text-xs text-[color:var(--tomo-mute)]">
-                    Use Tomo on the right to refine your action prompt. The email draft is generated on the Draft step,
-                    not here.
-                  </p>
-                )}
+                ) : null}
               </div>
               <WorkflowCreatorChat
                 key={`action-${actionChatKey}`}
@@ -501,12 +513,14 @@ export function WorkflowBuildModal({
                 wizardStep="action"
                 workflowName={draft.workflowName.trim()}
                 confirmedTrigger={draft.trigger ?? undefined}
-                contextText={mergedContextText}
+                contextText={orchestratorContextText}
                 attachmentNames={attachmentNames}
                 variant="wizard"
                 actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
                 actionPromptConfirmed={draft.actionPromptConfirmed}
                 confirmedActionInstruction={draft.tomoInstruction}
+                onOpenAvailability={() => setAvailabilityModalOpen(true)}
+                availabilitySlotCount={availabilitySlots.length}
                 onActionPillSelect={selectActionPill}
                 onWorkflowCreated={() => {}}
                 onActionPromptConfirmed={({ instruction, actionDescription, actionKind }) => {
@@ -755,5 +769,21 @@ export function WorkflowBuildModal({
         </footer>
       </div>
     </div>
+    <SchedulingFindTimeModal
+      mode="multi"
+      open={availabilityModalOpen}
+      onClose={() => setAvailabilityModalOpen(false)}
+      weekAnchor={new Date()}
+      initialSelected={availabilitySlots}
+      onConfirmSlots={(slots) => {
+        setAvailabilitySlots(slots);
+        if (slots.length > 0) {
+          toast.success(
+            `${slots.length} availability slot${slots.length === 1 ? "" : "s"} added for Tomo`
+          );
+        }
+      }}
+    />
+    </>
   );
 }
