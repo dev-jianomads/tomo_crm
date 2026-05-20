@@ -2,10 +2,18 @@
  * POST /api/tomo/generate-workflow-cohort-draft
  *
  * Generates a cohort email template for the workflow create wizard Draft step.
+ * Pass `draftKind: "follow_up"` and `primaryTemplate` for contextual follow-up legs.
  */
 
 import { z } from "zod";
 import { generateWorkflowCohortDraft } from "@/lib/workflow-cohort-draft";
+
+const primaryTemplateSchema = z.object({
+  subject: z.string().min(1),
+  body: z.string().min(1),
+  trigger: z.string().optional(),
+  actionDescription: z.string().optional(),
+});
 
 const requestSchema = z.object({
   workflowName: z.string().min(1),
@@ -14,6 +22,8 @@ const requestSchema = z.object({
   contextText: z.string().optional().default(""),
   trigger: z.string().optional(),
   attachmentNames: z.array(z.string()).optional(),
+  draftKind: z.enum(["primary", "follow_up"]).optional().default("primary"),
+  primaryTemplate: primaryTemplateSchema.optional(),
 });
 
 export async function POST(req: Request) {

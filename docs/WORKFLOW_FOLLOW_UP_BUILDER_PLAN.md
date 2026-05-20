@@ -206,15 +206,19 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Custom **Activate** enrolls cohort via `launchWorkflowCohort` with `stepPlan`.
 - [x] `stepPlan` serialized in `launch_parameters` (`primary_step_id`, `follow_up_step_id`, etc.).
 
-### Phase 4 — Advancement + attribution (2–3d)
+### Phase 4 — Advancement + attribution (2–3d) ✅
 
-- [ ] `advanceWorkflowRunOnSend`, `advanceWorkflowRunOnReply`, `advanceWorkflowRunOnWaitElapsed`.
-- [ ] Tests: no_reply path, early reply skips follow-up, on_reply enqueues follow-up.
-- [ ] Document ingest hook for `attribute-reply`.
+- [x] `advanceWorkflowRunOnSend`, `advanceWorkflowRunOnReply`, `advanceWorkflowRunOnWaitElapsed` — `workflow-run-advance.ts`.
+- [x] Wired in `workflow-run-storage`, `attribute-reply` API, enrich on read (wait mock scheduler).
+- [x] Tests: wait elapsed, reply skips follow-up, on-reply activates follow-up.
+- [x] Ingest hook documented — `docs/WORKFLOW_REPLY_INGEST_HOOK.md`.
+- [x] `rollupStateSummaryFromStepRuns` for custom workflow monitoring counts.
 
-### Phase 5 — Follow-up draft generation (1–2d)
+### Phase 5 — Follow-up draft generation (1–2d) ✅
 
-- [ ] Extend or sibling route to `generate-workflow-cohort-draft`: primary template + follow-up instruction → contextual drafts.
+- [x] Extend `generate-workflow-cohort-draft`: `draftKind: "follow_up"` + `primaryTemplate` → follow-up system prompt and offline mock.
+- [x] Leg wizard calls API with structured primary template (GP context stays in `contextText`).
+- [x] Tests: `workflow-cohort-draft.test.ts`.
 
 ### Phase 6 — Activated monitoring (1d)
 

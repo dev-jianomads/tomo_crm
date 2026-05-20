@@ -69,6 +69,8 @@ export type WorkflowStepRunRecord = {
     deferredLeg?: "follow_up";
     followUpTriggerKind?: "wait" | "on_inbound_reply";
     followUpWaitDays?: number;
+    activatedAt?: string;
+    skippedReason?: string;
   };
 };
 

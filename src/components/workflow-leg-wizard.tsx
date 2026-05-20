@@ -106,6 +106,16 @@ export function WorkflowLegWizard({
     }
     setGenerating(true);
     try {
+      const primaryTemplate =
+        primaryActionBuild?.baseSubject?.trim() && primaryActionBuild.baseBody?.trim()
+          ? {
+              subject: primaryActionBuild.baseSubject,
+              body: primaryActionBuild.baseBody,
+              trigger: primaryTrigger,
+              actionDescription: primaryActionBuild.actionDescription,
+            }
+          : undefined;
+
       const res = await fetch("/api/tomo/generate-workflow-cohort-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +123,9 @@ export function WorkflowLegWizard({
           workflowName: `${workflowName.trim()} — follow-up`,
           listName: pipeline.name,
           instruction,
-          contextText: orchestratorContextText,
+          contextText: mergedContextText,
+          draftKind: "follow_up",
+          primaryTemplate,
           trigger: draft.trigger,
           attachmentNames: draft.attachments.map((a) => a.name),
         }),
@@ -161,8 +173,10 @@ export function WorkflowLegWizard({
     draft.trigger,
     onDraftChange,
     onStepChange,
-    orchestratorContextText,
+    mergedContextText,
     pipeline.name,
+    primaryActionBuild,
+    primaryTrigger,
     workflowName,
   ]);
 

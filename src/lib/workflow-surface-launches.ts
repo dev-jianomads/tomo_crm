@@ -3,7 +3,10 @@
  */
 
 import { resolvePrimaryWorkflowStepId } from "./workflow-launch-plan";
-import { getWorkflowRunsForWorkflow } from "./workflow-run-storage";
+import {
+  getWorkflowRunsForWorkflow,
+  rollupStateSummaryFromStepRuns,
+} from "./workflow-run-storage";
 import { cohortLaunchesToRunSummaries } from "./workflow-runs";
 import type { WorkflowRunSummary, WorkflowSurfaceEntry } from "./workflow-surface-mock";
 
@@ -18,6 +21,14 @@ export function mergeEntryRunHistory(
   return [...novel, ...entry.runHistory];
 }
 
+function mergeEntryStateSummary(
+  entry: WorkflowSurfaceEntry,
+  listId: string | null
+): WorkflowSurfaceEntry["stateSummary"] {
+  const { runs, stepRuns } = getWorkflowRunsForWorkflow(entry.id, listId ?? undefined);
+  return rollupStateSummaryFromStepRuns(entry, stepRuns, runs) ?? entry.stateSummary;
+}
+
 /** Active step at launch — always the primary action step when present. */
 export function resolveInitialWorkflowStepId(entry: WorkflowSurfaceEntry): string | undefined {
   return resolvePrimaryWorkflowStepId(entry);
@@ -30,5 +41,6 @@ export function enrichWorkflowSurfaceEntry(
   return {
     ...entry,
     runHistory: mergeEntryRunHistory(entry, listId),
+    stateSummary: mergeEntryStateSummary(entry, listId),
   };
 }
