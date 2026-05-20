@@ -388,12 +388,9 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     status: "active",
     badgeLabel: "Default",
     triggerLabel: "LP calendar event completed",
-    summary: "Meeting ends - capture form - follow-up draft within 30 minutes",
+    summary: "Meeting ends → follow-up draft within 30 minutes",
     stats: [{ label: "Done last 30d", value: "42", tone: "default" }],
-    meta: [
-      { label: "Last meeting", value: "UBS HFS - Charly Malek - today 2:00pm ET" },
-      { label: "Capture rate", value: "94% capture form completion", tone: "good" },
-    ],
+    meta: [{ label: "Last meeting", value: "UBS HFS - Charly Malek - today 2:00pm ET" }],
     steps: [
       {
         id: "post-meeting-completed",
@@ -402,16 +399,6 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         title: "Meeting ends",
         description: "Calendar event completed and LP attended",
         statusLabel: "Trigger",
-        locked: true,
-      },
-      {
-        id: "post-capture-form",
-        nodeType: "action",
-        actionType: "settings",
-        title: "Capture form",
-        description: "",
-        timingLabel: "+60s",
-        statusLabel: "You",
         locked: true,
       },
       {
@@ -426,17 +413,20 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
       },
     ],
     attentionItems: [
-      { id: "post-capture-pending", label: "capture pending", count: 1, actionLabel: "View", stepId: "post-capture-form" },
+      {
+        id: "post-followup-ready",
+        label: "follow-up drafts ready",
+        count: 1,
+        actionLabel: "View",
+        stepId: "post-follow-up-draft",
+      },
     ],
     stateSummary: {
       title: "Recent meetings last 7 days",
-      segments: [
-        { id: "post-capture", label: "Capture", drafted: 1, sent: 3, waiting: 1 },
-        { id: "post-followup", label: "Follow-up", drafted: 1, sent: 3, waiting: 0 },
-      ],
+      segments: [{ id: "post-followup", label: "Follow-up", drafted: 1, sent: 3, waiting: 0 }],
       replied: 2,
       readyForOutcome: 0,
-      skipped: 1,
+      skipped: 0,
     },
     runHistory: [
       {

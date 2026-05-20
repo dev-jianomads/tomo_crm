@@ -73,8 +73,7 @@ const POST_MEETING: WorkflowDefinition = {
   trigger: "LP calendar event status changes to completed",
   steps: [
     { name: "Prep brief", type: "action", description: "Generate LP context, last conversation, open loops, and suggested focus before the meeting" },
-    { name: "Capture form", type: "action", description: "Surface post-meeting capture within minutes: outcome, mandate fit, commitments, next steps" },
-    { name: "Draft follow-up", type: "action", description: "Draft recap and commitments email within 30 minutes, informed by capture output" },
+    { name: "Draft follow-up", type: "action", description: "Draft recap and commitments email within 30 minutes from transcript and recap" },
     { name: "Outcome update", type: "action", description: "Write confirmed stage / mandate-fit changes and feed downstream stagnation tracking" },
   ],
 };
@@ -331,10 +330,10 @@ export const TOMO_DEFAULT_TEMPLATES: Record<string, WorkflowDefinition> = {
 
 export const TOMO_DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   "td-post-meeting-execution": [
-    "Adjust capture prompt wording",
     "Always include open loops in follow-up",
     "Attach latest deck when mentioned",
-    "Route skipped capture to reminder",
+    "Mention commitments from transcript in recap",
+    "Route informal meetings to shorter follow-up",
   ],
   "td-three-touch-qualification": [
     "Tune touch 1 insight style",
