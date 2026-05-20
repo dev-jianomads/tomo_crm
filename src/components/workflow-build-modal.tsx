@@ -444,7 +444,7 @@ export function WorkflowBuildModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="workflow-build-title"
-        className="relative z-[201] my-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(96dvh,calc(100vh-1rem))] min-h-[min(720px,96dvh)]"
+        className="relative z-[201] my-auto flex w-full max-w-7xl flex-col overflow-hidden rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)] max-h-[min(96dvh,calc(100vh-1rem))] min-h-[min(720px,96dvh)]"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-5 py-4 sm:px-6">

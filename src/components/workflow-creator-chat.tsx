@@ -320,17 +320,6 @@ export function WorkflowCreatorChat({
           assume first thing in the morning, 9am local time.
         </>
       )
-    ) : wizardStep === "action" ? (
-      actionPromptConfirmed && confirmedActionInstruction?.trim() ? (
-        <>
-          Prompt is locked. Click <strong>Generate drafts</strong> when ready, or tell me what to change.
-        </>
-      ) : (
-        <>
-          Describe what outreach should achieve — I’ll turn it into an <strong>Optimised prompt</strong> for the Draft
-          step. I won’t write the email or summaries here; say <strong>yes</strong> when the prompt looks right.
-        </>
-      )
     ) : surfaceContext === "workflows" ? (
       <>
         List <strong>{pipeline.name}</strong> is set. Tell me <strong>trigger</strong> and <strong>action</strong>.
@@ -414,9 +403,6 @@ export function WorkflowCreatorChat({
       </div>
       {isActionInitialComposer ? (
         <div className="flex min-h-0 flex-1 flex-col p-3">
-          <div className="mb-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
-            <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
-          </div>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
