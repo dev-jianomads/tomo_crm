@@ -4,6 +4,13 @@ import type {
   WorkflowStat,
 } from "@/lib/workflow-surface-mock";
 
+/** Surface entries kept in mock data but not shown on /workflows. */
+export const WORKFLOW_SURFACE_UI_HIDDEN_IDS = new Set<string>(["wf-f7-three-touch"]);
+
+export function isWorkflowSurfaceVisibleInUi(workflowId: string): boolean {
+  return !WORKFLOW_SURFACE_UI_HIDDEN_IDS.has(workflowId);
+}
+
 const OUTBOUND_SAFETY_LABEL = "outbound safety";
 
 function isApprovalRelatedAttention(item: WorkflowAttentionItem): boolean {

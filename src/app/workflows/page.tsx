@@ -29,7 +29,10 @@ import { enrichWorkflowSurfaceEntry } from "@/lib/workflow-surface-launches";
 import type { WorkflowLaunchContext } from "@/components/workflow-run-config-panel";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { usePipelines } from "@/lib/use-pipelines";
-import { visibleWorkflowStats } from "@/lib/workflow-surface-display";
+import {
+  isWorkflowSurfaceVisibleInUi,
+  visibleWorkflowStats,
+} from "@/lib/workflow-surface-display";
 import {
   workflowSurfaceEntries,
   type WorkflowSurfaceEntry,
@@ -70,7 +73,12 @@ function WorkflowsPageContent() {
 
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [listQuery, setListQuery] = useState("");
-  const [expandedWorkflowId, setExpandedWorkflowId] = useState<string>(workflowSurfaceEntries[1]?.id ?? workflowSurfaceEntries[0]?.id ?? "");
+  const [expandedWorkflowId, setExpandedWorkflowId] = useState<string>(
+    () =>
+      workflowSurfaceEntries.find(
+        (entry) => entry.kind === "locked_default" && isWorkflowSurfaceVisibleInUi(entry.id)
+      )?.id ?? ""
+  );
   const [stepActionSelection, setStepActionSelection] = useState<WorkflowStepActionSelection | null>(null);
   const [workflowActivationOverrides, setWorkflowActivationOverrides] =
     usePersistentState<WorkflowActivationOverrides>("tomo-workflow-surface-activation-overrides-v1", {});
@@ -101,7 +109,9 @@ function WorkflowsPageContent() {
 
     if (incomingWorkflow) {
       const normalized = normalizeWorkflowId(incomingWorkflow) ?? incomingWorkflow;
-      queueMicrotask(() => setExpandedWorkflowId(normalized));
+      if (isWorkflowSurfaceVisibleInUi(normalized)) {
+        queueMicrotask(() => setExpandedWorkflowId(normalized));
+      }
     }
     if (incomingList && pipelines.some((pipeline) => pipeline.id === incomingList)) {
       queueMicrotask(() => setSelectedPipelineId(incomingList));
@@ -188,7 +198,10 @@ function WorkflowsPageContent() {
   );
 
   const defaultEntries = useMemo(
-    () => workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default").map(enrichEntry),
+    () =>
+      workflowSurfaceEntries
+        .filter((entry) => entry.kind === "locked_default" && isWorkflowSurfaceVisibleInUi(entry.id))
+        .map(enrichEntry),
     [enrichEntry]
   );
   const tailoredEntries = useMemo(
