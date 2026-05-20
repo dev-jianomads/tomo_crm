@@ -91,7 +91,7 @@ export type CustomPlaybookStored = {
   /** Action build wizard output (context, attachments, cohort + per-LP drafts). */
   actionBuild?: WorkflowActionBuildConfig;
   /**
-   * Optional follow-up leg (V1.5). Primary remains flat fields above.
+   * Optional follow-up leg (V1). Primary remains flat fields above.
    * @see docs/WORKFLOW_FOLLOW_UP_BUILDER_PLAN.md
    */
   followUp?: WorkflowLeg;

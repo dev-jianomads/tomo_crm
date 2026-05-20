@@ -1,7 +1,7 @@
 # Workflow follow-up builder — feasibility & implementation plan
 
-**Status:** Draft (2026-05-20)  
-**Scope:** V1.5 extension — primary trigger + action (existing 5-step wizard) plus **one optional follow-up** leg (trigger + action).
+**Status:** Shipped — normative in **TOMO V1 SRS** §3.12 (v0.11)  
+**Scope:** V1 — primary trigger + action (five-step wizard) plus **one optional follow-up** leg (trigger + action). Phased implementation plan below; all phases complete in mock repo.
 
 ### Design lock (Phase 0 — done)
 
@@ -32,16 +32,16 @@ Entry points:
 - End of wizard **step 5 (Personalise)** — “Add follow-up” vs “Save & finish”.
 - **Edit action** CTA on an **inactive** custom workflow (same sub-wizard for primary or follow-up).
 
-**Verdict:** Feasible for V1.5. Does **not** fully replicate all four surface mock workflows in one pass; closest match is **Themed Outreach** (primary → wait → follow-up nudge).
+**Verdict:** **Shipped as V1** (SRS §3.12 v0.11). Does **not** fully replicate all four surface mock workflows in one pass; closest match is **Themed Outreach** (primary → wait → follow-up nudge).
 
 ---
 
-## Current V1 baseline
+## Baseline before this work (historical)
 
-| Layer | Today |
+| Layer | Before follow-up builder |
 |-------|--------|
 | **Authoring** | 5-step wizard: Name → Trigger → Action → Draft → Personalise (`WORKFLOW_CREATE_STEPS`) |
-| **Saved shape** | One launch trigger + one primary action (`CustomPlaybookStored`, `actionBuild`) |
+| **Saved shape** | One launch trigger + one primary action (`CustomPlaybookStored`, `actionBuild`) only |
 | **Runtime (mock)** | `workflow_runs` / `workflow_step_runs`, cohort launch, `record-send`, `attribute-reply` |
 | **UI (inactive)** | Editable via “Edit action” → reopens wizard |
 | **UI (active)** | Monitor-only; structure locked |
@@ -226,7 +226,7 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Step monitor drawer: real LP rows + metrics for custom workflows (`workflow-step-monitoring.ts`).
 - [x] Attention: “Follow-up drafts ready” when follow-up runs are `in_progress` (`workflow-run-attention.ts`); click opens follow-up step drawer.
 
-**Estimate:** ~10–14 dev days for shippable V1.5. Multi-touch (F7), Trip scheduling leg, outcome capture in builder: +8–15d (V2).
+**Estimate:** ~10–14 dev days (complete in mock). Multi-touch (F7), Trip scheduling leg, outcome capture in builder: V2.
 
 ---
 

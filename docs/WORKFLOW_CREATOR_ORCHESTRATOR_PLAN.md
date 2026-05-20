@@ -2,7 +2,7 @@
 
 Goal: from **Pipeline → Use in workflow**, let the user optionally **create a custom user-defined workflow** via a **small Tomo chat** that collects **name**, **trigger**, and **action**, then **persists** (mock: localStorage), **links the current pipeline**, shows a **toast**, and offers **Open workflow**.
 
-Non-goals for v1: server-side persistence, editing custom workflows in a separate admin UI, LLM-generated step text beyond the single action step.
+Non-goals for v1: server-side persistence, editing custom workflows in a separate admin UI, F7-style multi-touch in the custom builder (V1 allows one primary + one optional follow-up per SRS §3.12).
 
 ---
 
