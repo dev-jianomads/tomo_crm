@@ -1,10 +1,12 @@
 # Workflows Surface Implementation Plan — 2026-05-17
 
+**Updated 2026-05-21 (SRS v0.12):** Expanded accordion simplified — **process flow** retained; **computed telemetry panel** replaces meta strip, `stateSummary` segment boxes, and fixture run history. See `src/lib/workflow-telemetry.ts` and §3.12 item 9 in `TOMO_V1_SRS_DRAFT_2026-05-20.md`.
+
 ## Purpose
 
 This plan records the implementation direction for the V1 `/workflows` surface after the workflow scope was reduced to four entries: **Post-Meeting Execution**, **F7 Three-Touch Qualification**, **Themed Outreach**, and **Trip Orchestrator**.
 
-The design reference is `design/tomo_workflows_v8.html`. The HTML file remains a visual / interaction reference only and should not be modified as part of this plan.
+The design reference is `design/tomo_workflows_v8.html`. The HTML file remains a visual / interaction reference for layout and process-flow styling only and should not be modified as part of this plan. **Fixture health metrics in v8 are not normative for V1** (see SRS BR-3.12.21).
 
 ## Target UX
 
@@ -14,7 +16,7 @@ The intended hierarchy is:
 
 1. The collapsed workflow list shows the four SRS workflow entries.
 2. Clicking a workflow expands it inline as an accordion.
-3. The expanded card shows visual steps, current state, attention items, and run history.
+3. The expanded card shows the **process flow** and, when runs exist on the list, a **computed telemetry panel** (not fixture segment boxes or demo run history).
 4. Clicking a specific step opens the right drawer or modal for granular work.
 
 The page-level accordion is where users understand and operate the workflow. The drawer is reserved for step-level work such as LP draft review, step settings, or outcome capture.
@@ -28,21 +30,30 @@ Each card shows:
 - workflow name
 - default / configurable-template badge
 - short flow summary
-- high-level stats such as running now, done last 30d, awaiting approval, skipped
+- **computed** header stats when list-scoped runs exist (`Running now`; `Replied` / `Sent`) — **Saved** for inactive custom; **empty** for seeded/Tailored with no runs (no fixture counters)
 - `View flow` / `Hide flow` affordance
 - **No on/off toggle** in V1 (seeded + active custom = always active on list; saved custom shows **Activate** in expanded body)
 - **Delete** (trash + confirm) for Tailored + user custom only
 
 ### Expanded Workflow Card
 
-The expanded body should remain inline on `/workflows` and include:
+The expanded body remains inline on `/workflows`.
 
-- meta strip: last activity, outbound safety, capture rate, or last run
-- visual process flow
-- attention row for pending approvals / replies / outcomes
-- in-flight state summary, such as drafted / sent / waiting / replied / outcome-ready
-- recent run history
-- Tomo prompt scoped to workflow-level edits or questions
+**Saved custom:** Activate / Edit action banner only (blueprint on collapsed summary).
+
+**Active:**
+
+- **Horizontal process flow** (click step → monitor drawer)
+- **Telemetry panel** when `workflow_runs` exist for workflow + selected list (`deriveWorkflowTelemetry`):
+  - `N in flight · N sent · N replied`
+  - `Primary: …` · optional `Follow-up: …`
+  - Latest cohort run line
+  - Operational signals (e.g. follow-up drafts ready) — no approve/send CTAs
+- **Empty state** when no runs (Launch hint for `launchable` templates)
+- **Launch run** panel (`WorkflowRunConfigPanel`) only when launchable **and** no active cohort
+- **Earlier runs** section only when `runHistory.length > 1`
+
+**Removed from expanded V1 UI:** meta strip, `stateSummary` segment panel, monitor-only banner, fixture run history, draft-approval strip.
 
 ### Step Click Behavior (V1 — active workflows)
 
@@ -71,13 +82,9 @@ The fixture should model the future API response shape closely enough that produ
 
 Required mock data:
 
-- four workflow entries
-- collapsed-card summary stats
-- expanded-card meta strip data
+- four workflow entries (structure + process steps + `runConfig` where launchable)
 - visual process steps with action types
-- in-flight state by step
-- attention items
-- run history
+- **no fixture** collapsed stats, meta strip, `stateSummary` segments, attention items, or run history on seeded entries — health comes from session `workflow_runs` via `workflow-telemetry.ts`
 - draft batches by workflow step
 - per-LP draft subject / body / recipient / firm / tier / attachment / status
 - F7 outcome capture options and pending outcome examples
@@ -100,6 +107,7 @@ type WorkflowSurfaceEntry = {
   attentionItems: WorkflowAttentionItem[];
   stateSummary: WorkflowStateSummary;
   runHistory: WorkflowRunSummary[];
+  telemetry?: WorkflowTelemetry | null; // enrichWorkflowSurfaceEntry
 };
 ```
 

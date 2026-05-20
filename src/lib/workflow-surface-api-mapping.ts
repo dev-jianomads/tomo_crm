@@ -47,13 +47,19 @@ export const WORKFLOW_SURFACE_ENTRY_SOURCES: readonly WorkflowSurfaceFieldSource
     dtoPath: "stats",
     tables: ["workflow_runs", "workflow_step_runs"],
     columnsOrPaths: ["aggregates"],
-    notes: "Scoped by selected list / pipeline; not a workflows row.",
+    notes: "telemetryToHeaderStats; scoped by selected list. No fixture counters.",
+  },
+  {
+    dtoPath: "telemetry",
+    tables: ["workflow_runs", "workflow_step_runs"],
+    columnsOrPaths: ["deriveWorkflowTelemetry"],
+    notes: "Expanded accordion health panel; list-scoped.",
   },
   {
     dtoPath: "meta",
     tables: ["workflow_runs", "workflow_step_runs", "tomo_action_log"],
     columnsOrPaths: ["recent activity"],
-    notes: "Denormalized read model for strip.",
+    notes: "Legacy DTO; not rendered on accordion in V1.",
   },
   { dtoPath: "steps", tables: ["workflow_steps"], columnsOrPaths: ["step_index", "name", "config_jsonb"] },
   {
@@ -66,6 +72,7 @@ export const WORKFLOW_SURFACE_ENTRY_SOURCES: readonly WorkflowSurfaceFieldSource
     dtoPath: "stateSummary",
     tables: ["workflow_step_runs"],
     columnsOrPaths: ["rollup by step / segment"],
+    notes: "Legacy DTO; not rendered on accordion in V1.",
   },
   {
     dtoPath: "runHistory",

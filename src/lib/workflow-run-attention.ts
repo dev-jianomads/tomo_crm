@@ -2,7 +2,7 @@
  * Derive monitor-only attention items from workflow_step_runs (Phase 6).
  */
 
-import { launchParametersToStepPlan } from "@/lib/workflow-launch-plan";
+import { launchParametersToStepPlan, launchStepPlanFromSurfaceEntry } from "@/lib/workflow-launch-plan";
 import type { WorkflowRunRecord, WorkflowStepRunRecord } from "@/lib/workflow-runs";
 import type { WorkflowAttentionItem, WorkflowSurfaceEntry } from "@/lib/workflow-surface-mock";
 
@@ -11,11 +11,12 @@ export function deriveWorkflowAttentionItems(
   stepRuns: readonly WorkflowStepRunRecord[],
   runs: readonly WorkflowRunRecord[]
 ): WorkflowAttentionItem[] {
-  if (entry.kind !== "user_custom" || entry.status !== "active" || runs.length === 0) {
-    return entry.attentionItems;
+  if (entry.status !== "active" || runs.length === 0) {
+    return [];
   }
 
-  const plan = launchParametersToStepPlan(runs[0]!.launchParameters);
+  const plan =
+    launchParametersToStepPlan(runs[0]!.launchParameters) ?? launchStepPlanFromSurfaceEntry(entry);
   const followUpStepId = plan?.followUpStepId;
   if (!followUpStepId) return [];
 

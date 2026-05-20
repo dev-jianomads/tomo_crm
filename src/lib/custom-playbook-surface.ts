@@ -110,29 +110,6 @@ export function customPlaybookToSurfaceEntry(
   const withFollowUp = hasValidStoredFollowUp(c);
   const steps = customPlaybookSurfaceSteps(c);
 
-  const meta: WorkflowSurfaceEntry["meta"] = [
-    { label: "Trigger", value: c.trigger },
-    { label: "Primary action", value: c.action },
-  ];
-  if (withFollowUp && c.followUp) {
-    meta.push(
-      {
-        label: "Follow-up when",
-        value: c.followUp.triggerSpec
-          ? formatFollowUpTriggerLabel(c.followUp.triggerSpec)
-          : c.followUp.trigger,
-      },
-      { label: "Follow-up action", value: c.followUp.action }
-    );
-  }
-
-  const segments: WorkflowSurfaceEntry["stateSummary"]["segments"] = [
-    { id: `${c.id}-primary`, label: "Primary action", drafted: 0, sent: 0, waiting: 0 },
-  ];
-  if (withFollowUp) {
-    segments.push({ id: `${c.id}-follow-up`, label: "Follow-up", drafted: 0, sent: 0, waiting: 0 });
-  }
-
   return {
     id: c.id,
     name: c.name,
@@ -141,32 +118,13 @@ export function customPlaybookToSurfaceEntry(
     badgeLabel: withFollowUp ? "Custom · follow-up" : "Custom build",
     summary: customWorkflowCardSummary(c),
     triggerLabel: c.trigger,
-    stats: activated
-      ? [{ label: "On this list", value: "Active", tone: "good" }]
-      : [{ label: "Status", value: "Saved", tone: "muted" }],
-    meta,
+    stats: [],
+    meta: [],
     steps,
-    attentionItems: activated
-      ? []
-      : [
-          {
-            id: `${c.id}-activate`,
-            label: withFollowUp
-              ? "saved — primary + follow-up · activate to run"
-              : "saved — activate to run on this list",
-            count: 1,
-            actionLabel: "Activate below",
-          },
-        ],
+    attentionItems: [],
     stateSummary: {
-      title: activated
-        ? withFollowUp
-          ? "Monitoring primary and follow-up on this list"
-          : "Monitoring this workflow on the list"
-        : withFollowUp
-          ? "Saved — activate when ready (primary + follow-up)"
-          : "Saved on this list — activate when ready to run",
-      segments,
+      title: "",
+      segments: [],
       replied: 0,
       readyForOutcome: 0,
       skipped: 0,

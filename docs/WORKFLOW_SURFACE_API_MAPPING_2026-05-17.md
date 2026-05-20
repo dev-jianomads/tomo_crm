@@ -1,5 +1,7 @@
 # Workflow surface — mock to production API mapping (2026-05-17)
 
+**Updated 2026-05-21:** Accordion health uses `telemetry` (`workflow-telemetry.ts`) from list-scoped runs. `meta`, `stateSummary`, and fixture `stats` / `runHistory` on seeded cards are **not** displayed in V1 UI (SRS v0.12 §3.12 item 9).
+
 ## Purpose
 
 Phase 7 defines how the UI contract in `src/lib/workflow-surface-mock.ts` maps onto the canonical CRM tables described in **TOMO V1 SRS §6.2.6** (`workflows`, `workflow_steps`, `workflow_runs`, `workflow_step_runs`, `outbound_safety_log`) and **§6.2** `tomo_action_log`. The goal is a **data-source swap** (`GET /api/...` or server component loader) with **minimal component churn**: responses should stay close to `WorkflowSurfaceEntry` and sibling DTO shapes used by `/workflows`.
@@ -17,11 +19,11 @@ A single expanded workflow card is assembled from:
 | Definition + parameters | `workflows` | `workflow_kind`, `template_id`, `parameters_jsonb`, `trigger_*`, `is_active`, `description` |
 | Step graph | `workflow_steps` | Ordered `step_index`; UI `actionType` / `nodeType` live in `config_jsonb` or derived columns |
 | Cohort / list context | `workflows.target_list_filter_jsonb` + list membership APIs | Selected list on `/workflows` is workspace context, not duplicated on every row |
-| Aggregated stats | `workflow_runs`, `workflow_step_runs` | Counts for “running”, “done last 30d”, etc. |
-| Meta strip | Mix of aggregates + recent `tomo_action_log` / signals | “Last activity”, “Outbound safety” lines |
-| Attention row | `workflow_step_runs` (e.g. `awaiting_approval`) + `tomo_action_log.outcome IS NULL` where relevant | Map `stepId` → `workflow_steps.id` |
-| State summary | `workflow_step_runs` rolled up by step | `drafted` / `sent` / `waiting` per segment |
-| Run history list | `workflow_runs` (+ join list / cohort label) | One row per **cohort run** or per **LP run** depending on product choice; mock uses cohort-style summaries |
+| Header stats + telemetry panel | `workflow_runs`, `workflow_step_runs` | `deriveWorkflowTelemetry` / `telemetryToHeaderStats` — list-scoped |
+| Attention (in telemetry) | `workflow_step_runs` (e.g. follow-up `in_progress`) | Operational signals only; no draft-approval queue |
+| Earlier runs list | `workflow_runs` grouped by `cohort_launch_id` | Shown only when &gt; 1 cohort; latest run inline in `telemetry` |
+| ~~Meta strip~~ | — | **Removed from V1 accordion UI** |
+| ~~State summary segments~~ | — | **Removed from V1 accordion UI** (step drawer still rolls up per step) |
 | Run config form | `workflows.parameters_jsonb` (+ list id FK) | Template launch fields; locked defaults read-only with copy from definition |
 
 ---
@@ -37,12 +39,13 @@ A single expanded workflow card is assembled from:
 | `badgeLabel` | UI string from `workflow_kind` + `is_default` or `workflows.slug` | Or `parameters_jsonb.ui_badge` if product needs custom copy |
 | `summary` | `workflows.description` or first line of marketing copy | |
 | `triggerLabel` | `workflows.trigger_type` + `trigger_config_jsonb` humanized | Or denormalized column if added later |
-| `stats[]` | Aggregates over `workflow_runs` / `workflow_step_runs` for **current list** (and workflow) | Not a column on `workflows` |
-| `meta[]` | Recent activity: joins on `tomo_action_log`, `workflow_runs`, briefs, etc. | Tone maps to `WorkflowMetaItem.tone` |
+| `stats[]` | `telemetryToHeaderStats(telemetry)` from list-scoped runs | Empty when no runs (except **Saved** on inactive custom) |
+| `telemetry` | `deriveWorkflowTelemetry` over `workflow_runs` + `workflow_step_runs` | Expanded accordion health panel |
+| `meta[]` | Optional server field; **not rendered** on accordion in V1 | Legacy DTO field |
 | `steps[]` | `workflow_steps` for this `workflow_id` | See [Step node](#workflowstepnode--workflow_steps) |
-| `attentionItems[]` | Query `workflow_step_runs` + steps; optional `tomo_action_log` | `stepId` → `workflow_steps.id` (UUID) |
-| `stateSummary` | Rollup query keyed by `workflow_steps.step_index` or segment ids in `config_jsonb` | |
-| `runHistory[]` | `workflow_runs` grouped by cohort/list + time window | Mock rows are **cohort summaries**; align with product (cohort vs LP row) |
+| `attentionItems[]` | Derived follow-up-ready counts from `workflow_step_runs` | Shown inside telemetry panel |
+| `stateSummary` | Legacy DTO; **not rendered** on accordion in V1 | Step monitor drawer uses per-step rollup |
+| `runHistory[]` | `cohort_launch_id` summaries for **earlier runs** only | Latest cohort inline on `telemetry.latestRun` |
 | `baseTemplateId` | `workflows.template_id` | FK to parent template workflow |
 | `runConfig` | Built server-side from `parameters_jsonb` + list options API | `editable` ↔ `workflow_kind` / policy |
 
@@ -158,7 +161,7 @@ Exact `action_type` enum alignment is a **schema migration task**; the mapping a
 |--------|------|----------------|
 | GET | `/api/workflows/surface?fundId=&pipelineId=` | `{ entries: WorkflowSurfaceEntry[] }` or split by section |
 
-List-scoped aggregates (`stats`, `meta`, `stateSummary`, `attentionItems`) **must** receive `pipelineId` (or equivalent) so the server can scope `workflow_runs` to the cohort on that list.
+List-scoped aggregates (`stats`, `telemetry`, `attentionItems`, `runHistory`) **must** receive `pipelineId` (or equivalent) so the server can scope `workflow_runs` to the cohort on that list.
 
 ---
 

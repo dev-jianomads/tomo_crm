@@ -2,12 +2,11 @@
 
 import type {
   WorkflowAttentionItem,
-  WorkflowMetaItem,
   WorkflowStepNode,
-  WorkflowStateSummary,
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
-import { visibleWorkflowAttentionItems, visibleWorkflowMeta } from "@/lib/workflow-surface-display";
+import type { WorkflowTelemetry } from "@/lib/workflow-telemetry";
+import { visibleWorkflowAttentionItems } from "@/lib/workflow-surface-display";
 import {
   WorkflowRunConfigPanel,
   type WorkflowLaunchContext,
@@ -30,7 +29,13 @@ export function WorkflowExpandedBody({
   launchContext?: WorkflowLaunchContext | null;
   onLaunched?: () => void;
 }) {
-  const monitorOnly = entry.status === "active" && !customSaved;
+  const telemetry = entry.telemetry ?? null;
+  const attentionItems = visibleWorkflowAttentionItems(entry.attentionItems);
+  const showRunConfig =
+    !customSaved &&
+    entry.runConfig &&
+    (entry.runConfig.editable || entry.runConfig.launchable) &&
+    !telemetry?.hasRuns;
 
   return (
     <div className="border-t border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,var(--tomo-card-warm))]">
@@ -40,38 +45,30 @@ export function WorkflowExpandedBody({
           onActivate={onActivateCustom}
           onEditAction={onEditAction}
         />
-      ) : null}
-      {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
-      <WorkflowMetaStrip meta={visibleWorkflowMeta(entry.meta)} />
-      <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
-      {entry.status === "active" && entry.stateSummary.segments.length > 0 ? (
-        <WorkflowStateSummaryPanel summary={entry.stateSummary} />
-      ) : null}
-      <WorkflowMonitoringStrip
-        items={visibleWorkflowAttentionItems(entry.attentionItems)}
-        steps={entry.steps}
-        onOpenStep={(step) => onStepAction?.(entry, step)}
-      />
-      {entry.runConfig && (entry.runConfig.editable || entry.runConfig.launchable) ? (
-        <div className="mx-4 mt-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4">
+      ) : (
+        <>
+          <InlineProcessFlow
+            steps={entry.steps}
+            triggerLabel={entry.triggerLabel}
+            onStepAction={(step) => onStepAction?.(entry, step)}
+          />
+          {entry.status === "active" ? (
+            telemetry?.hasRuns ? (
+              <WorkflowTelemetryPanel telemetry={telemetry} attentionItems={attentionItems} />
+            ) : (
+              <WorkflowNoRunsPanel entry={entry} />
+            )
+          ) : null}
+        </>
+      )}
+      {showRunConfig ? (
+        <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4">
           <WorkflowRunConfigPanel entry={entry} launchContext={launchContext} onLaunched={onLaunched} />
         </div>
       ) : null}
-      <WorkflowRunHistoryPanel runs={entry.runHistory} />
-    </div>
-  );
-}
-
-function MonitorOnlyBanner({ entry }: { entry: WorkflowSurfaceEntry }) {
-  return (
-    <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_35%,var(--tomo-card))] px-4 py-3">
-      <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
-        <span className="font-semibold text-[color:var(--foreground)]">Active on this list.</span> Monitor
-        in-flight LPs and capture outcomes — structure and parameters are read-only while running.
-        {entry.kind === "configurable_template" && entry.baseTemplateId
-          ? " Saved from the Themed Outreach base template."
-          : null}
-      </p>
+      {telemetry?.hasRuns && telemetry.olderRunCount > 0 ? (
+        <WorkflowRunHistoryPanel runs={entry.runHistory} />
+      ) : null}
     </div>
   );
 }
@@ -91,8 +88,8 @@ function CustomSavedBanner({
         <p className="text-xs leading-relaxed text-[color:var(--tomo-body)]">
           <span className="font-semibold text-[color:var(--foreground)]">Saved on this list.</span>{" "}
           {hasFollowUp
-            ? "V1 custom workflows are a launch trigger, primary action, and optional follow-up (wait or on reply). Edit action to change primary or follow-up; activate when ready to run."
-            : "V1 custom workflows are a launch trigger plus one primary action. Edit action to change trigger, context, or drafts; activate when ready to run."}
+            ? "Edit primary or follow-up, then activate to enroll this list."
+            : "Edit the action, then activate to enroll this list."}
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button
@@ -116,32 +113,68 @@ function CustomSavedBanner({
   );
 }
 
-function WorkflowMetaStrip({ meta }: { meta: WorkflowMetaItem[] }) {
-  if (meta.length === 0) return null;
+function WorkflowNoRunsPanel({ entry }: { entry: WorkflowSurfaceEntry }) {
+  const launchable = entry.runConfig?.launchable;
+  return (
+    <div className="mx-4 mb-3 px-1 py-1" data-testid="workflow-no-runs">
+      <p className="text-xs leading-relaxed text-[color:var(--tomo-mute)]">
+        {launchable
+          ? "No LPs in flight on this list. Launch a run below to enroll the list."
+          : entry.kind === "locked_default"
+            ? "No in-flight runs on this list. Runs start automatically when the trigger fires."
+            : "No LPs in flight on this list."}
+      </p>
+    </div>
+  );
+}
+
+function WorkflowTelemetryPanel({
+  telemetry,
+  attentionItems,
+}: {
+  telemetry: WorkflowTelemetry;
+  attentionItems: WorkflowAttentionItem[];
+}) {
+  const headline = [
+    `${telemetry.inFlight} in flight`,
+    `${telemetry.sent} sent`,
+    `${telemetry.replied} replied`,
+  ].join(" · ");
 
   return (
-    <div className="grid gap-0 border-b border-[color:var(--tomo-rule-soft)] md:grid-cols-2">
-      {meta.map((item) => (
-        <div
-          key={`${item.label}-${item.value}`}
-          className="border-b border-[color:var(--tomo-rule-soft)] px-4 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
-        >
-          <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
-            {item.label}
-          </p>
-          <p
-            className={`mt-1 text-xs ${
-              item.tone === "good"
-                ? "text-[color:var(--tomo-status-green)]"
-                : item.tone === "warning"
-                  ? "text-[color:var(--tomo-status-amber-text)]"
-                  : "text-[color:var(--tomo-body)]"
-            }`}
-          >
-            {item.value}
-          </p>
+    <div
+      className="mx-4 mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-3"
+      data-testid="workflow-telemetry"
+    >
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-[color:var(--foreground)]">
+        {headline}
+      </p>
+      <p className="mt-1.5 text-xs text-[color:var(--tomo-body)]">
+        <span className="font-medium text-[color:var(--foreground)]">Primary:</span> {telemetry.primaryLine}
+        {telemetry.followUpLine ? (
+          <>
+            {" "}
+            · <span className="font-medium text-[color:var(--foreground)]">{telemetry.followUpLine}</span>
+          </>
+        ) : null}
+      </p>
+      {telemetry.latestRun ? (
+        <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">
+          <span className="font-medium text-[color:var(--foreground)]">{telemetry.latestRun.listName}</span>
+          {" · "}
+          {telemetry.latestRun.startedAtLabel} · {telemetry.latestRun.lpCount} LPs ·{" "}
+          {telemetry.latestRun.statusLabel}
+        </p>
+      ) : null}
+      {attentionItems.length > 0 ? (
+        <div className="mt-2 border-t border-[color:var(--tomo-rule-soft)] pt-2">
+          {attentionItems.map((item) => (
+            <p key={item.id} className="text-xs text-[color:var(--tomo-status-amber-text)]">
+              <span className="font-semibold text-[color:var(--foreground)]">{item.count}</span> {item.label}
+            </p>
+          ))}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -267,105 +300,16 @@ function ProcessNode({
   );
 }
 
-function WorkflowStateSummaryPanel({ summary }: { summary: WorkflowStateSummary }) {
-  return (
-    <div
-      className="mx-4 mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-3"
-      data-testid="workflow-state-summary"
-    >
-      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
-        {summary.title}
-      </p>
-      <div className="mt-2 flex flex-wrap gap-3">
-        {summary.segments.map((seg) => (
-          <div
-            key={seg.id}
-            className="min-w-[140px] rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_30%,var(--tomo-card))] px-3 py-2"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">{seg.label}</p>
-            <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-[color:var(--tomo-body)]">
-              <span className="font-semibold text-[color:var(--foreground)]">{seg.drafted}</span> drafted ·{" "}
-              <span className="font-semibold text-[color:var(--foreground)]">{seg.sent}</span> sent
-              {seg.waiting > 0 ? (
-                <>
-                  {" "}
-                  · <span className="font-semibold text-[color:var(--foreground)]">{seg.waiting}</span> waiting
-                </>
-              ) : null}
-            </p>
-          </div>
-        ))}
-      </div>
-      {summary.replied > 0 || summary.skipped > 0 ? (
-        <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
-          {summary.replied > 0 ? `${summary.replied} replied` : null}
-          {summary.replied > 0 && summary.skipped > 0 ? " · " : null}
-          {summary.skipped > 0 ? `${summary.skipped} skipped` : null}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function WorkflowMonitoringStrip({
-  items,
-  steps,
-  onOpenStep,
-}: {
-  items: WorkflowAttentionItem[];
-  steps: WorkflowStepNode[];
-  onOpenStep?: (step: WorkflowStepNode) => void;
-}) {
-  if (items.length === 0) return null;
-
-  return (
-    <div
-      className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_35%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2.5"
-      data-testid="workflow-attention-strip"
-    >
-      <div className="flex flex-wrap items-center gap-3 text-xs text-[color:var(--tomo-body)]">
-        {items.map((item) => {
-          const targetStep = item.stepId ? steps.find((s) => s.id === item.stepId) : undefined;
-          const content = (
-            <>
-              <span className="font-semibold text-[color:var(--foreground)]">{item.count}</span> {item.label}
-              {item.actionLabel ? (
-                <span className="ml-1 font-medium text-[color:var(--tomo-teal)]">· {item.actionLabel}</span>
-              ) : null}
-            </>
-          );
-          return targetStep && onOpenStep ? (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onOpenStep(targetStep)}
-              className="text-left transition hover:text-[color:var(--tomo-teal)]"
-              data-testid={`workflow-attention-${item.id}`}
-            >
-              {content}
-            </button>
-          ) : (
-            <span key={item.id}>{content}</span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function WorkflowRunHistoryPanel({ runs }: { runs: WorkflowSurfaceEntry["runHistory"] }) {
-  if (runs.length === 0) return null;
+  if (runs.length <= 1) return null;
 
   return (
     <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
       <div className="flex items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
-        <p className="text-sm font-semibold text-[color:var(--foreground)]">Run history</p>
-        <button type="button" className="text-xs font-medium text-[color:var(--tomo-teal)]">
-          Show all →
-        </button>
+        <p className="text-sm font-semibold text-[color:var(--foreground)]">Earlier runs</p>
       </div>
       <div className="divide-y divide-[color:var(--tomo-rule-soft)]">
-        {runs.map((run) => (
+        {runs.slice(1).map((run) => (
           <div key={run.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[color:var(--foreground)]">{run.listName}</p>

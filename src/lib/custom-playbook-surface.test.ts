@@ -106,7 +106,7 @@ describe("custom-playbook-surface (Phase 2)", () => {
     assert.equal(steps[2]?.timingLabel, "On reply");
   });
 
-  it("surface entry has two state segments when follow-up present", () => {
+  it("surface entry reflects follow-up in summary and badge", () => {
     const entry = customPlaybookToSurfaceEntry({
       ...baseCustom,
       followUp: {
@@ -121,9 +121,10 @@ describe("custom-playbook-surface (Phase 2)", () => {
         },
       },
     });
-    assert.equal(entry.stateSummary.segments.length, 2);
+    assert.equal(entry.stateSummary.segments.length, 0);
     assert.ok(entry.summary.includes("Follow-up"));
     assert.equal(entry.badgeLabel, "Custom · follow-up");
+    assert.equal(entry.stats.length, 0);
   });
 
   it("workflowDefinitionFromCustomStored includes wait + follow-up steps", () => {

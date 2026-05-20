@@ -180,6 +180,8 @@ export type WorkflowSurfaceEntry = {
   attentionItems: WorkflowAttentionItem[];
   stateSummary: WorkflowStateSummary;
   runHistory: WorkflowRunSummary[];
+  /** Populated by enrichWorkflowSurfaceEntry from session runs (not fixtures). */
+  telemetry?: import("./workflow-telemetry").WorkflowTelemetry | null;
   baseTemplateId?: string;
   runConfig?: WorkflowRunConfig;
 };
@@ -389,8 +391,8 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     badgeLabel: "Default",
     triggerLabel: "LP calendar event completed",
     summary: "Meeting ends → follow-up draft within 30 minutes",
-    stats: [{ label: "Done last 30d", value: "42", tone: "default" }],
-    meta: [{ label: "Last meeting", value: "UBS HFS - Charly Malek - today 2:00pm ET" }],
+    stats: [],
+    meta: [],
     steps: [
       {
         id: "post-meeting-completed",
@@ -412,38 +414,9 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         locked: true,
       },
     ],
-    attentionItems: [
-      {
-        id: "post-followup-ready",
-        label: "follow-up drafts ready",
-        count: 1,
-        actionLabel: "View",
-        stepId: "post-follow-up-draft",
-      },
-    ],
-    stateSummary: {
-      title: "Recent meetings last 7 days",
-      segments: [{ id: "post-followup", label: "Follow-up", drafted: 1, sent: 3, waiting: 0 }],
-      replied: 2,
-      readyForOutcome: 0,
-      skipped: 0,
-    },
-    runHistory: [
-      {
-        id: "run-post-ubs",
-        listName: "UBS HFS - Charly Malek",
-        startedAtLabel: "today 2:00pm",
-        lpCount: 1,
-        statusLabel: "In progress",
-      },
-      {
-        id: "run-post-cppib",
-        listName: "CPPIB - Frank Ieraci",
-        startedAtLabel: "today 11:00am",
-        lpCount: 1,
-        statusLabel: "Complete",
-      },
-    ],
+    attentionItems: [],
+    stateSummary: { title: "", segments: [], replied: 0, readyForOutcome: 0, skipped: 0 },
+    runHistory: [],
   },
   {
     id: "wf-f7-three-touch",
@@ -598,14 +571,8 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     badgeLabel: "Tailored",
     triggerLabel: "GP picks a List and provides a theme or content kernel",
     summary: "Themed insight outreach - optional 7-day follow-up to non-responders",
-    stats: [
-      { label: "Running now", value: "6" },
-      { label: "Replied", value: "4", tone: "good" },
-    ],
-    meta: [
-      { label: "Last run", value: "European credit dispersion - started 3 May" },
-      { label: "Outbound safety", value: "14-day same-message dedup active", tone: "good" },
-    ],
+    stats: [],
+    meta: [],
     steps: [
       {
         id: "themed-trigger",
@@ -651,29 +618,9 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         locked: true,
       },
     ],
-    attentionItems: [
-      { id: "themed-replies", label: "LPs replied", count: 4, actionLabel: "View" },
-      { id: "themed-outcome", label: "ready for outcome capture", count: 2, actionLabel: "View", stepId: "themed-outcome" },
-    ],
-    stateSummary: {
-      title: "Where the 6 in-flight LPs are right now",
-      segments: [
-        { id: "themed-state-draft", label: "Themed insight", drafted: 2, sent: 3, waiting: 1 },
-        { id: "themed-state-followup", label: "Follow-up", drafted: 0, sent: 1, waiting: 0 },
-      ],
-      replied: 4,
-      readyForOutcome: 0,
-      skipped: 0,
-    },
-    runHistory: [
-      {
-        id: "run-themed-hardcap",
-        listName: "All Tier 1 + Tier 2",
-        startedAtLabel: "23 Apr",
-        lpCount: 87,
-        statusLabel: "Complete",
-      },
-    ],
+    attentionItems: [],
+    stateSummary: { title: "", segments: [], replied: 0, readyForOutcome: 0, skipped: 0 },
+    runHistory: [],
     runConfig: {
       workflowId: "wf-themed-outreach",
       editable: true,
@@ -715,14 +662,8 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     baseTemplateId: "wf-themed-outreach",
     triggerLabel: "Send trip emails to list",
     summary: "Trip outreach with dates and availability - reply handling - follow-up if no response",
-    stats: [
-      { label: "Running now", value: "8" },
-      { label: "Meetings scheduled", value: "3", tone: "good" },
-    ],
-    meta: [
-      { label: "Trip window", value: "London - June 12-15", tone: "good" },
-      { label: "Cohort", value: "London-filtered - 12 LPs on this list" },
-    ],
+    stats: [],
+    meta: [],
     steps: [
       {
         id: "trip-trigger",
@@ -767,37 +708,9 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         locked: true,
       },
     ],
-    attentionItems: [
-      { id: "trip-replies", label: "replies to action", count: 5, actionLabel: "View", stepId: "trip-scheduling" },
-      { id: "trip-outcome", label: "ready for outcome capture", count: 1, actionLabel: "View", stepId: "trip-outcome" },
-    ],
-    stateSummary: {
-      title: "London trip - where the 8 LPs are right now",
-      segments: [
-        { id: "trip-state-drafts", label: "Outreach sent", drafted: 2, sent: 6, waiting: 0 },
-        { id: "trip-state-scheduling", label: "Scheduling", drafted: 0, sent: 0, waiting: 3 },
-        { id: "trip-state-followup", label: "Follow-up", drafted: 1, sent: 0, waiting: 0 },
-      ],
-      replied: 5,
-      readyForOutcome: 0,
-      skipped: 0,
-    },
-    runHistory: [
-      {
-        id: "run-trip-london",
-        listName: "London-filtered",
-        startedAtLabel: "started 8 May",
-        lpCount: 12,
-        statusLabel: "8 running",
-      },
-      {
-        id: "run-trip-ny",
-        listName: "North America roadshow - May",
-        startedAtLabel: "5 May",
-        lpCount: 22,
-        statusLabel: "Complete",
-      },
-    ],
+    attentionItems: [],
+    stateSummary: { title: "", segments: [], replied: 0, readyForOutcome: 0, skipped: 0 },
+    runHistory: [],
     runConfig: {
       workflowId: "wf-trip-orchestrator",
       editable: true,
