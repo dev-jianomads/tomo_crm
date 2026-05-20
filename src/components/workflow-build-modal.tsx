@@ -9,7 +9,7 @@ import {
   updateCustomPlaybookWithActionBuild,
   type CustomPlaybookStored,
 } from "@/lib/customPlaybooks";
-import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
+import type { UserWorkflowAction, WorkflowLeg } from "@/lib/custom-playbook-schema";
 import {
   buildMockActionBuildLpDrafts,
   mergeContextWithAttachmentText,
@@ -28,6 +28,15 @@ import {
   type WorkflowCreateDraft,
   type WorkflowCreateStep,
 } from "@/lib/workflow-create-draft";
+import {
+  initialWorkflowLegDraft,
+  maxReachableLegStep,
+  workflowLegDraftFromStored,
+  workflowLegDraftToStored,
+  type WorkflowLegDraft,
+  type WorkflowLegStep,
+} from "@/lib/workflow-leg-draft";
+import { WorkflowLegWizard } from "@/components/workflow-leg-wizard";
 import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
 import { SchedulingFindTimeModal } from "@/components/scheduling-find-time-modal";
 import {
@@ -65,8 +74,12 @@ export function WorkflowBuildModal({
   onWorkflowCreated,
 }: WorkflowBuildModalProps) {
   const isEditMode = Boolean(editEntry?.id);
+  const [buildPhase, setBuildPhase] = useState<"primary" | "followUp">("primary");
+  const [editSection, setEditSection] = useState<"primary" | "followUp">("primary");
   const [step, setStep] = useState<WorkflowCreateStep>("name");
+  const [legStep, setLegStep] = useState<WorkflowLegStep>("trigger");
   const [draft, setDraft] = useState<WorkflowCreateDraft>(() => initialWorkflowCreateDraft());
+  const [followUpDraft, setFollowUpDraft] = useState<WorkflowLegDraft>(() => initialWorkflowLegDraft());
   const [createdEntry, setCreatedEntry] = useState<CustomPlaybookStored | null>(null);
   const [generating, setGenerating] = useState(false);
   const [selectedLpId, setSelectedLpId] = useState<string | null>(null);
@@ -83,10 +96,22 @@ export function WorkflowBuildModal({
         setDraft(hydrated);
         setStep(maxReachableStep(hydrated));
         setSelectedLpId(hydrated.lpDrafts[0]?.id ?? null);
+        setFollowUpDraft(
+          editEntry.followUp ? workflowLegDraftFromStored(editEntry.followUp) : initialWorkflowLegDraft()
+        );
+        setEditSection("primary");
+        setBuildPhase("primary");
+        setLegStep(
+          editEntry.followUp ? maxReachableLegStep(workflowLegDraftFromStored(editEntry.followUp)) : "trigger"
+        );
       } else {
         setStep("name");
         setDraft(initialWorkflowCreateDraft());
+        setFollowUpDraft(initialWorkflowLegDraft());
         setSelectedLpId(null);
+        setBuildPhase("primary");
+        setEditSection("primary");
+        setLegStep("trigger");
       }
       setCreatedEntry(null);
       setGenerating(false);
@@ -209,7 +234,11 @@ export function WorkflowBuildModal({
   const finishBuild = (
     lpDrafts: WorkflowActionBuildLpDraft[],
     approveAll: boolean,
-    options?: { fromPersonaliseStep?: boolean }
+    options?: {
+      fromPersonaliseStep?: boolean;
+      followUp?: WorkflowLeg | null;
+      closeOnSave?: boolean;
+    }
   ) => {
     if (!pipeline || !draft.trigger || !draft.actionSpec) return;
     const actionBuild: WorkflowActionBuildConfig = {
@@ -224,23 +253,34 @@ export function WorkflowBuildModal({
       ...(approveAll ? { approvedAllAt: new Date().toISOString() } : {}),
     };
     const input = { name: draft.workflowName.trim(), trigger: draft.trigger, action: draft.actionSpec };
+    const saveOptions =
+      options?.followUp !== undefined ? { followUp: options.followUp } : undefined;
     const entry = isEditMode && editEntry
-      ? updateCustomPlaybookWithActionBuild(editEntry.id, input, actionBuild)
-      : appendCustomPlaybookWithActionBuild(input, actionBuild);
+      ? updateCustomPlaybookWithActionBuild(editEntry.id, input, actionBuild, saveOptions)
+      : appendCustomPlaybookWithActionBuild(input, actionBuild, saveOptions);
     if (!entry) {
       toast.error("Could not save workflow");
       return;
     }
     onWorkflowCreated(entry);
-    if (options?.fromPersonaliseStep) {
-      toast.success("Navigating back to workflows", {
-        description: "Activate workflow from there.",
+    const hasFollowUp = Boolean(entry.followUp);
+    if (options?.fromPersonaliseStep || options?.closeOnSave) {
+      toast.success(hasFollowUp ? "Workflow and follow-up saved" : "Workflow saved", {
+        description: "Activate from the workflow card when ready.",
       });
       onClose();
       return;
     }
     setCreatedEntry(entry);
-    toast.success(isEditMode ? `Updated ${entry.name}` : `Saved ${entry.name}`);
+    toast.success(
+      isEditMode
+        ? hasFollowUp
+          ? `Updated ${entry.name} (with follow-up)`
+          : `Updated ${entry.name}`
+        : hasFollowUp
+          ? `Saved ${entry.name} (with follow-up)`
+          : `Saved ${entry.name}`
+    );
   };
 
   const updateSelectedDraft = (patch: Partial<WorkflowActionBuildLpDraft>) => {
@@ -330,12 +370,62 @@ export function WorkflowBuildModal({
     finishBuild(draft.lpDrafts, false, { fromPersonaliseStep: true });
   };
 
+  const handleAddFollowUp = () => {
+    setFollowUpDraft(initialWorkflowLegDraft());
+    setLegStep("trigger");
+    setBuildPhase("followUp");
+  };
+
+  const handleSaveWithFollowUp = () => {
+    const leg = workflowLegDraftToStored(followUpDraft);
+    if (!leg) {
+      toast.error("Complete the follow-up draft before saving");
+      return;
+    }
+    finishBuild(draft.lpDrafts, true, { followUp: leg, closeOnSave: true });
+  };
+
+  const handleRemoveFollowUp = () => {
+    if (!editEntry) return;
+    finishBuild(draft.lpDrafts, Boolean(draft.lpDrafts.every((d) => d.status === "approved")), {
+      followUp: null,
+      closeOnSave: true,
+    });
+  };
+
+  const switchEditSection = (section: "primary" | "followUp") => {
+    setEditSection(section);
+    if (section === "primary") {
+      setBuildPhase("primary");
+      setStep(maxReachableStep(draft));
+    } else {
+      setBuildPhase("followUp");
+      setLegStep(maxReachableLegStep(followUpDraft));
+    }
+  };
+
+  const primaryActionBuildForLeg = useMemo((): WorkflowActionBuildConfig | undefined => {
+    if (!draft.baseBody.trim()) return undefined;
+    return {
+      actionName: draft.actionDescription.trim() || draft.workflowName.trim(),
+      contextText: draft.contextText,
+      attachments: draft.attachments,
+      tomoInstruction: draft.tomoInstruction,
+      actionDescription: draft.actionDescription,
+      baseSubject: draft.baseSubject,
+      baseBody: draft.baseBody,
+      lpDrafts: draft.lpDrafts,
+    };
+  }, [draft]);
+
   const stepTitle =
-    step === "personalise"
-      ? "Personalise per LP"
-      : step === "draft"
-        ? "Review cohort draft"
-        : "Build for this list";
+    buildPhase === "followUp"
+      ? "Add follow-up"
+      : step === "personalise"
+        ? "Personalise per LP"
+        : step === "draft"
+          ? "Review cohort draft"
+          : "Build for this list";
 
   return (
     <>
@@ -389,6 +479,42 @@ export function WorkflowBuildModal({
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
+          {isEditMode ? (
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="Edit workflow section"
+              data-testid="workflow-build-edit-sections"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={editSection === "primary"}
+                onClick={() => switchEditSection("primary")}
+                className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
+                  editSection === "primary"
+                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
+                    : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
+                }`}
+              >
+                Primary
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={editSection === "followUp"}
+                onClick={() => switchEditSection("followUp")}
+                className={`rounded-[var(--tomo-radius-sm)] border px-3 py-1 text-xs font-medium transition ${
+                  editSection === "followUp"
+                    ? "border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal-tint)] text-[color:var(--tomo-teal)]"
+                    : "border-[color:var(--tomo-rule-soft)] text-[color:var(--tomo-body)] hover:border-[color:var(--tomo-teal)]"
+                }`}
+              >
+                Follow-up{editEntry?.followUp ? "" : " (add)"}
+              </button>
+            </div>
+          ) : null}
+          {buildPhase === "primary" ? (
           <ol className="mt-4 flex flex-wrap gap-2">
             {WORKFLOW_CREATE_STEPS.map((s, i) => {
               const isActive = s.id === step;
@@ -414,9 +540,37 @@ export function WorkflowBuildModal({
               );
             })}
           </ol>
+          ) : null}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 min-h-[480px]">
+          {buildPhase === "followUp" && !createdEntry ? (
+            <WorkflowLegWizard
+              pipeline={pipeline}
+              workflowName={draft.workflowName}
+              primaryActionBuild={primaryActionBuildForLeg}
+              primaryTrigger={draft.trigger ?? undefined}
+              draft={followUpDraft}
+              onDraftChange={setFollowUpDraft}
+              step={legStep}
+              onStepChange={setLegStep}
+              onBackFromTrigger={
+                !isEditMode ? () => {
+                  setBuildPhase("primary");
+                  setStep("personalise");
+                } : undefined
+              }
+              onBackLeg={() => {
+                if (isEditMode) switchEditSection("primary");
+                else {
+                  setBuildPhase("primary");
+                  setStep("personalise");
+                }
+              }}
+              onSaveFollowUp={handleSaveWithFollowUp}
+            />
+          ) : null}
+
           {createdEntry ? (
             <p className="rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-green)_40%,var(--tomo-rule))] bg-[color:var(--tomo-status-green-bg)] px-3 py-2 text-sm text-[color:var(--tomo-status-green)]">
               Saved <span className="font-semibold">{createdEntry.name}</span> on this list. Activate it from the card when
@@ -424,7 +578,7 @@ export function WorkflowBuildModal({
             </p>
           ) : null}
 
-          {step === "name" ? (
+          {buildPhase === "primary" && step === "name" ? (
             <label className="block">
               <span className="text-xs font-medium text-[color:var(--foreground)]">Workflow name</span>
               <input
@@ -440,7 +594,7 @@ export function WorkflowBuildModal({
             </label>
           ) : null}
 
-          {step === "trigger" ? (
+          {buildPhase === "primary" && step === "trigger" ? (
             <div className="space-y-4">
               <WorkflowCreatorChat
                 key={`trigger-${triggerChatKey}`}
@@ -479,7 +633,7 @@ export function WorkflowBuildModal({
             </div>
           ) : null}
 
-          {step === "action" ? (
+          {buildPhase === "primary" && step === "action" ? (
             <div className="grid min-h-[28rem] gap-4 lg:grid-cols-2 lg:items-stretch">
               <div className="flex flex-col gap-4">
                 <label className="block">
@@ -583,7 +737,7 @@ export function WorkflowBuildModal({
             </div>
           ) : null}
 
-          {step === "draft" && draft.baseBody ? (
+          {buildPhase === "primary" && step === "draft" && draft.baseBody ? (
             <div className="space-y-6">
               <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">Action</h3>
@@ -641,7 +795,7 @@ export function WorkflowBuildModal({
             </div>
           ) : null}
 
-          {step === "personalise" && selectedDraft ? (
+          {buildPhase === "primary" && step === "personalise" && selectedDraft ? (
             <div className="flex min-h-[360px] gap-0 overflow-hidden rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)]">
               <ul className="w-[220px] shrink-0 overflow-y-auto border-r border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))]">
                 {draft.lpDrafts.map((d) => (
@@ -712,7 +866,7 @@ export function WorkflowBuildModal({
           <button type="button" onClick={onClose} className="text-xs text-[color:var(--tomo-mute)]">
             {createdEntry ? "Done" : "Cancel"}
           </button>
-          {!createdEntry ? (
+          {!createdEntry && buildPhase === "primary" ? (
             <div className="flex flex-wrap gap-2">
               {step !== "name" && currentStepIdx > 0 ? (
                 <button
@@ -774,15 +928,34 @@ export function WorkflowBuildModal({
               ) : null}
 
               {step === "personalise" ? (
-                <button
-                  type="button"
-                  onClick={handleSavePersonalised}
-                  className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
-                >
-                  Save & finish
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleAddFollowUp}
+                    className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-[color:var(--tomo-teal)]"
+                    data-testid="workflow-add-follow-up"
+                  >
+                    Add follow-up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePersonalised}
+                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                  >
+                    Save & finish
+                  </button>
+                </>
               ) : null}
             </div>
+          ) : null}
+          {!createdEntry && buildPhase === "followUp" && isEditMode && editEntry?.followUp ? (
+            <button
+              type="button"
+              onClick={handleRemoveFollowUp}
+              className="text-xs text-[color:var(--tomo-status-red)]"
+            >
+              Remove follow-up
+            </button>
           ) : null}
         </footer>
       </div>

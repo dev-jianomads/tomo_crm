@@ -56,6 +56,24 @@ export const WORKFLOW_WIZARD_ACTION_PILLS = [
   },
 ] as const;
 
+/** Follow-up leg wizard — send_email only (V1.5). */
+export const WORKFLOW_FOLLOW_UP_ACTION_PILLS = [
+  {
+    id: "follow_up_nudge",
+    label: "Light follow-up nudge",
+    instruction:
+      "Draft a short, contextual follow-up that references the primary outreach. Keep it under 100 words with one clear ask.",
+    kind: "send_email" as const,
+  },
+  {
+    id: "follow_up_reply",
+    label: "Reply to LP response",
+    instruction:
+      "Draft a thoughtful reply that acknowledges what the LP said in their email and moves the conversation forward using the primary thread context.",
+    kind: "send_email" as const,
+  },
+] as const;
+
 export function mergeContextWithAttachmentText(
   contextText: string,
   attachments: WorkflowActionBuildAttachment[]

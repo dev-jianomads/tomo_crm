@@ -185,13 +185,13 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Triggers: `wait + no_reply` | `on_inbound_reply` (defer “meaningful reply” NLP).
 - [x] Follow-up personalise: off for v1 unless explicitly in scope.
 
-### Phase 1 — Schema + leg wizard refactor (2–3d)
+### Phase 1 — Schema + leg wizard refactor (2–3d) ✅
 
-- [x] Add `WorkflowLeg`, `WorkflowFollowUpTrigger`, `followUp?` on `CustomPlaybookStored` (types + validation; wizard wiring pending).
-- [ ] Legacy migration helpers for stored rows with partial `followUp`.
-- [ ] Extract `WorkflowLegWizard` from `workflow-build-modal.tsx`.
-- [ ] Step 5: **Add follow-up** / **Save & finish**.
-- [ ] Edit flow: Primary | Follow-up sections when inactive.
+- [x] Add `WorkflowLeg`, `WorkflowFollowUpTrigger`, `followUp?` on `CustomPlaybookStored` (types + validation).
+- [x] Legacy migration — `migratePartialFollowUpLegs` / `migrateCustomPlaybooksList` in `customPlaybooks.ts`.
+- [x] Extract `WorkflowLegWizard` — `src/components/workflow-leg-wizard.tsx` + `src/lib/workflow-leg-draft.ts`.
+- [x] Step 5: **Add follow-up** / **Save & finish** (`data-testid="workflow-add-follow-up"`).
+- [x] Edit flow: **Primary** | **Follow-up** tabs when inactive (`data-testid="workflow-build-edit-sections"`).
 
 ### Phase 2 — Surface + process diagram (1–2d)
 
