@@ -3,7 +3,17 @@
  */
 
 import type { WorkflowActionBuildConfig } from "./workflow-action-build";
+import type { WorkflowLeg } from "./workflow-follow-up-design";
 import { z } from "zod";
+
+export type { WorkflowLeg, WorkflowFollowUpTrigger } from "./workflow-follow-up-design";
+export {
+  WORKFLOW_FOLLOW_UP_V15,
+  WORKFLOW_FOLLOW_UP_VERSION,
+  validateStoredFollowUp,
+  workflowCustomStepIds,
+  workflowFollowUpTriggerSchema,
+} from "./workflow-follow-up-design";
 
 export const CUSTOM_PLAYBOOKS_STORAGE_KEY = "tomo-custom-playbooks-v1";
 
@@ -80,6 +90,11 @@ export type CustomPlaybookStored = {
   actionSpec?: UserWorkflowAction;
   /** Action build wizard output (context, attachments, cohort + per-LP drafts). */
   actionBuild?: WorkflowActionBuildConfig;
+  /**
+   * Optional follow-up leg (V1.5). Primary remains flat fields above.
+   * @see docs/WORKFLOW_FOLLOW_UP_BUILDER_PLAN.md
+   */
+  followUp?: WorkflowLeg;
   createdAt: string;
 };
 
