@@ -1098,8 +1098,11 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 3. **Shared outreach substrate.** Themed Outreach, Trip Orchestrator, and V1 fund-update behaviour share the same base implementation: cohort selection, content kernel, prompt template, batch draft generation, Action Drawer review, GP-approved send, outbound dedup, optional non-responder follow-up, and engagement outcome capture. Fund Update in V1 is a saved Themed Outreach configuration, not a named Workflow entry or structured content-block editor.
 4. **Workflow runs.**
    - One `workflow_runs` row per LP per workflow execution.
+   - **`workflow_runs.id`** — opaque UUID (`gen_random_uuid()`). **Not** sequential, **not** human-readable / contextual. Used to tag outbound email (`lp_interactions` linkage or `metadata_jsonb`) and attribute inbound replies. **`cohort_launch_id`** — shared UUID across all LP rows created by one **Launch run** click (or one trigger batch); powers run history (“29 LPs · started today”) and the run-scoped outcomes view. Mock implementation: `src/lib/workflow-runs.ts`, `workflow-run-storage.ts`; API: `POST /api/workflows/launch`.
+   - At launch: for each LP on the selected list, insert `workflow_runs` + initial `workflow_step_runs` (`pending`). Skip LPs that already have `status IN ('running','paused')` for the same `workflow_id` (partial unique index).
    - Steps execute in order. `step_type='wait'` introduces a delay (`wait_duration_hours`); `step_type='action_draft'` generates a draft and surfaces in Action Drawer with `requires_approval=true` (default V1 — human-in-the-loop on every outbound).
    - GP approves/edits/dismisses per §3.9. Approval advances the run.
+   - **Reply attribution (normative).** On Action Drawer approve+send: persist outbound `lp_interactions` and set `workflow_step_runs.output_jsonb` with `sent_interaction_id`, `provider_internet_message_id`, `lp_email_thread_id`, `sent_at`; set `workflow_step_runs.status='sent'`. On inbound ingest (event-driven, same hot-path family as re-engagement): match inbound to the latest eligible `sent` step on the same `lp_email_thread_id` with `interacted_at > sent_at`, or via `In-Reply-To` → parent `provider_internet_message_id`; exclude `is_ooo=true`. Set `workflow_step_runs.status='replied'` and `output_jsonb.replied_at`. Roll up **Replied** counts on workflow monitor UI from step runs. API stubs: `POST /api/workflows/record-send`, `POST /api/workflows/attribute-reply`.
 5. **Outbound deduplication.** Before sending, the workflow worker checks `outbound_safety_log` for a row with the same LP + trigger signature in the last N days (default 14). If present, the step skips and notes the skip in `workflow_step_runs.output_jsonb`.
 6. **List-scoped layout.** `/workflows` shows a left **Your lists** rail (search + select), a list header (LP count, live/manual, filter summary), and workflow cards for the selected list context. Seeded entries (Tomo defaults, Tailored) are global per workspace; custom builds appear only under **Built on this list** for the list they were created against.
 7. **Build custom workflow (five-step wizard).** **New workflow** opens a **single large dialog** (`max-w-5xl`, tabbed header) scoped to the list already selected in the left rail. The client **does not** persist until **Save & finish** on the final step. Steps:
@@ -1117,7 +1120,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
     - **Wait (`nodeType=wait`):** wait parameters only (e.g. wait window).
     - **Follow-up (`draft_batch` on a follow-up step):** generic draft parameters + **Drafted · Sent** counts only.
     - **Outcome (`nodeType=outcome` | `outcome_capture`):** outcome parameter breakdown + aggregate sent / replied / skipped metrics.
-    Operational draft review and send approval for in-flight runs route through the **Action Drawer** (§3.9) only. **Saved (inactive)** custom workflows show **Edit action** in the expanded banner; it re-opens the five-step create wizard pre-filled from `actionBuild` and persists updates on **Save & finish** without changing workflow id. **Active** custom workflows remain monitor-only for structure (no **Edit action** until post-V1). **Run configuration** for a new cohort run is a separate launch path (list header / run modal), not the primary affordance on an **active** expanded card.
+    Operational draft review and send approval for in-flight runs route through the **Action Drawer** (§3.9) only. **Saved (inactive)** custom workflows show **Edit action** in the expanded banner; it re-opens the five-step create wizard pre-filled from `actionBuild` and persists updates on **Save & finish** without changing workflow id. **Active** custom workflows remain monitor-only for structure (no **Edit action** until post-V1). **Launch run** on expanded cards with `runConfig.launchable` or `runConfig.editable` (F7, Themed Outreach, Trip Orchestrator) enrolls the **currently selected list** in the left rail — one `cohort_launch_id` and one `workflow_runs.id` per LP; mock persists session-local until Supabase wiring.
 11. **Document upload for action context (wizard).** On the **Action** and **Draft** steps, the GP may attach **`.docx`** (mammoth) or **`.pdf`** (pdf.js text layer) files. The client extracts plain text in-browser, stores it on each attachment (`extractedText`), and merges it with free-text context for Tomo orchestration on the Action step and LLM cohort draft generation on the Draft step. **Unsupported:** image-only / scanned PDFs without a text layer — UI shows a clear error. File picker accept: `.docx,.pdf` (`WORKFLOW_DOCUMENT_ACCEPT`). In the **mock**, attachments are metadata + extracted text in `actionBuild` (binaries stay client-side). **Production:** wizard-uploaded originals are stored with the workflow definition and **attached to outbound emails** when the GP approves and sends via the Action Drawer (same files the GP uploaded at build time, subject to size/type policy).
 12. **Visual editor / process flow.** Expanded workflow cards render steps as a horizontal process flow (`workflow-expanded-body.tsx`). **Normative order:** `trigger` → `action`(s) → optional `wait` → optional `outcome`. **User custom (V1):** exactly **one** action step after the trigger (multi-step custom workflows are post-V1). The action node label uses `actionBuild.actionDescription` when set, else `actionName`. Locked defaults and active Tailored cards are read-only on trigger nodes (`readonly`); active workflow step clicks open the **monitor drawer** (item 10), not draft-approval UI.
 13. **Tomo chat editing.** Inline chat on `/workflows` calls the `update_workflow` tool to add/remove/reorder configurable-template steps or alter per-run parameters. Custom workflow **creation** uses `workflow_creator` inside the build modal with `wizardStep` gating (`confirm_workflow_trigger`, `confirm_workflow_action_prompt`, `advance_workflow_wizard_step`) — not `update_workflow`. Real streaming via `/api/tomo/orchestrate`. Cohort draft generation on the Draft step uses `/api/tomo/generate-workflow-cohort-draft` (structured LLM output, not an orchestrator tool call).
@@ -1137,6 +1140,9 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.12.1 — The four V1 workflow entries are seeded once per workspace at creation. **Locked defaults** (Post-Meeting Execution, F7 Three-Touch) cannot be deleted or deactivated from the Workflows card chrome. **Tailored** templates (Themed Outreach, Trip Orchestrator) may be **removed from the current list** via delete (confirm dialog); removal does not delete the workspace seed definition in production — it detaches or hides the list-scoped configuration per product rules.
 - BR-3.12.2 — `requires_approval=true` is the default and cannot be disabled in V1 (no auto-send).
 - BR-3.12.3 — Outbound dedup window is 14 days globally for V1; per-workflow override is V1.5.
+- BR-3.12.16 — `workflow_runs.id` and `cohort_launch_id` are server-generated UUIDs only; clients must not supply contextual or sequential ids.
+- BR-3.12.17 — At most one active (`running` or `paused`) `workflow_runs` row per (`workspace_id`, `workflow_id`, `lp_contact_id`). A second launch for the same LP+workflow skips that LP and continues enrolling others.
+- BR-3.12.18 — Workflow reply metrics attribute to `workflow_run_id` via thread + send timestamp (and `In-Reply-To` when present), not via custom headers or subject-line tokens in V1.
 - BR-3.12.4 — F7 Three-Touch is the **default-on workflow** per V1 Final Decision #2 — the framework's V1 NON-NEGOTIABLE.
 - BR-3.12.5 — Workflow-surface inclusion requires multi-step sequencing over hours or days, meaningful state between steps, and outcome capture. Single-moment Action Drawer flows, signal-triggered drafts, and reminder nudges do not receive workflow slots.
 - BR-3.12.6 — Themed Outreach is the canonical configurable outreach implementation. Trip Orchestrator and V1 fund-update behaviour are saved configurations / parameter sets, not bespoke workflow engines.
@@ -3188,10 +3194,13 @@ One row per LP per workflow execution. *(Workspace-scoped, soft-delete.)*
 
 | Column | Type | Null | Default | References | Notes |
 |---|---|---|---|---|---|
-| `id` | uuid | not null | `gen_random_uuid()` | pk | |
+| `id` | uuid | not null | `gen_random_uuid()` | pk | Opaque per-LP run id; tagged on outbound for reply attribution |
 | `workflow_id` | uuid | not null | | fk → `workflows.id` | |
 | `lp_contact_id` | uuid | not null | | fk → `lp_contacts.id` | |
+| `cohort_launch_id` | uuid | not null | | | Shared across all LP rows from one Launch / trigger batch; run history UI groups on this |
+| `list_id` | uuid | null | | fk → lists/pipelines | List context at launch |
 | `started_by_user_id` | uuid | null | | fk → `users.id` | Null if signal-triggered |
+| `launch_parameters_jsonb` | jsonb | not null | `'{}'` | | Theme, trip destination, etc. frozen at launch |
 | `status` | text | not null | `'running'` | check in (`'running'`, `'paused'`, `'completed'`, `'cancelled'`, `'failed'`) | |
 | `current_step_index` | int | null | | | |
 | `started_at` | timestamptz | not null | `now()` | | |
@@ -3209,11 +3218,11 @@ Per-step execution row. *(Workspace-scoped.)*
 | `id` | uuid | not null | `gen_random_uuid()` | pk | |
 | `workflow_run_id` | uuid | not null | | fk → `workflow_runs.id` | |
 | `workflow_step_id` | uuid | not null | | fk → `workflow_steps.id` | |
-| `status` | text | not null | `'pending'` | check in (`'pending'`, `'in_progress'`, `'awaiting_approval'`, `'approved'`, `'sent'`, `'skipped'`, `'failed'`) | |
+| `status` | text | not null | `'pending'` | check in (`'pending'`, `'in_progress'`, `'awaiting_approval'`, `'approved'`, `'sent'`, `'replied'`, `'skipped'`, `'failed'`) | `replied` set when inbound matches outbound per §3.12 item 4 |
 | `tomo_action_log_id` | uuid | null | | fk → `tomo_action_log.id` | If this step generated an action |
 | `started_at` | timestamptz | null | | | |
 | `completed_at` | timestamptz | null | | | |
-| `output_jsonb` | jsonb | null | | | E.g. draft text generated |
+| `output_jsonb` | jsonb | null | | | Draft text; on send: `sent_interaction_id`, `provider_internet_message_id`, `lp_email_thread_id`, `sent_at`; on reply: `replied_at`, `inbound_interaction_id` |
 
 **Indexes:** `workflow_step_runs(workflow_run_id, status)`.
 

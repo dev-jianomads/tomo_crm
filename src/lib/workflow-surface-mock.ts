@@ -71,7 +71,9 @@ export type WorkflowStateSummary = {
 };
 
 export type WorkflowRunSummary = {
+  /** Cohort launch id (groups per-LP `workflow_runs` from one Launch click). */
   id: string;
+  cohortLaunchId?: string;
   listName: string;
   startedAtLabel: string;
   lpCount: number;
@@ -138,6 +140,8 @@ export type WorkflowRunConfig = {
   workflowId: string;
   /** Configurable templates can launch; locked defaults are read-only with history. */
   editable: boolean;
+  /** When true, expanded card shows Launch run (uses selected list on /workflows). */
+  launchable?: boolean;
   headline?: string;
   supportingText?: string;
   fields: WorkflowRunConfigField[];
@@ -570,6 +574,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     runConfig: {
       workflowId: "wf-f7-three-touch",
       editable: false,
+      launchable: true,
       headline: "Tomo default cadence",
       supportingText:
         "Step timing and sequence are fixed on locked defaults. Tune email copy per touch in each draft batch step; outbound safety rules always apply.",
@@ -682,6 +687,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     runConfig: {
       workflowId: "wf-themed-outreach",
       editable: true,
+      launchable: true,
       headline: "Launch themed outreach",
       supportingText: "Pick the list, define the theme or content kernel, and choose whether Tomo sends a light follow-up to non-responders after 7 days.",
       fields: [
@@ -805,6 +811,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
     runConfig: {
       workflowId: "wf-trip-orchestrator",
       editable: true,
+      launchable: true,
       headline: "Configure trip run",
       supportingText:
         "Destination and dates bound outreach and scheduling. Source list is filtered to LPs in or near the destination where possible.",

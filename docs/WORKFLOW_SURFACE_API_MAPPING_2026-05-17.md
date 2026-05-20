@@ -101,16 +101,19 @@ Per **`WorkflowDraft`** row:
 
 ---
 
-## `WorkflowRunSummary` (history) → `workflow_runs`
+## `WorkflowRunSummary` (history) → `workflow_runs` grouped by `cohort_launch_id`
 
 | Surface field | Suggested source |
 |---------------|------------------|
-| `id` | `workflow_runs.id` or cohort batch id |
-| `listName` | Resolved list / cohort label (`pipelines.name` or filter summary) |
-| `startedAtLabel` | `workflow_runs.started_at` (formatted) |
-| `lpCount` | Count of runs in cohort |
-| `statusLabel` | Derived from run statuses |
+| `id` | `cohort_launch_id` (UI row = one Launch click) |
+| `cohortLaunchId` | Same as `id` |
+| `listName` | `workflow_runs.list_id` → list name at launch |
+| `startedAtLabel` | `min(workflow_runs.started_at)` per cohort |
+| `lpCount` | `count(*)` per `cohort_launch_id` |
+| `statusLabel` | Aggregate of per-LP `status` (e.g. “14 running”) |
 | `outcomeSummary` | Aggregated outcomes / replies |
+
+Per-LP **`workflow_runs.id`** is UUID (`gen_random_uuid()`); not shown in run history rows.
 
 ---
 
@@ -120,10 +123,13 @@ Per **`WorkflowDraft`** row:
 |---------------|------------------|
 | `workflowId` | `workflows.id` |
 | `editable` | From `workflow_kind` (template vs locked) |
+| `launchable` | Product flag — show **Launch run** on locked defaults (e.g. F7) |
 | `headline` / `supportingText` | Server defaults or `parameters_jsonb.ui` |
 | `fields[]` | Keys inside `parameters_jsonb` (theme, list_id, trip window, toggles) | `kind` + `options` drive form controls; list options from `pipelines` / list API |
 
-**Launch run (Phase 6)** persists into **`workflow_runs`** (per LP) and/or a **cohort enqueue** job; session-only UI becomes `PATCH workflows` + `POST .../run` in production.
+**Launch run** — `POST /api/workflows/launch` (stateless UUID generation); mock UI uses `launchWorkflowCohort()` in `workflow-run-storage.ts` (localStorage). Creates one `workflow_runs` row per LP + shared `cohort_launch_id`.
+
+**Reply attribution** — on send: `POST /api/workflows/record-send`; on inbound: `POST /api/workflows/attribute-reply` or ingest hot path. Logic: `src/lib/workflow-runs.ts` (`attributeInboundReply`).
 
 ---
 

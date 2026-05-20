@@ -23,6 +23,8 @@ import { useRelationships } from "@/components/relationships-provider";
 import { useRequireSession } from "@/lib/auth";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
 import { getPipelineMembers, isManualList } from "@/lib/pipelines";
+import { enrichWorkflowSurfaceEntry } from "@/lib/workflow-surface-launches";
+import type { WorkflowLaunchContext } from "@/components/workflow-run-config-panel";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { usePipelines } from "@/lib/use-pipelines";
 import { visibleWorkflowStats } from "@/lib/workflow-surface-display";
@@ -82,6 +84,7 @@ function WorkflowsPageContent() {
   );
   const [buildModalOpen, setBuildModalOpen] = useState(false);
   const [editingPlaybook, setEditingPlaybook] = useState<CustomPlaybookStored | null>(null);
+  const [launchRefreshTick, setLaunchRefreshTick] = useState(0);
 
   useEffect(() => {
     if (selectedPipelineId || pipelines.length === 0) return;
@@ -183,24 +186,52 @@ function WorkflowsPageContent() {
     setStepActionSelection(null);
   }, []);
 
-  const defaultEntries = workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default");
-  const tailoredEntries = workflowSurfaceEntries.filter(
-    (entry) => entry.kind === "configurable_template" && !hiddenWorkflowIds.includes(entry.id)
+  const enrichEntry = useCallback(
+    (entry: WorkflowSurfaceEntry) =>
+      enrichWorkflowSurfaceEntry(entry, selectedPipelineId),
+    // launchRefreshTick forces re-read of localStorage run history after Launch
+    [selectedPipelineId, launchRefreshTick]
+  );
+
+  const defaultEntries = useMemo(
+    () => workflowSurfaceEntries.filter((entry) => entry.kind === "locked_default").map(enrichEntry),
+    [enrichEntry]
+  );
+  const tailoredEntries = useMemo(
+    () =>
+      workflowSurfaceEntries
+        .filter((entry) => entry.kind === "configurable_template" && !hiddenWorkflowIds.includes(entry.id))
+        .map(enrichEntry),
+    [enrichEntry, hiddenWorkflowIds]
   );
 
   const customEntriesForList = useMemo(() => {
     if (!selectedPipelineId) return [];
     return customPlaybooks
       .filter((pb) => playbookOverrides[pb.id]?.pipelineId === selectedPipelineId)
-      .map((pb) => customPlaybookToSurfaceEntry(pb, isCustomActivated(pb.id)));
-  }, [customPlaybooks, selectedPipelineId, playbookOverrides, isCustomActivated]);
+      .map((pb) => enrichEntry(customPlaybookToSurfaceEntry(pb, isCustomActivated(pb.id))));
+  }, [customPlaybooks, selectedPipelineId, playbookOverrides, isCustomActivated, enrichEntry]);
+
+  const launchContext = useMemo((): WorkflowLaunchContext | null => {
+    if (!selectedPipeline) return null;
+    const members = getPipelineMembers(relationships, selectedPipeline);
+    return {
+      listId: selectedPipeline.id,
+      listName: selectedPipeline.name,
+      lpContactIds: members.map((m) => m.id),
+    };
+  }, [relationships, selectedPipeline]);
 
   const allDisplayEntries = useMemo(
-    () => [...workflowSurfaceEntries, ...customEntriesForList],
-    [customEntriesForList]
+    () => [...defaultEntries, ...tailoredEntries, ...customEntriesForList],
+    [defaultEntries, tailoredEntries, customEntriesForList]
   );
 
   const expandedEntry = allDisplayEntries.find((entry) => entry.id === expandedWorkflowId) ?? null;
+
+  const handleWorkflowLaunched = useCallback(() => {
+    setLaunchRefreshTick((t) => t + 1);
+  }, []);
 
   const handleWorkflowBuilt = useCallback(
     (entry: CustomPlaybookStored) => {
@@ -350,6 +381,8 @@ function WorkflowsPageContent() {
                   entry={entry}
                   expanded={expandedWorkflowId === entry.id}
                   onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
+                  launchContext={launchContext}
+                  onLaunched={handleWorkflowLaunched}
                   onStepAction={(selection) => setStepActionSelection(selection)}
                 />
               ))}
@@ -368,6 +401,8 @@ function WorkflowsPageContent() {
                     expanded={expandedWorkflowId === entry.id}
                     onToggleExpanded={() => toggleExpandedWorkflow(entry.id)}
                     onRequestDelete={() => setDeleteTarget({ id: entry.id, name: entry.name, kind: "tailored" })}
+                    launchContext={launchContext}
+                    onLaunched={handleWorkflowLaunched}
                     onStepAction={(selection) => setStepActionSelection(selection)}
                   />
                 ))}
@@ -396,6 +431,8 @@ function WorkflowsPageContent() {
                           ? () => openEditWorkflow(entry.id)
                           : undefined
                       }
+                      launchContext={launchContext}
+                      onLaunched={handleWorkflowLaunched}
                       onStepAction={(selection) => setStepActionSelection(selection)}
                     />
                   ))}
@@ -476,6 +513,8 @@ function WorkflowAccordionCard({
   onActivateCustom,
   onEditAction,
   onStepAction,
+  launchContext,
+  onLaunched,
 }: {
   entry: WorkflowSurfaceEntry;
   expanded: boolean;
@@ -484,6 +523,8 @@ function WorkflowAccordionCard({
   onActivateCustom?: () => void;
   onEditAction?: () => void;
   onStepAction: (selection: WorkflowStepActionSelection) => void;
+  launchContext?: WorkflowLaunchContext | null;
+  onLaunched?: () => void;
 }) {
   const customSaved = isUserCustomWorkflowEntry(entry) && entry.status === "inactive";
   const showDelete = entry.kind !== "locked_default" && Boolean(onRequestDelete);
@@ -556,6 +597,8 @@ function WorkflowAccordionCard({
           customSaved={customSaved}
           onActivateCustom={onActivateCustom}
           onEditAction={onEditAction}
+          launchContext={launchContext}
+          onLaunched={onLaunched}
           onStepAction={(stepEntry, step) => onStepAction({ entry: stepEntry, step })}
         />
       ) : null}

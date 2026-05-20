@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { launchWorkflowCohort } from "@/lib/workflow-run-storage";
+import { resolveInitialWorkflowStepId } from "@/lib/workflow-surface-launches";
 import {
   formatWorkflowRunFieldDisplay,
   type WorkflowRunConfig,
@@ -9,7 +11,22 @@ import {
   type WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
 
-export function WorkflowRunConfigPanel({ entry }: { entry: WorkflowSurfaceEntry }) {
+export type WorkflowLaunchContext = {
+  listId: string;
+  listName: string;
+  lpContactIds: string[];
+  workspaceId?: string;
+};
+
+export function WorkflowRunConfigPanel({
+  entry,
+  launchContext,
+  onLaunched,
+}: {
+  entry: WorkflowSurfaceEntry;
+  launchContext?: WorkflowLaunchContext | null;
+  onLaunched?: () => void;
+}) {
   const cfg = entry.runConfig;
   if (!cfg) return null;
 
@@ -27,15 +44,36 @@ export function WorkflowRunConfigPanel({ entry }: { entry: WorkflowSurfaceEntry 
       ) : null}
 
       {cfg.editable ? (
-        <EditableRunConfigForm key={entry.id} entry={entry} config={cfg} />
+        <EditableRunConfigForm
+          key={entry.id}
+          entry={entry}
+          config={cfg}
+          launchContext={launchContext}
+          onLaunched={onLaunched}
+        />
       ) : (
-        <LockedRunConfigView entry={entry} config={cfg} />
+        <LockedRunConfigView
+          entry={entry}
+          config={cfg}
+          launchContext={launchContext}
+          onLaunched={onLaunched}
+        />
       )}
     </div>
   );
 }
 
-function LockedRunConfigView({ entry, config }: { entry: WorkflowSurfaceEntry; config: WorkflowRunConfig }) {
+function LockedRunConfigView({
+  entry,
+  config,
+  launchContext,
+  onLaunched,
+}: {
+  entry: WorkflowSurfaceEntry;
+  config: WorkflowRunConfig;
+  launchContext?: WorkflowLaunchContext | null;
+  onLaunched?: () => void;
+}) {
   const runs = entry.runHistory.slice(0, 4);
 
   return (
@@ -59,6 +97,10 @@ function LockedRunConfigView({ entry, config }: { entry: WorkflowSurfaceEntry; c
         Structural steps and timing cannot be changed on Tomo defaults. Use each draft step to review and edit outbound copy
         before approval.
       </div>
+
+      {config.launchable ? (
+        <LaunchRunFooter entry={entry} config={config} launchContext={launchContext} onLaunched={onLaunched} />
+      ) : null}
 
       {runs.length > 0 ? (
         <section>
@@ -84,9 +126,13 @@ function LockedRunConfigView({ entry, config }: { entry: WorkflowSurfaceEntry; c
 function EditableRunConfigForm({
   entry,
   config,
+  launchContext,
+  onLaunched,
 }: {
   entry: WorkflowSurfaceEntry;
   config: WorkflowRunConfig;
+  launchContext?: WorkflowLaunchContext | null;
+  onLaunched?: () => void;
 }) {
   const initial = useMemo(() => {
     const record: Record<string, string> = {};
@@ -121,20 +167,6 @@ function EditableRunConfigForm({
     return true;
   };
 
-  const launch = () => {
-    if (!validate()) return;
-    const listField = config.fields.find((f) => f.id === "list" || f.id === "source_list");
-    const listLine =
-      listField?.kind === "select"
-        ? formatWorkflowRunFieldDisplay({ ...listField, value: values[listField.id] ?? listField.value })
-        : "";
-    toast.success("Run queued (demo)", {
-      description: listLine
-        ? `${entry.name} — list: ${listLine}. Session-local only until API wiring.`
-        : `${entry.name} — session-local only until API wiring.`,
-    });
-  };
-
   return (
     <>
       <div className="space-y-4">
@@ -143,17 +175,89 @@ function EditableRunConfigForm({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-[color:var(--tomo-rule-soft)] pt-4">
-        <button
-          type="button"
-          onClick={launch}
-          className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-2 text-sm font-medium text-[color:var(--tomo-card)] transition hover:opacity-90"
-        >
-          Launch run
-        </button>
-        <p className="text-xs text-[color:var(--tomo-mute)]">Demo: no server call — values stay local until API wiring.</p>
-      </div>
+      <LaunchRunFooter
+        entry={entry}
+        config={config}
+        launchContext={launchContext}
+        launchParameters={values}
+        validate={validate}
+        onLaunched={onLaunched}
+      />
     </>
+  );
+}
+
+function LaunchRunFooter({
+  entry,
+  config,
+  launchContext,
+  launchParameters,
+  validate,
+  onLaunched,
+}: {
+  entry: WorkflowSurfaceEntry;
+  config: WorkflowRunConfig;
+  launchContext?: WorkflowLaunchContext | null;
+  launchParameters?: Record<string, string>;
+  validate?: () => boolean;
+  onLaunched?: () => void;
+}) {
+  const canLaunch = config.launchable !== false && (config.editable || config.launchable);
+  if (!canLaunch) return null;
+
+  const launch = () => {
+    if (validate && !validate()) return;
+    if (!launchContext?.listId || launchContext.lpContactIds.length === 0) {
+      toast.error("Select a list with LPs", { description: "Choose a list in the left rail before launching." });
+      return;
+    }
+
+    const result = launchWorkflowCohort({
+      workspaceId: launchContext.workspaceId ?? "demo-workspace",
+      workflowId: config.workflowId,
+      listId: launchContext.listId,
+      listName: launchContext.listName,
+      lpContactIds: launchContext.lpContactIds,
+      launchParameters: launchParameters ?? {},
+      initialWorkflowStepId: resolveInitialWorkflowStepId(entry),
+    });
+
+    const skipped = result.skippedLpContactIds.length;
+    const enrolled = result.workflowRunIds.length;
+
+    if (enrolled === 0) {
+      toast.warning("No new runs created", {
+        description:
+          skipped > 0
+            ? `${skipped} LP${skipped === 1 ? "" : "s"} already in an active run for this workflow.`
+            : "The list has no eligible LPs.",
+      });
+      return;
+    }
+
+    toast.success(`Launched ${enrolled} LP run${enrolled === 1 ? "" : "s"}`, {
+      description:
+        skipped > 0
+          ? `${skipped} skipped (already active). Cohort ${result.cohortLaunchId.slice(0, 8)}…`
+          : `Cohort ${result.cohortLaunchId.slice(0, 8)}… — approve sends in Action Drawer.`,
+    });
+    onLaunched?.();
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-t border-[color:var(--tomo-rule-soft)] pt-4">
+      <button
+        type="button"
+        data-testid="workflow-launch-run"
+        onClick={launch}
+        className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-2 text-sm font-medium text-[color:var(--tomo-card)] transition hover:opacity-90"
+      >
+        Launch run
+      </button>
+      <p className="text-xs text-[color:var(--tomo-mute)]">
+        One UUID workflow_run_id per LP; replies match via email thread.
+      </p>
+    </div>
   );
 }
 

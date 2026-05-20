@@ -7,6 +7,10 @@ import type {
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
 import { visibleWorkflowAttentionItems, visibleWorkflowMeta } from "@/lib/workflow-surface-display";
+import {
+  WorkflowRunConfigPanel,
+  type WorkflowLaunchContext,
+} from "@/components/workflow-run-config-panel";
 
 export function WorkflowExpandedBody({
   entry,
@@ -14,12 +18,16 @@ export function WorkflowExpandedBody({
   onActivateCustom,
   onEditAction,
   onStepAction,
+  launchContext,
+  onLaunched,
 }: {
   entry: WorkflowSurfaceEntry;
   customSaved?: boolean;
   onActivateCustom?: () => void;
   onEditAction?: () => void;
   onStepAction?: (entry: WorkflowSurfaceEntry, step: WorkflowStepNode) => void;
+  launchContext?: WorkflowLaunchContext | null;
+  onLaunched?: () => void;
 }) {
   const monitorOnly = entry.status === "active" && !customSaved;
 
@@ -32,6 +40,11 @@ export function WorkflowExpandedBody({
       <WorkflowMetaStrip meta={visibleWorkflowMeta(entry.meta)} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
       <WorkflowMonitoringStrip items={visibleWorkflowAttentionItems(entry.attentionItems)} />
+      {entry.runConfig && (entry.runConfig.editable || entry.runConfig.launchable) ? (
+        <div className="mx-4 mt-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4">
+          <WorkflowRunConfigPanel entry={entry} launchContext={launchContext} onLaunched={onLaunched} />
+        </div>
+      ) : null}
       <WorkflowRunHistoryPanel runs={entry.runHistory} />
     </div>
   );

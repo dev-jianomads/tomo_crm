@@ -155,13 +155,14 @@ export const WORKFLOW_OUTCOME_CAPTURE_SOURCES: readonly WorkflowSurfaceFieldSour
   },
 ];
 
-/** Run history row. */
+/** Run history row (one UI row per cohort launch). */
 export const WORKFLOW_RUN_SUMMARY_SOURCES: readonly WorkflowSurfaceFieldSource[] = [
-  { dtoPath: "id", tables: ["workflow_runs"], columnsOrPaths: ["id"] },
-  { dtoPath: "listName", tables: ["workflow_runs"], columnsOrPaths: ["cohort label via list / filter join"] },
-  { dtoPath: "startedAtLabel", tables: ["workflow_runs"], columnsOrPaths: ["started_at"] },
-  { dtoPath: "lpCount", tables: ["workflow_runs"], columnsOrPaths: ["count(*) per cohort"] },
-  { dtoPath: "statusLabel | outcomeSummary", tables: ["workflow_runs"], columnsOrPaths: ["status", "outcome", "aggregates"] },
+  { dtoPath: "id", tables: ["workflow_runs"], columnsOrPaths: ["cohort_launch_id"], notes: "Grouped launch id, not per-LP workflow_runs.id." },
+  { dtoPath: "cohortLaunchId", tables: ["workflow_runs"], columnsOrPaths: ["cohort_launch_id"] },
+  { dtoPath: "listName", tables: ["workflow_runs"], columnsOrPaths: ["list_id → lists.name"] },
+  { dtoPath: "startedAtLabel", tables: ["workflow_runs"], columnsOrPaths: ["min(started_at) per cohort_launch_id"] },
+  { dtoPath: "lpCount", tables: ["workflow_runs"], columnsOrPaths: ["count(*) per cohort_launch_id"] },
+  { dtoPath: "statusLabel | outcomeSummary", tables: ["workflow_runs"], columnsOrPaths: ["status aggregates per cohort"] },
 ];
 
 /** Run config modal (Phase 6). */
