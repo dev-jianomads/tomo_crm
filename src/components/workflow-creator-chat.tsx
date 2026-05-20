@@ -56,6 +56,9 @@ type WorkflowCreatorChatProps = {
   /** Action wizard: open calendar picker for GP availability (silent context). */
   onOpenAvailability?: () => void;
   availabilitySlotCount?: number;
+  /** Action wizard: GP sent a new refine message — unlock prompt until Tomo re-confirms. */
+  onActionPromptRevoked?: () => void;
+  onStreamingChange?: (streaming: boolean) => void;
   variant?: "compact" | "wizard";
 };
 
@@ -106,6 +109,8 @@ export function WorkflowCreatorChat({
   confirmedActionInstruction,
   onOpenAvailability,
   availabilitySlotCount = 0,
+  onActionPromptRevoked,
+  onStreamingChange,
   variant = "compact",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -248,6 +253,10 @@ export function WorkflowCreatorChat({
   const isStreaming = status === "streaming" || status === "submitted";
 
   useEffect(() => {
+    onStreamingChange?.(isStreaming);
+  }, [isStreaming, onStreamingChange]);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -255,6 +264,14 @@ export function WorkflowCreatorChat({
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
     setInput("");
+    if (wizardStep === "action" && actionPromptConfirmed) {
+      const isAffirmative = /^(yes|yep|yeah|sure|ok|okay|looks good|perfect|lock it in|continue)\s*[.!?]*$/i.test(
+        trimmed
+      );
+      if (!isAffirmative) {
+        onActionPromptRevoked?.();
+      }
+    }
     sendMessage(
       { text: trimmed },
       {
@@ -301,6 +318,17 @@ export function WorkflowCreatorChat({
         <>
           When should the <strong>{workflowName}</strong> workflow be triggered? If you only provide a date, I will
           assume first thing in the morning, 9am local time.
+        </>
+      )
+    ) : wizardStep === "action" ? (
+      actionPromptConfirmed && confirmedActionInstruction?.trim() ? (
+        <>
+          Prompt is locked. Click <strong>Generate drafts</strong> when ready, or tell me what to change.
+        </>
+      ) : (
+        <>
+          Describe what outreach should achieve — I’ll turn it into an <strong>Optimised prompt</strong> for the Draft
+          step. I won’t write the email or summaries here; say <strong>yes</strong> when the prompt looks right.
         </>
       )
     ) : surfaceContext === "workflows" ? (
@@ -386,6 +414,9 @@ export function WorkflowCreatorChat({
       </div>
       {isActionInitialComposer ? (
         <div className="flex min-h-0 flex-1 flex-col p-3">
+          <div className="mb-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
+            <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>
+          </div>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -405,7 +436,7 @@ export function WorkflowCreatorChat({
       ) : (
         <>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2 text-sm">
-            {!isActionWizard ? (
+            {messages.length === 0 && !actionPromptConfirmed ? (
               <div className="flex justify-start">
                 <div className="max-w-[90%] rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_55%,var(--tomo-card))] px-3 py-2">
                   <p className="text-sm text-[color:var(--foreground)]">{introCopy}</p>

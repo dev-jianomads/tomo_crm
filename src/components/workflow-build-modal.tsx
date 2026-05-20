@@ -87,6 +87,7 @@ export function WorkflowBuildModal({
   const [actionChatKey, setActionChatKey] = useState(0);
   const [availabilitySlots, setAvailabilitySlots] = useState<SchedulingSlotModel[]>([]);
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
+  const [actionChatStreaming, setActionChatStreaming] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -657,13 +658,14 @@ export function WorkflowBuildModal({
                     </p>
                     <textarea
                       value={draft.tomoInstruction}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const v = e.target.value;
                         setDraft((prev) => ({
                           ...prev,
-                          tomoInstruction: e.target.value,
-                          actionPromptConfirmed: e.target.value.trim().length > 0,
-                        }))
-                      }
+                          tomoInstruction: v,
+                          actionPromptConfirmed: v.trim().length > 0 && prev.actionPromptConfirmed,
+                        }));
+                      }}
                       rows={5}
                       className="tomo-input mt-2 w-full resize-y text-sm"
                     />
@@ -689,6 +691,10 @@ export function WorkflowBuildModal({
                 confirmedActionInstruction={draft.tomoInstruction}
                 onOpenAvailability={() => setAvailabilityModalOpen(true)}
                 availabilitySlotCount={availabilitySlots.length}
+                onStreamingChange={setActionChatStreaming}
+                onActionPromptRevoked={() =>
+                  setDraft((prev) => ({ ...prev, actionPromptConfirmed: false }))
+                }
                 onActionPillSelect={selectActionPill}
                 onWorkflowCreated={() => {}}
                 onActionPromptConfirmed={({ instruction, actionDescription, actionKind }) => {
@@ -905,15 +911,28 @@ export function WorkflowBuildModal({
               ) : null}
 
               {step === "action" ? (
-                <button
-                  type="button"
-                  disabled={!canAdvanceFromStep("action", draft) || generating}
-                  onClick={handleNext}
-                  className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                >
-                  <SparklesIcon className="h-3.5 w-3.5" />
-                  {generating ? "Drafting…" : "Generate drafts"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {!canAdvanceFromStep("action", draft) && !generating && !actionChatStreaming ? (
+                    <span className="text-[11px] text-[color:var(--tomo-mute)]">
+                      Say <strong className="text-[color:var(--tomo-body)]">yes</strong> when Tomo’s optimised prompt
+                      looks right
+                    </span>
+                  ) : null}
+                  {actionChatStreaming && !generating ? (
+                    <span className="text-[11px] text-[color:var(--tomo-mute)]">Tomo is refining…</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={
+                      !canAdvanceFromStep("action", draft) || generating || actionChatStreaming
+                    }
+                    onClick={handleNext}
+                    className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    {generating ? "Drafting…" : "Generate drafts"}
+                  </button>
+                </div>
               ) : null}
 
               {step === "draft" ? (

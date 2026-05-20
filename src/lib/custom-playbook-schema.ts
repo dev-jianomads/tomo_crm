@@ -66,7 +66,7 @@ export const workflowActionPromptSchema = z.object({
     .string()
     .min(1)
     .describe(
-      "Optimised meta-prompt for the Draft step — tone, structure, length, personalization, CTA, context usage. Not the email itself."
+      "Optimised meta-prompt for the Draft-step LLM only: what to write, tone, structure, how to use attachments. Must NOT contain email body, summaries, bullet lists, or any drafted copy the GP asked for on the action step."
     ),
   action_description: z
     .string()
