@@ -23,6 +23,8 @@ type SchedulingFindTimeModalBaseProps = {
   weekAnchor?: Date;
   title?: string;
   subtitle?: string;
+  /** Raise above workflow wizard (z-200) and similar stacked modals. */
+  stackAboveModal?: boolean;
 };
 
 type SchedulingFindTimeModalSingleProps = SchedulingFindTimeModalBaseProps & {
@@ -42,7 +44,14 @@ export type SchedulingFindTimeModalProps =
   | SchedulingFindTimeModalMultiProps;
 
 export function SchedulingFindTimeModal(props: SchedulingFindTimeModalProps) {
-  const { open, onClose, weekAnchor = SCHEDULING_SCENARIO_ANCHOR, title, subtitle } = props;
+  const {
+    open,
+    onClose,
+    weekAnchor = SCHEDULING_SCENARIO_ANCHOR,
+    title,
+    subtitle,
+    stackAboveModal = false,
+  } = props;
   const isMulti = props.mode === "multi";
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -157,8 +166,11 @@ export function SchedulingFindTimeModal(props: SchedulingFindTimeModalProps) {
       ? "Select free slots across the week — Tomo uses these when refining your action prompt"
       : "Sample availability · ET · pick a week, then tap a free slot to replace the draft");
 
+  const scrimZ = stackAboveModal ? "z-[230]" : "z-[60]";
+  const dialogZ = stackAboveModal ? "z-[231]" : "z-[61]";
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center tomo-modal-scrim p-4">
+    <div className={`fixed inset-0 ${scrimZ} flex items-center justify-center tomo-modal-scrim p-4`}>
       <button
         type="button"
         className="absolute inset-0 cursor-default"
@@ -170,7 +182,7 @@ export function SchedulingFindTimeModal(props: SchedulingFindTimeModalProps) {
         aria-modal="true"
         aria-labelledby="scheduling-find-time-title"
         data-testid="scheduling-find-time-modal"
-        className="relative z-[61] flex max-h-[min(90dvh,720px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)]"
+        className={`relative ${dialogZ} flex max-h-[min(90dvh,720px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] shadow-[var(--tomo-modal-shadow)]`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[color:var(--tomo-rule-soft)] px-4 py-3">

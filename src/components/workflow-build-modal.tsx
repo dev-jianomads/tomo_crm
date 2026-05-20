@@ -962,6 +962,7 @@ export function WorkflowBuildModal({
     </div>
     <SchedulingFindTimeModal
       mode="multi"
+      stackAboveModal
       open={availabilityModalOpen}
       onClose={() => setAvailabilityModalOpen(false)}
       weekAnchor={new Date()}
