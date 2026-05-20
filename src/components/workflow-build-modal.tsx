@@ -206,7 +206,11 @@ export function WorkflowBuildModal({
     pipeline,
   ]);
 
-  const finishBuild = (lpDrafts: WorkflowActionBuildLpDraft[], approveAll: boolean) => {
+  const finishBuild = (
+    lpDrafts: WorkflowActionBuildLpDraft[],
+    approveAll: boolean,
+    options?: { fromPersonaliseStep?: boolean }
+  ) => {
     if (!pipeline || !draft.trigger || !draft.actionSpec) return;
     const actionBuild: WorkflowActionBuildConfig = {
       actionName: draft.workflowName.trim(),
@@ -227,8 +231,15 @@ export function WorkflowBuildModal({
       toast.error("Could not save workflow");
       return;
     }
-    setCreatedEntry(entry);
     onWorkflowCreated(entry);
+    if (options?.fromPersonaliseStep) {
+      toast.success("Navigating back to workflows", {
+        description: "Activate workflow from there.",
+      });
+      onClose();
+      return;
+    }
+    setCreatedEntry(entry);
     toast.success(isEditMode ? `Updated ${entry.name}` : `Saved ${entry.name}`);
   };
 
@@ -236,11 +247,14 @@ export function WorkflowBuildModal({
     if (!selectedDraft) return;
     setDraft((prev) => ({
       ...prev,
-      lpDrafts: prev.lpDrafts.map((d) =>
-        d.id === selectedDraft.id
-          ? { ...d, ...patch, personalised: true, status: d.status === "approved" ? "approved" : "edited" }
-          : d
-      ),
+      lpDrafts: prev.lpDrafts.map((d) => {
+        if (d.id !== selectedDraft.id) return d;
+        const personalised = patch.personalised ?? true;
+        const status =
+          patch.status ??
+          (personalised ? (d.status === "approved" ? "approved" : "edited") : "ready");
+        return { ...d, ...patch, personalised, status };
+      }),
     }));
   };
 
@@ -313,7 +327,7 @@ export function WorkflowBuildModal({
   };
 
   const handleSavePersonalised = () => {
-    finishBuild(draft.lpDrafts, false);
+    finishBuild(draft.lpDrafts, false, { fromPersonaliseStep: true });
   };
 
   const stepTitle =
@@ -641,11 +655,15 @@ export function WorkflowBuildModal({
                           : "border-transparent hover:bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_50%,transparent)]"
                       }`}
                     >
-                      <p className="font-semibold text-[color:var(--foreground)]">{d.lpName}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 font-semibold text-[color:var(--foreground)]">{d.lpName}</p>
+                        {d.personalised ? (
+                          <span className="shrink-0 rounded-full bg-[color:var(--tomo-teal-tint)] px-1.5 py-0.5 text-[9px] font-medium text-[color:var(--tomo-teal)]">
+                            Edited
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="truncate text-[color:var(--tomo-mute)]">{d.firmName}</p>
-                      <span className="mt-1 inline-block rounded px-1 py-0.5 text-[9px] uppercase tracking-wide text-[color:var(--tomo-mute)]">
-                        {d.personalised ? "Edited" : d.status}
-                      </span>
                     </button>
                   </li>
                 ))}
