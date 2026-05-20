@@ -330,6 +330,20 @@ export function WorkflowBuildModal({
     setStep("personalise");
   };
 
+  const primaryActionBuildForLeg = useMemo((): WorkflowActionBuildConfig | undefined => {
+    if (!draft.baseBody.trim()) return undefined;
+    return {
+      actionName: draft.actionDescription.trim() || draft.workflowName.trim(),
+      contextText: draft.contextText,
+      attachments: draft.attachments,
+      tomoInstruction: draft.tomoInstruction,
+      actionDescription: draft.actionDescription,
+      baseSubject: draft.baseSubject,
+      baseBody: draft.baseBody,
+      lpDrafts: draft.lpDrafts,
+    };
+  }, [draft]);
+
   if (!open || !pipeline) return null;
 
   const handleNext = () => {
@@ -403,20 +417,6 @@ export function WorkflowBuildModal({
       setLegStep(maxReachableLegStep(followUpDraft));
     }
   };
-
-  const primaryActionBuildForLeg = useMemo((): WorkflowActionBuildConfig | undefined => {
-    if (!draft.baseBody.trim()) return undefined;
-    return {
-      actionName: draft.actionDescription.trim() || draft.workflowName.trim(),
-      contextText: draft.contextText,
-      attachments: draft.attachments,
-      tomoInstruction: draft.tomoInstruction,
-      actionDescription: draft.actionDescription,
-      baseSubject: draft.baseSubject,
-      baseBody: draft.baseBody,
-      lpDrafts: draft.lpDrafts,
-    };
-  }, [draft]);
 
   const stepTitle =
     buildPhase === "followUp"
