@@ -504,7 +504,11 @@ function WorkflowsPageContent() {
         }}
         onWorkflowCreated={handleWorkflowBuilt}
       />
-      <WorkflowStepActionDrawer selection={stepActionSelection} onClose={() => setStepActionSelection(null)} />
+      <WorkflowStepActionDrawer
+        selection={stepActionSelection}
+        listId={selectedPipelineId}
+        onClose={() => setStepActionSelection(null)}
+      />
       <WorkflowDeleteConfirmDialog
         target={deleteTarget}
         onCancel={() => setDeleteTarget(null)}

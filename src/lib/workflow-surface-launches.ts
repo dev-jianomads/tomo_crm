@@ -3,6 +3,7 @@
  */
 
 import { resolvePrimaryWorkflowStepId } from "./workflow-launch-plan";
+import { deriveWorkflowAttentionItems } from "./workflow-run-attention";
 import {
   getWorkflowRunsForWorkflow,
   rollupStateSummaryFromStepRuns,
@@ -34,6 +35,14 @@ export function resolveInitialWorkflowStepId(entry: WorkflowSurfaceEntry): strin
   return resolvePrimaryWorkflowStepId(entry);
 }
 
+function mergeEntryAttentionItems(
+  entry: WorkflowSurfaceEntry,
+  listId: string | null
+): WorkflowSurfaceEntry["attentionItems"] {
+  const { runs, stepRuns } = getWorkflowRunsForWorkflow(entry.id, listId ?? undefined);
+  return deriveWorkflowAttentionItems(entry, stepRuns, runs);
+}
+
 export function enrichWorkflowSurfaceEntry(
   entry: WorkflowSurfaceEntry,
   listId: string | null
@@ -42,5 +51,6 @@ export function enrichWorkflowSurfaceEntry(
     ...entry,
     runHistory: mergeEntryRunHistory(entry, listId),
     stateSummary: mergeEntryStateSummary(entry, listId),
+    attentionItems: mergeEntryAttentionItems(entry, listId),
   };
 }

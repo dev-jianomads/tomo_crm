@@ -4,6 +4,7 @@ import type {
   WorkflowAttentionItem,
   WorkflowMetaItem,
   WorkflowStepNode,
+  WorkflowStateSummary,
   WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
 import { visibleWorkflowAttentionItems, visibleWorkflowMeta } from "@/lib/workflow-surface-display";
@@ -43,7 +44,14 @@ export function WorkflowExpandedBody({
       {monitorOnly ? <MonitorOnlyBanner entry={entry} /> : null}
       <WorkflowMetaStrip meta={visibleWorkflowMeta(entry.meta)} />
       <InlineProcessFlow steps={entry.steps} triggerLabel={entry.triggerLabel} onStepAction={(step) => onStepAction?.(entry, step)} />
-      <WorkflowMonitoringStrip items={visibleWorkflowAttentionItems(entry.attentionItems)} />
+      {entry.status === "active" && entry.stateSummary.segments.length > 0 ? (
+        <WorkflowStateSummaryPanel summary={entry.stateSummary} />
+      ) : null}
+      <WorkflowMonitoringStrip
+        items={visibleWorkflowAttentionItems(entry.attentionItems)}
+        steps={entry.steps}
+        onOpenStep={(step) => onStepAction?.(entry, step)}
+      />
       {entry.runConfig && (entry.runConfig.editable || entry.runConfig.launchable) ? (
         <div className="mx-4 mt-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4">
           <WorkflowRunConfigPanel entry={entry} launchContext={launchContext} onLaunched={onLaunched} />
@@ -259,20 +267,87 @@ function ProcessNode({
   );
 }
 
-function WorkflowMonitoringStrip({ items }: { items: WorkflowAttentionItem[] }) {
+function WorkflowStateSummaryPanel({ summary }: { summary: WorkflowStateSummary }) {
+  return (
+    <div
+      className="mx-4 mb-3 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-3"
+      data-testid="workflow-state-summary"
+    >
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+        {summary.title}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-3">
+        {summary.segments.map((seg) => (
+          <div
+            key={seg.id}
+            className="min-w-[140px] rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_30%,var(--tomo-card))] px-3 py-2"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">{seg.label}</p>
+            <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-[color:var(--tomo-body)]">
+              <span className="font-semibold text-[color:var(--foreground)]">{seg.drafted}</span> drafted ·{" "}
+              <span className="font-semibold text-[color:var(--foreground)]">{seg.sent}</span> sent
+              {seg.waiting > 0 ? (
+                <>
+                  {" "}
+                  · <span className="font-semibold text-[color:var(--foreground)]">{seg.waiting}</span> waiting
+                </>
+              ) : null}
+            </p>
+          </div>
+        ))}
+      </div>
+      {summary.replied > 0 || summary.skipped > 0 ? (
+        <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
+          {summary.replied > 0 ? `${summary.replied} replied` : null}
+          {summary.replied > 0 && summary.skipped > 0 ? " · " : null}
+          {summary.skipped > 0 ? `${summary.skipped} skipped` : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkflowMonitoringStrip({
+  items,
+  steps,
+  onOpenStep,
+}: {
+  items: WorkflowAttentionItem[];
+  steps: WorkflowStepNode[];
+  onOpenStep?: (step: WorkflowStepNode) => void;
+}) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_40%,var(--tomo-card))] px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--tomo-body)]">
-        {items.map((item, index) => (
-          <span key={item.id} className="flex items-center gap-2">
-            {index > 0 ? <span className="text-[color:var(--tomo-rule)]">·</span> : null}
-            <span>
+    <div
+      className="mx-4 mb-4 rounded-[var(--tomo-radius-sm)] border border-[color:color-mix(in_srgb,var(--tomo-status-amber)_35%,var(--tomo-rule))] bg-[color:var(--tomo-status-amber-bg)] px-3 py-2.5"
+      data-testid="workflow-attention-strip"
+    >
+      <div className="flex flex-wrap items-center gap-3 text-xs text-[color:var(--tomo-body)]">
+        {items.map((item) => {
+          const targetStep = item.stepId ? steps.find((s) => s.id === item.stepId) : undefined;
+          const content = (
+            <>
               <span className="font-semibold text-[color:var(--foreground)]">{item.count}</span> {item.label}
-            </span>
-          </span>
-        ))}
+              {item.actionLabel ? (
+                <span className="ml-1 font-medium text-[color:var(--tomo-teal)]">· {item.actionLabel}</span>
+              ) : null}
+            </>
+          );
+          return targetStep && onOpenStep ? (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onOpenStep(targetStep)}
+              className="text-left transition hover:text-[color:var(--tomo-teal)]"
+              data-testid={`workflow-attention-${item.id}`}
+            >
+              {content}
+            </button>
+          ) : (
+            <span key={item.id}>{content}</span>
+          );
+        })}
       </div>
     </div>
   );

@@ -11,9 +11,11 @@ export type WorkflowStepActionSelection = {
 
 export function WorkflowStepActionDrawer({
   selection,
+  listId = null,
   onClose,
 }: {
   selection: WorkflowStepActionSelection | null;
+  listId?: string | null;
   onClose: () => void;
 }) {
   return (
@@ -60,7 +62,7 @@ export function WorkflowStepActionDrawer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <WorkflowStepMonitorPanel entry={selection.entry} step={selection.step} />
+              <WorkflowStepMonitorPanel entry={selection.entry} step={selection.step} listId={listId} />
             </div>
 
             <div className="shrink-0 border-t border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-5 py-3">

@@ -5,7 +5,7 @@ import {
   getWorkflowStepMonitoring,
   type WorkflowStepLpRow,
   type WorkflowStepMetricKey,
-} from "@/lib/workflow-step-monitoring-mock";
+} from "@/lib/workflow-step-monitoring";
 
 const METRIC_LABELS: Record<WorkflowStepMetricKey, string> = {
   drafted: "Drafted",
@@ -22,11 +22,13 @@ function formatLpStatus(status: WorkflowStepLpRow["emailStatus"]): string {
 export function WorkflowStepMonitorPanel({
   entry,
   step,
+  listId = null,
 }: {
   entry: WorkflowSurfaceEntry;
   step: WorkflowStepNode;
+  listId?: string | null;
 }) {
-  const monitoring = getWorkflowStepMonitoring(entry, step);
+  const monitoring = getWorkflowStepMonitoring(entry, step, listId);
   const metrics = monitoring.visibleMetrics ?? [];
   const showParameters = monitoring.showParameters !== false && Boolean(monitoring.parameters?.length);
   const showLpTable = monitoring.showLpTable !== false && Boolean(monitoring.lpRows?.length);

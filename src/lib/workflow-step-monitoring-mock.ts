@@ -67,8 +67,8 @@ function isFollowUpStep(step: WorkflowStepNode): boolean {
   return haystack.includes("follow-up") || haystack.includes("follow up") || haystack.includes("non-responder");
 }
 
-/** Mock monitoring for a clicked process-flow step. */
-export function getWorkflowStepMonitoring(
+/** Mock monitoring for template / locked workflow steps. */
+export function getMockWorkflowStepMonitoring(
   entry: WorkflowSurfaceEntry,
   step: WorkflowStepNode
 ): WorkflowStepMonitoring {

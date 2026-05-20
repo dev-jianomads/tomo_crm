@@ -220,10 +220,11 @@ Reuse existing primitives; add a small orchestration module (e.g. `workflow-run-
 - [x] Leg wizard calls API with structured primary template (GP context stays in `contextText`).
 - [x] Tests: `workflow-cohort-draft.test.ts`.
 
-### Phase 6 — Activated monitoring (1d)
+### Phase 6 — Activated monitoring (1d) ✅
 
-- [ ] Active: monitor both segments; step drawer on follow-up step.
-- [ ] Optional attention: “Follow-up drafts ready” when wait elapses.
+- [x] Active: `stateSummary` segment panel (primary + follow-up) from `workflow_step_runs` rollup.
+- [x] Step monitor drawer: real LP rows + metrics for custom workflows (`workflow-step-monitoring.ts`).
+- [x] Attention: “Follow-up drafts ready” when follow-up runs are `in_progress` (`workflow-run-attention.ts`); click opens follow-up step drawer.
 
 **Estimate:** ~10–14 dev days for shippable V1.5. Multi-touch (F7), Trip scheduling leg, outcome capture in builder: +8–15d (V2).
 
