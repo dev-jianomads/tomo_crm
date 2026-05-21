@@ -799,7 +799,7 @@ export function WorkflowBuildModal({
               <button
                 type="button"
                 onClick={handleRemoveFollowUp}
-                className="text-xs text-[color:var(--tomo-status-red)]"
+                className="text-xs text-[color:var(--tomo-red)]"
               >
                 Remove follow-up
               </button>

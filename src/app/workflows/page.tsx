@@ -652,7 +652,7 @@ function WorkflowAccordionCard({
                 event.stopPropagation();
                 onRequestDelete?.();
               }}
-              className="rounded-[var(--tomo-radius-sm)] p-1.5 text-[color:var(--tomo-mute)] transition hover:bg-[color:var(--tomo-status-red-bg)] hover:text-[color:var(--tomo-status-red)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)]"
+              className="rounded-[var(--tomo-radius-sm)] p-1.5 text-[color:var(--tomo-mute)] transition hover:bg-[color:var(--tomo-red-bg)] hover:text-[color:var(--tomo-red)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tomo-teal)]"
             >
               <TrashIcon className="h-4 w-4" />
             </button>
@@ -718,7 +718,7 @@ function WorkflowDeleteConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-status-red)] bg-[color:var(--tomo-status-red)] px-3 py-1.5 text-xs font-medium text-white"
+            className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-red)] bg-[color:var(--tomo-red)] px-3 py-1.5 text-xs font-medium text-white"
           >
             Delete workflow
           </button>
