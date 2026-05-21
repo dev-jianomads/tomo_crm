@@ -280,7 +280,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 5. **Signals engine** — nine surfaced signals plus three captured attributes; nightly batch and event-driven computation; append-only signal log; pipeline flag computation.
 6. **Metrics engine** — ten Insights-page metrics; daily snapshot table; per-metric refresh cadences.
 7. **Reminders engine** — open loops, missed replies, commitments; tier-aware thresholds; Action Drawer routing.
-8. **Today / Daily Brief** — daily-rhythm landing surface with attention queue, commitments, brief, and inline Tomo chat. Daily Brief delivered also via email and Slack push at user-selected time.
+8. **Today / Daily Brief** — daily-rhythm landing surface with workflow-grouped attention queue (plus **Other Tasks** for non-workflow inbox work), commitments, brief, and inline Tomo chat. Daily Brief delivered also via email and Slack push at user-selected time.
 9. **Action Drawer and approvals** — drafts, post-meeting capture, scheduling threads, follow-up reminders, meeting prep briefs; human-in-the-loop on every outbound.
 10. **Relationships, Lists, and Workflows** — LP record (full Section 8 §8.4 schema); Lists index and list detail per `design/tomo_lists_v1.html` (live vs manual saved lists, named filters, LP row table in list detail); workflow control room at `/workflows` with **three visible seeded cards** (Post-Meeting Execution, Themed Outreach, Trip Orchestrator) plus a fourth seeded definition (**F7 Three-Touch Qualification**, UI-hidden on the surface) and a **three-step New workflow wizard** (Name → Build → Personalise) for GP-built custom workflows on the list selected in the Workflows left rail, with an **optional one follow-up leg** (same condensed **Build** layout; offered after **Save & finish** via prompt — primary → wait or on-reply → follow-up email).
 11. **Meeting lifecycle** — prep brief, transcript ingestion (Teams + Meet) with AI recap fallback, post-meeting capture (~10 fields, <60 seconds), follow-up draft.
@@ -833,7 +833,14 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 1. **Today page sections.**
    - Greeting: time-of-day-aware, personalised first name only (e.g. *Good morning, Geoffrey*) — **no** appended intelligence sentence in the header; relationship narrative lives in the **Radar Modal** summary and section rows.
    - Inline Tomo chat: pre-loaded with today's context (active actions count, today's meetings, pending approvals). Chat is open by default per `user_preferences.tomo_chat_default_open`.
-   - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. **Sort:** urgency-first across the full queue (same priority order as today: re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval), then **group** rows that share the same active workflow (`workflows.id` / `workflow_run.workflow_id` on the log row). Each group shows a **two-word workflow pill** (header only — not repeated on every LP card), a count, expand/collapse, and a **Workflow →** link to `/workflows?workflow={surfaceWorkflowId}`. Rows with no workflow attribution appear under an **Other Tasks** ungrouped bucket (always last). **Pill labels:** V1 mock uses a fixed two-word registry per seeded workflow; **user-created workflows** store `workflows.pill_label` (exactly two words, LLM-generated at creation — same constraint as wizard name length). Per-row override MAY live in `tomo_action_log.metadata_jsonb.pill_label`. Capped at "today" — older items collapse into a **Previous (N)** control per §38; **Previous** keeps **day-based** sub-groups only (Deferred, Yesterday, …) — no workflow grouping in that strip.
+   - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Visual reference for LP rows: `design/tomo_today_light_v2.html` (company · contact, work line, urgency pill, list CTA).
+     - **Sort (normative):** urgency-first across the full queue before grouping — re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval. **Group order** uses the same rule: each workflow group's position is determined by its **most urgent** member (lowest urgency rank wins).
+     - **Workflow groups:** Rows with `workflows.id` (or `workflow_run.workflow_id`) on the log row are bucketed by **surface `workflows.id`** (legacy playbook / Tomo-default source ids normalize via the same alias map as `/workflows?workflow=`). Each group header shows: chevron (expand/collapse), **two-word workflow pill** (uppercase mono tag — header only, not on LP cards), member count, and **Workflow →** deep link to `/workflows?workflow={surfaceWorkflowId}`. Default expand: the most urgent group **and** any group with ≥2 cards; others collapsed until opened.
+     - **Other Tasks:** Rows with **no** workflow attribution (typical for inbox-native work: warm intros, newsletter analytics, ad-hoc check-ins) appear in a final **Other Tasks** accordion (same expand pattern; **no** Workflow link). Production default: many inbound emails never map to a `workflow_run`; only cohort/step-driven work carries `workflow_id`.
+     - **LP card chrome:** Per card — urgency pill when applicable (`SLA past`, `Today`, …), company · contact, work kind — subject, optional **Open email** link, and a ghost **Review** CTA on the row (opens Action Drawer). **Review** on the list row is normative for V1 Today; send/approve language lives in the drawer (**Approve & send**, etc.) per §3.9.
+     - **Pill labels:** Exactly **two words**, stored uppercase in UI. Seeded/mock registry (examples): Post Meet (`wf-post-meeting-execution`), Slot Reply (`td-email-scheduling`), Silence Nudge (`pb-no-response-stall`). **User-created workflows:** `workflows.pill_label` set at creation (LLM-generated two-word label in the build wizard). Optional per-row override: `tomo_action_log.metadata.workflow_id`, `metadata.pill_label`.
+     - **Mock fixture (demo):** six primary cards — **three** workflow-attributed (post-meeting SLA, email scheduling, one silence follow-up) and **three** ungrouped under **Other Tasks** (warm intro reply, newsletter momentum review, relationship check-in).
+     - **Cap & Previous:** Primary column capped at today's items (mock: 6). Older/deferred items collapse into **Previous (N)** (collapsed by default). **Previous** retains **calendar-day / deferred** sub-groups only (Deferred, Yesterday, …) — **no** workflow accordion in that strip.
    - **Coming up**: today's calendar events with LP attendees + commitments due today/tomorrow. Selecting a row opens the **meeting prep drawer** (see §3.9 meeting prep layout; visual reference `design/tomo_drawer_meetingprep_light_v3.html`).
    - **Where the raise stands** (summary card under Coming up): four mutually exclusive counts over **active** LPs (`pipeline_stage` not in terminal closed / pass states). Definitions match Section 9 (Metric 3 + `pipeline_flag` partition); see **Section 9 — Today page supplement** immediately after Metric 3. **Presentation labels:** *Drifting — act*, *Stalling — watch* (amber, not Moveable), *Moveable*, *Healthy — on track*. The section heading and each bucket label expose a **hover hint** with concise copy aligned to the partition rules (show delay ≤300ms; not browser-native `title` tooltips). The headline **Insights →** control links to `/insights`. Each of the **four counts** is independently tappable and deep-links to Relationships with the **named / URL-addressable** filter state for that bucket (AC-3.8.8). Data may be computed on read from `lp_contacts` + `lp_state` + signal log, or materialised on `daily_pipeline_summary` (optional columns below).
    - **On my radar** (entry control + modal): intelligence is surfaced in the **Radar Modal** (narrative summary + collapsible sections per Appendix I), not as inline sentences in the Today header. **Gone quiet** and **Cooling off** row generation respects `lp_state.off_channel_active_until` per BR-3.5.8.
@@ -868,15 +875,23 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.8.8 — Today **attention queue** groups by **surface `workflows.id`** (legacy playbook / Tomo-default source ids MUST normalize to the same surface id used on `/workflows`). Group order follows the **most urgent** item in each group (urgency-first). Ungrouped rows use the **Other Tasks** bucket and MUST NOT show a workflow deep link.
 - BR-3.8.9 — Workflow pill text on Today MUST be **exactly two words** (mock registry or stored `workflows.pill_label` / log metadata). LP cards inside an expanded group MUST NOT duplicate the workflow pill; urgency pills (e.g. SLA past, Today) remain per card.
 - BR-3.8.10 — **Previous (N)** under the attention queue MUST retain **calendar-day / deferred** grouping only; it MUST NOT introduce workflow accordion groups.
+- BR-3.8.11 — **Not every attention row is workflow-attributed.** Inbox-native or one-off Tomo surfaces (intros, analytics reviews, discretionary follow-ups) MAY surface with `workflow_id` null and appear only under **Other Tasks**; the GP still acts via the Action Drawer.
+- BR-3.8.12 — The list-row primary CTA on Today attention LP cards MUST read **Review** (not Approve). Approval/send outcomes are recorded in `tomo_action_log` from the drawer per §3.9; the Today row CTA indicates review-before-action only.
+- BR-3.8.13 — Workflow group headers MUST expose expand/collapse; expanding reveals the LP cards for that workflow only. Section title count (`What needs your attention N`) is the **total LP card count**, not the number of workflow groups.
+- BR-3.8.14 — Deep link from a workflow group header MUST use the normative query `?workflow={surfaceWorkflowId}` on `/workflows` (same id normalization as §3.12).
 
 **Acceptance criteria.**
 
 - AC-3.8.1 — A GP loading Today for the first time today sees the Radar Modal (Daily Brief + On my radar) auto-open within 500ms.
 - AC-3.8.2 — The same GP reloading Today later in the same local day does not see the modal auto-open.
 - AC-3.8.3 — A GP with Slack connected and `daily_brief_channels=['in_app','email','slack']` receives the brief in their Slack DM at 07:30 local.
-- AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded. The primary queue groups items under workflow headers with expand/collapse; the section title count remains the **total card count** (not the number of workflow groups).
-- AC-3.8.11 — Two or more attention items from the same workflow (e.g. multiple LPs in **Silence Nudge**) appear under one workflow group header; expanding the group shows all LP cards; the header link opens `/workflows?workflow=` with the surface workflow id.
-- AC-3.8.12 — An attention item with no `workflow_id` / playbook attribution appears only under **Other Tasks**, after all workflow groups.
+- AC-3.8.4 — The Today action queue caps at the day's items by default; "Previous (3)" collapsed control surfaces 3 deferred items when expanded. The primary queue groups workflow-attributed items under workflow headers with expand/collapse; the section title count remains the **total card count** (not the number of workflow groups).
+- AC-3.8.11 — Two or more attention items from the same workflow (e.g. multiple LPs in **Silence Nudge**) appear under one workflow group header; expanding the group shows all LP cards; the header **Workflow →** link opens `/workflows?workflow=` with the surface workflow id.
+- AC-3.8.12 — An attention item with no `workflow_id` / playbook attribution appears only under **Other Tasks**, after all workflow groups; that bucket has no Workflow deep link.
+- AC-3.8.13 — Every LP card in the primary attention queue shows a **Review** ghost CTA on the row; opening the drawer still supports approve/send flows per §3.9.
+- AC-3.8.14 — Demo/mock Today shows a mixed queue: at least one workflow group per seeded Tomo default in the fixture (e.g. **Post Meet**, **Slot Reply**, **Silence Nudge**) and at least one **Other Tasks** group containing multiple non-workflow cards (intro, analytics, ad-hoc follow-up).
+- AC-3.8.15 — Workflow group headers display a two-word pill (e.g. **POST MEET**, **SLOT REPLY**); LP cards inside the group do not repeat the workflow pill.
+- AC-3.8.16 — **Previous (N)** when expanded lists items grouped by Deferred / prior calendar days only; workflow accordion headers do not appear in that strip.
 - AC-3.8.5 — Inline Tomo chat receives `todayContext` (actions, commitments, **Radar Modal payload**, **raise-stands counts**) and returns answers consistent with what's rendered on the page.
 - AC-3.8.6 — The **Where the raise stands** card on Today shows four counts (**Moveable**, **Healthy — on track**, **Stalling — watch**, **Drifting — act**) that partition active pipeline LPs per Section 9 Today supplement; the headline **Insights →** control navigates to the Insights page.
 - AC-3.8.7 — The in-app Radar Modal implements the section taxonomy and defaults in **Appendix I** (including footer **Brief settings** and **Done**).
@@ -3014,7 +3029,7 @@ Per Section 8 §8.6. Global defaults per stage; per-workspace override deferred 
 | `outcome` | text | null | | check in (`'pending'`, `'approved_unchanged'`, `'approved_with_edits'`, `'edited_substantially'`, `'dismissed'`, `'resolved'`, `'actioned'`, `'viewed'`, `'snoozed'`, `'expired'`) | Null at generation; set on user action |
 | `character_change_pct` | numeric(5,2) | null | | | For draft actions; threshold per O-3 (default 30%) |
 | `time_saved_minutes` | int | null | | | Per-action benchmark from O-2 |
-| `metadata` | jsonb | not null | `'{}'` | | Action-specific fields |
+| `metadata` | jsonb | not null | `'{}'` | | Action-specific fields; Today attention grouping uses optional `workflow_id` (surface `workflows.id`), optional `pill_label` (two-word override), `attention_card` display fields |
 | `generated_at` | timestamptz | not null | `now()` | | |
 | `actioned_at` | timestamptz | null | | | Set when GP acts |
 | `source_signal_log_id` | uuid | null | | fk → `lp_signal_log.id` | The signal that triggered this action, if any |
@@ -3184,7 +3199,8 @@ Workflow definition (locked default, configurable template, saved configuration,
 | Column | Type | Null | Default | References | Notes |
 |---|---|---|---|---|---|
 | `id` | uuid | not null | `gen_random_uuid()` | pk | |
-| `name` | text | not null | | | |
+| `name` | text | not null | | | Full display name on `/workflows` |
+| `pill_label` | text | null | | | Exactly two words for Today attention group headers (LLM-generated at user-workflow creation; seeded defaults in migration) |
 | `slug` | text | not null | | | E.g. `pb-three-touch-qualification` |
 | `description` | text | null | | | |
 | `workflow_kind` | text | not null | `'user_custom'` | check in (`'locked_default'`, `'configurable_template'`, `'saved_configuration'`, `'user_custom'`) | Controls edit affordances on `/workflows` |
@@ -3821,11 +3837,14 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Modal content follows **Appendix I — Radar Modal IA (v1)** (section headings, narrative header, stamp, collapsible sections, footer). Legacy four-block brief (meetings / urgent / compliance / signals only) is superseded for in-app structure.
 
 **Story 8.4.2 — Attention queue.**
-*As a GP, I see "What needs your attention" with today's most pressing items, sorted by priority.*
+*As a GP, I see "What needs your attention" with today's most pressing items, sorted by priority — workflow-driven work grouped, everything else under Other Tasks.*
 
 - AC — Items are sourced from `tomo_action_log` (outcome IS NULL) and `reminders` (status='pending').
-- AC — Sort order: re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval.
-- AC — Items beyond today collapse into a "Previous (N)" control that's collapsed by default.
+- AC — Sort order (before grouping): re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval; workflow groups are ordered by the most urgent card in each group.
+- AC — Rows with `workflow_id` (or equivalent on the log row) appear under collapsible workflow headers with a two-word pill, count, and **Workflow →** link to `/workflows?workflow={surfaceWorkflowId}`.
+- AC — Rows without workflow attribution appear under **Other Tasks** (last), with no workflow link.
+- AC — LP cards show **Review** on the row; urgency pills remain per card; workflow pill appears on the group header only.
+- AC — Items beyond today collapse into a "Previous (N)" control that's collapsed by default; Previous uses day/deferred sub-groups only (no workflow grouping).
 
 **Story 8.4.3 — Coming up.**
 *As a GP, I see today's calendar events with LP attendees and commitments due today or tomorrow.*
