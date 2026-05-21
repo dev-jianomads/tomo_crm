@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { CalendarDaysIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { useState, type ReactNode } from "react";
+import { CalendarDaysIcon, ChevronDownIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import type { Pipeline } from "@/lib/pipelines";
 import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
 import type { WorkflowActionBuildAttachment } from "@/lib/workflow-action-build";
@@ -11,12 +11,12 @@ import { WorkflowWizardFileUpload } from "@/components/workflow-wizard-file-uplo
 export type WorkflowCondensedBuildPanelProps = {
   pipeline: Pipeline;
   workflowName: string;
-  /** Section 1 — primary: plain trigger row; follow-up: radio trigger UI. */
   triggerSection: ReactNode;
   contextText: string;
   onContextTextChange: (value: string) => void;
   contextPlaceholder?: string;
   contextLabel?: string;
+  actionSectionLabel?: string;
   attachments: WorkflowActionBuildAttachment[];
   onAttachmentsChange: (attachments: WorkflowActionBuildAttachment[]) => void;
   onOpenAvailability?: () => void;
@@ -63,7 +63,8 @@ export function WorkflowCondensedBuildPanel({
   contextText,
   onContextTextChange,
   contextPlaceholder = "Theme, trip dates, talking points, anything Tomo should know…",
-  contextLabel = "Context for Tomo",
+  contextLabel = "Context",
+  actionSectionLabel = "Tomo — define action",
   attachments,
   onAttachmentsChange,
   onOpenAvailability,
@@ -98,18 +99,25 @@ export function WorkflowCondensedBuildPanel({
   draftLpHint,
   showDraftAttachments = false,
 }: WorkflowCondensedBuildPanelProps) {
+  const [hasRefinedOnce, setHasRefinedOnce] = useState(
+    () => actionPromptConfirmed || Boolean(tomoInstruction.trim())
+  );
+  const [actionSummaryOpen, setActionSummaryOpen] = useState(false);
+
+  const showGenerateDrafts = hasRefinedOnce;
+
   return (
     <div
       className={`grid min-h-[min(32rem,60vh)] gap-4 ${draftVisible ? "lg:grid-cols-2" : ""} lg:items-start`}
       data-testid="workflow-condensed-build-panel"
     >
       <div className="flex flex-col gap-4">
-        <section className="space-y-1.5" data-testid="workflow-build-trigger-section">
+        <section className="shrink-0 space-y-1.5" data-testid="workflow-build-trigger-section">
           <span className="text-xs font-medium text-[color:var(--foreground)]">Trigger</span>
           {triggerSection}
         </section>
 
-        <section className="space-y-1.5">
+        <section className="shrink-0 space-y-1.5">
           <span className="text-xs font-medium text-[color:var(--foreground)]">{contextLabel}</span>
           <textarea
             value={contextText}
@@ -145,7 +153,8 @@ export function WorkflowCondensedBuildPanel({
           </div>
         </section>
 
-        <section className="min-h-0">
+        <section className="min-h-0 space-y-1.5">
+          <span className="text-xs font-medium text-[color:var(--foreground)]">{actionSectionLabel}</span>
           <WorkflowCreatorChat
             key={`action-${actionChatKey}`}
             pipeline={pipeline}
@@ -156,53 +165,73 @@ export function WorkflowCondensedBuildPanel({
             contextText={orchestratorContextText}
             attachmentNames={attachmentNames}
             variant="wizardCondensed"
+            hideSectionHeader
             actionPills={actionPills}
             actionPromptConfirmed={actionPromptConfirmed}
             confirmedActionInstruction={tomoInstruction}
-            onOpenAvailability={onOpenAvailability}
-            availabilitySlotCount={availabilitySlotCount}
             onStreamingChange={onStreamingChange}
             onActionPromptRevoked={onActionPromptRevoked}
             onActionPillSelect={onActionPillSelect}
+            onRefineStarted={() => setHasRefinedOnce(true)}
+            showGenerateDrafts={showGenerateDrafts}
+            onGenerateDrafts={onGenerateDrafts}
+            canGenerateDrafts={canGenerateDrafts}
+            generatingDrafts={generating}
+            generateDraftsLabel={generateLabel}
             onWorkflowCreated={() => {}}
-            onActionPromptConfirmed={onActionPromptConfirmed}
-            onActionConfirmed={onActionConfirmed}
+            onActionPromptConfirmed={(payload) => {
+              setHasRefinedOnce(true);
+              onActionPromptConfirmed(payload);
+            }}
+            onActionConfirmed={(action) => {
+              setHasRefinedOnce(true);
+              onActionConfirmed(action);
+            }}
           />
-        </section>
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--tomo-rule-soft)] pt-3">
           {actionChatStreaming && !generating ? (
-            <span className="text-[11px] text-[color:var(--tomo-mute)]">Tomo is refining…</span>
+            <p className="text-[11px] text-[color:var(--tomo-mute)]">Tomo is refining…</p>
           ) : null}
-          <button
-            type="button"
-            disabled={!canGenerateDrafts || generating || actionChatStreaming}
-            onClick={onGenerateDrafts}
-            className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-            data-testid="workflow-generate-drafts"
-          >
-            <SparklesIcon className="h-3.5 w-3.5" />
-            {generating ? "Drafting…" : generateLabel}
-          </button>
-        </div>
+        </section>
       </div>
 
       {draftVisible && baseBody ? (
-        <div className="space-y-4 lg:sticky lg:top-0" data-testid="workflow-build-draft-panel">
-          <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))] p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
-              {draftActionTitle}
-            </h3>
-            <p className="mt-1 text-[11px] text-[color:var(--tomo-mute)]">
-              What Tomo will do for each LP when this workflow runs.
-            </p>
-            <textarea
-              value={actionDescription}
-              onChange={(e) => onActionDescriptionChange(e.target.value)}
-              rows={4}
-              className="tomo-input mt-3 w-full resize-y text-sm"
-            />
-          </section>
+        <div className="flex min-h-0 flex-col gap-3 lg:sticky lg:top-0 lg:max-h-[min(72vh,640px)] lg:overflow-y-auto" data-testid="workflow-build-draft-panel">
+          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))]">
+            <button
+              type="button"
+              onClick={() => setActionSummaryOpen((o) => !o)}
+              className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+              aria-expanded={actionSummaryOpen}
+            >
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
+                  {draftActionTitle}
+                </h3>
+                <p className="mt-0.5 truncate text-[11px] text-[color:var(--tomo-mute)]">
+                  {actionDescription.trim() || "Step summary — expand to edit"}
+                </p>
+              </div>
+              <ChevronDownIcon
+                className={`h-4 w-4 shrink-0 text-[color:var(--tomo-mute)] transition ${actionSummaryOpen ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </button>
+            {actionSummaryOpen ? (
+              <div className="border-t border-[color:var(--tomo-rule-soft)] px-4 pb-4">
+                <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
+                  Short label for what Tomo runs per LP (from your refined prompt). Collapsed by default so you can
+                  focus on the email draft.
+                </p>
+                <textarea
+                  value={actionDescription}
+                  onChange={(e) => onActionDescriptionChange(e.target.value)}
+                  rows={3}
+                  className="tomo-input mt-2 w-full resize-y text-sm"
+                />
+              </div>
+            ) : null}
+          </div>
+
           <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
@@ -231,7 +260,7 @@ export function WorkflowCondensedBuildPanel({
               <textarea
                 value={baseBody}
                 onChange={(e) => onBaseBodyChange(e.target.value)}
-                rows={10}
+                rows={12}
                 className="tomo-input mt-1 w-full resize-y text-sm"
               />
             </label>

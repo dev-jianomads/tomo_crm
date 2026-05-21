@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { CalendarDaysIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, PaperAirplaneIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import type { UIMessage } from "ai";
 import type { Pipeline } from "@/lib/pipelines";
 import { formatFilterSummary } from "@/lib/relationshipFilters";
@@ -60,6 +60,16 @@ type WorkflowCreatorChatProps = {
   onActionPromptRevoked?: () => void;
   onStreamingChange?: (streaming: boolean) => void;
   variant?: "compact" | "wizard" | "wizardCondensed";
+  /** Condensed build: section title rendered by parent; hide inner header. */
+  hideSectionHeader?: boolean;
+  /** Fired when the user sends their first refine message. */
+  onRefineStarted?: () => void;
+  /** Show Generate drafts to the left of Refine (after first refine). */
+  showGenerateDrafts?: boolean;
+  onGenerateDrafts?: () => void;
+  canGenerateDrafts?: boolean;
+  generatingDrafts?: boolean;
+  generateDraftsLabel?: string;
 };
 
 function ChatBubble({ message }: { message: UIMessage }) {
@@ -112,6 +122,13 @@ export function WorkflowCreatorChat({
   onActionPromptRevoked,
   onStreamingChange,
   variant = "compact",
+  hideSectionHeader = false,
+  onRefineStarted,
+  showGenerateDrafts = false,
+  onGenerateDrafts,
+  canGenerateDrafts = false,
+  generatingDrafts = false,
+  generateDraftsLabel = "Generate drafts",
 }: WorkflowCreatorChatProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const processedToolCallIds = useRef<Set<string>>(new Set());
@@ -263,6 +280,7 @@ export function WorkflowCreatorChat({
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
+    if (isActionWizard && messages.length === 0) onRefineStarted?.();
     setInput("");
     if (wizardStep === "action" && actionPromptConfirmed) {
       const isAffirmative = /^(yes|yep|yeah|sure|ok|okay|looks good|perfect|lock it in|continue)\s*[.!?]*$/i.test(
@@ -332,10 +350,12 @@ export function WorkflowCreatorChat({
       </>
     );
 
+  const hideAvailabilityInToolbar = variant === "wizardCondensed";
+
   const shellClass =
     variant === "wizardCondensed"
       ? isActionWizard
-        ? "flex min-h-[14rem] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
+        ? "flex max-h-[min(280px,38vh)] min-h-[14rem] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
         : "flex min-h-[220px] flex-col rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]"
       : variant === "wizard"
         ? isActionWizard
@@ -349,7 +369,19 @@ export function WorkflowCreatorChat({
   const actionToolbar = (
     <div className="mt-2 flex shrink-0 items-center justify-end gap-2">
       <span className="mr-auto text-[10px] text-[color:var(--tomo-mute)]">{actionSendHint}</span>
-      {isActionWizard && onOpenAvailability ? (
+      {showGenerateDrafts && onGenerateDrafts ? (
+        <button
+          type="button"
+          disabled={!canGenerateDrafts || generatingDrafts || isStreaming}
+          onClick={onGenerateDrafts}
+          className="inline-flex items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+          data-testid="workflow-generate-drafts"
+        >
+          <SparklesIcon className="h-4 w-4" />
+          {generatingDrafts ? "Drafting…" : generateDraftsLabel}
+        </button>
+      ) : null}
+      {isActionWizard && onOpenAvailability && !hideAvailabilityInToolbar ? (
         <button
           type="button"
           onClick={onOpenAvailability}
@@ -382,13 +414,93 @@ export function WorkflowCreatorChat({
     </div>
   );
 
+  const conversationFooter = (
+    <div className="flex shrink-0 flex-col gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+          placeholder="Message Tomo…"
+          disabled={isStreaming}
+          className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
+        />
+        {showGenerateDrafts && onGenerateDrafts ? (
+          <button
+            type="button"
+            disabled={!canGenerateDrafts || generatingDrafts || isStreaming}
+            onClick={onGenerateDrafts}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+            data-testid="workflow-generate-drafts"
+          >
+            <SparklesIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">{generatingDrafts ? "Drafting…" : generateDraftsLabel}</span>
+          </button>
+        ) : null}
+        {isActionWizard && onOpenAvailability && !hideAvailabilityInToolbar ? (
+          <button
+            type="button"
+            onClick={onOpenAvailability}
+            disabled={isStreaming}
+            className="inline-flex shrink-0 items-center gap-1 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2.5 py-2 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+            aria-label="Availability"
+          >
+            <CalendarDaysIcon className="h-4 w-4 text-[color:var(--tomo-mute)]" aria-hidden />
+            <span className="hidden sm:inline">Availability</span>
+            {availabilitySlotCount > 0 ? (
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-teal)]">
+                ({availabilitySlotCount})
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={isStreaming || !input.trim()}
+          className={
+            isActionWizard
+              ? "inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
+              : "inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
+          }
+          aria-label={actionSendLabel}
+        >
+          <PaperAirplaneIcon className="h-4 w-4" />
+          {isActionWizard ? actionSendLabel : null}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className={shellClass}>
-      <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
-        <p className="text-xs font-medium text-[color:var(--foreground)]">{chatTitle}</p>
-        <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p>
-        {isActionWizard && actionPills?.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+      {!hideSectionHeader ? (
+        <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+          <p className="text-xs font-medium text-[color:var(--foreground)]">{chatTitle}</p>
+          <p className="text-[11px] text-[color:var(--tomo-mute)]">{chatSubtitle}</p>
+          {isActionWizard && actionPills?.length ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {actionPills.map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  disabled={isStreaming}
+                  onClick={() => {
+                    onActionPillSelect?.(pill);
+                    if (messages.length === 0) setInput(pill.instruction);
+                  }}
+                  className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : isActionWizard && actionPills?.length ? (
+        <div className="shrink-0 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+          <div className="flex flex-wrap gap-1.5">
             {actionPills.map((pill) => (
               <button
                 key={pill.id}
@@ -396,7 +508,10 @@ export function WorkflowCreatorChat({
                 disabled={isStreaming}
                 onClick={() => {
                   onActionPillSelect?.(pill);
-                  if (messages.length === 0) setInput(pill.instruction);
+                  if (messages.length === 0) {
+                    onRefineStarted?.();
+                    setInput(pill.instruction);
+                  }
                 }}
                 className="rounded-full border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card-warm)] px-2.5 py-1 text-[11px] text-[color:var(--tomo-body)] transition hover:border-[color:var(--tomo-teal)] hover:text-[color:var(--foreground)] disabled:opacity-50"
               >
@@ -404,8 +519,8 @@ export function WorkflowCreatorChat({
               </button>
             ))}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {isActionInitialComposer ? (
         <div className="flex min-h-0 flex-1 flex-col p-3">
           <textarea
@@ -464,50 +579,7 @@ export function WorkflowCreatorChat({
             )}
             <div ref={endRef} />
           </div>
-          <div className="flex shrink-0 flex-col gap-2 border-t border-[color:var(--tomo-rule-soft)] p-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-                placeholder="Message Tomo…"
-                disabled={isStreaming}
-                className="tomo-input min-w-0 flex-1 py-2 text-sm disabled:opacity-50"
-              />
-              {isActionWizard && onOpenAvailability ? (
-                <button
-                  type="button"
-                  onClick={onOpenAvailability}
-                  disabled={isStreaming}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-2.5 py-2 text-xs font-medium text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
-                  aria-label="Availability"
-                >
-                  <CalendarDaysIcon className="h-4 w-4 text-[color:var(--tomo-mute)]" aria-hidden />
-                  <span className="hidden sm:inline">Availability</span>
-                  {availabilitySlotCount > 0 ? (
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[color:var(--tomo-teal)]">
-                      ({availabilitySlotCount})
-                    </span>
-                  ) : null}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={isStreaming || !input.trim()}
-                className={
-                  isActionWizard
-                    ? "inline-flex shrink-0 items-center gap-1.5 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-teal)] bg-[color:var(--tomo-teal)] px-3 py-2 text-sm font-medium text-white shadow-[var(--tomo-shadow-1)] transition hover:opacity-90 disabled:opacity-50"
-                    : "inline-flex shrink-0 items-center justify-center rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-3 py-2 text-[color:var(--foreground)] shadow-[var(--tomo-shadow-1)] transition hover:bg-[color:var(--tomo-navy-soft)] disabled:opacity-50"
-                }
-                aria-label={actionSendLabel}
-              >
-                <PaperAirplaneIcon className="h-4 w-4" />
-                {isActionWizard ? actionSendLabel : null}
-              </button>
-            </div>
-          </div>
+          {conversationFooter}
         </>
       )}
       {messages.length > 0 && !isActionInitialComposer ? (

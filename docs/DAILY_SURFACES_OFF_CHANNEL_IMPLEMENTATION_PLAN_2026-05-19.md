@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This plan ties together **UI/query work** (Today, Radar Modal, Insights, Relationships navigation) with the **one substantive signals-engine change** for V1: **off-channel suppression**. Normative requirements live in `TOMO_V1_SRS_DRAFT_2026-05-20.md` after the amendment pass; this document is the engineering sequencing note for the `tomo_crm` app and backend workers.
+This plan ties together **UI/query work** (Today, Radar Modal, Insights, Relationships navigation) with the **one substantive signals-engine change** for V1: **off-channel suppression**. Normative requirements live in `TOMO_V1_SRS_DRAFT_2026-05-21.md` after the amendment pass; this document is the engineering sequencing note for the `tomo_crm` app and backend workers.
 
 Source amendments (product / SRS briefing):
 
@@ -69,5 +69,5 @@ Until Postgres + batch ship, mirror behaviour in mock data and derivations so UX
 
 ## References
 
-- `TOMO_V1_SRS_DRAFT_2026-05-20.md` — §3.5 (signals), §3.6 (metrics/Insights), §3.8 (Today), §3.10 (LP record), §3.11 (named filters), §6.2 (`lp_state`, `lp_signal_log`), Section 9 (Metric 10 / Today partition / hover hints), Appendix I (Radar IA), Appendix A (glossary / disambiguation).
+- `TOMO_V1_SRS_DRAFT_2026-05-21.md` — §3.5 (signals), §3.6 (metrics/Insights), §3.8 (Today), §3.10 (LP record), §3.11 (named filters), §6.2 (`lp_state`, `lp_signal_log`), Section 9 (Metric 10 / Today partition / hover hints), Appendix I (Radar IA), Appendix A (glossary / disambiguation).
 - `TOMO_V1_Amendments_Daily_Surfaces (1).md`, `TOMO_V1_Amendments_Off_Channel.md`.

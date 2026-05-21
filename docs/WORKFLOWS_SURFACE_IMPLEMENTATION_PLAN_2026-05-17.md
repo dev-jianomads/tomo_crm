@@ -1,10 +1,10 @@
 # Workflows Surface Implementation Plan — 2026-05-17
 
-**Updated 2026-05-21 (SRS v0.12):** Expanded accordion simplified — **process flow** retained; **computed telemetry panel** replaces meta strip, `stateSummary` segment boxes, and fixture run history. See `src/lib/workflow-telemetry.ts` and §3.12 item 9 in `TOMO_V1_SRS_DRAFT_2026-05-20.md`.
+**Updated 2026-05-21 (SRS v0.14):** **F7 Three-Touch Qualification** UI-hidden on `/workflows` (fixture in `workflow-surface-mock.ts`; filter in `workflow-surface-display.ts`, BR-3.12.22). Visible cards: Post-Meeting, Themed, Trip. Retains condensed **three-step** build wizard (Name → Build → Personalise); see `workflow-condensed-build-panel.tsx` and §3.12 in `TOMO_V1_SRS_DRAFT_2026-05-21.md`.
 
 ## Purpose
 
-This plan records the implementation direction for the V1 `/workflows` surface after the workflow scope was reduced to four entries: **Post-Meeting Execution**, **F7 Three-Touch Qualification**, **Themed Outreach**, and **Trip Orchestrator**.
+This plan records the implementation direction for the V1 `/workflows` surface. Four workflow definitions are seeded; **three** render as accordion cards: **Post-Meeting Execution**, **Themed Outreach**, and **Trip Orchestrator**. **F7 Three-Touch Qualification** remains in fixtures but is omitted from the card list (launch via Lists / Relationships and link-workflow picker).
 
 The design reference is `design/tomo_workflows_v8.html`. The HTML file remains a visual / interaction reference for layout and process-flow styling only and should not be modified as part of this plan. **Fixture health metrics in v8 are not normative for V1** (see SRS BR-3.12.21).
 
@@ -14,7 +14,7 @@ The Workflows page should behave as a workflow control room, not as a list that 
 
 The intended hierarchy is:
 
-1. The collapsed workflow list shows the four SRS workflow entries.
+1. The collapsed workflow list shows the three **visible** SRS workflow cards (Post-Meeting, Themed, Trip); F7 is UI-hidden per BR-3.12.22.
 2. Clicking a workflow expands it inline as an accordion.
 3. The expanded card shows the **process flow** and, when runs exist on the list, a **computed telemetry panel** (not fixture segment boxes or demo run history).
 4. Clicking a specific step opens the right drawer or modal for granular work.
