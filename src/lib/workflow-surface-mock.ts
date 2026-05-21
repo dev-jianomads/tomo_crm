@@ -263,6 +263,60 @@ const themedOutreachDrafts: WorkflowDraft[] = [
   },
 ];
 
+const themedFollowUpDrafts: WorkflowDraft[] = [
+  {
+    id: "draft-themed-fu-wellcome",
+    lpName: "Marie-Claude Dumas",
+    firmName: "Wellcome Trust",
+    roleLabel: "Investment Director",
+    tierLabel: "Tier 1",
+    email: "marieclaude@wellcome.org",
+    subject: "Re: European credit dispersion",
+    body:
+      "Marie-Claude, wanted to bump the note I sent last week in case it was buried. Happy to send a two-minute summary if easier than a call.",
+    status: "ready",
+  },
+  {
+    id: "draft-themed-fu-futurefund",
+    lpName: "James McIntyre",
+    firmName: "Future Fund Australia",
+    roleLabel: "Portfolio Manager",
+    tierLabel: "Tier 2",
+    email: "james.mcintyre@futurefund.gov.au",
+    subject: "Re: A short update on our credit book",
+    body:
+      "James, circling back on the credit dispersion note — let me know if a short call would be useful or if email is better.",
+    status: "ready",
+  },
+];
+
+const tripFollowUpDrafts: WorkflowDraft[] = [
+  {
+    id: "draft-trip-fu-btf",
+    lpName: "Sarah Whitmore",
+    firmName: "British Telecom Pension Scheme",
+    roleLabel: "Alternatives Lead",
+    tierLabel: "Tier 1",
+    email: "sarah.whitmore@btps.co.uk",
+    subject: "Re: In London June 12-15",
+    body:
+      "Sarah, I am in London through the 15th and still have a slot on the 14th if helpful. No pressure if timing does not work.",
+    status: "ready",
+  },
+  {
+    id: "draft-trip-fu-lgps",
+    lpName: "Tom Richards",
+    firmName: "LGPS Central",
+    roleLabel: "Investment Director",
+    tierLabel: "Tier 2",
+    email: "tom.richards@lgpscentral.co.uk",
+    subject: "Re: London visit - June 12-15",
+    body:
+      "Tom, quick nudge while I am still in town — breakfast or late afternoon on the 13th or 14th if you have 30 minutes.",
+    status: "ready",
+  },
+];
+
 const tripDrafts: WorkflowDraft[] = [
   {
     id: "draft-trip-london-btf",
@@ -358,6 +412,26 @@ export const workflowSurfaceDraftBatches: WorkflowDraftBatch[] = [
     context: "London-filtered LPs - scheduling constrained to trip window",
     batchTomoPlaceholder: "Mention breakfast options - make the ask lower friction",
     drafts: tripDrafts,
+  },
+  {
+    id: "batch-themed-follow-up",
+    workflowId: "wf-themed-outreach",
+    stepId: "themed-follow-up",
+    eyebrow: "Themed Outreach - Follow-up",
+    title: "2 follow-up nudges ready",
+    context: "Non-responders from Day 0 themed send",
+    batchTomoPlaceholder: "Shorter - one line of context from the original theme",
+    drafts: themedFollowUpDrafts,
+  },
+  {
+    id: "batch-trip-follow-up",
+    workflowId: "wf-trip-orchestrator",
+    stepId: "trip-follow-up",
+    eyebrow: "Trip Orchestrator - Follow-up",
+    title: "2 trip follow-up drafts ready",
+    context: "LPs who have not replied before the trip window closes",
+    batchTomoPlaceholder: "Lower friction - mention remaining slots only",
+    drafts: tripFollowUpDrafts,
   },
 ];
 
@@ -610,6 +684,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         title: "Follow-up to non-responders",
         description: "Optional light nudge for non-replies",
         timingLabel: "Day 7",
+        draftBatchId: "batch-themed-follow-up",
       },
       {
         id: "themed-outcome",
@@ -700,6 +775,7 @@ export const workflowSurfaceEntries: WorkflowSurfaceEntry[] = [
         title: "Follow-up if no response",
         description: "Light nudge to LPs who have not replied before the trip window closes",
         timingLabel: "Before trip",
+        draftBatchId: "batch-trip-follow-up",
       },
       {
         id: "trip-outcome",

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { WorkflowStepNode, WorkflowSurfaceEntry } from "@/lib/workflow-surface-mock";
 import {
   getWorkflowStepMonitoring,
@@ -19,6 +21,58 @@ function formatLpStatus(status: WorkflowStepLpRow["emailStatus"]): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function MonitorSectionCard({
+  title,
+  countLabel,
+  collapsible,
+  defaultCollapsed = false,
+  children,
+}: {
+  title: string;
+  countLabel?: string;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+  children: ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  if (!collapsible) {
+    return (
+      <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
+        <p className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]">
+          {title}
+        </p>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center justify-between gap-2 border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-left"
+        aria-expanded={!collapsed}
+      >
+        <span className="text-xs font-semibold text-[color:var(--foreground)]">{title}</span>
+        <span className="flex items-center gap-2">
+          {countLabel ? (
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
+              {countLabel}
+            </span>
+          ) : null}
+          <ChevronDownIcon
+            className={`h-3.5 w-3.5 shrink-0 text-[color:var(--tomo-mute)] transition ${collapsed ? "-rotate-90" : ""}`}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {!collapsed ? children : null}
+    </div>
+  );
+}
+
 export function WorkflowStepMonitorPanel({
   entry,
   step,
@@ -31,7 +85,10 @@ export function WorkflowStepMonitorPanel({
   const monitoring = getWorkflowStepMonitoring(entry, step, listId);
   const metrics = monitoring.visibleMetrics ?? [];
   const showParameters = monitoring.showParameters !== false && Boolean(monitoring.parameters?.length);
+  const showDraftPreview =
+    monitoring.showDraftPreview !== false && Boolean(monitoring.draftPreview?.body?.trim());
   const showLpTable = monitoring.showLpTable !== false && Boolean(monitoring.lpRows?.length);
+  const lpCount = monitoring.lpRows?.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -77,11 +134,44 @@ export function WorkflowStepMonitorPanel({
         </div>
       ) : null}
 
-      {showLpTable ? (
+      {showDraftPreview ? (
         <div className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)]">
-          <p className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]">
-            LPs on this step
-          </p>
+          <div className="border-b border-[color:var(--tomo-rule-soft)] px-3 py-2">
+            <p className="text-xs font-semibold text-[color:var(--foreground)]">Draft</p>
+            {monitoring.draftPreview!.caption ? (
+              <p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
+                {monitoring.draftPreview!.caption}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2 px-3 py-3">
+            <div>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                Subject
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-[color:var(--foreground)]">
+                {monitoring.draftPreview!.subject}
+              </p>
+            </div>
+            <div>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-semibold uppercase tracking-[0.14em] text-[color:var(--tomo-mute)]">
+                Body
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[color:var(--tomo-body)]">
+                {monitoring.draftPreview!.body}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showLpTable ? (
+        <MonitorSectionCard
+          title="LPs on this step"
+          countLabel={`${lpCount} LP${lpCount === 1 ? "" : "s"}`}
+          collapsible
+          defaultCollapsed={lpCount > 6}
+        >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-left text-xs">
               <thead>
@@ -106,7 +196,7 @@ export function WorkflowStepMonitorPanel({
               </tbody>
             </table>
           </div>
-        </div>
+        </MonitorSectionCard>
       ) : null}
 
       {monitoring.footnote ? (

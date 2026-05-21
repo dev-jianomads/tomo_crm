@@ -10,13 +10,20 @@ import type { CustomPlaybookStored } from "@/lib/custom-playbook-schema";
 import { formatFollowUpTriggerLabel } from "@/lib/workflow-follow-up-design";
 import type { WorkflowStepNode, WorkflowSurfaceEntry } from "@/lib/workflow-surface-mock";
 import {
+  draftPreviewFromActionBuildForMonitor,
   getMockWorkflowStepMonitoring,
+  type WorkflowStepDraftPreview,
   type WorkflowStepLpRow,
   type WorkflowStepMetricKey,
   type WorkflowStepMonitoring,
 } from "@/lib/workflow-step-monitoring-mock";
 
-export type { WorkflowStepLpRow, WorkflowStepMetricKey, WorkflowStepMonitoring };
+export type {
+  WorkflowStepDraftPreview,
+  WorkflowStepLpRow,
+  WorkflowStepMetricKey,
+  WorkflowStepMonitoring,
+};
 
 function stepRunToEmailStatus(status: WorkflowStepRunRecord["status"]): WorkflowStepLpRow["emailStatus"] {
   if (status === "sent" || status === "replied") return status;
@@ -126,6 +133,9 @@ function buildCustomWorkflowStepMonitoring(
   }
 
   const isFollowUpStep = step.id === followUpStepId || step.id.endsWith("-follow-up");
+  const isDraftActionStep =
+    step.nodeType === "action" &&
+    (step.actionType === "draft_batch" || step.actionType === "single_draft");
   const stepIdFilter = isFollowUpStep ? followUpStepId : primaryStepId;
   const rows = stepRuns.filter((sr) => sr.workflowStepId === stepIdFilter);
 
@@ -144,6 +154,15 @@ function buildCustomWorkflowStepMonitoring(
 
   const metrics = metricsFromStepRuns(rows);
   const followUpBuild = playbook?.followUp?.actionBuild;
+  const primaryDraftPreview = isDraftActionStep
+    ? draftPreviewFromActionBuildForMonitor(playbook?.actionBuild, playbook?.actionSpec)
+    : undefined;
+  const followUpDraftPreview = isDraftActionStep
+    ? draftPreviewFromActionBuildForMonitor(
+        followUpBuild,
+        playbook?.followUp?.actionSpec
+      )
+    : undefined;
 
   if (isFollowUpStep) {
     return {
@@ -152,17 +171,17 @@ function buildCustomWorkflowStepMonitoring(
       metrics,
       visibleMetrics: ["drafted", "sent", "skipped"],
       showParameters: true,
+      showDraftPreview: Boolean(followUpDraftPreview),
+      draftPreview: followUpDraftPreview,
       showLpTable: lpRows.length > 0,
       parameters: [
         {
           label: "Draft template",
-          value: followUpBuild?.baseSubject
-            ? `Subject: ${followUpBuild.baseSubject}`
-            : "Follow-up template from workflow builder",
+          value: followUpBuild?.actionDescription?.trim() || step.description || "Follow-up template",
         },
         {
-          label: "Cohort template",
-          value: followUpBuild?.actionDescription?.trim() || step.description || "—",
+          label: "Subject",
+          value: followUpBuild?.baseSubject?.trim() || "—",
         },
         { label: "Timing", value: step.timingLabel ?? step.statusLabel ?? "Per trigger" },
       ],
@@ -180,6 +199,8 @@ function buildCustomWorkflowStepMonitoring(
     metrics,
     visibleMetrics: ["drafted", "sent", "replied", "skipped"],
     showParameters: true,
+    showDraftPreview: Boolean(primaryDraftPreview),
+    draftPreview: primaryDraftPreview,
     showLpTable: lpRows.length > 0,
     parameters: [
       {

@@ -2,7 +2,13 @@
  * Read-only step monitoring payloads for the workflow step monitor drawer.
  */
 
+import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
+import type { WorkflowActionBuildConfig } from "@/lib/workflow-action-build";
 import type { WorkflowStepNode, WorkflowSurfaceEntry } from "@/lib/workflow-surface-mock";
+import {
+  getWorkflowDraftBatch,
+  getWorkflowSingleDraftBatch,
+} from "@/lib/workflow-surface-mock";
 
 export type WorkflowStepLpRow = {
   id: string;
@@ -15,18 +21,88 @@ export type WorkflowStepLpRow = {
 
 export type WorkflowStepMetricKey = "drafted" | "sent" | "replied" | "skipped";
 
+/** Read-only cohort / sample draft shown in the monitor drawer. */
+export type WorkflowStepDraftPreview = {
+  subject: string;
+  body: string;
+  /** e.g. "Cohort template" or "Sample draft (3 personalised)" */
+  caption?: string;
+};
+
 export type WorkflowStepMonitoring = {
   stepId: string;
   status: "idle" | "running" | "complete";
   metrics: Record<WorkflowStepMetricKey, number>;
   visibleMetrics?: WorkflowStepMetricKey[];
   showParameters?: boolean;
+  showDraftPreview?: boolean;
+  draftPreview?: WorkflowStepDraftPreview;
   showLpTable?: boolean;
   /** Resolved trigger / run parameters (read-only). */
   parameters?: Array<{ label: string; value: string }>;
   lpRows?: WorkflowStepLpRow[];
   footnote?: string;
 };
+
+function draftPreviewFromActionBuild(
+  build: WorkflowActionBuildConfig | undefined,
+  actionSpec?: UserWorkflowAction | null
+): WorkflowStepDraftPreview | undefined {
+  let subject = build?.baseSubject?.trim() || "";
+  let body = build?.baseBody?.trim() || "";
+
+  if (!body && actionSpec?.kind === "send_email") {
+    subject = subject || actionSpec.subject.trim();
+    body = actionSpec.body.trim();
+  }
+
+  const sampleLp = build?.lpDrafts?.[0];
+  if (!body && sampleLp?.body?.trim()) {
+    subject = subject || sampleLp.subject?.trim() || "";
+    body = sampleLp.body.trim();
+  }
+
+  if (!body) return undefined;
+
+  const personalised = build?.lpDrafts?.length ?? 0;
+  return {
+    subject: subject || "(No subject)",
+    body,
+    caption:
+      personalised > 1
+        ? `Cohort template (${personalised} personalised drafts)`
+        : "Cohort template",
+  };
+}
+
+export function draftPreviewFromActionBuildForMonitor(
+  build: WorkflowActionBuildConfig | undefined,
+  actionSpec?: UserWorkflowAction | null
+): WorkflowStepDraftPreview | undefined {
+  return draftPreviewFromActionBuild(build, actionSpec);
+}
+
+function draftPreviewFromFixtureStep(
+  entry: WorkflowSurfaceEntry,
+  step: WorkflowStepNode
+): WorkflowStepDraftPreview | undefined {
+  if (step.nodeType !== "action") return undefined;
+  if (step.actionType !== "draft_batch" && step.actionType !== "single_draft") return undefined;
+
+  const batch = step.draftBatchId
+    ? getWorkflowDraftBatch(step.draftBatchId)
+    : getWorkflowSingleDraftBatch(entry.id, step.id);
+  const sample = batch?.drafts[0];
+  if (!sample?.body?.trim()) return undefined;
+
+  const count = batch!.drafts.length;
+  return {
+    subject: sample.subject,
+    body: sample.body.trim(),
+    caption:
+      count > 1 ? `Sample draft (${count} personalised in cohort)` : "Draft",
+  };
+}
 
 function demoSendLpRows(prefix: string): WorkflowStepLpRow[] {
   return [
@@ -107,6 +183,9 @@ export function getMockWorkflowStepMonitoring(
   }
 
   if (step.actionType === "draft_batch" || step.actionType === "single_draft") {
+    const draftPreview = draftPreviewFromFixtureStep(entry, step);
+    const showDraftPreview = Boolean(draftPreview);
+
     if (isFollowUpStep(step)) {
       return {
         stepId: step.id,
@@ -114,6 +193,8 @@ export function getMockWorkflowStepMonitoring(
         metrics: { drafted: 4, sent: 2, replied: 0, skipped: 0 },
         visibleMetrics: ["drafted", "sent"],
         showParameters: true,
+        showDraftPreview,
+        draftPreview,
         showLpTable: false,
         parameters: [
           { label: "Draft template", value: "Generic follow-up nudge from workflow defaults" },
@@ -128,9 +209,14 @@ export function getMockWorkflowStepMonitoring(
       status: "running",
       metrics: { drafted: 4, sent: 2, replied: 1, skipped: 0 },
       visibleMetrics: ["drafted", "sent", "replied", "skipped"],
-      showParameters: false,
+      showParameters: !showDraftPreview,
+      showDraftPreview,
+      draftPreview,
       showLpTable: true,
       lpRows: demoSendLpRows(step.id),
+      parameters: showDraftPreview
+        ? [{ label: "Step", value: step.title }]
+        : undefined,
     };
   }
 
