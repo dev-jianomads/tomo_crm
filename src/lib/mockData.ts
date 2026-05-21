@@ -817,7 +817,7 @@ export const actions: ActionItem[] = [
     attentionCard: {
       company: "PAAMCO Prisma",
       contactName: "Peter Zakowich",
-      verb: "Approve",
+      verb: "Review",
       workKind: "Scheduling",
       workSubject: "March 18 meeting — propose slots",
     },
@@ -908,7 +908,7 @@ export const actions: ActionItem[] = [
     attentionCard: {
       company: "Goldman Sachs (intro)",
       contactName: "Michel del Buono",
-      verb: "Approve",
+      verb: "Review",
       workKind: "Introduction",
       workSubject: "Edmond de Rothschild Family Office — reply due",
     },
@@ -972,7 +972,7 @@ export const actions: ActionItem[] = [
     attentionCard: {
       company: "Albourne Partners",
       contactName: "James Staltari",
-      verb: "Approve",
+      verb: "Review",
       workKind: "Follow-up",
       workSubject: "Post-meeting note (SLA)",
     },
@@ -1066,7 +1066,7 @@ export const actions: ActionItem[] = [
     attentionCard: {
       company: "GIC",
       contactName: "Kwong Hong Huat",
-      verb: "Approve",
+      verb: "Review",
       workKind: "Follow-up",
       workSubject: "Meeting confirm — new fund",
     },
@@ -1189,7 +1189,7 @@ export const actions: ActionItem[] = [
     attentionCard: {
       company: "Amundi (FoF)",
       contactName: "Camille Durand",
-      verb: "Approve",
+      verb: "Review",
       workKind: "Check-in",
       workSubject: "18d since contact — Q2 read",
     },
