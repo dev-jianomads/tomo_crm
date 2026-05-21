@@ -1,6 +1,6 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Last updated:** 21 May 2026
+**Last updated:** 22 May 2026
 
 **Document status:** DRAFT v0.14 — **Custom workflow build wizard (condensed):** **three-step** dialog (**Name → Build → Personalise**) replaces the prior five-step flow (Trigger / Action / Draft as separate steps). **Build** is a single screen: plain-text **trigger**, **Context** (3-row textarea + **Attach** / **Availability**), condensed **Tomo — define action** refine chat (height-capped, internal scroll), **Generate drafts** beside **Refine** only after the first refine; **right column** shows cohort draft after generate (**Action** step summary collapsed by default). **Follow-up** uses the same condensed **Build** layout; **Add follow-up** is offered via a **post-save prompt** after **Save & finish** on Personalise (not a footer CTA on Personalise). Retains v0.13: **F7** UI-hidden on `/workflows` card list; accordion **process flow** + **computed telemetry**; **saved** custom = Activate / Edit banner; optional **one follow-up leg**; **monitor-only** active cards; planned **workflow run outcomes** view (§3.12 item 15).
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
@@ -124,6 +124,7 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 - Daily Brief delivery via in-app, email, and Slack (push only; no Slack-native operating model in V1).
 - SOC 2 Type 1 and CASA Tier 2 compliance posture sufficient for institutional security diligence.
 - Email backfill per the three-tier ingestion model: 0–12 months full content, 13–36 months metadata only, beyond 36 months no ingestion.
+- **Email attachment text extraction (V1, bounded):** for LP-resolved messages in the full-content tier, asynchronously fetch `.docx` / `.pdf` attachments from the connected mailbox, extract plain text server-side (same parsers as the workflow wizard), and persist on `lp_interaction_attachments` for drafts, Tomo agent LP context, and reminders — **extracted text only** (no attachment binaries in V1). See §3.3 item 12 and limits in BR-3.3.5–BR-3.3.12. **Not** DocSend / DealRoom engagement analytics (V2).
 
 **Out of scope (V1) — see §9 and Appendix C for full V2/V3 capability matrix:**
 
@@ -275,7 +276,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 
 1. **Authentication and account management** — Firebase Auth (email + Google + Microsoft); per-user OAuth for data-source connections; workspace creation; team invites (multiple members per workspace); plan billing via Stripe.
 2. **Onboarding** — **Eight-screen** post-auth flow per **Document B** and **`design/tomo_onboarding_v1.html`**: welcome → connect workspace (pick Google or Microsoft) + pipeline (**all pipeline cards use CSV / Excel upload** in the wizard mock, including Affinity-labelled; native CRM API is **Settings**) → fund profile → raise profile → team → tone capture **choice** → first-read notices (mock) → briefing preview → **Take me to the app** / Home. **Three-tier historical email**, **meeting transcripts**, and **Slack** are **not** in the wizard; they are **Settings / background** (may return to onboarding later). See §3.2.
-3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection.
+3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection; bounded async attachment text extraction (`.docx` / `.pdf`, LP-resolved, full-content tier only — §3.3).
 4. **CRM integration** — generic CSV pipeline with auto-mapping, deduplication, and conflict resolution; **read-only** native CRM API pull for **Affinity or Backstop — whichever connector ships first** (bi-directional / SoR write-back not in V1).
 5. **Signals engine** — nine surfaced signals plus three captured attributes; nightly batch and event-driven computation; append-only signal log; pipeline flag computation.
 6. **Metrics engine** — ten Insights-page metrics; daily snapshot table; per-metric refresh cadences.
@@ -502,7 +503,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 ### 3.3. Email and calendar sync
 
-**Description.** Direct integration with Microsoft Graph and Google Workspace APIs (no third-party unifier). Three-tier ingestion (per `tomo_email_ingestion_strategy.md`): 0–12 months full content, 13–36 months metadata only, >36 months no ingestion. Initial backfill runs progressively at onboarding; ongoing sync uses Microsoft Graph subscriptions and Google Pub/Sub watches with a 30-minute delta-polling fallback (per O-9). OOO replies are detected and excluded from meaningful-touch calculations.
+**Description.** Direct integration with Microsoft Graph and Google Workspace APIs (no third-party unifier). Three-tier ingestion (per `tomo_email_ingestion_strategy.md`): 0–12 months full content, 13–36 months metadata only, >36 months no ingestion. Initial backfill runs progressively at onboarding; ongoing sync uses Microsoft Graph subscriptions and Google Pub/Sub watches with a 30-minute delta-polling fallback (per O-9). OOO replies are detected and excluded from meaningful-touch calculations. **Bounded attachment text extraction** (`.docx` / `.pdf`, async, LP-resolved, full-content tier only) persists excerpts on `lp_interaction_attachments` for drafts and Tomo context — see item 12 and BR-3.3.5–BR-3.3.12.
 
 **Inputs / triggers.**
 
@@ -531,10 +532,18 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 9. **Re-engagement event-driven hot path.** New inbound `lp_interactions` row triggers the re-engagement check synchronously (per Section 8 §8.3 Signal 2): if `days_since_last_gp_outbound >= 45` and meaningful-touch criteria met, set `lp_state.re_engagement_flag=true`, write `lp_signal_log` with `signal_type='re_engagement'`, force pipeline_flag to red+URGENT for 24 hours, generate the urgent draft, surface in Action Drawer. Target latency ≤ 1 hour from inbox arrival to Action Drawer card (§5.1 SLO).
 10. **Sync staleness banner.** When `crm_sync_status.health` for a mail/cal source flips to `degraded` (one failed delta poll) or `failing` (three consecutive failures), a banner is surfaced on Today and Lists indicating "sync delayed" with the last-success timestamp (Tomo MVP3 §C.1 explicit requirement).
 11. **Calendar event status.** `lp_calendar_events.status` reflects the meeting's actual outcome. A meeting only counts toward Signal 7 / Metric 6a if `status='completed'` (i.e. it took place). Cancellations and reschedules are tracked but distinct.
+12. **Attachment text extraction (async, bounded).** After an `lp_interactions` row is written for a **full-content-tier** email (`metadata_only=false`) with `attachment_count > 0` and a resolved `lp_contact_id`, enqueue an `attachment-extract` job (SQS). The job **must not** block the re-engagement hot path (item 9). Processing per BR-3.3.5–BR-3.3.12:
+    - Fetch attachment bytes via Microsoft Graph `GET /me/messages/{id}/attachments/{id}` or Gmail `users.messages.attachments.get`.
+    - Accept **only** `.docx` and `.pdf` (by filename extension and/or MIME: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/pdf`).
+    - Extract plain text server-side using the same libraries as the workflow wizard (`mammoth` for docx, `pdfjs-dist` text layer for pdf — shared module derived from `src/lib/parse-workflow-documents.ts`).
+    - Write one `lp_interaction_attachments` row per processed file with `extraction_status` and `extracted_text` (or null when unsupported/empty/failed).
+    - **Skip** metadata-only historical rows (13–36 month tier), messages with no `lp_contact_id`, and messages where `attachment_count=0`.
+    - **Backfill:** attachment jobs run for Phase B (months 4–12 full content) and ongoing sync only — **not** on the Phase A 90-day critical path (Phase A may enqueue jobs after the 2-minute gate completes). Phase C (metadata-only) never fetches attachments.
 
 **Outputs.**
 
 - `lp_interactions` and `lp_calendar_events` rows created.
+- `lp_interaction_attachments` rows (async, may arrive minutes after the parent interaction).
 - `lp_email_threads` rows created/updated.
 - `lp_calendar_event_attendees` rows.
 - `lp_signal_log` rows for the event-driven hot path.
@@ -544,11 +553,17 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Business rules.**
 
 - BR-3.3.1 — V1 does not ingest beyond 36 months. The user-selectable "six months / future-only" choice in the mock is removed.
-- BR-3.3.2 — Bodies are dropped at the 12-month boundary by a daily retention job (`UPDATE lp_interactions SET body_text=NULL, body_html_archived_url=NULL, metadata_only=true WHERE interacted_at < now() - interval '12 months' AND body_text IS NOT NULL`).
+- BR-3.3.2 — Bodies are dropped at the 12-month boundary by a daily retention job (`UPDATE lp_interactions SET body_text=NULL, body_html_archived_url=NULL, metadata_only=true WHERE interacted_at < now() - interval '12 months' AND body_text IS NOT NULL`; `UPDATE lp_interaction_attachments SET extracted_text=NULL WHERE parent interaction past 12 months`).
 - BR-3.3.3 — Webhook delivery latency target ≤ 1 hour for re-engagement events. If the chosen webhook subscription cannot meet this in production, the 30-minute delta-polling fallback covers the gap.
 - BR-3.3.4 — Inbound emails to a shared mailbox or alias still ingest if the configured mailbox owner's OAuth grant covers it; per Risk #2 in the V1 Final doc, edge cases (aliases, shared inboxes, BCC) are validated against real GP accounts before signal-engine wiring.
-- BR-3.3.5 — Attachments are not stored in V1 (only `attachment_count` is captured). Document engagement is V2.
+- BR-3.3.5 — **Attachment binaries are not stored in V1.** `lp_interactions.attachment_count` is always captured at ingest. **Extracted plain text** from eligible attachments is stored on `lp_interaction_attachments` per the limits below. This is **not** V2 document-engagement analytics (DocSend / DealRoom opens, dwell, return visits — see §9).
 - BR-3.3.6 — Body-cleansing word-count confidence below the threshold (per §8.9 clarification 9) → suppress the observation rather than compute on dirty data.
+- BR-3.3.7 — Attachment extraction runs **only** when: (a) parent `lp_interactions.metadata_only=false`, (b) `lp_contact_id IS NOT NULL`, (c) `attachment_count > 0`, (d) at least one attachment passes type/size filters.
+- BR-3.3.8 — **Supported types:** `.docx` and `.pdf` only. All other MIME types (`.xlsx`, `.pptx`, images, `.zip`, etc.) → row with `extraction_status='unsupported_mime'` and `extracted_text IS NULL`.
+- BR-3.3.9 — **Size and volume caps (per attachment):** max **15 MB** file size; max **50** PDF pages processed; max **5** attachments processed per message (remaining skipped with `extraction_status='skipped_cap'`); max **100,000** characters stored in `extracted_text` (truncate excess, set `extraction_status='truncated'`). Scanned/image-only PDFs with no text layer → `extraction_status='empty'`. **No OCR in V1.**
+- BR-3.3.10 — Attachment extraction is **asynchronous**. Failure of one attachment does not fail ingest of the parent email or block Signal 2 / Action Drawer generation.
+- BR-3.3.11 — **Retention:** `extracted_text` follows the same 12-month hot rule as `lp_interactions.body_text` (nulled by the daily retention job; attachment metadata row may remain until parent interaction is deleted per tier rules).
+- BR-3.3.12 — **Downstream context budget:** when composing drafts or loading Action Drawer / Tomo LP context, include at most the **3** most recent `lp_interaction_attachments` rows for that LP with `extraction_status IN ('ok','truncated')`, capped at **30,000** total characters of attachment text per LP context load (oldest excerpts dropped first).
 
 **Acceptance criteria.**
 
@@ -559,6 +574,10 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.3.5 — Sync degradation surfaces a banner on Today and Lists within 5 minutes of the third consecutive failed delta poll.
 - AC-3.3.6 — An OOO reply ("I'm out of office until July 8") does not advance `last_meaningful_touch_at` for that LP.
 - AC-3.3.7 — A heavily-quoted reply ("Thanks." with 800 words of quoted prior thread) records `word_count_confidence='suppressed'` and does not contribute a reply-length observation to Signal 4.
+- AC-3.3.8 — An inbound LP email in the full-content tier with a 2 MB `.pdf` attachment produces an `lp_interaction_attachments` row with `extraction_status='ok'` and non-null `extracted_text` within 15 minutes of ingest, without delaying the re-engagement hot path below 1 hour.
+- AC-3.3.9 — A `.xlsx` attachment on the same message produces `extraction_status='unsupported_mime'` and does not block processing of a sibling `.pdf` on that message.
+- AC-3.3.10 — A metadata-only row (13–36 month tier) never enqueues attachment extraction.
+- AC-3.3.11 — After 12 months, the daily retention job nulls `extracted_text` on attachment rows whose parent `interacted_at` is past the boundary.
 
 ---
 
@@ -907,7 +926,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Inputs / triggers.**
 
 - New row in `tomo_action_log` with `outcome IS NULL` (a generated action awaiting GP).
-- Per-LP context (last 5 interactions, last meeting recap, signal state, active reminders) loaded when the drawer opens for a specific LP.
+- Per-LP context (last 5 interactions, last meeting recap, up to 3 recent attachment excerpts per BR-3.3.12, signal state, active reminders) loaded when the drawer opens for a specific LP.
 
 **Processing.**
 
@@ -952,7 +971,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Business rules.**
 
 - BR-3.9.1 — Drafts never auto-send. The send button is the only path.
-- BR-3.9.2 — A draft is composed by Tomo using the most recent LP context up to send time, including prior emails (full content tier when available; metadata fallback otherwise).
+- BR-3.9.2 — A draft is composed by Tomo using the most recent LP context up to send time, including prior emails (full content tier when available; metadata fallback otherwise) and eligible attachment excerpts per BR-3.3.12 when present.
 - BR-3.9.3 — Drafts to LPs in `historical_data_only=true` state include a cautious-tone hint in the prompt (per ingestion strategy).
 - BR-3.9.4 — Edit-level classification uses Levenshtein-derived character ratio against the originally-generated draft text. Comparison is body-only (subject and signature excluded).
 - BR-3.9.5 — Snoozing a draft sets the action `outcome='snoozed'` and re-queues it for the snooze time.
@@ -1865,6 +1884,7 @@ All routes are Next.js Route Handlers (App Router) on Vercel except where noted 
 | Transcript ingestion | Calendar event end | §3.13 |
 | Recap fallback (TOMO LLM) | 10-minute timeout after meeting end | §3.13 |
 | Re-engagement hot path | New inbound `lp_interactions` row | §3.5 |
+| Attachment text extraction | SQS `attachment-extract` after full-content `lp_interactions` ingest | §3.3 item 12 |
 
 **Common request/response conventions.**
 
@@ -2406,7 +2426,7 @@ Customer notified 30 days in advance of any sub-processor addition.
 
 | Data class | Tables | Retention rule |
 |---|---|---|
-| Hot — full email/transcript bodies | `lp_interactions.body_text`, `lp_meeting_transcripts.transcript_text`, archived HTML in S3 | 12 months from `interacted_at`/`created_at`, then null/purged |
+| Hot — full email/transcript bodies | `lp_interactions.body_text`, `lp_interaction_attachments.extracted_text`, `lp_meeting_transcripts.transcript_text`, archived HTML in S3 | 12 months from `interacted_at`/`created_at`, then null/purged |
 | Warm — metadata only | `lp_interactions` rows where `metadata_only=true` | 13–36 months from `interacted_at`, then row deleted |
 | Cold — never ingested | n/a | n/a |
 | Append-only V3 dataset | `lp_signal_log`, `lp_stage_transitions`, `tomo_action_log`, `daily_pipeline_summary`, `agent_tool_calls`, `activity_log`, `auth_events`, `data_access_log`, `email_delivery_log`, `outbound_safety_log` | Indefinite while account active; PII NULLed on deletion |
@@ -2418,7 +2438,7 @@ Customer notified 30 days in advance of any sub-processor addition.
 
 **Lifecycle controls.**
 
-- **Daily retention job.** Runs at 03:00 UTC. Nulls hot bodies past 12 months. Deletes metadata-only rows past 36 months. Deletes soft-deleted rows past 30-day grace. Auto-purges CSV originals past 90 days. Logs every action to `activity_log`.
+- **Daily retention job.** Runs at 03:00 UTC. Nulls hot bodies and `lp_interaction_attachments.extracted_text` past 12 months. Deletes metadata-only rows past 36 months. Deletes soft-deleted rows past 30-day grace. Auto-purges CSV originals past 90 days. Logs every action to `activity_log`.
 - **Account closure.** Per §3.1: 30-day soft-delete window; after confirmation or expiry, hard-delete; PII scrubbed from append-only tables.
 - **Workspace closure.** Same as account closure but workspace-scoped.
 - **Right-to-erasure.** GDPR / CCPA requests handled within statutory deadlines (30 days for GDPR access; 45 days for CCPA deletion). Tracked in support workflow.
@@ -2468,13 +2488,13 @@ Customer notified 30 days in advance of any sub-processor addition.
 
 ### 6.1. Data model overview
 
-V1 uses a relational model on Supabase Postgres 16. The model is organised into nine entity groups containing **49 tables** in total. Tables marked **(V2-placeholder)** are created empty in the V1 migration so V2 features have schema in place before they ship — this is a deliberate forward-compatibility choice from Section 8 §8.10 ("every V1 capture decision must assume the signal observation will eventually be needed for V3 model training").
+V1 uses a relational model on Supabase Postgres 16. The model is organised into nine entity groups containing **50 tables** in total. Tables marked **(V2-placeholder)** are created empty in the V1 migration so V2 features have schema in place before they ship — this is a deliberate forward-compatibility choice from Section 8 §8.10 ("every V1 capture decision must assume the signal observation will eventually be needed for V3 model training").
 
 | # | Group | Tables | Notes |
 |---|---|---|---|
 | 1 | Identity and tenancy | `users`, `workspaces`, `workspace_members`, `funds`, `oauth_tokens`, `tone_profiles` | 6 tables |
 | 2 | LP domain | `lp_organizations`, `lp_contacts`, `lp_state`, `lp_stage_transitions`, `lp_tags`, `lp_tag_assignments`, `lp_notes` | 7 tables |
-| 3 | Interactions | `lp_email_threads`, `lp_interactions`, `lp_calendar_events`, `lp_calendar_event_attendees`, `lp_meeting_transcripts`, `lp_meeting_recaps` | 6 tables |
+| 3 | Interactions | `lp_email_threads`, `lp_interactions`, `lp_interaction_attachments`, `lp_calendar_events`, `lp_calendar_event_attendees`, `lp_meeting_transcripts`, `lp_meeting_recaps` | 7 tables |
 | 4 | Signals and metrics | `lp_signal_log`, `stage_cadence_benchmarks`, `daily_pipeline_summary`, `tomo_action_log`, `reminders`, `commitments`, `open_loops` | 7 tables |
 | 5 | CRM integration | `csv_imports`, `csv_field_mappings`, `csv_dedupe_decisions`, `crm_sync_status`, `affinity_field_mappings` (V2-placeholder for write-back) | 5 tables |
 | 6 | Workflows | `workflows`, `workflow_steps`, `workflow_runs`, `workflow_step_runs`, `outbound_safety_log` | 5 tables |
@@ -2863,6 +2883,27 @@ Unified row for every email and message exchanged with an LP. Three-tier ingesti
 | `source_user_id` | uuid | null | | fk → `users.id` | The mailbox owner this came from |
 
 **Indexes:** unique `(workspace_id, provider, provider_internet_message_id)` where `provider_internet_message_id IS NOT NULL`; `lp_interactions(workspace_id, lp_contact_id, interacted_at DESC)`; `lp_interactions(workspace_id, lp_email_thread_id)`; `lp_interactions(workspace_id, interaction_type, interacted_at DESC)`; `lp_interactions(workspace_id, is_meaningful_touch, interacted_at DESC)` partial.
+
+##### Table: `lp_interaction_attachments`
+
+Extracted plain text from email attachments (V1: `.docx` / `.pdf` only, async per §3.3). **No binary storage** — only metadata + `extracted_text`. Parent must be a full-content-tier `lp_interactions` row with resolved `lp_contact_id`. *(Workspace-scoped, soft-delete.)*
+
+| Column | Type | Null | Default | References | Notes |
+|---|---|---|---|---|---|
+| `id` | uuid | not null | `gen_random_uuid()` | pk | |
+| `lp_interaction_id` | uuid | not null | | fk → `lp_interactions.id` on delete cascade | |
+| `lp_contact_id` | uuid | not null | | fk → `lp_contacts.id` | Denormalized from parent for LP context queries |
+| `filename` | text | not null | | | Original attachment filename |
+| `mime_type` | text | null | | | As reported by provider |
+| `size_bytes` | int | null | | | Pre-download size when known |
+| `provider_attachment_id` | text | not null | | | Gmail attachment id / Graph attachment id — de-dupe key |
+| `extraction_status` | text | not null | | check in (`'ok'`, `'truncated'`, `'empty'`, `'unsupported_mime'`, `'too_large'`, `'failed'`, `'skipped_cap'`) | |
+| `extracted_text` | text | null | | | Null unless `ok` or `truncated`; max 100k chars per BR-3.3.9 |
+| `char_count` | int | null | | | Length after extraction/truncation |
+| `page_count` | int | null | | | PDF pages processed (when applicable) |
+| `error_message` | text | null | | | Short diagnostic; no raw file bytes or PII beyond filename |
+
+**Indexes:** unique `(workspace_id, lp_interaction_id, provider_attachment_id)`; `lp_interaction_attachments(workspace_id, lp_contact_id, created_at DESC)`; `lp_interaction_attachments(workspace_id, lp_interaction_id)`.
 
 ##### Table: `lp_calendar_events`
 
@@ -3555,7 +3596,7 @@ The data dictionary is the per-field reference for fields that participate in si
 
 | Class | Tables / data | Retention rule | Rationale |
 |---|---|---|---|
-| **Hot — full content** | `lp_interactions.body_text`, `lp_interactions.body_html_archived_url` (rows where `interacted_at >= now() − interval '12 months'`) | Bodies retained 12 months from `interacted_at`; nightly job nulls `body_text` and removes `body_html_archived_url` artefact at the 12-month boundary | Per `tomo_email_ingestion_strategy.md` cost discipline |
+| **Hot — full content** | `lp_interactions.body_text`, `lp_interactions.body_html_archived_url`, `lp_interaction_attachments.extracted_text` (rows whose parent interaction is in the 0–12 month full-content window) | Bodies and attachment excerpts retained 12 months from parent `interacted_at`; nightly job nulls `body_text`, `extracted_text`, and removes `body_html_archived_url` artefact at the 12-month boundary | Per `tomo_email_ingestion_strategy.md` cost discipline |
 | **Warm — metadata** | `lp_interactions` rows with `metadata_only = true` (13–36 months from `interacted_at`) | Retained until 36 months from `interacted_at`, then row deleted | Per ingestion strategy |
 | **Cold — none** | n/a | No ingestion beyond 36 months | Per ingestion strategy |
 | **Append-only — V3 dataset** | `lp_signal_log`, `lp_stage_transitions`, `tomo_action_log`, `daily_pipeline_summary`, `agent_tool_calls`, `activity_log`, `auth_events`, `data_access_log`, `email_delivery_log` | Retained indefinitely; no purge job. Aggregates (downsamples) happen in V3 model-training pipeline and write to V3 tables — never overwrite V1 raw rows | Section 8 §8.10 long-term moat |
@@ -3571,7 +3612,7 @@ The data dictionary is the per-field reference for fields that participate in si
 
 1. Extensions: `pgcrypto`, `citext`, `pg_trgm`, `pgvault` (Supabase Vault).
 2. Enum-substitute CHECK constraints declared inline per table (Postgres `text` + `CHECK`); enums as text simplifies migrations vs `CREATE TYPE`.
-3. Tables created in dependency order: `users` → `workspaces` → `workspace_members` → `funds` → `oauth_tokens` → `tone_profiles` → `lp_organizations` → `lp_contacts` → `lp_state` → `lp_stage_transitions` → `lp_tags` → `lp_tag_assignments` → `lp_notes` → `lp_email_threads` → `lp_interactions` → `lp_calendar_events` → `lp_calendar_event_attendees` → `lp_meeting_transcripts` → `lp_meeting_recaps` → signals/metrics group → CRM group → workflows group → materials/briefs group (incl. V2-placeholders) → settings group → audit group.
+3. Tables created in dependency order: `users` → `workspaces` → `workspace_members` → `funds` → `oauth_tokens` → `tone_profiles` → `lp_organizations` → `lp_contacts` → `lp_state` → `lp_stage_transitions` → `lp_tags` → `lp_tag_assignments` → `lp_notes` → `lp_email_threads` → `lp_interactions` → `lp_interaction_attachments` → `lp_calendar_events` → `lp_calendar_event_attendees` → `lp_meeting_transcripts` → `lp_meeting_recaps` → signals/metrics group → CRM group → workflows group → materials/briefs group (incl. V2-placeholders) → settings group → audit group.
 4. Indexes created concurrently after tables.
 5. RLS policies enabled on every workspace-scoped table.
 6. Postgres triggers: `AFTER UPDATE` on `lp_contacts.pipeline_stage` writes a row to `lp_stage_transitions`; `AFTER UPDATE` on audited tables writes to `activity_log`.
@@ -3817,6 +3858,14 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — With historical opt-in active, `lp_interactions` for the most recent 12 months carry `body_text` populated; months 13–36 carry `body_text=NULL` and `metadata_only=true`; nothing beyond 36 months.
 - AC — Phase A (90-day full content) completes within 2 minutes; Phase B (4–12 months full content) within 30 minutes; Phase C (13–36 months metadata) within 2 hours.
 - AC — A daily retention job nulls `body_text` and removes archived HTML at the 12-month boundary going forward.
+
+**Story 8.3.13 — Email attachment text extraction.**
+*As a GP with historical email opt-in, TOMO extracts plain text from `.docx` and `.pdf` attachments on LP-resolved emails in the full-content tier and uses it in drafts and Tomo LP context.*
+
+- AC — Ingest writes `attachment_count` on every qualifying message; async jobs populate `lp_interaction_attachments` per BR-3.3.5–BR-3.3.12.
+- AC — Unsupported types (e.g. `.xlsx`) get `extraction_status='unsupported_mime'` without failing sibling attachments or email ingest.
+- AC — Action Drawer / draft composition includes attachment excerpts per BR-3.3.12 when available (may lag email body by up to 15 minutes).
+- AC — Metadata-only tier (months 13–36) never fetches attachment bytes.
 
 **Story 8.3.12 — Day 1 Gap and daily rhythm (post-wizard).**
 *First-session gap surfaces and daily-rhythm configuration remain outside the eight-screen flow.*
@@ -4702,6 +4751,10 @@ lp_interactions (id pk, lp_contact_id → lp_contacts.id, lp_organization_id →
                  provider, provider_message_id, provider_internet_message_id,
                  from_email, to_emails, cc_emails, bcc_emails,
                  is_meaningful_touch, is_truly_lp_initiated, source_user_id → users.id)
+lp_interaction_attachments (id pk, lp_interaction_id → lp_interactions.id,
+                            lp_contact_id → lp_contacts.id, filename, mime_type, size_bytes,
+                            provider_attachment_id, extraction_status, extracted_text,
+                            char_count, page_count, error_message)
 lp_calendar_events (id pk, provider, provider_event_id, lp_contact_id → lp_contacts.id,
                     lp_organization_id → lp_organizations.id, subject, start_at, end_at,
                     booked_duration_minutes, actual_duration_minutes,
@@ -5427,6 +5480,7 @@ All three are present in §6.2.
 | O-2 | Per-action time-saved benchmarks (drafts 8m / scheduling 12m / follow-ups 10m / meeting prep 15m) — confirm or recalibrate after FC Month 1. | PM | Adopt as starting values; recalibrate Month 1. |
 | O-3 | Draft edit-level threshold: 30% character change. Confirm. | PM | Adopt 30%. |
 | O-4 | Microsoft 365 Copilot AI insight beta scope (`OnlineMeetingAiInsight.Read.All`) availability for FC tenants. | Eng lead | Fall back to transcript + TOMO LLM summarisation when scope or licence unavailable. |
+| O-16 | Email attachment extraction caps (15 MB, 5 files/message, 50 PDF pages, 100k chars/file, 30k chars LP context) — recalibrate after FC Month 1 ingest volume. | Eng lead | Adopt §3.3 BR-3.3.9 defaults; tune if backfill cost or latency exceeds SLO. |
 | O-5 | Google Meet AI notes (Gemini for Workspace add-on) availability for FC tenants. | Eng lead | Same fallback as O-4. |
 | O-6 | Daily Brief default delivery time per workspace timezone. | PM | 7:30am local, configurable. |
 | O-7 | Slack daily-brief format (canvas vs message + thread). | PM + Design | Single message with **Appendix I** section blocks; thread for detail. |
