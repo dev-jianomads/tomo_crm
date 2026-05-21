@@ -37,6 +37,7 @@ import {
   workflowSurfaceEntries,
   type WorkflowSurfaceEntry,
 } from "@/lib/workflow-surface-mock";
+import { normalizeWorkflowSurfaceId } from "@/lib/workflow-id-resolve";
 
 type WorkflowActivationOverrides = Record<string, boolean>;
 type HiddenWorkflowIds = string[];
@@ -47,22 +48,8 @@ type WorkflowDeleteTarget = {
   kind: "tailored" | "custom";
 };
 
-const WORKFLOW_ALIASES: Record<string, string> = {
-  "pb-post-meeting": "wf-post-meeting-execution",
-  "td-post-meeting-execution": "wf-post-meeting-execution",
-  "td-meeting-notes": "wf-post-meeting-execution",
-  "pb-three-touch-qualification": "wf-f7-three-touch",
-  "td-three-touch-qualification": "wf-f7-three-touch",
-  "pb-themed-outreach": "wf-themed-outreach",
-  "pb-update-followup": "wf-themed-outreach",
-  "pb-trip-orchestrator": "wf-trip-orchestrator",
-  "pb-roadshow-prep": "wf-trip-orchestrator",
-  "pb-ny-roadshow-2026": "wf-trip-orchestrator",
-};
-
 function normalizeWorkflowId(id: string | null): string | null {
-  if (!id) return null;
-  return WORKFLOW_ALIASES[id] ?? id;
+  return normalizeWorkflowSurfaceId(id);
 }
 
 function WorkflowsPageContent() {

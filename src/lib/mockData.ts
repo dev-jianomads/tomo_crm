@@ -345,6 +345,11 @@ export type ActionItem = {
   workflowPlaybookId?: string;
   /** Link to Tomo Default workflow — shows "View workflow" in drawer */
   workflowTomoDefaultId?: string;
+  /**
+   * Two-word pill label for Today workflow groups (production: from `tomo_action_log.metadata` or workflow row).
+   * When omitted, resolved from playbook registry or custom playbook `pillLabel`.
+   */
+  workflowPillLabel?: string;
   /** Override pill to display as "Tomo" (peach) even when workflowPlaybookId is set */
   workflowPillOverride?: "Tomo";
   /** Source email thread — “Open email” on Today cards and in the action drawer */

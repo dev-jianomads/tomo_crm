@@ -26,9 +26,14 @@ import {
   mergeTomoAssistanceWithSchedulingOverride,
   type SchedulingDraftOverride,
 } from "@/lib/schedulingFindTime";
-import { suggestedPlaybooks, tomoDefaultWorkflows } from "@/lib/mockPlaybooks";
 import { TomoUrgencyPill } from "@/components/ui/urgency-pill";
 import { TomoWorkflowTag } from "@/components/ui/workflow-tag";
+import { resolveWorkflowPillLabelForAction } from "@/lib/workflow-pill-label";
+import {
+  buildWorkflowAttentionGroups,
+  defaultExpandedWorkflowGroupIds,
+  type WorkflowAttentionGroup,
+} from "@/lib/todayWorkflowAttention";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import {
@@ -73,13 +78,7 @@ type TodaySelection =
 const HIDE_TODAY_INLINE_TOMO_PROMPT = true;
 
 function workflowLabelForAction(action: ActionItem): string {
-  const fromPlaybook = action.workflowPlaybookId
-    ? suggestedPlaybooks.find((p) => p.id === action.workflowPlaybookId)?.name
-    : undefined;
-  const fromTomo = action.workflowTomoDefaultId
-    ? tomoDefaultWorkflows.find((w) => w.id === action.workflowTomoDefaultId)?.name
-    : undefined;
-  return fromPlaybook ?? fromTomo ?? "—";
+  return resolveWorkflowPillLabelForAction(action) ?? "—";
 }
 
 /** Urgency row + left accent on attention cards (design/tomo_today_light_v2.html). */
@@ -135,6 +134,7 @@ type TodayListItem = {
   workflowName?: string;
   attentionCard?: ActionAttentionCard;
   attentionWorkflowName?: string;
+  hideWorkflowPill?: boolean;
   verbLabel?: string;
   comingUpCard?: { company: string; contactName: string; timeLabel: string; meetingTitle?: string };
   commitmentStatusPill?: { label: string; tone: "peach" | "green" | "violet" | "red" };
@@ -151,14 +151,12 @@ function mapActionToAttentionListItem(
   a: ActionItem,
   verbLabelForId: (id: string) => string,
   /** Omit for Previous / unscoped lists — full per-action visuals. Primary queue passes 0-based index. */
-  attentionQueueIndex?: number
+  attentionQueueIndex?: number,
+  options?: { hideWorkflowPill?: boolean }
 ): TodayListItem {
   const visuals =
     attentionQueueIndex !== undefined ? primaryAttentionVisualForIndex(a, attentionQueueIndex) : attentionVisualsForAction(a);
-  const attentionWorkflowName =
-    (a.workflowPlaybookId && suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name) ||
-    (a.workflowTomoDefaultId && tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name) ||
-    undefined;
+  const attentionWorkflowName = resolveWorkflowPillLabelForAction(a) ?? undefined;
   return {
     id: a.id,
     title: a.title,
@@ -167,6 +165,7 @@ function mapActionToAttentionListItem(
     pills: [] as string[],
     attentionCard: a.attentionCard,
     attentionWorkflowName,
+    hideWorkflowPill: options?.hideWorkflowPill,
     verbLabel: verbLabelForId(a.id),
     attentionEmailSourceUrl: a.emailSourceUrl,
     attentionUrgency: visuals.urgency,
@@ -245,6 +244,7 @@ export default function HomePage() {
   const [onMyRadarModalKey, setOnMyRadarModalKey] = useState(0);
   /** Collapsible “Previous” under What needs your attention (closed by default). */
   const [previousAttentionExpanded, setPreviousAttentionExpanded] = useState(false);
+  const [expandedWorkflowGroupIds, setExpandedWorkflowGroupIds] = useState<Set<string> | null>(null);
 
   // Top/bottom split ratio (25–75%), persisted. Default 70% for chatbox (slider up).
   const [splitRatio, setSplitRatio] = usePersistentState<number>("tomo-today-split-ratio", 70);
@@ -480,6 +480,19 @@ export default function HomePage() {
     () => todaySlotSorted.filter((a) => actionOutcomeById[a.id] == null).slice(0, 6),
     [todaySlotSorted, actionOutcomeById],
   );
+
+  const workflowAttentionGroups = useMemo(
+    () => buildWorkflowAttentionGroups(attentionActionsVisible),
+    [attentionActionsVisible],
+  );
+
+  useEffect(() => {
+    if (workflowAttentionGroups.length === 0) return;
+    setExpandedWorkflowGroupIds((prev) => {
+      if (prev !== null) return prev;
+      return defaultExpandedWorkflowGroupIds(workflowAttentionGroups);
+    });
+  }, [workflowAttentionGroups]);
 
   const previousAttentionItemCount = useMemo(
     () => previousAttentionCount(sortedActionItems, actionOutcomeById),
@@ -812,15 +825,26 @@ export default function HomePage() {
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                <TodayGroup
+                <WorkflowAttentionSection
                   title="What needs your attention"
                   titleCount={attentionActionsVisible.length}
                   emptyHint="All caught up — nothing needs your attention right now."
-                  items={attentionActionsVisible.map((a, idx) =>
-                    mapActionToAttentionListItem(a, verbPillForAction, idx)
-                  )}
+                  groups={workflowAttentionGroups}
+                  expandedGroupIds={expandedWorkflowGroupIds ?? new Set()}
+                  onToggleGroup={(groupId) => {
+                    setExpandedWorkflowGroupIds((prev) => {
+                      const next = new Set(prev ?? defaultExpandedWorkflowGroupIds(workflowAttentionGroups));
+                      if (next.has(groupId)) next.delete(groupId);
+                      else next.add(groupId);
+                      return next;
+                    });
+                  }}
+                  attentionActions={attentionActionsVisible}
+                  mapActionToItem={(a, queueIndex) =>
+                    mapActionToAttentionListItem(a, verbPillForAction, queueIndex, { hideWorkflowPill: true })
+                  }
                   activeId={selection?.type === "action" ? selection.id : undefined}
-                  onSelect={(id) => setSelection({ type: "action", id })}
+                  onSelectAction={(id) => setSelection({ type: "action", id })}
                   scrollable
                 />
               </div>
@@ -1174,7 +1198,9 @@ function TodayListRows({
                   {item.attentionUrgency ? (
                     <TomoUrgencyPill tone={item.attentionUrgency.tone}>{item.attentionUrgency.label}</TomoUrgencyPill>
                   ) : null}
-                  {item.attentionWorkflowName ? <TomoWorkflowTag>{item.attentionWorkflowName}</TomoWorkflowTag> : null}
+                  {!item.hideWorkflowPill && item.attentionWorkflowName ? (
+                    <TomoWorkflowTag>{item.attentionWorkflowName}</TomoWorkflowTag>
+                  ) : null}
                 </div>
                 <p className="mb-1 text-sm font-medium leading-snug">
                   <span className="text-[color:var(--foreground)]">{item.attentionCard.company}</span>
@@ -1333,6 +1359,109 @@ function PreviousAttentionCollapsible({
           ))}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function WorkflowAttentionSection({
+  title,
+  titleCount,
+  groups,
+  expandedGroupIds,
+  onToggleGroup,
+  attentionActions,
+  mapActionToItem,
+  activeId,
+  onSelectAction,
+  scrollable = false,
+  emptyHint,
+}: {
+  title: string;
+  titleCount?: number;
+  groups: WorkflowAttentionGroup[];
+  expandedGroupIds: Set<string>;
+  onToggleGroup: (groupId: string) => void;
+  attentionActions: ActionItem[];
+  mapActionToItem: (a: ActionItem, attentionQueueIndex?: number) => TodayListItem;
+  activeId?: string;
+  onSelectAction: (id: string) => void;
+  scrollable?: boolean;
+  emptyHint?: string;
+}) {
+  const globalIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    attentionActions.forEach((a, i) => m.set(a.id, i));
+    return m;
+  }, [attentionActions]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <h2 className="tomo-section-title mb-2 flex shrink-0 flex-wrap items-baseline">
+        <span>{title}</span>
+        {titleCount != null ? <span className="tomo-section-title-count">{titleCount}</span> : null}
+      </h2>
+      <div className={`min-h-0 flex-1 space-y-2 ${scrollable ? "overflow-y-auto pr-0.5" : ""}`}>
+        {groups.length === 0 && emptyHint ? (
+          <p className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] px-3 py-4 text-center text-sm text-[color:var(--tomo-mute)]">
+            {emptyHint}
+          </p>
+        ) : null}
+        {groups.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {groups.map((group) => {
+              const expanded = expandedGroupIds.has(group.id);
+              return (
+                <div
+                  key={group.id}
+                  className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,transparent)]"
+                  data-testid={`today-workflow-group-${group.id}`}
+                >
+                  <div className="flex items-center gap-1 px-2 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onToggleGroup(group.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--tomo-radius-sm)] py-0.5 text-left transition hover:bg-[color:var(--tomo-navy-soft)]"
+                      aria-expanded={expanded}
+                      data-testid={`today-workflow-group-toggle-${group.id}`}
+                    >
+                      {expanded ? (
+                        <ChevronUpIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 shrink-0 text-[color:var(--tomo-mute)]" aria-hidden />
+                      )}
+                      <TomoWorkflowTag className="shrink-0">{group.pillLabel}</TomoWorkflowTag>
+                      <span className="font-mono text-[10px] tracking-[0.06em] text-[color:var(--tomo-mute)]">
+                        {group.items.length}
+                      </span>
+                    </button>
+                    {group.workflowHref ? (
+                      <Link
+                        href={group.workflowHref}
+                        className="shrink-0 text-[11px] font-medium text-[color:var(--tomo-teal-muted)] underline underline-offset-2 hover:text-[color:var(--tomo-teal)]"
+                        data-testid={`today-workflow-group-link-${group.id}`}
+                      >
+                        Workflow
+                      </Link>
+                    ) : null}
+                  </div>
+                  {expanded ? (
+                    <div className="space-y-2.5 border-t border-[color:var(--tomo-rule-soft)] px-2 pb-2 pt-2">
+                      <TodayListRows
+                        items={group.items.map((a) => {
+                          const idx = globalIndexById.get(a.id);
+                          return mapActionToItem(a, idx);
+                        })}
+                        onSelect={onSelectAction}
+                        activeId={activeId}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

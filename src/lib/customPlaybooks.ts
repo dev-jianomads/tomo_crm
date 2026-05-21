@@ -83,6 +83,7 @@ export function appendCustomPlaybook(input: CreateUserWorkflowInput): CustomPlay
   const entry: CustomPlaybookStored = {
     id: newCustomPlaybookId(),
     name,
+    ...(input.pillLabel?.trim() ? { pillLabel: input.pillLabel.trim() } : {}),
     trigger,
     action,
     actionSpec,

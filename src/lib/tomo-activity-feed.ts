@@ -1,5 +1,6 @@
 import { actions, formatDaysSinceContact, type ActionItem, type Relationship } from "./mockData";
-import { suggestedPlaybooks, tomoDefaultWorkflows } from "./mockPlaybooks";
+import { resolveWorkflowPillLabelForAction } from "@/lib/workflow-pill-label";
+import { suggestedPlaybooks } from "./mockPlaybooks";
 
 export type TomoActivityEventType = "outreach" | "update" | "meeting" | "system";
 
@@ -38,13 +39,7 @@ function fundIdForActivityEntity(entity?: string): string | undefined {
 }
 
 function workflowLabelForAction(a: ActionItem): string | undefined {
-  if (a.workflowTomoDefaultId) {
-    return tomoDefaultWorkflows.find((w) => w.id === a.workflowTomoDefaultId)?.name;
-  }
-  if (a.workflowPlaybookId) {
-    return suggestedPlaybooks.find((p) => p.id === a.workflowPlaybookId)?.name;
-  }
-  return undefined;
+  return resolveWorkflowPillLabelForAction(a) ?? undefined;
 }
 
 function entityLabelFromAction(a: ActionItem): string | undefined {

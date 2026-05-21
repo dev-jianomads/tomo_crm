@@ -50,8 +50,16 @@ export const userWorkflowActionSchema = z.union([
 ]);
 
 /** Input for `create_user_workflow` (orchestrator + client validation). */
+export const workflowPillLabelSchema = z
+  .string()
+  .regex(/^[\p{L}\p{N}'-]+\s+[\p{L}\p{N}'-]+$/u, "Must be exactly two words")
+  .describe("Two-word label for Today attention workflow pills (LLM-generated at creation)");
+
 export const createUserWorkflowInputSchema = z.object({
   name: z.string().min(1).describe("Short display name for the new workflow"),
+  pillLabel: workflowPillLabelSchema
+    .optional()
+    .describe("Two-word Today pill label; LLM SHOULD supply at workflow creation"),
   trigger: z.string().min(1).describe("When or why the workflow runs"),
   action: userWorkflowActionSchema.describe(
     "Primary action with type-specific required fields — do not omit body, datetime, etc."
@@ -83,6 +91,10 @@ export type WorkflowActionPrompt = z.infer<typeof workflowActionPromptSchema>;
 export type CustomPlaybookStored = {
   id: string;
   name: string;
+  /**
+   * Two-word label for Today attention workflow pills (SRS: LLM-generated at workflow creation, stored on `workflows`).
+   */
+  pillLabel?: string;
   trigger: string;
   /** One-line summary for list cards (denormalized). */
   action: string;
