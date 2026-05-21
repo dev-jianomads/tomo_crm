@@ -22,6 +22,7 @@ import {
   setLegTriggerSpec,
   type WorkflowLegDraft,
 } from "@/lib/workflow-leg-draft";
+import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
 
 function instructionFromAction(action: UserWorkflowAction): string {
   if (action.kind === "send_email") return action.body;
@@ -135,7 +136,9 @@ export function WorkflowLegWizard({
         ...prev,
         baseSubject: subject,
         baseBody: body,
-        actionDescription: prev.actionDescription.trim() || actionDescription,
+        actionDescription:
+          prev.actionDescription.trim() ||
+          deriveWorkflowActionDescription({ instruction, actionDescription }),
         lpDrafts: cohort,
         actionSpec,
       }));
@@ -293,7 +296,12 @@ export function WorkflowLegWizard({
             ...prev,
             tomoInstruction: instruction,
             actionPromptConfirmed: true,
-            actionDescription: actionDescription ?? prev.actionDescription,
+            actionDescription:
+              actionDescription?.trim() ||
+              deriveWorkflowActionDescription({
+                instruction,
+                actionDescription: prev.actionDescription,
+              }),
             actionSpec: {
               kind: "send_email",
               subject: `Re: ${workflowName.trim() || "Outreach"}`,

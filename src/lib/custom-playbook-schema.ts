@@ -79,7 +79,7 @@ export const workflowActionPromptSchema = z.object({
   action_description: z
     .string()
     .optional()
-    .describe("One short sentence for the process-flow action node"),
+    .describe("5–7 word process-flow label from the Optimised prompt Objective (never meta prompt / lock-in copy)"),
   action_kind: z
     .enum(["send_email", "schedule_meeting", "schedule_call", "other"])
     .optional()

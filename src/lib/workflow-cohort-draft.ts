@@ -6,6 +6,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { mockTomoGenerateCohortDraft } from "@/lib/workflow-action-build";
+import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
 
 export const workflowCohortDraftSchema = z.object({
   subject: z.string().min(1).describe("Email subject line; may include {{lp_first_name}}"),
@@ -52,7 +53,7 @@ Rules:
 - The body MUST include the placeholder {{lp_first_name}} in the greeting.
 - Subject may optionally use {{lp_first_name}}.
 - Professional GP–LP tone; concise; one clear call to action when appropriate.
-- actionDescription is one sentence for a process-flow node (e.g. "For each LP on X, Tomo sends a personalized email about Y").
+- actionDescription is **5–7 words** for a process-flow node — the GP-facing outcome from the instruction Objective (e.g. "Invite LPs to Melbourne Roadshow"), not meta copy about prompts or drafting.
 - Do not invent LP names or firm details — this is a template for the whole cohort.`;
 
 const FOLLOW_UP_SYSTEM_PROMPT = `You are Tomo, drafting a cohort-wide follow-up email template for a GP CRM workflow.
@@ -66,7 +67,7 @@ Rules:
 - Reference the primary message naturally; do not repeat it verbatim.
 - Shorter than primary outreach unless the instruction asks for a fuller reply.
 - Professional GP–LP tone; one clear call to action.
-- actionDescription is one sentence for the follow-up process node.
+- actionDescription is **5–7 words** for the follow-up process node (outcome label, not meta instructions).
 - Do not invent LP names or firm details — cohort template only.`;
 
 export function formatPrimaryTemplateForPrompt(primary: WorkflowPrimaryTemplateContext): string {
@@ -140,7 +141,10 @@ export function mockTomoGenerateFollowUpDraft(params: {
     body: `Hi {{lp_first_name}},\n\n${primaryRef}${snippet}.\n\n${
       params.contextText.trim() ? `${params.contextText.trim()}\n\n` : ""
     }Happy to share more detail if helpful.\n\nBest regards,`,
-    actionDescription: `For each LP on ${params.listName}, Tomo sends ${snippet.charAt(0).toLowerCase()}${snippet.slice(1)}${triggerNote}.`,
+    actionDescription: deriveWorkflowActionDescription({
+      instruction: params.instruction,
+      actionDescription: null,
+    }),
   };
 }
 
@@ -187,11 +191,16 @@ export async function generateWorkflowCohortDraft(
       body = `Hi {{lp_first_name}},\n\n${body}`;
     }
 
+    const actionDescription = deriveWorkflowActionDescription({
+      instruction: params.instruction,
+      actionDescription: object.actionDescription.trim(),
+    });
+
     return {
       draft: {
         subject: object.subject.trim(),
         body,
-        actionDescription: object.actionDescription.trim(),
+        actionDescription,
       },
       usedLlm: true,
     };

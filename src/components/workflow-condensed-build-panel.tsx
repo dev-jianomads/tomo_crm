@@ -207,9 +207,9 @@ export function WorkflowCondensedBuildPanel({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
                   {draftActionTitle}
                 </h3>
-                <p className="mt-0.5 truncate text-[11px] text-[color:var(--tomo-mute)]">
-                  {actionDescription.trim() || "Step summary — expand to edit"}
-                </p>
+                {actionDescription.trim() ? (
+                  <p className="mt-0.5 truncate text-sm text-[color:var(--foreground)]">{actionDescription.trim()}</p>
+                ) : null}
               </div>
               <ChevronDownIcon
                 className={`h-4 w-4 shrink-0 text-[color:var(--tomo-mute)] transition ${actionSummaryOpen ? "rotate-180" : ""}`}
@@ -218,15 +218,11 @@ export function WorkflowCondensedBuildPanel({
             </button>
             {actionSummaryOpen ? (
               <div className="border-t border-[color:var(--tomo-rule-soft)] px-4 pb-4">
-                <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
-                  Short label for what Tomo runs per LP (from your refined prompt). Collapsed by default so you can
-                  focus on the email draft.
-                </p>
                 <textarea
                   value={actionDescription}
                   onChange={(e) => onActionDescriptionChange(e.target.value)}
-                  rows={3}
-                  className="tomo-input mt-2 w-full resize-y text-sm"
+                  rows={2}
+                  className="tomo-input mt-3 w-full resize-y text-sm"
                 />
               </div>
             ) : null}

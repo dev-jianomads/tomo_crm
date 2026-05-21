@@ -4,6 +4,7 @@
  */
 
 import type { WorkflowDraft, WorkflowDraftStatus } from "@/lib/workflow-surface-mock";
+import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
 
 export type WorkflowActionBuildAttachment = {
   id: string;
@@ -155,6 +156,9 @@ export function mockTomoGenerateCohortDraft(params: {
     body: `Hi {{lp_first_name}},\n\n${snippet}.\n\n${
       params.contextText.trim() ? `${params.contextText.trim()}\n\n` : ""
     }Let me know if a short call would be useful.\n\nBest regards,`,
-    actionDescription: `For each LP on ${params.listName}, Tomo will ${snippet.charAt(0).toLowerCase()}${snippet.slice(1)}${triggerNote}.`,
+    actionDescription: deriveWorkflowActionDescription({
+      instruction: params.instruction,
+      actionDescription: null,
+    }),
   };
 }

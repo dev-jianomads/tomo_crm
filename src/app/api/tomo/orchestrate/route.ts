@@ -250,7 +250,7 @@ function buildSystemPrompt(context: OrchestratorContext, surface: OrchestratorSu
         ``,
         `## confirm_workflow_action_prompt fields`,
         `- **instruction** — full Optimised prompt for the Draft LLM (meta-instructions only; may say "use attachment X to build 5 bullet macro summary inside the email" but must **not** contain the actual bullets or email text)`,
-        `- **action_description** — one short sentence for the workflow process node`,
+        `- **action_description** — **5–7 words max**, copied from the **Objective** line in your Optimised prompt (the GP-facing outcome, e.g. "Invite LPs to Melbourne Roadshow"). Never mention locking the prompt, drafting steps, or meta-instructions.`,
         `- **action_kind** — usually \`send_email\``,
         ``,
         `Ask at most **one** clarifying question before the first Optimised prompt proposal.`,
@@ -573,7 +573,7 @@ export async function POST(req: Request) {
     } else if (wizardStep === "action") {
       tools.confirm_workflow_action_prompt = tool({
         description:
-          "Lock the Optimised prompt after the GP approves it. instruction must be meta-instructions for the Draft-step LLM only — never email body, summaries, or bullet lists the GP asked for on this step. Call only after yes/agreement.",
+          "Lock the Optimised prompt after the GP approves it. instruction must be meta-instructions for the Draft-step LLM only — never email body, summaries, or bullet lists the GP asked for on this step. action_description must be 5–7 words from the Objective line (never 'lock in optimised prompt' or similar). Call only after yes/agreement.",
         inputSchema: workflowActionPromptSchema,
         execute: async ({ instruction, action_description, action_kind }) => {
           const instructionT = instruction.trim();

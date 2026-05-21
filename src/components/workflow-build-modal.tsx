@@ -42,6 +42,7 @@ import {
   formatAvailabilityContext,
   type SchedulingSlotModel,
 } from "@/lib/schedulingFindTime";
+import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
 
 export type WorkflowBuildModalProps = {
   open: boolean;
@@ -204,7 +205,9 @@ export function WorkflowBuildModal({
         ...prev,
         baseSubject: subject,
         baseBody: body,
-        actionDescription: prev.actionDescription.trim() || actionDescription,
+        actionDescription:
+          prev.actionDescription.trim() ||
+          deriveWorkflowActionDescription({ instruction, actionDescription }),
         lpDrafts: cohort,
         actionSpec,
         triggerConfirmed: true,
@@ -650,7 +653,12 @@ export function WorkflowBuildModal({
                       ...prev,
                       tomoInstruction: instruction,
                       actionPromptConfirmed: true,
-                      actionDescription: actionDescription ?? prev.actionDescription,
+                      actionDescription:
+                        actionDescription?.trim() ||
+                        deriveWorkflowActionDescription({
+                          instruction,
+                          actionDescription: prev.actionDescription,
+                        }),
                       actionSpec,
                     };
                   });

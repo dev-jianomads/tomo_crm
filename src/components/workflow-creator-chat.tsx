@@ -15,6 +15,7 @@ import {
   userWorkflowActionSchema,
   workflowActionPromptSchema,
 } from "@/lib/customPlaybooks";
+import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -230,7 +231,10 @@ export function WorkflowCreatorChat({
         }
         onActionPromptConfirmed?.({
           instruction: parsed.data.instruction.trim(),
-          actionDescription: parsed.data.action_description?.trim() || null,
+          actionDescription: deriveWorkflowActionDescription({
+            instruction: parsed.data.instruction.trim(),
+            actionDescription: parsed.data.action_description?.trim() || null,
+          }),
           actionKind: parsed.data.action_kind ?? "send_email",
         });
         return;
