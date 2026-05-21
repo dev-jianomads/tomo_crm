@@ -923,7 +923,6 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Michel — great to meet you, and thank you Liyen for the introduction.\n\nBrief context: we had a strong Q4 and are speaking with a small set of aligned allocator relationships. I'd welcome a short intro call at your convenience.\n\nBest regards,",
     dueDate: "2025-03-26",
-    workflowPlaybookId: "pb-intro-tracker",
     emailSourceUrl: "mailto:michel.delbuono@example.com?subject=Introduction%20from%20Liyen",
     drawerWhySurfaced: {
       body: "Liyen Chow connected you to Michel two days ago regarding Edmond de Rothschild Family Office. No reply yet — intro responses within 24h protect the warm path. Tomo drafted a reply that thanks Liyen, sets brief context, and proposes a short intro call.",
@@ -1146,7 +1145,6 @@ export const actions: ActionItem[] = [
     ],
     type: "outreach",
     dueDate: "2025-03-28",
-    workflowPlaybookId: "pb-update-followup",
     emailSourceUrl: "mailto:ir-newsletter@example.com?subject=Monthly%20Momentum%20Report",
     drawerWhySurfaced: {
       body: "This send’s open/click data is ingested; deltas vs the trailing three months are computed. Review highlights before you push follow-ups — top openers and cooling names are called out in the evidence block.",
@@ -1206,7 +1204,6 @@ export const actions: ActionItem[] = [
     draft:
       "Hi Camille — hope you're well. Wanted to check in ahead of your Q2 process and see if a short call would be helpful on our side. Happy to work around your schedule.\n\nBest regards,",
     dueDate: "2025-03-29",
-    workflowPlaybookId: "pb-no-response-stall",
     emailSourceUrl: "mailto:camille.durand@amundi.com?subject=Check-in%20ahead%20of%20Q2",
     drawerWhySurfaced: {
       body: "Eighteen days without a meaningful touch while Q2 allocation read approaches. Last call tone was positive — a short check-in reduces stall risk without forcing a decision.",
