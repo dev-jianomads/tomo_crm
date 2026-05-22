@@ -1,128 +1,77 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { CalendarDaysIcon, ChevronDownIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import type { Pipeline } from "@/lib/pipelines";
-import type { UserWorkflowAction } from "@/lib/custom-playbook-schema";
+import type { ReactNode } from "react";
 import type { WorkflowActionBuildAttachment } from "@/lib/workflow-action-build";
-import { WorkflowCreatorChat } from "@/components/workflow-creator-chat";
+import type { WorkflowBuildSubPhase } from "@/lib/workflow-create-draft";
 import { WorkflowWizardFileUpload } from "@/components/workflow-wizard-file-upload";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 
 export type WorkflowCondensedBuildPanelProps = {
-  pipeline: Pipeline;
-  workflowName: string;
+  phase: WorkflowBuildSubPhase;
   triggerSection: ReactNode;
+  /** Read-only trigger label in review phase */
+  triggerLabel?: string;
   contextText: string;
   onContextTextChange: (value: string) => void;
   contextPlaceholder?: string;
   contextLabel?: string;
-  actionSectionLabel?: string;
   attachments: WorkflowActionBuildAttachment[];
   onAttachmentsChange: (attachments: WorkflowActionBuildAttachment[]) => void;
   onOpenAvailability?: () => void;
   availabilitySlotCount?: number;
-  actionChatKey: number;
-  confirmedTrigger?: string;
-  orchestratorContextText: string;
-  attachmentNames: string[];
-  actionPills: ReadonlyArray<{ id: string; label: string; instruction: string; kind?: string }>;
-  tomoInstruction: string;
-  actionPromptConfirmed: boolean;
-  actionChatStreaming: boolean;
-  generating: boolean;
-  canGenerateDrafts: boolean;
-  generateLabel?: string;
-  onGenerateDrafts: () => void;
-  onActionPillSelect: (pill: { id: string; label: string; instruction: string; kind?: string }) => void;
-  onActionPromptConfirmed: (payload: {
-    instruction: string;
-    actionDescription: string | null;
-    actionKind: "send_email" | "schedule_meeting" | "schedule_call" | "other";
-  }) => void;
-  onActionConfirmed: (action: UserWorkflowAction) => void;
-  onActionPromptRevoked: () => void;
-  onStreamingChange: (streaming: boolean) => void;
-  draftVisible: boolean;
   actionDescription: string;
   onActionDescriptionChange: (value: string) => void;
   baseSubject: string;
   onBaseSubjectChange: (value: string) => void;
   baseBody: string;
   onBaseBodyChange: (value: string) => void;
-  lpDraftCount: number;
-  draftActionTitle?: string;
-  draftTemplateTitle?: string;
   draftLpHint?: string;
+  draftActionTitle?: string;
   showDraftAttachments?: boolean;
 };
 
+function SectionHeader({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">{children}</h3>
+  );
+}
+
 export function WorkflowCondensedBuildPanel({
-  pipeline,
-  workflowName,
+  phase,
   triggerSection,
+  triggerLabel = "",
   contextText,
   onContextTextChange,
   contextPlaceholder = "Theme, trip dates, talking points, anything Tomo should know…",
   contextLabel = "Context",
-  actionSectionLabel = "Tomo — define action",
   attachments,
   onAttachmentsChange,
   onOpenAvailability,
   availabilitySlotCount = 0,
-  actionChatKey,
-  confirmedTrigger,
-  orchestratorContextText,
-  attachmentNames,
-  actionPills,
-  tomoInstruction,
-  actionPromptConfirmed,
-  actionChatStreaming,
-  generating,
-  canGenerateDrafts,
-  generateLabel = "Generate drafts",
-  onGenerateDrafts,
-  onActionPillSelect,
-  onActionPromptConfirmed,
-  onActionConfirmed,
-  onActionPromptRevoked,
-  onStreamingChange,
-  draftVisible,
   actionDescription,
   onActionDescriptionChange,
   baseSubject,
   onBaseSubjectChange,
   baseBody,
   onBaseBodyChange,
-  lpDraftCount,
-  draftActionTitle = "Action",
-  draftTemplateTitle = "LP draft",
   draftLpHint,
+  draftActionTitle = "Action",
   showDraftAttachments = false,
 }: WorkflowCondensedBuildPanelProps) {
-  const [hasRefinedOnce, setHasRefinedOnce] = useState(
-    () => actionPromptConfirmed || Boolean(tomoInstruction.trim())
-  );
-  const [actionSummaryOpen, setActionSummaryOpen] = useState(false);
-
-  const showGenerateDrafts = hasRefinedOnce;
-
-  return (
-    <div
-      className={`grid min-h-[min(32rem,60vh)] gap-4 ${draftVisible ? "lg:grid-cols-2" : ""} lg:items-start`}
-      data-testid="workflow-condensed-build-panel"
-    >
-      <div className="flex flex-col gap-4">
+  if (phase === "context") {
+    return (
+      <div className="flex max-w-2xl flex-col gap-4" data-testid="workflow-condensed-build-panel">
         <section className="shrink-0 space-y-1.5" data-testid="workflow-build-trigger-section">
           <span className="text-xs font-medium text-[color:var(--foreground)]">Trigger</span>
           {triggerSection}
         </section>
 
-        <section className="shrink-0 space-y-1.5">
+        <section className="shrink-0 space-y-1.5" data-testid="workflow-build-context-section">
           <span className="text-xs font-medium text-[color:var(--foreground)]">{contextLabel}</span>
           <textarea
             value={contextText}
             onChange={(e) => onContextTextChange(e.target.value)}
-            rows={3}
+            rows={4}
             className="tomo-input w-full resize-none text-sm"
             placeholder={contextPlaceholder}
           />
@@ -152,126 +101,57 @@ export function WorkflowCondensedBuildPanel({
             ) : null}
           </div>
         </section>
-
-        <section className="min-h-0 space-y-1.5">
-          <span className="text-xs font-medium text-[color:var(--foreground)]">{actionSectionLabel}</span>
-          <WorkflowCreatorChat
-            key={`action-${actionChatKey}`}
-            pipeline={pipeline}
-            surfaceContext="workflows"
-            wizardStep="action"
-            workflowName={workflowName}
-            confirmedTrigger={confirmedTrigger}
-            contextText={orchestratorContextText}
-            attachmentNames={attachmentNames}
-            variant="wizardCondensed"
-            hideSectionHeader
-            actionPills={actionPills}
-            actionPromptConfirmed={actionPromptConfirmed}
-            confirmedActionInstruction={tomoInstruction}
-            onStreamingChange={onStreamingChange}
-            onActionPromptRevoked={onActionPromptRevoked}
-            onActionPillSelect={onActionPillSelect}
-            onRefineStarted={() => setHasRefinedOnce(true)}
-            showGenerateDrafts={showGenerateDrafts}
-            onGenerateDrafts={onGenerateDrafts}
-            canGenerateDrafts={canGenerateDrafts}
-            generatingDrafts={generating}
-            generateDraftsLabel={generateLabel}
-            onWorkflowCreated={() => {}}
-            onActionPromptConfirmed={(payload) => {
-              setHasRefinedOnce(true);
-              onActionPromptConfirmed(payload);
-            }}
-            onActionConfirmed={(action) => {
-              setHasRefinedOnce(true);
-              onActionConfirmed(action);
-            }}
-          />
-          {actionChatStreaming && !generating ? (
-            <p className="text-[11px] text-[color:var(--tomo-mute)]">Tomo is refining…</p>
-          ) : null}
-        </section>
       </div>
+    );
+  }
 
-      {draftVisible && baseBody ? (
-        <div className="flex min-h-0 flex-col gap-3 lg:sticky lg:top-0 lg:max-h-[min(72vh,640px)] lg:overflow-y-auto" data-testid="workflow-build-draft-panel">
-          <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:color-mix(in_srgb,var(--tomo-navy-soft)_25%,var(--tomo-card))]">
-            <button
-              type="button"
-              onClick={() => setActionSummaryOpen((o) => !o)}
-              className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-              aria-expanded={actionSummaryOpen}
-            >
-              <div className="min-w-0">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                  {draftActionTitle}
-                </h3>
-                {actionDescription.trim() ? (
-                  <p className="mt-0.5 truncate text-sm text-[color:var(--foreground)]">{actionDescription.trim()}</p>
-                ) : null}
-              </div>
-              <ChevronDownIcon
-                className={`h-4 w-4 shrink-0 text-[color:var(--tomo-mute)] transition ${actionSummaryOpen ? "rotate-180" : ""}`}
-                aria-hidden
-              />
-            </button>
-            {actionSummaryOpen ? (
-              <div className="border-t border-[color:var(--tomo-rule-soft)] px-4 pb-4">
-                <textarea
-                  value={actionDescription}
-                  onChange={(e) => onActionDescriptionChange(e.target.value)}
-                  rows={2}
-                  className="tomo-input mt-3 w-full resize-y text-sm"
-                />
-              </div>
-            ) : null}
-          </div>
+  return (
+    <div className="flex max-w-2xl flex-col gap-4" data-testid="workflow-build-review-panel">
+      <section className="space-y-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
+        <SectionHeader>Trigger</SectionHeader>
+        <p className="text-sm text-[color:var(--foreground)]">{triggerLabel.trim() || "—"}</p>
+      </section>
 
-          <section className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--tomo-teal)]">
-                {draftTemplateTitle}
-              </h3>
-              <button
-                type="button"
-                disabled={generating}
-                onClick={onGenerateDrafts}
-                className="inline-flex items-center gap-1 text-[11px] text-[color:var(--tomo-teal)] disabled:opacity-50"
-              >
-                <SparklesIcon className="h-3.5 w-3.5" />
-                Regenerate
-              </button>
-            </div>
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
-              <input
-                value={baseSubject}
-                onChange={(e) => onBaseSubjectChange(e.target.value)}
-                className="tomo-input mt-1 w-full text-sm"
-              />
-            </label>
-            <label className="mt-3 block">
-              <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
-              <textarea
-                value={baseBody}
-                onChange={(e) => onBaseBodyChange(e.target.value)}
-                rows={12}
-                className="tomo-input mt-1 w-full resize-y text-sm"
-              />
-            </label>
-            <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">
-              {draftLpHint ?? `${lpDraftCount} LP drafts — personalise on the next step.`}
-            </p>
-          </section>
-          {showDraftAttachments ? (
-            <WorkflowWizardFileUpload
-              attachments={attachments}
-              onChange={onAttachmentsChange}
-              label="Attachments for this outreach"
-            />
-          ) : null}
-        </div>
+      <section className="space-y-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
+        <SectionHeader>{draftActionTitle}</SectionHeader>
+        <input
+          value={actionDescription}
+          onChange={(e) => onActionDescriptionChange(e.target.value)}
+          className="tomo-input w-full text-sm"
+          placeholder="Short action label (5–7 words)"
+        />
+      </section>
+
+      <section className="space-y-3 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
+        <SectionHeader>Draft</SectionHeader>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Subject</span>
+          <input
+            value={baseSubject}
+            onChange={(e) => onBaseSubjectChange(e.target.value)}
+            className="tomo-input mt-1 w-full text-sm"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wide text-[color:var(--tomo-mute)]">Body</span>
+          <textarea
+            value={baseBody}
+            onChange={(e) => onBaseBodyChange(e.target.value)}
+            rows={12}
+            className="tomo-input mt-1 w-full resize-y text-sm"
+          />
+        </label>
+        {draftLpHint ? (
+          <p className="text-xs text-[color:var(--tomo-mute)]">{draftLpHint}</p>
+        ) : null}
+      </section>
+
+      {showDraftAttachments ? (
+        <WorkflowWizardFileUpload
+          attachments={attachments}
+          onChange={onAttachmentsChange}
+          label="Attachments for this outreach"
+        />
       ) : null}
     </div>
   );

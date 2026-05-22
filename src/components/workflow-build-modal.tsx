@@ -13,7 +13,6 @@ import type { UserWorkflowAction, WorkflowLeg } from "@/lib/custom-playbook-sche
 import {
   buildMockActionBuildLpDrafts,
   mergeContextWithAttachmentText,
-  WORKFLOW_WIZARD_ACTION_PILLS,
   type WorkflowActionBuildConfig,
   type WorkflowActionBuildLpDraft,
 } from "@/lib/workflow-action-build";
@@ -21,14 +20,17 @@ import {
   WORKFLOW_CREATE_STEPS,
   canAdvanceFromStep,
   canGenerateWorkflowDrafts,
+  clearWorkflowGeneratedDraft,
   hasGeneratedWorkflowDrafts,
   initialWorkflowCreateDraft,
   maxReachableStep,
   stepIndex,
+  workflowBuildSubPhase,
   workflowCreateDraftFromStored,
   type WorkflowCreateDraft,
   type WorkflowCreateStep,
 } from "@/lib/workflow-create-draft";
+import { buildCohortDraftInstruction } from "@/lib/workflow-build-instruction";
 import {
   initialWorkflowLegDraft,
   workflowLegDraftFromStored,
@@ -52,19 +54,6 @@ export type WorkflowBuildModalProps = {
   onWorkflowCreated: (entry: CustomPlaybookStored) => void;
 };
 
-function instructionFromAction(action: UserWorkflowAction): string {
-  switch (action.kind) {
-    case "send_email":
-      return action.body;
-    case "schedule_meeting":
-      return [action.title, action.notes].filter(Boolean).join(" — ");
-    case "schedule_call":
-      return [action.title, action.agenda].filter(Boolean).join(" — ");
-    case "other":
-      return action.details;
-  }
-}
-
 export function WorkflowBuildModal({
   open,
   pipeline,
@@ -82,10 +71,8 @@ export function WorkflowBuildModal({
   const [followUpPromptOpen, setFollowUpPromptOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [selectedLpId, setSelectedLpId] = useState<string | null>(null);
-  const [actionChatKey, setActionChatKey] = useState(0);
   const [availabilitySlots, setAvailabilitySlots] = useState<SchedulingSlotModel[]>([]);
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
-  const [actionChatStreaming, setActionChatStreaming] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -111,7 +98,6 @@ export function WorkflowBuildModal({
       setSavedPrimaryEntry(null);
       setFollowUpPromptOpen(false);
       setGenerating(false);
-      setActionChatKey((k) => k + 1);
       setAvailabilitySlots([]);
       setAvailabilityModalOpen(false);
     });
@@ -132,8 +118,8 @@ export function WorkflowBuildModal({
   );
 
   const reachable = maxReachableStep(draft);
+  const buildSubPhase = workflowBuildSubPhase(draft);
   const draftPanelVisible = hasGeneratedWorkflowDrafts(draft);
-  const attachmentNames = draft.attachments.map((a) => a.name);
   const mergedContextText = useMemo(
     () => mergeContextWithAttachmentText(draft.contextText, draft.attachments),
     [draft.contextText, draft.attachments]
@@ -155,15 +141,15 @@ export function WorkflowBuildModal({
 
   const runTomoGenerate = useCallback(async () => {
     if (!pipeline) return;
-    const instruction = draft.tomoInstruction.trim();
-    if (!instruction) {
-      toast.error("Describe the outreach in the action section first");
-      return;
-    }
     if (!draft.trigger?.trim()) {
-      toast.error("Add a trigger before generating drafts");
+      toast.error("Add a trigger before generating");
       return;
     }
+    const instruction = buildCohortDraftInstruction({
+      workflowName: draft.workflowName,
+      trigger: draft.trigger,
+      contextText: orchestratorContextText,
+    });
     setGenerating(true);
     try {
       const res = await fetch("/api/tomo/generate-workflow-cohort-draft", {
@@ -203,11 +189,11 @@ export function WorkflowBuildModal({
             } satisfies UserWorkflowAction);
       setDraft((prev) => ({
         ...prev,
+        tomoInstruction: instruction,
+        actionPromptConfirmed: true,
         baseSubject: subject,
         baseBody: body,
-        actionDescription:
-          prev.actionDescription.trim() ||
-          deriveWorkflowActionDescription({ instruction, actionDescription }),
+        actionDescription: deriveWorkflowActionDescription({ instruction, actionDescription }),
         lpDrafts: cohort,
         actionSpec,
         triggerConfirmed: true,
@@ -278,30 +264,8 @@ export function WorkflowBuildModal({
     }));
   };
 
-  const selectActionPill = (pill: { id: string; label: string; instruction: string; kind?: string }) => {
-    setDraft((prev) => {
-      const actionSpec: UserWorkflowAction =
-        pill.kind === "schedule_meeting" || pill.id === "request_meeting"
-          ? {
-              kind: "schedule_meeting",
-              title: pill.label,
-              datetime: "TBD — confirm when scheduling",
-              notes: pill.instruction,
-            }
-          : {
-              kind: "send_email",
-              subject: `${prev.workflowName.trim() || "Outreach"} — ${pipeline?.name ?? "list"}`,
-              body: "",
-            };
-      return {
-        ...prev,
-        tomoInstruction: "",
-        actionPromptConfirmed: false,
-        actionDescription: pill.label,
-        actionSpec,
-      };
-    });
-    toast.message(`Selected: ${pill.label} — tell Tomo how to refine it`);
+  const handleEditBuildContext = () => {
+    setDraft((prev) => clearWorkflowGeneratedDraft(prev));
   };
 
   const handleDraftNext = () => {
@@ -357,7 +321,6 @@ export function WorkflowBuildModal({
     setFollowUpDraft(initialWorkflowLegDraft());
     setBuildPhase("followUp");
     setEditSection("followUp");
-    setActionChatKey((k) => k + 1);
     toast.message("Configure your follow-up — same build layout as the primary step.");
   };
 
@@ -394,7 +357,6 @@ export function WorkflowBuildModal({
       setStep(maxReachableStep(draft));
     } else {
       setBuildPhase("followUp");
-      setActionChatKey((k) => k + 1);
     }
   };
 
@@ -600,86 +562,22 @@ export function WorkflowBuildModal({
 
             {buildPhase === "primary" && step === "build" ? (
               <WorkflowCondensedBuildPanel
-                pipeline={pipeline}
-                workflowName={draft.workflowName.trim()}
+                phase={buildSubPhase}
                 triggerSection={primaryTriggerSection}
+                triggerLabel={draft.trigger ?? ""}
                 contextText={draft.contextText}
                 onContextTextChange={(v) => setDraft((prev) => ({ ...prev, contextText: v }))}
                 attachments={draft.attachments}
                 onAttachmentsChange={(attachments) => setDraft((prev) => ({ ...prev, attachments }))}
                 onOpenAvailability={() => setAvailabilityModalOpen(true)}
                 availabilitySlotCount={availabilitySlots.length}
-                actionChatKey={actionChatKey}
-                confirmedTrigger={draft.trigger ?? undefined}
-                orchestratorContextText={orchestratorContextText}
-                attachmentNames={attachmentNames}
-                actionPills={[...WORKFLOW_WIZARD_ACTION_PILLS]}
-                tomoInstruction={draft.tomoInstruction}
-                actionPromptConfirmed={draft.actionPromptConfirmed}
-                actionChatStreaming={actionChatStreaming}
-                generating={generating}
-                canGenerateDrafts={canGenerateWorkflowDrafts(draft)}
-                onGenerateDrafts={() => void runTomoGenerate()}
-                onActionPillSelect={selectActionPill}
-                onStreamingChange={setActionChatStreaming}
-                onActionPromptRevoked={() =>
-                  setDraft((prev) => ({ ...prev, actionPromptConfirmed: false }))
-                }
-                onActionPromptConfirmed={({ instruction, actionDescription, actionKind }) => {
-                  setDraft((prev) => {
-                    const actionSpec: UserWorkflowAction =
-                      actionKind === "schedule_meeting"
-                        ? {
-                            kind: "schedule_meeting",
-                            title: prev.workflowName.trim() || "Meeting",
-                            datetime: "TBD — confirm when scheduling",
-                            notes: instruction,
-                          }
-                        : actionKind === "schedule_call"
-                          ? {
-                              kind: "schedule_call",
-                              title: prev.workflowName.trim() || "Call",
-                              datetime: "TBD — confirm when scheduling",
-                              agenda: instruction,
-                            }
-                          : actionKind === "other"
-                            ? { kind: "other", label: "Action", details: instruction }
-                            : {
-                                kind: "send_email",
-                                subject: `${prev.workflowName.trim() || "Outreach"} — ${pipeline.name}`,
-                                body: instruction,
-                              };
-                    return {
-                      ...prev,
-                      tomoInstruction: instruction,
-                      actionPromptConfirmed: true,
-                      actionDescription:
-                        actionDescription?.trim() ||
-                        deriveWorkflowActionDescription({
-                          instruction,
-                          actionDescription: prev.actionDescription,
-                        }),
-                      actionSpec,
-                    };
-                  });
-                  toast.success("Action prompt set");
-                }}
-                onActionConfirmed={(action) => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    actionSpec: action,
-                    tomoInstruction: prev.tomoInstruction.trim() || instructionFromAction(action),
-                    actionPromptConfirmed: true,
-                  }));
-                }}
-                draftVisible={draftPanelVisible}
                 actionDescription={draft.actionDescription}
                 onActionDescriptionChange={(v) => setDraft((prev) => ({ ...prev, actionDescription: v }))}
                 baseSubject={draft.baseSubject}
                 onBaseSubjectChange={(v) => setDraft((prev) => ({ ...prev, baseSubject: v }))}
                 baseBody={draft.baseBody}
                 onBaseBodyChange={(v) => setDraft((prev) => ({ ...prev, baseBody: v }))}
-                lpDraftCount={draft.lpDrafts.length}
+                draftLpHint={`${draft.lpDrafts.length} LP drafts — personalise on the next step.`}
                 showDraftAttachments
               />
             ) : null}
@@ -781,14 +679,36 @@ export function WorkflowBuildModal({
                   </button>
                 ) : null}
 
-                {step === "build" && draftPanelVisible ? (
+                {step === "build" && buildSubPhase === "context" ? (
                   <button
                     type="button"
-                    onClick={handleDraftNext}
-                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                    disabled={generating || !canGenerateWorkflowDrafts(draft)}
+                    onClick={() => void runTomoGenerate()}
+                    className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    data-testid="workflow-generate-draft-workflow"
                   >
-                    Next — personalise per LP
+                    {generating ? "Generating…" : "Generate Draft Workflow"}
                   </button>
+                ) : null}
+
+                {step === "build" && buildSubPhase === "review" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleEditBuildContext}
+                      className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs"
+                      data-testid="workflow-edit-build-context"
+                    >
+                      Edit context
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDraftNext}
+                      className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white"
+                    >
+                      Confirm
+                    </button>
+                  </>
                 ) : null}
 
                 {step === "personalise" ? (

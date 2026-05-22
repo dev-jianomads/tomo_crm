@@ -12,22 +12,19 @@ import {
 import {
   buildMockActionBuildLpDrafts,
   mergeContextWithAttachmentText,
-  WORKFLOW_FOLLOW_UP_ACTION_PILLS,
   type WorkflowActionBuildConfig,
 } from "@/lib/workflow-action-build";
+import { buildCohortDraftInstruction } from "@/lib/workflow-build-instruction";
 import { WorkflowCondensedBuildPanel } from "@/components/workflow-condensed-build-panel";
 import {
   canGenerateLegDrafts,
+  clearLegGeneratedDraft,
   hasGeneratedLegDrafts,
+  legBuildSubPhase,
   setLegTriggerSpec,
   type WorkflowLegDraft,
 } from "@/lib/workflow-leg-draft";
 import { deriveWorkflowActionDescription } from "@/lib/workflow-action-description";
-
-function instructionFromAction(action: UserWorkflowAction): string {
-  if (action.kind === "send_email") return action.body;
-  return "";
-}
 
 export type WorkflowLegWizardProps = {
   pipeline: Pipeline;
@@ -51,8 +48,6 @@ export function WorkflowLegWizard({
   onSaveFollowUp,
 }: WorkflowLegWizardProps) {
   const [generating, setGenerating] = useState(false);
-  const [actionChatKey, setActionChatKey] = useState(0);
-  const [actionChatStreaming, setActionChatStreaming] = useState(false);
 
   const mergedContextText = useMemo(
     () => mergeContextWithAttachmentText(draft.contextText, draft.attachments),
@@ -77,15 +72,19 @@ export function WorkflowLegWizard({
     return `${mergedContextText.trim()}\n\n${primaryTemplateContext}`;
   }, [mergedContextText, primaryTemplateContext]);
 
-  const attachmentNames = draft.attachments.map((a) => a.name);
-  const draftPanelVisible = hasGeneratedLegDrafts(draft);
+  const buildSubPhase = legBuildSubPhase(draft);
+  const draftReady = hasGeneratedLegDrafts(draft);
 
   const runTomoGenerate = useCallback(async () => {
-    const instruction = draft.tomoInstruction.trim();
-    if (!instruction) {
-      toast.error("Describe the follow-up in the action section first");
+    if (!draft.trigger.trim()) {
+      toast.error("Set a follow-up trigger before generating");
       return;
     }
+    const instruction = buildCohortDraftInstruction({
+      workflowName: `${workflowName.trim()} — follow-up`,
+      trigger: draft.trigger,
+      contextText: orchestratorContextText,
+    });
     setGenerating(true);
     try {
       const primaryTemplate =
@@ -105,7 +104,7 @@ export function WorkflowLegWizard({
           workflowName: `${workflowName.trim()} — follow-up`,
           listName: pipeline.name,
           instruction,
-          contextText: mergedContextText,
+          contextText: orchestratorContextText,
           draftKind: "follow_up",
           primaryTemplate,
           trigger: draft.trigger,
@@ -134,11 +133,11 @@ export function WorkflowLegWizard({
       } satisfies UserWorkflowAction;
       onDraftChange((prev) => ({
         ...prev,
+        tomoInstruction: instruction,
+        actionPromptConfirmed: true,
         baseSubject: subject,
         baseBody: body,
-        actionDescription:
-          prev.actionDescription.trim() ||
-          deriveWorkflowActionDescription({ instruction, actionDescription }),
+        actionDescription: deriveWorkflowActionDescription({ instruction, actionDescription }),
         lpDrafts: cohort,
         actionSpec,
       }));
@@ -152,10 +151,9 @@ export function WorkflowLegWizard({
     }
   }, [
     draft.attachments,
-    draft.tomoInstruction,
     draft.trigger,
     onDraftChange,
-    mergedContextText,
+    orchestratorContextText,
     pipeline.name,
     primaryActionBuild,
     primaryTrigger,
@@ -189,26 +187,12 @@ export function WorkflowLegWizard({
     });
   };
 
-  const selectActionPill = (pill: { id: string; label: string; instruction: string; kind?: string }) => {
-    onDraftChange((prev) => ({
-      ...prev,
-      tomoInstruction: "",
-      actionPromptConfirmed: false,
-      actionDescription: pill.label,
-      actionSpec: {
-        kind: "send_email",
-        subject: `Re: ${workflowName.trim() || "Outreach"}`,
-        body: "",
-      },
-    }));
-    toast.message(`Selected: ${pill.label} — tell Tomo how to refine it`);
+  const handleEditContext = () => {
+    onDraftChange((prev) => clearLegGeneratedDraft(prev));
   };
 
   const followUpTriggerSection = (
     <div className="space-y-3" data-testid="workflow-leg-trigger-section">
-      <p className="text-[11px] text-[color:var(--tomo-mute)]">
-        When Tomo should draft the follow-up. One cohort template for all LPs in v1.5.
-      </p>
       <fieldset className="space-y-2">
         <label className="flex cursor-pointer gap-2 rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule-soft)] p-2.5 has-[:checked]:border-[color:var(--tomo-teal)]">
           <input
@@ -265,86 +249,57 @@ export function WorkflowLegWizard({
       ) : null}
 
       <WorkflowCondensedBuildPanel
-        pipeline={pipeline}
-        workflowName={`${workflowName} — follow-up`}
+        phase={buildSubPhase}
         triggerSection={followUpTriggerSection}
+        triggerLabel={draft.trigger}
         contextText={draft.contextText}
         onContextTextChange={(v) => onDraftChange((prev) => ({ ...prev, contextText: v }))}
         contextLabel="Extra context (optional)"
         contextPlaceholder="Tone for the nudge, what to reference from the primary email…"
         attachments={draft.attachments}
         onAttachmentsChange={(attachments) => onDraftChange((prev) => ({ ...prev, attachments }))}
-        actionChatKey={actionChatKey}
-        confirmedTrigger={draft.trigger}
-        orchestratorContextText={orchestratorContextText}
-        attachmentNames={attachmentNames}
-        actionPills={[...WORKFLOW_FOLLOW_UP_ACTION_PILLS]}
-        tomoInstruction={draft.tomoInstruction}
-        actionPromptConfirmed={draft.actionPromptConfirmed}
-        actionChatStreaming={actionChatStreaming}
-        generating={generating}
-        canGenerateDrafts={canGenerateLegDrafts(draft)}
-        generateLabel="Generate follow-up drafts"
-        onGenerateDrafts={() => void runTomoGenerate()}
-        onActionPillSelect={selectActionPill}
-        onStreamingChange={setActionChatStreaming}
-        onActionPromptRevoked={() =>
-          onDraftChange((prev) => ({ ...prev, actionPromptConfirmed: false }))
-        }
-        onActionPromptConfirmed={({ instruction, actionDescription }) => {
-          onDraftChange((prev) => ({
-            ...prev,
-            tomoInstruction: instruction,
-            actionPromptConfirmed: true,
-            actionDescription:
-              actionDescription?.trim() ||
-              deriveWorkflowActionDescription({
-                instruction,
-                actionDescription: prev.actionDescription,
-              }),
-            actionSpec: {
-              kind: "send_email",
-              subject: `Re: ${workflowName.trim() || "Outreach"}`,
-              body: instruction,
-            },
-          }));
-          toast.success("Follow-up prompt set");
-        }}
-        onActionConfirmed={(action) => {
-          if (action.kind !== "send_email") {
-            toast.error("Follow-up actions must be email only in v1.5");
-            return;
-          }
-          onDraftChange((prev) => ({
-            ...prev,
-            actionSpec: action,
-            tomoInstruction: prev.tomoInstruction.trim() || instructionFromAction(action),
-            actionPromptConfirmed: true,
-          }));
-        }}
-        draftVisible={draftPanelVisible}
         actionDescription={draft.actionDescription}
         onActionDescriptionChange={(v) => onDraftChange((prev) => ({ ...prev, actionDescription: v }))}
         baseSubject={draft.baseSubject}
         onBaseSubjectChange={(v) => onDraftChange((prev) => ({ ...prev, baseSubject: v }))}
         baseBody={draft.baseBody}
         onBaseBodyChange={(v) => onDraftChange((prev) => ({ ...prev, baseBody: v }))}
-        lpDraftCount={draft.lpDrafts.length}
         draftActionTitle="Follow-up action"
-        draftTemplateTitle="Cohort follow-up template"
         draftLpHint={`${draft.lpDrafts.length} LP slots — same template for all (no per-LP personalise in v1.5).`}
       />
 
       <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[color:var(--tomo-rule-soft)] pt-3">
-        <button
-          type="button"
-          disabled={!draftPanelVisible}
-          onClick={onSaveFollowUp}
-          className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-          data-testid="workflow-save-follow-up"
-        >
-          Save workflow with follow-up
-        </button>
+        {buildSubPhase === "context" ? (
+          <button
+            type="button"
+            disabled={generating || !canGenerateLegDrafts(draft)}
+            onClick={() => void runTomoGenerate()}
+            className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            data-testid="workflow-generate-follow-up-draft"
+          >
+            {generating ? "Generating…" : "Generate Draft Workflow"}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleEditContext}
+              className="rounded-[var(--tomo-radius-sm)] border border-[color:var(--tomo-rule)] px-3 py-1.5 text-xs"
+              data-testid="workflow-edit-follow-up-context"
+            >
+              Edit context
+            </button>
+            <button
+              type="button"
+              disabled={!draftReady}
+              onClick={onSaveFollowUp}
+              className="rounded-[var(--tomo-radius-sm)] bg-[color:var(--tomo-teal)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              data-testid="workflow-save-follow-up"
+            >
+              Confirm
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

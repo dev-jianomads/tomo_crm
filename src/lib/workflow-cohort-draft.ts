@@ -17,7 +17,7 @@ export const workflowCohortDraftSchema = z.object({
   actionDescription: z
     .string()
     .min(1)
-    .describe("One sentence: what Tomo does for each LP when this workflow action runs"),
+    .describe("5–7 word process-flow label: what Tomo does per LP (GP-facing outcome, not meta instructions)"),
 });
 
 export type WorkflowCohortDraftResult = z.infer<typeof workflowCohortDraftSchema>;

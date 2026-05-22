@@ -58,8 +58,27 @@ export function legStepIndex(step: WorkflowLegStep): number {
   return WORKFLOW_LEG_STEPS.findIndex((s) => s.id === step);
 }
 
+export type WorkflowLegBuildSubPhase = "context" | "review";
+
 export function canGenerateLegDrafts(draft: WorkflowLegDraft): boolean {
-  return draft.triggerConfirmed && Boolean(draft.trigger.trim()) && Boolean(draft.tomoInstruction.trim());
+  return draft.triggerConfirmed && Boolean(draft.trigger.trim());
+}
+
+export function legBuildSubPhase(draft: WorkflowLegDraft): WorkflowLegBuildSubPhase {
+  return hasGeneratedLegDrafts(draft) ? "review" : "context";
+}
+
+export function clearLegGeneratedDraft(draft: WorkflowLegDraft): WorkflowLegDraft {
+  return {
+    ...draft,
+    actionDescription: "",
+    tomoInstruction: "",
+    baseSubject: "",
+    baseBody: "",
+    lpDrafts: [],
+    actionSpec: null,
+    actionPromptConfirmed: false,
+  };
 }
 
 export function hasGeneratedLegDrafts(draft: WorkflowLegDraft): boolean {

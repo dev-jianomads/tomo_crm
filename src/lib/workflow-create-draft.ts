@@ -56,9 +56,29 @@ export function stepIndex(step: WorkflowCreateStep): number {
   return WORKFLOW_CREATE_STEPS.findIndex((s) => s.id === step);
 }
 
-/** Enough to call cohort draft generation (no locked optimised prompt). */
+export type WorkflowBuildSubPhase = "context" | "review";
+
+/** Trigger required before generating cohort draft. */
 export function canGenerateWorkflowDrafts(draft: WorkflowCreateDraft): boolean {
-  return Boolean(draft.trigger?.trim()) && Boolean(draft.tomoInstruction.trim());
+  return Boolean(draft.trigger?.trim());
+}
+
+export function workflowBuildSubPhase(draft: WorkflowCreateDraft): WorkflowBuildSubPhase {
+  return hasGeneratedWorkflowDrafts(draft) ? "review" : "context";
+}
+
+/** Clear generated draft when GP returns to edit context. */
+export function clearWorkflowGeneratedDraft(draft: WorkflowCreateDraft): WorkflowCreateDraft {
+  return {
+    ...draft,
+    actionDescription: "",
+    tomoInstruction: "",
+    baseSubject: "",
+    baseBody: "",
+    lpDrafts: [],
+    actionSpec: null,
+    actionPromptConfirmed: false,
+  };
 }
 
 export function hasGeneratedWorkflowDrafts(draft: WorkflowCreateDraft): boolean {
