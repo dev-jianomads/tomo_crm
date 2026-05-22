@@ -5,14 +5,30 @@
 
 const META_ACTION_LABEL = /lock\s+in|optimi[sz]ed\s+prompt|draft\s+step|cohort\s+outreach\s+emails|meta-instruction/i;
 
-const OBJECTIVE_LINE =
-  /(?:^|\n)\s*(?:[-*•]\s*)?\*{0,2}Objective\*{0,2}\s*:\s*(.+?)(?=\n\s*(?:[-*•]|\*{0,2}[A-Za-z][\w\s]*\*{0,2}\s*:)|\n\n|$)/is;
+const OBJECTIVE_HEADING = /^\s*(?:[-*•]\s*)?\*{0,2}Objective\*{0,2}\s*:\s*(.*)$/i;
+const NEXT_SECTION_LINE = /^\s*(?:[-*•]\s*)?\*{0,2}[A-Za-z][\w\s]*\*{0,2}\s*:/;
 
 function extractObjectiveFromInstruction(instruction: string): string | null {
-  const match = instruction.match(OBJECTIVE_LINE);
-  if (!match?.[1]) return null;
-  const line = match[1].trim().replace(/\s+/g, " ");
-  return line || null;
+  const lines = instruction.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const heading = lines[i].match(OBJECTIVE_HEADING);
+    if (!heading) continue;
+
+    const parts: string[] = [];
+    if (heading[1].trim()) parts.push(heading[1].trim());
+
+    while (i + 1 < lines.length) {
+      const next = lines[i + 1];
+      if (!next.trim()) break;
+      if (NEXT_SECTION_LINE.test(next) || /^\s*[-*•]\s/.test(next)) break;
+      i++;
+      parts.push(next.trim());
+    }
+
+    const line = parts.join(" ").replace(/\s+/g, " ").trim();
+    return line || null;
+  }
+  return null;
 }
 
 /** Prefer an "inviting …" / "invite …" clause — often the clearest short label. */
