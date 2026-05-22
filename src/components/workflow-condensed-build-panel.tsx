@@ -60,7 +60,7 @@ export function WorkflowCondensedBuildPanel({
 }: WorkflowCondensedBuildPanelProps) {
   if (phase === "context") {
     return (
-      <div className="flex max-w-2xl flex-col gap-4" data-testid="workflow-condensed-build-panel">
+      <div className="flex w-full flex-col gap-4" data-testid="workflow-condensed-build-panel">
         <section className="shrink-0 space-y-1.5" data-testid="workflow-build-trigger-section">
           <span className="text-xs font-medium text-[color:var(--foreground)]">Trigger</span>
           {triggerSection}
@@ -106,7 +106,7 @@ export function WorkflowCondensedBuildPanel({
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4" data-testid="workflow-build-review-panel">
+    <div className="flex w-full min-w-0 flex-col gap-4" data-testid="workflow-build-review-panel">
       <section className="space-y-2 rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] p-4">
         <SectionHeader>Trigger</SectionHeader>
         <p className="text-sm text-[color:var(--foreground)]">{triggerLabel.trim() || "—"}</p>
