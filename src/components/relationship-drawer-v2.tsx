@@ -21,6 +21,7 @@ import {
   mockDaysInPriorStage,
   pipelineFlagLabel,
 } from "@/lib/relationshipDrawerMocks";
+import { formatDrawerTouchesInStage } from "@/lib/touchesInStage";
 import type { FieldProvenance } from "@/lib/lpContactApi";
 
 function tierBadgeClass(tier: Relationship["tier"]): string {
@@ -90,6 +91,7 @@ export function RelationshipDrawerV2({
   };
   const daysIn = mockDaysInCurrentStage(rel);
   const prior = mockDaysInPriorStage(rel);
+  const touchesInStage = formatDrawerTouchesInStage(rel);
   const loops = buildMockOpenLoopRows(rel);
   const signals = buildBehaviouralSignals(rel);
 
@@ -190,6 +192,15 @@ export function RelationshipDrawerV2({
               Days in stage <span className="text-[color:var(--tomo-teal)]">Derived</span>
             </p>
             <p className="mt-1 font-mono text-sm tabular-nums text-[color:var(--tomo-body)]">{daysIn}d</p>
+          </div>
+          <div className="min-w-0 sm:col-span-2">
+            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
+              Touches in stage <span className="text-[color:var(--tomo-teal)]">Derived</span>
+            </p>
+            <p className="mt-1 text-sm font-medium text-[color:var(--tomo-navy)]">{touchesInStage.primary}</p>
+            {touchesInStage.meetingCaption ? (
+              <p className="mt-0.5 text-xs italic text-[color:var(--tomo-mute)]">{touchesInStage.meetingCaption}</p>
+            ) : null}
           </div>
           <div className="min-w-0 sm:col-span-2">
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">

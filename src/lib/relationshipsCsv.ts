@@ -4,6 +4,7 @@
  */
 
 import type { Relationship } from "./mockData";
+import { enrichTouchesInStage } from "@/lib/touchesInStage";
 import {
   BAND_OPTIONS,
   CONSULTANT_DEPENDENT_OPTIONS,
@@ -234,7 +235,7 @@ export function parseRelationshipsCsv(text: string): Relationship[] {
     if (cells.every((c) => c.trim() === "")) continue;
     const rel = rowToRelationship(idx, cells);
     if (!rel.id || !rel.name) continue;
-    out.push(rel);
+    out.push(enrichTouchesInStage(rel));
   }
   return out;
 }

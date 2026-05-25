@@ -3,6 +3,8 @@
  * Keep shapes lean and purpose-built for the new IA.
  */
 
+import { enrichTouchesInStage } from "@/lib/touchesInStage";
+
 export type MomentumTrend = "up" | "flat" | "down";
 export type Velocity = "Fast" | "Moderate" | "Slow";
 
@@ -151,6 +153,10 @@ export type Relationship = {
   band: Band;
   /** GP-set `lp_state.off_channel_active_until` (ISO) — hydrated in demo from `/api/lp-contacts` + client store. */
   offChannelActiveUntil?: string | null;
+  /** Meaningful touches since current stage began (SRS `lp_state.meaningful_touches_since_stage_entry`). */
+  meaningfulTouchesSinceStageEntry?: number;
+  /** Completed meetings in current stage (SRS `lp_state.meetings_since_stage_entry`). */
+  meetingsSinceStageEntry?: number;
 };
 
 /** Format days since contact for display (e.g. "3d ago", "14d ago") */
@@ -635,6 +641,8 @@ function generateRelationships(): Relationship[] {
       band: "Active-Stable",
       lastMeetingDate: "2025-03-24",
       contactSeniority: "Director",
+      meaningfulTouchesSinceStageEntry: 3,
+      meetingsSinceStageEntry: 2,
     },
     {
       name: "Kwong Hong Huat",
@@ -804,7 +812,7 @@ function generateRelationships(): Relationship[] {
     });
   }
 
-  return rels;
+  return rels.map((r) => enrichTouchesInStage(r));
 }
 
 /** Generated LP rows (used when `exports/mock-relationships.csv` is missing or invalid). */

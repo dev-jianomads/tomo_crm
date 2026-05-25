@@ -17,6 +17,8 @@ export type LpStatePayload = {
   prior_stage_hint: string;
   /** SRS `lp_state.off_channel_active_until` — ISO 8601 or null (GP-set; demo store until Postgres). */
   off_channel_active_until: string | null;
+  meaningful_touches_since_stage_entry: number;
+  meetings_since_stage_entry: number;
 };
 
 export type FieldProvenance = {
@@ -66,6 +68,8 @@ export function relationshipToLpContactRecord(
       days_in_prior_stage: prior.days,
       prior_stage_hint: prior.stageHint,
       off_channel_active_until: options?.offChannelActiveUntilIso ?? null,
+      meaningful_touches_since_stage_entry: rel.meaningfulTouchesSinceStageEntry ?? 0,
+      meetings_since_stage_entry: rel.meetingsSinceStageEntry ?? 0,
     },
     provenance: {
       pipeline_stage: { source: "CRM", updatedAt: "2026-05-01T08:00:00.000Z" },

@@ -49,6 +49,7 @@ import {
 } from "@/lib/crmFieldSchema";
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
+import { formatTouchesInStageListSecondary } from "@/lib/touchesInStage";
 import { NewContactModal } from "@/components/new-contact-modal";
 import { ContactImportModal } from "@/components/contact-import-modal";
 import { RelationshipsAdvancedFiltersModal } from "@/components/relationships-advanced-filters-modal";
@@ -586,12 +587,23 @@ function RelationshipsPageContent() {
     (relationshipId: string, stage: Stage) => {
       const key = FIELD_TO_REL_KEY.stage;
       const value = normalizeFieldValue(key, stage) as Relationship["stage"];
+      const rel = relationshipsWithOverrides.find((r) => r.id === relationshipId);
+      const touchReset = rel
+        ? {
+            meaningfulTouchesSinceStageEntry: 0,
+            meetingsSinceStageEntry: 0,
+          }
+        : {};
       setRelationshipOverrides((prev) => ({
         ...prev,
-        [relationshipId]: { ...(prev[relationshipId] ?? {}), [key]: value },
+        [relationshipId]: {
+          ...(prev[relationshipId] ?? {}),
+          [key]: value,
+          ...touchReset,
+        },
       }));
     },
-    [setRelationshipOverrides]
+    [setRelationshipOverrides, relationshipsWithOverrides]
   );
 
   const handleKanbanMoveToStage = useCallback(
@@ -1339,8 +1351,13 @@ function TableCell({ rel, columnKey, isActive }: { rel: Relationship; columnKey:
       );
     case "days":
       return (
-        <td className={baseClass} title={formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}>
-          {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
+        <td className="px-3 py-2.5" title={formatTouchesInStageListSecondary(rel)}>
+          <span className="block text-sm text-[color:var(--tomo-body)]">
+            {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-[color:var(--tomo-mute)]">
+            {formatTouchesInStageListSecondary(rel)}
+          </span>
         </td>
       );
     case "openLoops":
@@ -1555,6 +1572,14 @@ function RelationshipCard({
           </span>
           <span className="min-w-0 flex-1 truncate text-[color:var(--tomo-body)]">
             {formatDaysSinceContact(rel.daysSinceLastMeaningfulContact)}
+          </span>
+        </div>
+        <div className="flex gap-1.5 text-xs">
+          <span className="w-9 shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[color:var(--tomo-mute)]">
+            Stage
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[color:var(--tomo-mute)]">
+            {formatTouchesInStageListSecondary(rel)}
           </span>
         </div>
         <div className="flex gap-1.5 text-xs">

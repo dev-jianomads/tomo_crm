@@ -16,14 +16,40 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Relationship, Stage } from "@/lib/mockData";
 import { STAGE_COLORS, stageLabelOnColorClasses } from "@/lib/mockData";
+import { derivePipelineFlagMock } from "@/lib/todayRaiseStands";
+import {
+  formatKanbanTouchesMeta,
+  shouldShowKanbanTouchesMeta,
+} from "@/lib/touchesInStage";
 
 type Column = { stage: Stage; items: Relationship[] };
 
+function pipelineFlagDotClass(flag: ReturnType<typeof derivePipelineFlagMock>): string {
+  if (flag === "red") return "bg-[color:var(--tomo-red)]";
+  if (flag === "amber") return "bg-[color:var(--tomo-status-amber)]";
+  return "bg-[color:var(--tomo-status-green)]";
+}
+
 function KanbanDragCardPreview({ rel }: { rel: Relationship }) {
+  const meta = formatKanbanTouchesMeta(rel);
+  const showMeta = shouldShowKanbanTouchesMeta(rel) && meta;
   return (
     <div className="pointer-events-none min-w-[100px] max-w-[180px] rounded border border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule))] bg-[color:var(--tomo-card)] px-1.5 py-1.5 shadow-[var(--tomo-modal-shadow)]">
-      <span className="block min-w-0 truncate text-[11px] font-medium text-[color:var(--foreground)]">{rel.firm}</span>
-      <span className="block min-w-0 truncate text-[10px] text-[color:var(--tomo-body)]">{rel.name}</span>
+      <div className="flex gap-1">
+        <span
+          className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${pipelineFlagDotClass(derivePipelineFlagMock(rel))}`}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <span className="block min-w-0 truncate text-[11px] font-medium text-[color:var(--foreground)]">{rel.firm}</span>
+          <span className="block min-w-0 truncate text-[10px] text-[color:var(--tomo-body)]">{rel.name}</span>
+          {showMeta ? (
+            <span className="mt-0.5 block truncate font-mono text-[9px] tabular-nums text-[color:var(--tomo-mute)]">
+              {meta}
+            </span>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -47,6 +73,9 @@ function KanbanDraggableCard({
     opacity: isDragging ? 0.35 : undefined,
   };
 
+  const meta = formatKanbanTouchesMeta(rel);
+  const showMeta = shouldShowKanbanTouchesMeta(rel) && meta;
+
   return (
     <button
       type="button"
@@ -61,12 +90,28 @@ function KanbanDraggableCard({
           : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))]"
       } ${isDragging ? "z-10 cursor-grabbing shadow-md" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-[color:var(--foreground)]" title={rel.firm}>
-        {rel.firm}
-      </span>
-      <span className="block min-w-0 max-w-full truncate text-[10px] text-[color:var(--tomo-body)]" title={rel.name}>
-        {rel.name}
-      </span>
+      <div className="flex gap-1">
+        <span
+          className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${pipelineFlagDotClass(derivePipelineFlagMock(rel))}`}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-[color:var(--foreground)]" title={rel.firm}>
+            {rel.firm}
+          </span>
+          <span className="block min-w-0 max-w-full truncate text-[10px] text-[color:var(--tomo-body)]" title={rel.name}>
+            {rel.name}
+          </span>
+          {showMeta ? (
+            <span
+              className="mt-0.5 block min-w-0 max-w-full truncate font-mono text-[9px] tabular-nums text-[color:var(--tomo-mute)]"
+              title={meta}
+            >
+              {meta}
+            </span>
+          ) : null}
+        </div>
+      </div>
     </button>
   );
 }

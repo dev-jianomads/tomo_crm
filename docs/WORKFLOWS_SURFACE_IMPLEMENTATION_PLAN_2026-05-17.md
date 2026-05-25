@@ -1,6 +1,6 @@
 # Workflows Surface Implementation Plan — 2026-05-17
 
-**Updated 2026-05-22 (SRS v0.15):** **Build** step = context entry (trigger + context + **Generate Draft Workflow**) → full-width review (Trigger / Action / Draft; **Edit context** / **Confirm**; no refine chat, no Regenerate). Follow-up same pattern. **F7** still UI-hidden on `/workflows`. See `workflow-condensed-build-panel.tsx`, `workflow-build-instruction.ts`, §3.12 in `TOMO_V1_SRS_DRAFT_2026-05-22.md`.
+**Updated 2026-05-22 (SRS v0.15):** **Build** step = context entry (trigger + context + **Generate Draft Workflow**) → full-width review (Trigger / Action / Draft; **Edit context** / **Confirm**; no refine chat, no Regenerate). Follow-up same pattern. **F7** still UI-hidden on `/workflows`. See `workflow-condensed-build-panel.tsx`, `workflow-build-instruction.ts`, §3.12 in `TOMO_V1_SRS_DRAFT_2026-05-25.md`.
 
 ## Purpose
 

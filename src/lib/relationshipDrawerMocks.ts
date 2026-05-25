@@ -1,6 +1,7 @@
 import type { Relationship } from "@/lib/mockData";
 import { formatRelationshipGeography } from "@/lib/mockData";
 import { derivePipelineFlagMock } from "@/lib/todayRaiseStands";
+import { formatNurturingEvidenceTouchesPrefix } from "@/lib/touchesInStage";
 
 function hashInt(id: string, salt: number): number {
   let h = salt;
@@ -26,7 +27,9 @@ export function buildSignalEvidence(rel: Relationship): { label: string; body: s
         ? `Silence window exceeds typical cadence for ${rel.stage} (${d}d since meaningful touch). Consider a concise update or propose slots — ${rel.nextMove.slice(0, 100)}${rel.nextMove.length > 100 ? "…" : ""}`
         : `Engagement has stalled relative to peers in ${rel.stage}: ${d}d without meaningful touch and band ${rel.band}. Priority reconnect — ${rel.nextMove.slice(0, 100)}${rel.nextMove.length > 100 ? "…" : ""}`;
 
-  return { label, body: `${body} (Demo narrative · replace with lp_signal_log + SLA benchmarks.)` };
+  const prefix = formatNurturingEvidenceTouchesPrefix(rel);
+  const narrative = prefix ? `${prefix}${body}` : body;
+  return { label, body: `${narrative} (Demo narrative · replace with lp_signal_log + SLA benchmarks.)` };
 }
 
 export function mockDaysInCurrentStage(rel: Relationship): number {

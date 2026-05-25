@@ -1,8 +1,8 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Last updated:** 22 May 2026
+**Last updated:** 25 May 2026
 
-**Document status:** DRAFT v0.15 — **Custom workflow build wizard (simplified Build):** **three-step** dialog (**Name → Build → Personalise**) unchanged at the stepper level. **Build** is still one step but has two **client sub-phases** on the same step indicator: **(1) Context entry** — plain-text **trigger** (required), **Context** (4-row textarea + **Attach** / **Availability**); footer CTA **Generate Draft Workflow** (no Tomo refine chat, no optimised-prompt lock-in, no suggestion pills). **(2) Review** — **full-width** single column: read-only **Trigger**, editable **Action** label (`actionDescription`, **5–7 words**, from cohort-draft LLM), editable **Draft** (subject/body); optional **Attachments for this outreach** on primary; footer **Edit context** (clears generated draft and returns to context entry) and **Confirm** (→ Personalise). **No Regenerate** on Build. Cohort draft LLM receives merged instruction (`workflowName` + `trigger` + context + attachment text + availability). **Follow-up** uses the same context/review Build flow; **Add follow-up** remains a **post-save prompt** after **Save & finish** on Personalise. Retains v0.14: **F7** UI-hidden; process flow + telemetry; saved custom = Activate / Edit; optional one follow-up leg; monitor-only active cards; planned outcomes view (§3.12 item 15). **Lists “Use in workflow” → Custom** may still use legacy `workflow_creator` refine chat (§3.14); `/workflows` **New workflow** does not.
+**Document status:** DRAFT v0.16 — **Signals — meaningful-touch hot path:** qualifying `lp_interactions` rows trigger immediate Signal 1 refresh + `pipeline_flag` recompute (≤1 h SLO; BR-3.5.13–BR-3.5.14, AC-3.5.11–AC-3.5.16). **Signals — touches in stage:** `lp_state.meaningful_touches_since_stage_entry` (+ optional `meetings_since_stage_entry`) surfaced on Relationships list, cards, Kanban, and LP drawer pipeline state (BR-3.5.15–BR-3.5.16, §3.10). Prior v0.15 — **Custom workflow build wizard (simplified Build):** **three-step** dialog (**Name → Build → Personalise**) unchanged at the stepper level. **Build** is still one step but has two **client sub-phases** on the same step indicator: **(1) Context entry** — plain-text **trigger** (required), **Context** (4-row textarea + **Attach** / **Availability**); footer CTA **Generate Draft Workflow** (no Tomo refine chat, no optimised-prompt lock-in, no suggestion pills). **(2) Review** — **full-width** single column: read-only **Trigger**, editable **Action** label (`actionDescription`, **5–7 words**, from cohort-draft LLM), editable **Draft** (subject/body); optional **Attachments for this outreach** on primary; footer **Edit context** (clears generated draft and returns to context entry) and **Confirm** (→ Personalise). **No Regenerate** on Build. Cohort draft LLM receives merged instruction (`workflowName` + `trigger` + context + attachment text + availability). **Follow-up** uses the same context/review Build flow; **Add follow-up** remains a **post-save prompt** after **Save & finish** on Personalise. Retains v0.14: **F7** UI-hidden; process flow + telemetry; saved custom = Activate / Edit; optional one follow-up leg; monitor-only active cards; planned outcomes view (§3.12 item 15). **Lists “Use in workflow” → Custom** may still use legacy `workflow_creator` refine chat (§3.14); `/workflows` **New workflow** does not.
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
 **Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Workflows Surface Implementation Plan (17.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
 **Scope rule:** the body of this document covers V1 only. V2/V3 capability matrix, deferred features, and forward-compatibility notes are in Appendix C.
@@ -154,6 +154,7 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 | **Workspace** | The unit of multi-tenancy in TOMO. Multiple workspace members share data, integrations, and signal state within a workspace (no fixed member-count cap). Equivalent to a "team" in SaaS terminology. |
 | **Fund** | A specific raise within a workspace (e.g. "Fund III"). A workspace may contain multiple funds. |
 | **Meaningful Touch** | A two-way LP interaction satisfying the formal definition in §3.5.1 (lifted from Section 8 §8.2). The unit of measurement for "have we recently connected with this LP." |
+| **Touches in stage** | Count of meaningful touches since the LP entered their **current** pipeline stage (`lp_state.meaningful_touches_since_stage_entry`). Surfaced on Relationships surfaces per §3.10; especially salient in **nurturing**, where multiple meetings/interactions are expected before advancing. |
 | **Pipeline stage** | One of the eight canonical LP stages (`sourced`, `first_meeting`, `nurturing`, `active_diligence`, `soft_commit`, `committed`, `closed_lost`, `on_hold`) per Section 8 §8.2. |
 | **Pipeline flag** | The G/A/R (Green / Amber / Red) state computed per LP per the locked algorithm in Section 8 §8.7. |
 | **Signal** | A behavioural observation computed from email and calendar metadata that contributes to flag state, fires an action, or appears as a named filter. Nine signals in V1. |
@@ -529,7 +530,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 6. **Body cleansing.** Signatures, quote-blocks, tracking pixels stripped; cleaned text written to `body_text`. Word count computed per Section 8 §8.9 clarification 9 with a confidence flag (high / low / suppressed). HTML body archived to S3 (full-content tier only) with the key in `body_html_archived_url`.
 7. **Thread linking.** Each row's `lp_email_thread_id` resolved by `provider_thread_id` (Gmail) or `conversationId` (Microsoft). New thread → new `lp_email_threads` row.
 8. **LP resolution.** Sender / recipient emails matched in priority order: exact `lp_contacts.primary_email` → `lp_contacts.additional_emails` → `lp_organizations.domain` for firm-only resolution. Unresolved interactions are still ingested but with null `lp_contact_id`; backfill resolution runs when a new LP is added.
-9. **Re-engagement event-driven hot path.** New inbound `lp_interactions` row triggers the re-engagement check synchronously (per Section 8 §8.3 Signal 2): if `days_since_last_gp_outbound >= 45` and meaningful-touch criteria met, set `lp_state.re_engagement_flag=true`, write `lp_signal_log` with `signal_type='re_engagement'`, force pipeline_flag to red+URGENT for 24 hours, generate the urgent draft, surface in Action Drawer. Target latency ≤ 1 hour from inbox arrival to Action Drawer card (§5.1 SLO).
+9. **Signals event-driven hot path.** After `lp_interactions.is_meaningful_touch` is set to `true` at ingest (item 4) or when a calendar-backed interaction is persisted with `is_meaningful_touch=true` and a resolved `lp_contact_id`, invoke the **meaningful-touch hot path** (§3.5 Processing item **3a**, BR-3.5.13–BR-3.5.14) then the **re-engagement** check (Signal 2) in that order. Target latency ≤ 1 hour from interaction persistence to updated `lp_state.pipeline_flag` on Relationships / Kanban (§5.1). **Must not** block attachment extraction (item 12) or the re-engagement Action Drawer SLO.
 10. **Sync staleness banner.** When `crm_sync_status.health` for a mail/cal source flips to `degraded` (one failed delta poll) or `failing` (three consecutive failures), a banner is surfaced on Today and Lists indicating "sync delayed" with the last-success timestamp (Tomo MVP3 §C.1 explicit requirement).
 11. **Calendar event status.** `lp_calendar_events.status` reflects the meeting's actual outcome. A meeting only counts toward Signal 7 / Metric 6a if `status='completed'` (i.e. it took place). Cancellations and reschedules are tracked but distinct.
 12. **Attachment text extraction (async, bounded).** After an `lp_interactions` row is written for a **full-content-tier** email (`metadata_only=false`) with `attachment_count > 0` and a resolved `lp_contact_id`, enqueue an `attachment-extract` job (SQS). The job **must not** block the re-engagement hot path (item 9). Processing per BR-3.3.5–BR-3.3.12:
@@ -564,6 +565,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.3.10 — Attachment extraction is **asynchronous**. Failure of one attachment does not fail ingest of the parent email or block Signal 2 / Action Drawer generation.
 - BR-3.3.11 — **Retention:** `extracted_text` follows the same 12-month hot rule as `lp_interactions.body_text` (nulled by the daily retention job; attachment metadata row may remain until parent interaction is deleted per tier rules).
 - BR-3.3.12 — **Downstream context budget:** when composing drafts or loading Action Drawer / Tomo LP context, include at most the **3** most recent `lp_interaction_attachments` rows for that LP with `extraction_status IN ('ok','truncated')`, capped at **30,000** total characters of attachment text per LP context load (oldest excerpts dropped first).
+- BR-3.3.13 — **Meaningful-touch hot-path trigger.** The hot path runs when a new or updated `lp_interactions` row satisfies **all** of: `is_meaningful_touch = true`, `is_ooo = false`, `lp_contact_id IS NOT NULL`. Rows with `is_meaningful_touch = false` (including OOO, calendar accept/decline-only, sub-20-word inbound with no question, newsletter events) **do not** invoke the hot path. When `is_meaningful_touch` is recomputed from `false` → `true` (e.g. body promotion), the hot path runs at that moment.
 
 **Acceptance criteria.**
 
@@ -578,6 +580,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.3.9 — A `.xlsx` attachment on the same message produces `extraction_status='unsupported_mime'` and does not block processing of a sibling `.pdf` on that message.
 - AC-3.3.10 — A metadata-only row (13–36 month tier) never enqueues attachment extraction.
 - AC-3.3.11 — After 12 months, the daily retention job nulls `extracted_text` on attachment rows whose parent `interacted_at` is past the boundary.
+- AC-3.3.12 — An LP in `nurturing` with `pipeline_flag='amber'` solely from `days_since_meaningful_touch` breach who receives a qualifying inbound meaningful touch has `lp_state.days_since_meaningful_touch = 0` and `pipeline_flag='green'` (unless a higher-priority §8.7 rule applies, e.g. re-engagement urgent red) within **1 hour** of ingest completing.
+- AC-3.3.13 — An OOO auto-reply ingested with `is_ooo=true` does **not** invoke the meaningful-touch hot path and does **not** change `lp_state.last_meaningful_touch_at`.
 
 ---
 
@@ -656,14 +660,23 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Inputs / triggers.**
 
 - Nightly batch run at 02:00 workspace-local time. Runs in dependency order: foundational definitions → silence → reply velocity → reply length → reply initiation → stage stagnation → calendar friction → CC expansion → one-way → warm_ghost capture → close_proximity capture → flag computation → flag-transition log → daily snapshot.
-- Event-driven hot path on every new inbound `lp_interactions` row for the re-engagement signal (Signal 2) only.
-- Stage transition event (`lp_stage_transitions` row inserted) recomputes `lp_state.days_in_current_stage` and `days_in_prior_stage` immediately.
+- Event-driven hot paths on qualifying `lp_interactions` rows (per BR-3.3.13):
+  - **Meaningful-touch refresh (Signal 1 + pipeline flag + touches-in-stage counter)** — BR-3.5.13–BR-3.5.16.
+  - **Re-engagement (Signal 2)** — existing; not batched.
+- Stage transition event (`lp_stage_transitions` row inserted) recomputes `lp_state.days_in_current_stage`, `days_in_prior_stage`, and **resets** `meaningful_touches_since_stage_entry` / `meetings_since_stage_entry` per BR-3.5.16 immediately.
 
 **Processing.**
 
 1. **Foundational definitions** — Meaningful Touch, Pipeline stage, Direction. Section 8 §8.2 normative.
-2. **Signal 1 — Silence.** Section 8 §8.3 normative. Writes `lp_state.last_meaningful_touch_at`, `days_since_meaningful_touch`. Reads `stage_cadence_benchmarks` per stage.
-3. **Signal 2 — Re-engagement after silence.** Event-driven, **not nightly**. On every new inbound `lp_interactions` row: if days since last GP outbound to this LP ≥ 45 and meaningful-touch criteria met → set `lp_state.re_engagement_flag=true`, append `lp_signal_log` row with `signal_type='re_engagement'`, force pipeline flag to red+URGENT for 24 hours, generate urgent draft via the action-drawer pipeline.
+2. **Signal 1 — Silence.** Section 8 §8.3 normative. Writes `lp_state.last_meaningful_touch_at`, `days_since_meaningful_touch`. Reads `stage_cadence_benchmarks` per stage. **Nightly batch** recomputes all active LPs; **event-driven hot path** (item **3a**) refreshes the same fields for one LP on each qualifying meaningful touch per **BR-3.5.13**.
+3. **Signal 2 — Re-engagement after silence.** Event-driven, **not nightly**. On every qualifying `lp_interactions` row **after** Processing item **3a** (BR-3.5.14): if inbound and days since last GP outbound to this LP ≥ 45 and meaningful-touch criteria met → set `lp_state.re_engagement_flag=true`, append `lp_signal_log` row with `signal_type='re_engagement'`, force pipeline flag to red+URGENT for 24 hours, generate urgent draft via the action-drawer pipeline.
+3a. **Meaningful-touch hot path (Signal 1 refresh + pipeline flag + touches in stage).** Event-driven, **not nightly**. On each qualifying `lp_interactions` row per **BR-3.3.13**:
+   1. Set `lp_state.last_meaningful_touch_at` = triggering row `interacted_at`; set `lp_state.days_since_meaningful_touch` = `0`.
+   2. Increment `lp_state.meaningful_touches_since_stage_entry` by `1`; if triggering row is a completed meeting (`interaction_type` meeting/calendar and meeting `status='completed'`), increment `lp_state.meetings_since_stage_entry` by `1` (BR-3.5.15).
+   3. Unless **BR-3.5.8** off-channel suppression applies at the hot-path timestamp, append one `lp_signal_log` row with `signal_type='silence'`, `is_directional=false`, and `signal_value_jsonb` including `{days_since_meaningful_touch: 0, last_meaningful_touch_at, meaningful_touches_since_stage_entry, triggering_interaction_id, capture_path: 'event'}`.
+   4. Recompute `lp_state.pipeline_flag` and `pipeline_flag_reason` using Section 8 §8.7 and **current** `lp_state` trend fields (Signals 3–9) — trend signals are **not** recomputed on this path.
+   5. If `pipeline_flag` or `pipeline_flag_reason` changed vs the pre-hot-path snapshot, append `lp_signal_log` with `signal_type='flag_transition'` and metadata `{from_flag, to_flag, reason, capture_path: 'event'}`.
+   Does **not** generate Action Drawer drafts solely because silence dropped from amber/red to green. Does **not** recompute Signals 3–9, stage stagnation, or `daily_pipeline_summary`.
 4. **Signal 3 — Reply velocity trend.** Nightly batch. Suppress when LP has fewer than 5 prior exchanges. Writes `lp_state.reply_velocity_trend`, `reply_velocity_latency_hrs_recent`, `reply_velocity_baseline_hrs`. Section 8 §8.3 normative.
 5. **Signal 4 — Reply length trend.** Nightly batch. Suppress when fewer than 3 prior replies or word-count confidence is low. Writes `lp_state.reply_length_trend`, `reply_length_words_recent`, `reply_length_baseline_words`, `reply_length_drop_pct`.
 6. **Signal 5 — Reply initiation.** Nightly batch. Strict definition (LP sends with no preceding GP outbound to this LP within 14 days). Writes `lp_state.lp_initiation_count_last_5`, `lp_initiation_ratio`, `last_lp_initiated_at`.
@@ -680,7 +693,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Outputs.**
 
 - `lp_state` row updated for every active LP.
-- `lp_signal_log` rows appended (often 5–10 per LP per night, plus event-driven re-engagement and flag transitions).
+- `lp_signal_log` rows appended (often 5–10 per LP per night, plus event-driven meaningful-touch refresh, re-engagement, and flag transitions).
 - `daily_pipeline_summary` row appended once per workspace per day.
 - Action Drawer items generated for amber/red flag breaches and re-engagement events.
 
@@ -698,6 +711,10 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.5.10 — **Pipeline flag vs off-channel.** While `off_channel_active_until` is in the future, Section 8 §8.7 **must not** assign amber/red **solely** from silence-derived inputs for that LP. Positive-direction overrides and re-engagement **urgent red** remain in effect. When suppression prevents an otherwise-applicable silence-derived flag, `pipeline_flag_reason` **includes** the token `off_channel_suppressed`.
 - BR-3.5.11 — **`pipeline_flag='red'` semantics.** Red is **intentionally overloaded**: it may mean (a) negative drift / breach **or** (b) re-engagement **urgent** surfacing (Signal 2). Renderers and operators **must** interpret red via `pipeline_flag_reason`, `lp_state.re_engagement_flag`, and recent `lp_signal_log` rows — never assume red ≡ drift.
 - BR-3.5.12 — **Moveable warming predicate.** For Metric 3 and the `MOVEABLE(lp)` partition (Section 9 Today supplement), the EXISTS “directional warming” clause is satisfied **only** when `lp_signal_log` contains at least one row in the **last 30 days** with `is_directional=true` and `signal_type IN ('reply_velocity','reply_length','reply_initiation','calendar_friction')` whose `signal_value_jsonb` is classified as **warming** per Section 8 §8.3 for that signal (e.g. accelerating velocity, lengthening replies, improving initiation, improving calendar friction). Rows of types `silence`, `stage_stagnation`, `one_way_contact`, `re_engagement`, `cc_expansion`, `warm_ghost_capture`, `close_proximity_capture`, `flag_transition`, `override_applied`, and `off_channel_marked` **do not** satisfy this predicate **by themselves**.
+- BR-3.5.13 — **Meaningful-touch event-driven hot path.** When a qualifying `lp_interactions` row is persisted (§3.3 BR-3.3.13), the system **shall** within **1 hour** (§5.1): update `lp_state.last_meaningful_touch_at` and `lp_state.days_since_meaningful_touch`; increment touches-in-stage counters per BR-3.5.15; recompute `lp_state.pipeline_flag` and `pipeline_flag_reason` per Section 8 §8.7 using existing nightly-computed trend and stagnation fields; append `lp_signal_log` rows per Processing item **3a** and BR-3.5.2. **Off-channel (BR-3.5.8 / BR-3.5.10):** when `off_channel_active_until` is strictly after the hot-path timestamp, the path **still** updates touch timestamps and counters, **still** recomputes `pipeline_flag` with suppression applied, and **does not** append a `silence`-type `lp_signal_log` row on that run. Re-engagement (Signal 2) is **not** suppressed. **Idempotency:** re-processing the same `lp_interactions.id` **must not** append duplicate `flag_transition` rows or double-increment counters when values are unchanged.
+- BR-3.5.14 — **Hot-path ordering with re-engagement.** For a single qualifying interaction, execution order **shall** be: **(1)** meaningful-touch refresh (BR-3.5.13 / Processing **3a**), **(2)** re-engagement evaluation (Signal 2 / Processing **3**). Re-engagement **may** set `pipeline_flag='red'` after refresh would otherwise yield `green`; renderers **must** use `pipeline_flag_reason` and `re_engagement_flag` (BR-3.5.11).
+- BR-3.5.15 — **Touches in stage (counter).** `meaningful_touches_since_stage_entry` = count of `lp_interactions` rows for this `lp_contact_id` where `is_meaningful_touch = true`, `is_ooo = false`, and `interacted_at >=` the `transitioned_at` of the LP’s **current** stage row in `lp_stage_transitions` (most recent `to_stage = lp_contacts.pipeline_stage`). `meetings_since_stage_entry` = subset where the row represents a **completed** meeting per §3.3 item 11. Counters are maintained incrementally on the meaningful-touch hot path and **reconciled** on the nightly batch (authoritative full recount). Display label in UI: **Touches in stage** (meaningful touches); meeting count is optional sub-detail (§3.10).
+- BR-3.5.16 — **Touches-in-stage reset on stage change.** On every `lp_stage_transitions` insert, set `meaningful_touches_since_stage_entry = 0` and `meetings_since_stage_entry = 0` for that LP **before** counting the transition-triggering interaction (if any). Nightly batch recomputes both counters for all active LPs as a drift check.
 
 **Acceptance criteria.**
 
@@ -711,6 +728,14 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.5.8 — An LP with `off_channel_active_until` **10 days in the future** and **70** days since last meaningful touch receives **no** new `lp_signal_log` rows of types `silence` or `stage_stagnation` on the nightly batch run and **does not** appear in the Radar Modal **Gone quiet** section for that run.
 - AC-3.5.9 — An LP with `off_channel_active_until` **10 days in the future** whose pipeline flag **would** have been `red` **purely** from silence-derived inputs is evaluated to `green` (or `amber` if independent directional cooling signals justify amber), and `pipeline_flag_reason` **includes** `off_channel_suppressed` when silence-derived red was suppressed.
 - AC-3.5.10 — An LP with `off_channel_active_until` **10 days in the future** who sends qualifying inbound email after **60** days of GP-side silence **still** triggers Signal 2 (re-engagement) on the event-driven path — off-channel suppression **does not** block re-engagement.
+- AC-3.5.11 — Silence refresh on meaningful touch. An active LP with `pipeline_flag='amber'`, `pipeline_flag_reason` containing silence breach, and `days_since_meaningful_touch=20` in stage `nurturing` receives a new qualifying meaningful-touch row. Within **1 hour**, `days_since_meaningful_touch=0`, `last_meaningful_touch_at` equals the new row’s `interacted_at`, and `pipeline_flag='green'` with a `flag_transition` log row when the prior flag was not already `green`.
+- AC-3.5.12 — Non-meaningful touch does not refresh. The same LP receives an inbound email with `is_meaningful_touch=false`. Within **1 hour**, `days_since_meaningful_touch` remains **20** and `pipeline_flag` remains **`amber`**.
+- AC-3.5.13 — Re-engagement precedence. An active LP with `days_since_meaningful_touch=70` receives qualifying **inbound** meaningful touch where days since last GP outbound ≥ **45**. Within **1 hour**, Signal 2 fires **and** `days_since_meaningful_touch=0`; `pipeline_flag='red'` with re-engagement reason, **not** green.
+- AC-3.5.14 — Off-channel factual update. An LP with `off_channel_active_until` **10 days in the future** and `days_since_meaningful_touch=70` receives a qualifying meaningful touch. Within **1 hour**, `days_since_meaningful_touch=0` and `pipeline_flag` is **`green`** (or **`amber`** only if non-silence §8.7 rules apply); **no** new `silence` `lp_signal_log` row on that run.
+- AC-3.5.15 — UI freshness. After AC-3.5.11 completes, Relationships list and Kanban show the updated G/A/R dot and **Last touch** for that LP **without** waiting for the 02:00 nightly batch.
+- AC-3.5.16 — Completed meeting. A `lp_calendar_events` row transitions to `status='completed'` with linked `lp_interactions.is_meaningful_touch=true`. The meaningful-touch hot path runs; AC-3.5.11 applies within **1 hour**.
+- AC-3.5.17 — Touches counter increments. An LP in `nurturing` with `meaningful_touches_since_stage_entry=2` receives a qualifying meaningful touch. Within **1 hour**, `meaningful_touches_since_stage_entry=3` and Relationships UI shows **3 touches in stage** per §3.10.
+- AC-3.5.18 — Touches counter resets on stage change. Dragging an LP from `first_meeting` to `nurturing` sets `meaningful_touches_since_stage_entry=0` within **5 seconds**; the first meaningful touch after the move displays **1 touch in stage**.
 
 ---
 
@@ -1014,11 +1039,11 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 1. **List view (v3 authoritative column set, in addition to §8.5 sort/search behaviour).**
    - **Stage group rows:** When Group includes stage, render section headers with LP counts and, where data exists, **expected commitment range** for that section (per v3 mocks).
-   - **Columns (default set):** **LP** (firm + primary contact name & role); **Tier**; **Type** (`lp_contacts.investor_type` — allocator category); **Geography** (derived display from `lp_organizations.region` / country / city); **Active investments** (derived tags from `prior_fund_investor`, `prior_fund_identifier`, `pipeline_stage`, and workspace `funds` labels — no extra persisted column); **Mandate fit**; **Signal** (directional band / narrative label from `lp_state` + Section 8 signals); **Ticket** (`expected_commitment_amount`); **Last touch** (days since meaningful touch + G/A/R dot; reply-velocity arrow per Signal 3); **Loops** (open loop count); **Next move** (GP-facing next step string); **Owner** (`relationship_owner_user_id`); row actions.
+   - **Columns (default set):** **LP** (firm + primary contact name & role); **Tier**; **Type** (`lp_contacts.investor_type` — allocator category); **Geography** (derived display from `lp_organizations.region` / country / city); **Active investments** (derived tags from `prior_fund_investor`, `prior_fund_identifier`, `pipeline_stage`, and workspace `funds` labels — no extra persisted column); **Mandate fit**; **Signal** (directional band / narrative label from `lp_state` + Section 8 signals); **Ticket** (`expected_commitment_amount`); **Last touch** (G/A/R dot; primary line = `{days_since_meaningful_touch}d` since meaningful touch; secondary muted line = **touches in stage** per BR-3.10.6; reply-velocity arrow per Signal 3); **Loops** (open loop count); **Next move** (GP-facing next step string); **Owner** (`relationship_owner_user_id`); row actions.
    - **Also required from §3.10 / §8.5:** sortable columns; default sort **pipeline_flag** (red → amber → green) then **days_since_meaningful_touch** desc; “Stuck Nd” when `stage_stagnation_flag` is amber/red; subtle re-up dot when `prior_fund_investor=true`.
-2. **Cards view.** Same grouping rules as list; **LP cards** per v3 (`design/tomo_relationships_cards_v3.html`) — signal dot, tier / prior badge, signal pill, last/next touch, ticket, mandate fit, open loops.
-3. **Board (Kanban) view.** Columns = canonical pipeline stages (order and chrome per `design/tomo_relationships_kanban_v3.html`). Drag-and-drop writes `lp_stage_transitions`. **Group by is ignored** in this view.
-4. **Detail drawer (LP record).** Follow section order and interaction patterns in **`design/tomo_relationships_lp_drawer_v2.html`:** drawer header (Newsreader title, role · firm · tier); **Off-channel chip** (*I'm in touch off-channel* / *Off-channel until {date} — extend* / Clear) per BR-3.5.9; **Signal evidence** (`pipeline_flag_reason` narrative); **Snapshot** (synthesised narrative); **Pipeline state** (stage, pipeline flag, tier, days in stage / prior stage, owner); **Pipeline data** (mandate fit, expected commitment, prior fund, active investments summary); **Open loops & commitments**; **Update with Tomo**; **Show full record** expanding to identity & contact, firm details (**fund being raised against** = active `fund_id`), **behavioural signals** (nine signals + derived rows per §3.5), CRM extended fields as needed; **Activity log** (chronological). Mobile: full-height drawer / sheet equivalent.
+2. **Cards view.** Same grouping rules as list; **LP cards** per v3 (`design/tomo_relationships_cards_v3.html`) — signal dot, tier / prior badge, signal pill, last/next touch, **touches-in-stage subline** (BR-3.10.6), ticket, mandate fit, open loops.
+3. **Board (Kanban) view.** Columns = canonical pipeline stages (order and chrome per `design/tomo_relationships_kanban_v3.html`). Each **Kanban card** (`k-card`) shows firm, contact, signal dot, and a **meta line** under the contact name per BR-3.10.6 (required in **nurturing** column; shown in all columns when count > 0). Drag-and-drop writes `lp_stage_transitions`. **Group by is ignored** in this view.
+4. **Detail drawer (LP record).** Follow section order and interaction patterns in **`design/tomo_relationships_lp_drawer_v2.html`:** drawer header (Newsreader title, role · firm · tier); **Off-channel chip** (*I'm in touch off-channel* / *Off-channel until {date} — extend* / Clear) per BR-3.5.9; **Signal evidence** (`pipeline_flag_reason` narrative; for `pipeline_stage='nurturing'`, **may** prefix with touches-in-stage summary per BR-3.10.6); **Snapshot** (synthesised narrative); **Pipeline state** (stage, pipeline flag, tier, **Touches in stage** derived field, days in stage / prior stage, owner); **Pipeline data** (mandate fit, expected commitment, prior fund, active investments summary); **Open loops & commitments**; **Update with Tomo**; **Show full record** expanding to identity & contact, firm details (**fund being raised against** = active `fund_id`), **behavioural signals** (nine signals + derived rows per §3.5), CRM extended fields as needed; **Activity log** (chronological). Mobile: full-height drawer / sheet equivalent.
 5. **Inline editing via Tomo chat (Manual Update Principle).**
    - GP types: "Peter sized at $25M" → Tomo proposes `lp_contacts.expected_commitment_amount=25000000` → confirmation gate → write + `activity_log` row.
    - Direct field editing remains available for power users (chip selectors, numeric sizing) with the same audit rules.
@@ -1042,6 +1067,14 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.10.3 — Provenance: every field write records `source` (CRM-imported / GP-edited / TOMO-derived / TOMO-computed) and is rendered on hover.
 - BR-3.10.4 — Workspace teammates see and edit the same LPs; concurrent edits use last-write-wins with conflict surfaces in `activity_log`.
 - BR-3.10.5 — **Off-channel affordance** on the LP record SHALL call the same persistence rules as BR-3.5.9 (30-day rolling window; append-only `lp_signal_log` audit rows). The chip is visible in the drawer header region per `design/tomo_relationships_lp_drawer_v2.html` engineering placement.
+- BR-3.10.6 — **Touches in stage — UI placement and copy.** Data source: `lp_state.meaningful_touches_since_stage_entry` and `lp_state.meetings_since_stage_entry` (BR-3.5.15). **Format rules:**
+  - **List — Last touch column:** primary = `{days_since_meaningful_touch}d` + G/A/R dot; secondary muted line = `{N} touch` / `{N} touches` + ` in stage` (e.g. `3 touches in stage`). When `meetings_since_stage_entry > 0`, append ` · {M} meeting` / `meetings` (e.g. `3 touches in stage · 2 meetings`).
+  - **Cards view:** same secondary line as list, below last-touch / signal pill row.
+  - **Kanban (`k-card` meta line):** `{N} touches · last {Xd}` where `X` = `days_since_meaningful_touch` (omit “last Xd” when `days_since_meaningful_touch` is `0` → show `Last touch today`). **Required** when `pipeline_stage='nurturing'`. **Optional** in other columns when `meaningful_touches_since_stage_entry > 0`.
+  - **LP drawer — Pipeline state:** dedicated derived field **Touches in stage** with value `{N} meaningful touch(es)` and, when `meetings_since_stage_entry > 0`, sub-caption `{M} meeting(s) since entered {stage display name} on {localized date}` (date from current stage `lp_stage_transitions.transitioned_at`).
+  - **Signal evidence (nurturing only):** when `pipeline_stage='nurturing'`, the narrative **may** open with: `{N} meaningful touches in nurturing · last touch {Xd} ago` before `pipeline_flag_reason` body.
+  - **Not surfaced in V1:** Today tiles, Radar Modal rows, Insights metrics, Lists index row counts, or workflow monitor — Relationships working set only.
+  - **Zero state:** when `meaningful_touches_since_stage_entry=0`, list/cards show `No touches in stage yet` on the secondary line; Kanban nurturing cards show `No touches yet · {Nd} in stage` using `days_in_current_stage`; drawer shows `0 meaningful touches`.
 
 **Acceptance criteria.**
 
@@ -1051,6 +1084,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.10.4 — The LP card surfaces every Section 8 §8.3–§8.4 surface element listed in §8.8.
 - AC-3.10.5 — The LP **detail drawer** implements the section order and primary interactions of `design/tomo_relationships_lp_drawer_v2.html` (off-channel chip when applicable, signal evidence, snapshot, pipeline state, pipeline data, open loops & commitments, Update with Tomo, expandable full record including behavioural signals grid and activity log).
 - AC-3.10.6 — Tapping *I'm in touch off-channel* on an LP whose `off_channel_active_until` is null sets the field to **now + 30 days**, appends `lp_signal_log` with `signal_type='off_channel_marked'` and `signal_value_jsonb.action='set'`, and updates the chip label to *Off-channel until {date} — extend* (localized date).
+- AC-3.10.7 — An LP in `nurturing` with `meaningful_touches_since_stage_entry=3`, `meetings_since_stage_entry=2`, and `days_since_meaningful_touch=5` shows **3 touches in stage · 2 meetings** on the list **Last touch** secondary line, **3 touches · last 5d** on the Kanban card meta line, and **Touches in stage = 3 meaningful touches** with meeting sub-caption in the drawer **Pipeline state** grid.
+- AC-3.10.8 — After a qualifying meaningful touch (AC-3.5.17), the Relationships list and Kanban update the touches-in-stage display within **1 hour** without a full page reload beyond normal data refresh (same freshness expectation as AC-3.5.15).
 
 ---
 
@@ -1888,7 +1923,7 @@ All routes are Next.js Route Handlers (App Router) on Vercel except where noted 
 | Soft-delete purge | EventBridge cron daily | §6.4 |
 | Transcript ingestion | Calendar event end | §3.13 |
 | Recap fallback (TOMO LLM) | 10-minute timeout after meeting end | §3.13 |
-| Re-engagement hot path | New inbound `lp_interactions` row | §3.5 |
+| Signals hot path (meaningful-touch refresh + re-engagement) | Qualifying `lp_interactions` insert/update (`is_meaningful_touch=true`) | §3.5 BR-3.5.13–BR-3.5.14 |
 | Attachment text extraction | SQS `attachment-extract` after full-content `lp_interactions` ingest | §3.3 item 12 |
 
 **Common request/response conventions.**
@@ -1968,7 +2003,7 @@ This section specifies the non-functional commitments for V1: performance, relia
 
 ### 5.1. Performance
 
-**Description.** V1 performance targets are split into three categories: (a) interactive UX (page loads, agent latency, API responses); (b) ingestion and computation (sync, batch jobs); (c) event-driven hot paths (re-engagement, daily brief delivery).
+**Description.** V1 performance targets are split into three categories: (a) interactive UX (page loads, agent latency, API responses); (b) ingestion and computation (sync, batch jobs); (c) event-driven hot paths (meaningful-touch refresh, re-engagement, daily brief delivery).
 
 **Targets — interactive UX (per session, P75 unless stated):**
 
@@ -2010,6 +2045,7 @@ This section specifies the non-functional commitments for V1: performance, relia
 | SLO | Target | Source |
 |---|---|---|
 | Re-engagement event detection (LP inbound after 45+ days) | ≤ 1 h from email arrival to Action Drawer card | Section 8 §8.3 Signal 2 |
+| Meaningful-touch refresh (`pipeline_flag`, `days_since_meaningful_touch`, touches-in-stage counters) | ≤ 1 h from interaction row persistence to updated `lp_state` on Relationships / Kanban | §3.5 BR-3.5.13; §3.3 item 9 |
 | Webhook delivery → row written | ≤ 30 s P95 | Standard |
 | Polling fallback cadence (when webhook degraded) | 30 min | Per O-9 |
 
@@ -2729,6 +2765,8 @@ Derived per-LP state, recomputed by the nightly batch. One row per `lp_contact_i
 | **Silence (Signal 1):** | | | | | |
 | `last_meaningful_touch_at` | timestamptz | null | | | Most recent interaction satisfying meaningful-touch (Section 8 §8.2) |
 | `days_since_meaningful_touch` | int | null | | | floor((now − last_meaningful_touch_at) / 86400) |
+| `meaningful_touches_since_stage_entry` | int | not null | `0` | | Count of meaningful touches since current `pipeline_stage` began (BR-3.5.15) |
+| `meetings_since_stage_entry` | int | not null | `0` | | Subset: completed meetings in current stage (BR-3.5.15) |
 | **Pipeline flag (Section 8 §8.7):** | | | | | |
 | `pipeline_flag` | text | not null | `'green'` | check in (`'green'`, `'amber'`, `'red'`) | Output of locked algorithm |
 | `pipeline_flag_reason` | text | null | | | Plain-English explanation, surfaced on LP card |
@@ -3931,6 +3969,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 - AC — Default sort: pipeline_flag (red → amber → green), then `days_since_meaningful_touch DESC`.
 - AC — Reply-velocity arrow renders next to the days-since-touch badge.
+- AC — **Last touch** column shows touches-in-stage secondary line per BR-3.10.6.
 - AC — "Stuck Nd" badge surfaces when `stage_stagnation_flag` is amber/red.
 - AC — Re-up indicator dot shows on `prior_fund_investor=true` LPs.
 - AC — List loads within 1.5s for a 500-LP workspace.
@@ -3940,6 +3979,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 
 - AC — Drag-and-drop writes a `lp_stage_transitions` row immediately.
 - AC — `lp_state.days_in_current_stage` recomputes within 5 seconds of the drop.
+- AC — Kanban cards in the **nurturing** column show the touches-in-stage meta line per BR-3.10.6.
 - AC — Switching back to list view preserves any active filters.
 
 **Story 8.5.3 — LP detail card.**
@@ -3949,6 +3989,7 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 - AC — Status row shows the G/A/R dot and the plain-English `pipeline_flag_reason`.
 - AC — Key changes section surfaces signal callouts ("Reply time has slowed: last 4 days, typical 18 hours").
 - AC — Stage row shows current and prior-stage days ("In active diligence 22 days. Spent 47 days in nurturing").
+- AC — **Pipeline state** grid includes **Touches in stage** per BR-3.10.6.
 - AC — Per-LP Tomo chat receives that LP as scope context and answers grounded in their record.
 
 **Story 8.5.4 — Inline editing via Tomo (Manual Update Principle).**
@@ -4937,7 +4978,7 @@ Cross-references §4.2 for full detail. This appendix is the at-a-glance index.
 - Soft-delete purge (cron daily 03:00 UTC)
 - Transcript ingestion (event: calendar event end)
 - Recap fallback TOMO LLM (timer: 10-minute after meeting end)
-- Re-engagement hot path (event: new inbound `lp_interactions` row)
+- Signals hot path — meaningful-touch refresh + re-engagement (event: qualifying `lp_interactions` row)
 
 **Common request/response conventions (per §4.2.9):**
 
@@ -5576,7 +5617,7 @@ Snooze-heavy logic depends on reminder infrastructure (**§3.7**, **Story 8.14.4
 
 ---
 
-**End of TOMO V1 SRS Draft v0.15 (22 May 2026).**
+**End of TOMO V1 SRS Draft v0.16 (25 May 2026).**
 
 All ten sections and nine appendices (A–I) are populated. The document is the formal handoff from the `tomo_crm` mock to V1 production build.
 
