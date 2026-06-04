@@ -1,6 +1,6 @@
 # Affinity CRM — CSV Export, TOMO Importer, and API Notes
 
-**Status:** Implementation notes for product and engineering. Where this document differs from the normative spec, **`TOMO_V1_SRS_DRAFT_2026-05-25.md`** wins — especially **§3.4** (CRM integration), **§3.2** (onboarding), **§4.2.5** (Affinity API), and **Appendix H O-1**.
+**Status:** Implementation notes for product and engineering. Where this document differs from the normative spec, **`TOMO_V1_SRS_DRAFT_2026-06-04.md`** wins — especially **§3.4** (CRM integration), **§3.2** (onboarding), **§4.2.5** (Affinity API), and **Appendix H O-1**.
 
 **Handoff scope:** Affinity **CSV import** (V1). The bundled mock CSVs (§E) exist only to test upload, mapping, dedupe, and validation. §C–D summarise the separate **read-only API** path for context; API work uses HTTP/JSON mocks, not additional CSV fixtures.
 
@@ -468,7 +468,7 @@ Example SRS-aligned values: `tier_1`, `active_diligence`, `true`, `Fund II`.
 
 ## Practical recommendation (CSV import)
 
-1. Implement §B against **`TOMO_V1_SRS_DRAFT_2026-05-25.md` §3.4** (AC-3.4.1–AC-3.4.6).
+1. Implement §B against **`TOMO_V1_SRS_DRAFT_2026-06-04.md` §3.4** (AC-3.4.1–AC-3.4.6).
 2. **Test uploads** with the four `affinity_*_mock.csv` files in §E only.
 3. Treat onboarding screen 2 and Settings → Integrations as entry points (§3.2).
 4. Build the read-only API connector (§C) separately when scheduled — not part of this CSV handoff.

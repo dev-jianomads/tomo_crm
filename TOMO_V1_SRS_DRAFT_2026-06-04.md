@@ -1,10 +1,10 @@
 # TOMO V1 — Software Requirements Specification (SRS)
 
-**Last updated:** 25 May 2026
+**Last updated:** 4 June 2026
 
-**Document status:** DRAFT v0.16 — **Signals — meaningful-touch hot path:** qualifying `lp_interactions` rows trigger immediate Signal 1 refresh + `pipeline_flag` recompute (≤1 h SLO; BR-3.5.13–BR-3.5.14, AC-3.5.11–AC-3.5.16). **Signals — touches in stage:** `lp_state.meaningful_touches_since_stage_entry` (+ optional `meetings_since_stage_entry`) surfaced on Relationships list, cards, Kanban, and LP drawer pipeline state (BR-3.5.15–BR-3.5.16, §3.10). Prior v0.15 — **Custom workflow build wizard (simplified Build):** **three-step** dialog (**Name → Build → Personalise**) unchanged at the stepper level. **Build** is still one step but has two **client sub-phases** on the same step indicator: **(1) Context entry** — plain-text **trigger** (required), **Context** (4-row textarea + **Attach** / **Availability**); footer CTA **Generate Draft Workflow** (no Tomo refine chat, no optimised-prompt lock-in, no suggestion pills). **(2) Review** — **full-width** single column: read-only **Trigger**, editable **Action** label (`actionDescription`, **5–7 words**, from cohort-draft LLM), editable **Draft** (subject/body); optional **Attachments for this outreach** on primary; footer **Edit context** (clears generated draft and returns to context entry) and **Confirm** (→ Personalise). **No Regenerate** on Build. Cohort draft LLM receives merged instruction (`workflowName` + `trigger` + context + attachment text + availability). **Follow-up** uses the same context/review Build flow; **Add follow-up** remains a **post-save prompt** after **Save & finish** on Personalise. Retains v0.14: **F7** UI-hidden; process flow + telemetry; saved custom = Activate / Edit; optional one follow-up leg; monitor-only active cards; planned outcomes view (§3.12 item 15). **Lists “Use in workflow” → Custom** may still use legacy `workflow_creator` refine chat (§3.14); `/workflows` **New workflow** does not.
+**Document status:** DRAFT v0.17 — **Contact resolution & suggested relationships:** unknown inbound senders classified (rules + LLM); `contact_suggestions` queue; **likely** → Today interrupt (capped); **maybe** → review queue; GP confirms via **RelationshipDraft** → **contact resolution backfill** links `lp_interactions` and enqueues meaningful-touch hot path + Signal 2 (§3.3a). Prior v0.16 — **Signals — meaningful-touch hot path:** qualifying `lp_interactions` rows trigger immediate Signal 1 refresh + `pipeline_flag` recompute (≤1 h SLO; BR-3.5.13–BR-3.5.14, AC-3.5.11–AC-3.5.16). **Signals — touches in stage:** `lp_state.meaningful_touches_since_stage_entry` (+ optional `meetings_since_stage_entry`) surfaced on Relationships list, cards, Kanban, and LP drawer pipeline state (BR-3.5.15–BR-3.5.16, §3.10). Prior v0.15 — **Custom workflow build wizard (simplified Build):** **three-step** dialog (**Name → Build → Personalise**) unchanged at the stepper level. **Build** is still one step but has two **client sub-phases** on the same step indicator: **(1) Context entry** — plain-text **trigger** (required), **Context** (4-row textarea + **Attach** / **Availability**); footer CTA **Generate Draft Workflow** (no Tomo refine chat, no optimised-prompt lock-in, no suggestion pills). **(2) Review** — **full-width** single column: read-only **Trigger**, editable **Action** label (`actionDescription`, **5–7 words**, from cohort-draft LLM), editable **Draft** (subject/body); optional **Attachments for this outreach** on primary; footer **Edit context** (clears generated draft and returns to context entry) and **Confirm** (→ Personalise). **No Regenerate** on Build. Cohort draft LLM receives merged instruction (`workflowName` + `trigger` + context + attachment text + availability). **Follow-up** uses the same context/review Build flow; **Add follow-up** remains a **post-save prompt** after **Save & finish** on Personalise. Retains v0.14: **F7** UI-hidden; process flow + telemetry; saved custom = Activate / Edit; optional one follow-up leg; monitor-only active cards; planned outcomes view (§3.12 item 15). **Lists “Use in workflow” → Custom** may still use legacy `workflow_creator` refine chat (§3.14); `/workflows` **New workflow** does not.
 **Audience:** Frontend, backend, infra, security engineering; product management; QA.
-**Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Workflows Surface Implementation Plan (17.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, Tomo MVP3, mock repository (`tomo_crm`).
+**Authoring source:** Tomo V1 Final (Geoff 27.04.26), TOMO V1 Workflows — Final Scope and Rationale (15.05.26), Workflows Surface Implementation Plan (17.05.26), Section 8 (Signals V1 Final), Section 9 (Metrics V1), Document A (CRM Integration Reference), Document B (Onboarding Flow Specification), Tomo Email Ingestion Strategy, `tomo_mvp_lp_relationship_detection_brief.md` (classifier contract for §3.3a), Tomo MVP3, mock repository (`tomo_crm`).
 **Scope rule:** the body of this document covers V1 only. V2/V3 capability matrix, deferred features, and forward-compatibility notes are in Appendix C.
 
 ---
@@ -28,6 +28,7 @@
    3.1. Authentication and account management
    3.2. Onboarding flow
    3.3. Email and calendar sync
+   3.3a. Contact resolution and suggested relationships
    3.4. CRM integration (CSV + native CRM read — Affinity or Backstop, whichever ships first)
    3.5. Signals engine
    3.6. Metrics engine and Insights page
@@ -163,7 +164,10 @@ The document also serves as the formal handoff from the mock prototype in `tomo_
 | **Action Drawer** | The right-hand panel where TOMO surfaces drafts, captures, and approvals for GP review. |
 | **Live list** | A saved cohort whose membership is computed from **structured filter criteria** against current LP data (§3.11). UI label **LPs matching**. |
 | **Manual list** | A saved cohort with **no structured filter**; membership is exactly the set of explicitly selected LPs (§3.11). UI label **LPs in list**. |
-| **Day 1 Gap** | The count of LPs the GP's CRM lists as active but for whom TOMO finds no meaningful touch in 60+ days. Surfaced after initial sync (Home / Insights; not a Document B wizard screen — see §3.2, §3.6). |
+| **Day 1 Gap** | The count of LPs the GP's CRM lists as active but for whom TOMO finds no meaningful touch in 60+ days. Surfaced after initial sync (Home / Insights; not a Document B wizard screen — see §3.2, §3.6). Degraded or empty when the workspace has no CRM import and few confirmed contacts (§3.3a BR-3.3a.12). |
+| **Contact suggestion** | A persisted row in `contact_suggestions` proposing that an unknown inbound sender be added or linked as an LP relationship, with classifier output, reason, and evidence (§3.3a). |
+| **RelationshipDraft** | The shared GP confirmation UI for creating a new `lp_contacts` row (and `lp_organizations` when needed): required identity fields, optional CRM facets, prefill from manual entry or from a contact suggestion. Normative entry points: Relationships **New Contact**, Action Drawer / Today suggestion cards (§3.3a, §3.10). |
+| **Contact resolution backfill** | Post-confirm job that sets `lp_contact_id` on eligible `lp_interactions` rows, then enqueues meaningful-touch hot path, Signal 2, and attachment extraction per §3.3a item 7. |
 | **Tomo** | The product name and the in-app AI agent. The agent appears as inline chat (Today, Workflows) or as a floating dock / mobile sheet (other surfaces). |
 | **Tone calibration** | The per-user model TOMO trains on the user's sent-mail history after the workspace bundle is connected (typically post–Step 2) to make drafts sound like the user. |
 | **Three-Touch Qualification** | A guided three-step sequence (relevant insight → direction question → respectful close) for qualifying quiet LPs. Default-on workflow in V1 (seeded; **not shown** as a card on `/workflows` in V1 UI — launch via Lists / Relationships **Quiet — Fat Middle** CTA and link-workflow picker). |
@@ -277,7 +281,7 @@ V1 delivers twelve product capability areas. Each is a top-level grouping of fun
 
 1. **Authentication and account management** — Firebase Auth (email + Google + Microsoft); per-user OAuth for data-source connections; workspace creation; team invites (multiple members per workspace); plan billing via Stripe.
 2. **Onboarding** — **Eight-screen** post-auth flow per **Document B** and **`design/tomo_onboarding_v1.html`**: welcome → connect workspace (pick Google or Microsoft) + pipeline (**all pipeline cards use CSV / Excel upload** in the wizard mock, including Affinity-labelled; native CRM API is **Settings**) → fund profile → raise profile → team → tone capture **choice** → first-read notices (mock) → briefing preview → **Take me to the app** / Home. **Three-tier historical email**, **meeting transcripts**, and **Slack** are **not** in the wizard; they are **Settings / background** (may return to onboarding later). See §3.2.
-3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection; bounded async attachment text extraction (`.docx` / `.pdf`, LP-resolved, full-content tier only — §3.3).
+3. **Email and calendar sync** — direct MS Graph and Google Workspace integrations; three-tier ingestion (0–12mo full / 13–36mo metadata / >36mo none); webhook-driven incremental sync; OOO detection; bounded async attachment text extraction (`.docx` / `.pdf`, LP-resolved, full-content tier only — §3.3); **contact resolution** for unknown inbound senders (§3.3a).
 4. **CRM integration** — generic CSV pipeline with auto-mapping, deduplication, and conflict resolution; **read-only** native CRM API pull for **Affinity or Backstop — whichever connector ships first** (bi-directional / SoR write-back not in V1).
 5. **Signals engine** — nine surfaced signals plus three captured attributes; nightly batch and event-driven computation; append-only signal log; pipeline flag computation.
 6. **Metrics engine** — ten Insights-page metrics; daily snapshot table; per-metric refresh cadences.
@@ -341,12 +345,13 @@ Nightly signal batch, sync workers, webhook handlers, daily brief generators, ac
 **Assumptions:**
 
 1. The GP has an active Microsoft 365 or Google Workspace account and has administrator approval (or self-approval, for owner-administrator GPs) to grant the OAuth scopes listed in §4.2.
-2. The GP can produce a CSV export from their existing CRM during onboarding. This is universally true for the five FC source CRMs.
+2. The GP **may** import an existing CRM via CSV (onboarding screen 2) or native Affinity/Backstop read (Settings). CRM import is **recommended** for FC but **not mandatory** — workspaces without import rely on §3.3a suggested relationships and manual **RelationshipDraft** creation until a minimum confirmed-contact cohort exists (BR-3.3a.12).
 3. AI-generated meeting recaps from Microsoft 365 Copilot or Gemini for Workspace are licence-gated upstream; when not available, V1 falls back to ingesting the raw transcript and running TOMO's own LLM summarisation. See §3.13.
 4. whichever FC GP relies on **Affinity** for native API read has license tiers granting API access (Scale, Advanced, Enterprise); lower-tier Affinity users fall back to CSV. **Backstop** native read path requires the client's **licensed Backstop API** entitlement; otherwise CSV.
 5. The GP grants at minimum read access to their last 12 months of email and calendar. Without it, the Day 1 Gap and most signals do not compute meaningfully.
 6. A workspace contains a single fund unless explicitly multi-fund. Multi-fund workspaces (rare in FC) follow the same data model with `fund_id` foreign keys.
 7. All times are stored in UTC; rendering uses the user's primary timezone captured at onboarding.
+8. Workspaces with no CRM import still connect mail/calendar; unknown inbound senders are classified asynchronously per §3.3a without blocking ingest or the re-engagement hot path for already-resolved LPs.
 
 **External dependencies:**
 
@@ -529,7 +534,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 5. **Truly-LP-initiated flag.** For inbound interactions, computed at ingest using the strict 14-day window per Section 8 §8.3 Signal 5; written to `lp_interactions.is_truly_lp_initiated`.
 6. **Body cleansing.** Signatures, quote-blocks, tracking pixels stripped; cleaned text written to `body_text`. Word count computed per Section 8 §8.9 clarification 9 with a confidence flag (high / low / suppressed). HTML body archived to S3 (full-content tier only) with the key in `body_html_archived_url`.
 7. **Thread linking.** Each row's `lp_email_thread_id` resolved by `provider_thread_id` (Gmail) or `conversationId` (Microsoft). New thread → new `lp_email_threads` row.
-8. **LP resolution.** Sender / recipient emails matched in priority order: exact `lp_contacts.primary_email` → `lp_contacts.additional_emails` → `lp_organizations.domain` for firm-only resolution. Unresolved interactions are still ingested but with null `lp_contact_id`; backfill resolution runs when a new LP is added.
+8. **LP resolution.** Sender / recipient emails matched in priority order: exact `lp_contacts.primary_email` → `lp_contacts.additional_emails` → fuzzy **name + firm** (same ladder as §3.4 Phase 2 / `csv_dedupe_decisions`) → `lp_organizations.domain` for **firm-only** resolution (`lp_contact_id` may remain null; `lp_organization_id` set when domain matches). Unresolved interactions are still ingested with null `lp_contact_id`. **Contact suggestions** and **contact resolution backfill** for unknown senders are normative in §3.3a; manual **RelationshipDraft** confirm and CSV import remain alternate paths to create `lp_contacts`.
 9. **Signals event-driven hot path.** After `lp_interactions.is_meaningful_touch` is set to `true` at ingest (item 4) or when a calendar-backed interaction is persisted with `is_meaningful_touch=true` and a resolved `lp_contact_id`, invoke the **meaningful-touch hot path** (§3.5 Processing item **3a**, BR-3.5.13–BR-3.5.14) then the **re-engagement** check (Signal 2) in that order. Target latency ≤ 1 hour from interaction persistence to updated `lp_state.pipeline_flag` on Relationships / Kanban (§5.1). **Must not** block attachment extraction (item 12) or the re-engagement Action Drawer SLO.
 10. **Sync staleness banner.** When `crm_sync_status.health` for a mail/cal source flips to `degraded` (one failed delta poll) or `failing` (three consecutive failures), a banner is surfaced on Today and Lists indicating "sync delayed" with the last-success timestamp (Tomo MVP3 §C.1 explicit requirement).
 11. **Calendar event status.** `lp_calendar_events.status` reflects the meeting's actual outcome. A meeting only counts toward Signal 7 / Metric 6a if `status='completed'` (i.e. it took place). Cancellations and reschedules are tracked but distinct.
@@ -582,6 +587,99 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - AC-3.3.11 — After 12 months, the daily retention job nulls `extracted_text` on attachment rows whose parent `interacted_at` is past the boundary.
 - AC-3.3.12 — An LP in `nurturing` with `pipeline_flag='amber'` solely from `days_since_meaningful_touch` breach who receives a qualifying inbound meaningful touch has `lp_state.days_since_meaningful_touch = 0` and `pipeline_flag='green'` (unless a higher-priority §8.7 rule applies, e.g. re-engagement urgent red) within **1 hour** of ingest completing.
 - AC-3.3.13 — An OOO auto-reply ingested with `is_ooo=true` does **not** invoke the meaningful-touch hot path and does **not** change `lp_state.last_meaningful_touch_at`.
+
+---
+
+### 3.3a. Contact resolution and suggested relationships
+
+**Description.** TOMO ingests all eligible mailbox traffic per §3.3, but most signals, reminders, and Action Drawer flows require a resolved `lp_contact_id`. This section defines how TOMO **detects investor-like unknown inbound senders**, persists **contact suggestions**, surfaces them with **precision-first gating**, and — on GP confirmation — runs **contact resolution backfill** so the existing ingest hot path (§3.3 item 9, BR-3.3.13), Signal 2 (§3.5), reminders (§3.7), and attachment extraction (§3.3 item 12) apply retroactively.
+
+**Classifier implementation contract.** Keyword lists, JSON schema, system/user prompt templates, and golden test emails are maintained in `tomo_mvp_lp_relationship_detection_brief.md`. This SRS is normative for **when** classification runs, **what** is stored, **how** suggestions surface, and **what happens on confirm**; the brief is normative for **prompt and classification vocabulary** unless an explicit BR here overrides it.
+
+**Inputs / triggers.**
+
+- A new or updated `lp_interactions` row with `direction='inbound'`, `is_ooo=false`, and `lp_contact_id IS NULL` after §3.3 item 8 matching completes.
+- Workspace has connected mail OAuth (§3.1 / §4.2).
+- Optional: GP opens **Settings → Suggested contacts** review queue.
+
+**Processing.**
+
+1. **Pre-filter (no LLM).** Skip classification when any of:
+   - `is_ooo=true` or pre-filter detects OOO / auto-reply / noreply / mailing-list headers.
+   - Sender email domain is in workspace **internal blocklist** (workspace member domains, configured vendor domains, newsletter domains).
+   - Sender already has a **strong contact match** per item 2 (below).
+   - A `contact_suggestions` row for the same `sender_email` + `workspace_id` is already `status IN ('pending','surfaced')` for the same triggering interaction.
+   - Sender is on **suppress list** (`dismissed_until` in the future) from a prior **Not an investor** action (BR-3.3a.8).
+2. **CRM / relationship match ladder (before AI).** Evaluate in order; stop at first hit:
+   - **Strong contact match:** exact `lp_contacts.primary_email` or `additional_emails` → classify `existing_relationship`; **no** new-relationship suggestion.
+   - **Fuzzy contact match:** name + firm or name + domain per §3.4 dedupe ladder → surface **Link to existing** only (no create suggestion) with `suggested_lp_contact_id` when confidence ≥ fuzzy review threshold; do not auto-link.
+   - **Organization domain match only:** `lp_organizations.domain` matches sender domain but no contact email match → **eligible for new contact at known firm** (`suggested_lp_organization_id` set; prefill firm name from org row). **Do not** treat domain-only match as `existing_relationship`.
+   - **No match:** proceed to classifier.
+3. **Investor-relationship classifier (rules + LLM).** Run only when item 1 passes and item 2 found no strong contact match.
+   - **Rules (V1):** fundraising-intent, investor-type, and meeting/introduction keyword boosters per `tomo_mvp_lp_relationship_detection_brief.md`; negative keywords reduce score but **do not** hard-reject (DDQ/tax/legal context may still be investor-relevant).
+   - **LLM (V1):** `gemini-2.5-flash` (§4.2.6) returns JSON only with classifications:
+     - `likely_investor_relationship`
+     - `maybe_investor_relationship`
+     - `not_investor_related`
+     - `existing_relationship` (when CRM context in prompt shows a match the ladder missed — audit only)
+     - `vendor_or_service_provider`
+     - `internal_or_irrelevant`
+   - **Precision default:** prefer `not_investor_related` / `vendor_or_service_provider` over weak `maybe` when evidence is thin.
+4. **Persist suggestion.** When classification ∈ (`likely_investor_relationship`, `maybe_investor_relationship`) and `suggested_action` ∈ (`suggest_new_relationship`, `suggest_review`):
+   - Insert `contact_suggestions` with `status='pending'`, `classification`, `confidence` (0–100 integer), `prefill_jsonb` (person name, email, firm, domain, `relationship_type` / `investor_type` hint), `reason`, `evidence` (string array), `lp_interaction_id`, `sender_email`, `sender_domain`, optional `suggested_lp_organization_id`.
+   - **Do not** create `lp_contacts`, `lp_organizations`, or `tomo_action_log` rows automatically.
+5. **Surfacing gates (anti-fatigue).**
+   - **`likely_investor_relationship`** with `confidence >= 70` and pre-filter pass → eligible for **interrupt** surfacing: `tomo_action_log` row with `action_type='relationship_suggestion'` and/or Today **Other Tasks** card (BR-3.8.11). Count toward per-user **interrupt cap** (default **3** per local calendar day, workspace-configurable in V1.5; hard default in BR-3.3a.6).
+   - **`maybe_investor_relationship`** or `likely` below interrupt cap → **queue only**: visible in **Settings → Suggested contacts** and optional badge count; **not** auto-inserted on Today unless user has zero interrupts that day and queue depth ≤ 5.
+   - Overflow `likely` rows beyond the daily interrupt cap remain `status='pending'` in queue (not dropped).
+6. **User actions (RelationshipDraft).** GP actions on a suggestion:
+   - **Add relationship** — open **RelationshipDraft** (§3.10) prefilled from `prefill_jsonb`; on confirm → item 7.
+   - **Link to existing** — search/select `lp_contacts`; on confirm → item 7 with existing id (no create).
+   - **Ignore** — `status='dismissed'`, `dismiss_reason='ignored'`; no suppress list (same sender may resurface on new material inbound).
+   - **Not an investor** — `status='dismissed'`, `dismiss_reason='not_investor'`; set `suppress_sender_until = now() + interval '30 days'` for sender email and optionally sender domain (BR-3.3a.8).
+7. **Contact resolution backfill (on confirm).** After **Add relationship** or **Link to existing**:
+   - Set `contact_suggestions.status='confirmed'`, `resolved_lp_contact_id`, `resolved_at`, `resolved_by_user_id`.
+   - **Link interactions:** `UPDATE lp_interactions SET lp_contact_id = :id` where `workspace_id` matches and (`from_email` = sender OR normalized participant email = sender) and `interacted_at` within **90 days** before confirm and **14 days** after (configurable constant `CONTACT_RESOLUTION_LOOKBACK_DAYS` / `CONTACT_RESOLUTION_LOOKAHEAD_DAYS` in worker config); exclude rows already linked to a different contact unless GP explicitly chose override in UI (V1: no override — skip conflicting rows and log to `activity_log`).
+   - For each newly linked row where `is_meaningful_touch=true`, `is_ooo=false`: enqueue **meaningful-touch hot path** then **Signal 2** (same ordering as §3.3 item 9 / BR-3.5.14).
+   - Enqueue **attachment-extract** for newly linked full-content rows per BR-3.3.7.
+   - If confirm creates a new contact at `sourced` stage, initialize `lp_state` row and run nightly-batch reconciliation on next cron (no blocking wait).
+8. **RelationshipDraft (manual path).** GP may create contacts without a suggestion via Relationships **New Contact** (§3.10). On save, run the same **contact resolution backfill** (item 7) for the primary email provided.
+
+**Outputs.**
+
+- `contact_suggestions` rows (pending, surfaced, confirmed, dismissed).
+- `tomo_action_log` rows with `action_type='relationship_suggestion'` for interrupt-tier suggestions only.
+- On confirm: `lp_contacts` / `lp_organizations` (when created), updated `lp_interactions.lp_contact_id`, downstream `lp_signal_log` / `tomo_action_log` from hot path when qualifying.
+- `activity_log` rows for suggest, dismiss, confirm, and backfill counts.
+
+**Business rules.**
+
+- BR-3.3a.1 — **No auto-create.** TOMO must not insert `lp_contacts` or `lp_organizations` without explicit GP confirmation via RelationshipDraft or CSV import commit.
+- BR-3.3a.2 — **Inbound-only classifier in V1.** Outbound-only unknown recipients are not classified for new-relationship suggestions (may be added V1.5 for commitment / intro detection).
+- BR-3.3a.3 — **Async only.** Classification and suggestion creation must not block §3.3 ingest or webhook ACK; target latency ≤ **15 minutes** P95 from interaction persist to suggestion row (interrupt card may follow within same window).
+- BR-3.3a.4 — **One open suggestion per sender email** per workspace at a time; new material inbound may update `lp_interaction_id` and refresh `reason`/`evidence` on the pending row rather than duplicating.
+- BR-3.3a.5 — **Domain-only CRM match does not suppress** new-person suggestions at that firm.
+- BR-3.3a.6 — **Interrupt caps:** default max **3** `relationship_suggestion` attention items per user per local calendar day; additional `likely` rows stay queue-only.
+- BR-3.3a.7 — **Maybe never interrupts** by default; queue + badge only unless product enables “promote maybe” in V1.5.
+- BR-3.3a.8 — **Not an investor** suppresses the sender email (and, when GP checks “apply to domain”, the sender domain) from new suggestions until `suppress_sender_until`.
+- BR-3.3a.9 — **Link to existing** must run dedupe confirmation when fuzzy match score is ambiguous (reuse CSV dedupe UX patterns).
+- BR-3.3a.10 — **Warm Intro Tracker** (§3.9) may share classifier output but remains a separate Action Drawer flow; confirming an intro may create/link contact via the same RelationshipDraft + backfill path.
+- BR-3.3a.11 — **Metadata-only tier** interactions (13–36 months) are not classified for suggestions in V1 (no body for LLM).
+- BR-3.3a.12 — **CRM-less / thin CRM workspaces:** Day 1 Gap (§3.6) shows degraded copy when active `lp_contacts` count &lt; **10** and no CRM import completed — e.g. “Confirm suggested contacts to unlock relationship signals.” Insights metrics that require stage/tier population may show empty states per §3.6 AC-3.6.3 extensions.
+- BR-3.3a.13 — **User feedback learning** (retrain from dismiss/confirm) is **out of V1**; dismiss reasons are stored for V1.5 analytics only.
+
+**Acceptance criteria.**
+
+- AC-3.3a.1 — An inbound from an unknown sender with strong fundraising intent (per brief sample #1) produces a `contact_suggestions` row with `classification='likely_investor_relationship'` within 15 minutes and, if under the daily interrupt cap, a Today **Other Tasks** card with **Add relationship** / **Link to existing** / **Ignore** / **Not an investor**.
+- AC-3.3a.2 — A vendor software-demo inbound (brief sample #4) produces no interrupt card; may persist `classification='vendor_or_service_provider'` with `status='dismissed'` system-side or no suggestion row.
+- AC-3.3a.3 — An inbound from an email that exactly matches an existing `lp_contacts.primary_email` produces **no** `contact_suggestions` row.
+- AC-3.3a.4 — An inbound from `person@blueharborcapital.com` when only `lp_organizations.domain` matches produces a suggestion with firm prefilled and `suggested_lp_organization_id` set; GP can confirm a **new** contact at that firm.
+- AC-3.3a.5 — GP confirms **Add relationship**; within 1 hour, qualifying historical inbound rows for that sender have `lp_contact_id` set and Signal 2 / meaningful-touch hot path runs where applicable (same SLO as AC-3.3.3 for already-linked LPs).
+- AC-3.3a.6 — Fourth `likely` suggestion same local day for the same user does **not** create a fourth Today interrupt card; it appears in Settings queue only.
+- AC-3.3a.7 — **Not an investor** on a sender prevents a new suggestion for that sender for 30 days.
+- AC-3.3a.8 — **Maybe** classification (brief sample #2) appears in Settings queue but not in Today interrupt column unless interrupt cap unused and product test flag off (default: queue only — passes when no Today card created).
+
+**Out of scope (V1 — see §9.1 / brief).** Automatic CRM creation; external enrichment (Clearbit, LinkedIn); thread-level graph classification; learning from dismiss/confirm; placement-agent-specific workflow; confidence calibration from production outcomes.
 
 ---
 
@@ -880,7 +978,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - **What needs your attention** (action queue): rendered from `tomo_action_log` rows with `outcome IS NULL` plus `reminders` rows with `status='pending'`. Visual reference for LP rows: `design/tomo_today_light_v2.html` (company · contact, work line, urgency pill, list CTA).
      - **Sort (normative):** urgency-first across the full queue before grouping — re-engagement urgent → red flag → amber flag → tier 1 missed reply → other reminders → drafts awaiting approval. **Group order** uses the same rule: each workflow group's position is determined by its **most urgent** member (lowest urgency rank wins).
      - **Workflow groups:** Rows with `workflows.id` (or `workflow_run.workflow_id`) on the log row are bucketed by **surface `workflows.id`** (legacy playbook / Tomo-default source ids normalize via the same alias map as `/workflows?workflow=`). Each group header shows: chevron (expand/collapse), **two-word workflow pill** (uppercase mono tag — header only, not on LP cards), member count, and **Workflow →** deep link to `/workflows?workflow={surfaceWorkflowId}`. Default expand: the most urgent group **and** any group with ≥2 cards; others collapsed until opened.
-     - **Other Tasks:** Rows with **no** workflow attribution (typical for inbox-native work: warm intros, newsletter analytics, ad-hoc check-ins) appear in a final **Other Tasks** accordion (same expand pattern; **no** Workflow link). Production default: many inbound emails never map to a `workflow_run`; only cohort/step-driven work carries `workflow_id`.
+     - **Other Tasks:** Rows with **no** workflow attribution (typical for inbox-native work: warm intros, **relationship suggestions** per §3.3a, newsletter analytics, ad-hoc check-ins) appear in a final **Other Tasks** accordion (same expand pattern; **no** Workflow link). Production default: many inbound emails never map to a `workflow_run`; only cohort/step-driven work carries `workflow_id`. **Relationship suggestions** (`action_type='relationship_suggestion'`) sort within Other Tasks by the same urgency rules; primary CTA **Review** opens RelationshipDraft prefilled (BR-3.8.12 applies).
      - **LP card chrome:** Per card — urgency pill when applicable (`SLA past`, `Today`, …), company · contact, work kind — subject, optional **Open email** link, and a ghost **Review** CTA on the row (opens Action Drawer). **Review** on the list row is normative for V1 Today; send/approve language lives in the drawer (**Approve & send**, etc.) per §3.9.
      - **Pill labels:** Exactly **two words**, stored uppercase in UI. Seeded/mock registry (examples): Post Meet (`wf-post-meeting-execution`), Slot Reply (`td-email-scheduling`), Silence Nudge (`pb-no-response-stall`). **User-created workflows:** `workflows.pill_label` set at creation (LLM-generated two-word label in the build wizard). Optional per-row override: `tomo_action_log.metadata.workflow_id`, `metadata.pill_label`.
      - **Mock fixture (demo):** six primary cards — **three** workflow-attributed (post-meeting SLA, email scheduling, one silence follow-up) and **three** ungrouped under **Other Tasks** (warm intro reply, newsletter momentum review, relationship check-in).
@@ -919,7 +1017,8 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 - BR-3.8.8 — Today **attention queue** groups by **surface `workflows.id`** (legacy playbook / Tomo-default source ids MUST normalize to the same surface id used on `/workflows`). Group order follows the **most urgent** item in each group (urgency-first). Ungrouped rows use the **Other Tasks** bucket and MUST NOT show a workflow deep link.
 - BR-3.8.9 — Workflow pill text on Today MUST be **exactly two words** (mock registry or stored `workflows.pill_label` / log metadata). LP cards inside an expanded group MUST NOT duplicate the workflow pill; urgency pills (e.g. SLA past, Today) remain per card.
 - BR-3.8.10 — **Previous (N)** under the attention queue MUST retain **calendar-day / deferred** grouping only; it MUST NOT introduce workflow accordion groups.
-- BR-3.8.11 — **Not every attention row is workflow-attributed.** Inbox-native or one-off Tomo surfaces (intros, analytics reviews, discretionary follow-ups) MAY surface with `workflow_id` null and appear only under **Other Tasks**; the GP still acts via the Action Drawer.
+- BR-3.8.11 — **Not every attention row is workflow-attributed.** Inbox-native or one-off Tomo surfaces (intros, **relationship suggestions**, analytics reviews, discretionary follow-ups) MAY surface with `workflow_id` null and appear only under **Other Tasks**; the GP still acts via the Action Drawer or RelationshipDraft per §3.3a.
+- BR-3.8.14 — **Suggested contacts queue** lives under **Settings → Suggested contacts** (badge = count of `contact_suggestions` with `status='pending'` and `classification='maybe_investor_relationship'`, plus interrupt-overflow `likely` rows). Queue rows do not duplicate Today interrupt cards for the same suggestion id.
 - BR-3.8.12 — The list-row primary CTA on Today attention LP cards MUST read **Review** (not Approve). Approval/send outcomes are recorded in `tomo_action_log` from the drawer per §3.9; the Today row CTA indicates review-before-action only.
 - BR-3.8.13 — Workflow group headers MUST expose expand/collapse; expanding reveals the LP cards for that workflow only. Section title count (`What needs your attention N`) is the **total LP card count**, not the number of workflow groups.
 - BR-3.8.14 — Deep link from a workflow group header MUST use the normative query `?workflow={surfaceWorkflowId}` on `/workflows` (same id normalization as §3.12).
@@ -968,6 +1067,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
    - `mandate_fit_capture` — the post-meeting mandate-fit chip selection.
    - `post_meeting_note` — the post-meeting capture form (§3.13).
    - `workflow_step_send` — an outbound draft step in an active workflow run, including F7 and configurable outreach templates.
+   - `relationship_suggestion` — unknown inbound sender classified as investor-like per §3.3a; opens **RelationshipDraft** (prefill + confirm). Not a workflow step; does not auto-send mail.
 2. **Draft approval flow.**
    - Draft rendered editable in the drawer.
    - GP can: approve unchanged, approve with edits, edit substantially, dismiss, or snooze.
@@ -1025,6 +1125,7 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 **Product decisions (Relationships page behaviour).**
 
 - **Authoritative UI:** The v3 Relationships HTML mocks above are authoritative for column sets, control bar, filter panel composition, and drawer IA. If this SRS previously listed fewer columns, **the v3 mocks win**; schema additions needed to persist new facets appear in §6.2 (`lp_contacts` and notes below).
+- **Create relationship:** **New Contact** on the Relationships control bar opens **RelationshipDraft** (normative: `design/tomo_relationships_list_v3.html` **New Contact** affordance; mock: `NewContactModal` → production: shared RelationshipDraft component). Required fields: **name**, **firm**, **primary email**, **pipeline stage** (default `sourced`), **relationship owner** (default mailbox-connected user), **fund** (`fund_id`). Optional fields mirror §8.4 / `lp_contacts` facets (tier, investor type, geography, source, etc.). On confirm: persist `lp_organizations` (if new domain) + `lp_contacts` + `lp_state`; run **contact resolution backfill** (§3.3a item 7). Same component opens from §3.3a suggestion cards with `initialValues` from `prefill_jsonb`.
 - **Create list:** The **Create list** control is **disabled until at least one filter** (structured filter, advanced filter, or equivalent Tomo-applied filter) is active — saving an unfiltered “all LPs” cohort from this surface is out of scope for the control’s enabled state.
 - **Group by:** **List** and **Cards** views honour **Group** (`By stage`, `By tier`, `By owner`, `By signal`, `None`). **Kanban** does **not** use Group by — columns are always **pipeline stage**; switching view to Kanban ignores the Group control.
 - **Fund context:** The Relationships working set is **scoped to the active fund** in the workspace (`lp_contacts.fund_id` matches the UI’s selected fund; mock app: tie to active fund from funds context). Copy such as “current raise” and “Fund being raised against” refer to that fund.
@@ -1461,19 +1562,20 @@ Closing the browser preserves state. Mock persistence: `ONBOARDING_STATE_STORAGE
 
 ---
 
-### 3.16. Settings (profile, funds, integrations, notifications, billing, team)
+### 3.16. Settings (profile, funds, integrations, suggested contacts, notifications, billing, team)
 
-**Description.** Settings (`/settings`) groups account-level configuration. Sub-pages: Profile, Funds, Integrations, Messaging (Slack), Notifications, Billing, Team.
+**Description.** Settings (`/settings`) groups account-level configuration. Sub-pages: Profile, Funds, Integrations, **Suggested contacts** (§3.3a queue), Messaging (Slack), Notifications, Billing, Team.
 
 **Sub-page processing.**
 
 1. **Profile.** Display name, photo, timezone, language. **Appearance:** colour theme preference `system` | `light` | `dark`. Default is **system** (follow the browser or OS `prefers-color-scheme`). The user may override with an explicit light or dark choice; the preference is persisted in `user_preferences` (mock: client storage key `tomo-appearance-preference`). Product chrome and Tomo AI affordances use the **teal** accent defined in the visual language (replacing any legacy peach-only AI styling). Writes `users` and `user_preferences`.
 2. **Funds.** Per-workspace funds; raise target, target close, currency, concentration threshold (read-only V1, hardcoded 20%; editable V1.5).
 3. **Integrations.** Status banner per provider (`microsoft`, `google`, `slack`, `affinity`). Connect / Reconnect / Disconnect buttons. Health and last-success timestamp from `crm_sync_status`. Granted scopes listed (audit visibility).
-4. **Messaging (Slack).** Slack workspace connection via OAuth. Default channel selector. Per-event channel override.
-5. **Notifications.** Per-user, per-event-class channel preferences (per `notification_channels` table). Quiet hours.
-6. **Billing.** Stripe customer portal link (managed by Stripe; no in-app card entry). Plan tier visible to all members; payment details visible to owner only.
-7. **Team.** Member list, invite, revoke, transfer (manual via support in V1). All members have identical permissions in V1.
+4. **Suggested contacts.** Table of `contact_suggestions` with `status IN ('pending','surfaced')` and `classification='maybe_investor_relationship'`, plus interrupt-overflow `likely` rows per BR-3.8.14. Row actions match §3.3a item 6. Badge on Settings nav when count &gt; 0.
+5. **Messaging (Slack).** Slack workspace connection via OAuth. Default channel selector. Per-event channel override.
+6. **Notifications.** Per-user, per-event-class channel preferences (per `notification_channels` table). Quiet hours.
+7. **Billing.** Stripe customer portal link (managed by Stripe; no in-app card entry). Plan tier visible to all members; payment details visible to owner only.
+8. **Team.** Member list, invite, revoke, transfer (manual via support in V1). All members have identical permissions in V1.
 
 **Outputs.**
 
@@ -1873,6 +1975,9 @@ All routes are Next.js Route Handlers (App Router) on Vercel except where noted 
 | `/api/csv-import/{id}/mapping` | GET, PATCH | Get / confirm column mapping |
 | `/api/csv-import/{id}/dedupe-decisions` | GET, POST | Review queue |
 | `/api/csv-import/{id}/commit` | POST | Finalise import |
+| `/api/contact-suggestions` | GET | List queue (filter by status, classification) |
+| `/api/contact-suggestions/{id}` | GET, PATCH | Detail; dismiss |
+| `/api/contact-suggestions/{id}/confirm` | POST | Link or create via RelationshipDraft payload → triggers backfill |
 | `/api/lp-contacts/{id}` | GET, PATCH | LP detail |
 | `/api/lp-contacts/{id}/notes` | GET, POST | Notes |
 | `/api/lp-contacts/{id}/timeline` | GET | Activity timeline |
@@ -1925,6 +2030,8 @@ All routes are Next.js Route Handlers (App Router) on Vercel except where noted 
 | Recap fallback (TOMO LLM) | 10-minute timeout after meeting end | §3.13 |
 | Signals hot path (meaningful-touch refresh + re-engagement) | Qualifying `lp_interactions` insert/update (`is_meaningful_touch=true`) | §3.5 BR-3.5.13–BR-3.5.14 |
 | Attachment text extraction | SQS `attachment-extract` after full-content `lp_interactions` ingest | §3.3 item 12 |
+| Contact suggestion classify | SQS `contact-suggestion-classify` after unresolved inbound `lp_interactions` ingest | §3.3a |
+| Contact resolution backfill | SQS `contact-resolution-backfill` on RelationshipDraft confirm | §3.3a item 7 |
 
 **Common request/response conventions.**
 
@@ -2529,7 +2636,7 @@ Customer notified 30 days in advance of any sub-processor addition.
 
 ### 6.1. Data model overview
 
-V1 uses a relational model on Supabase Postgres 16. The model is organised into nine entity groups containing **50 tables** in total. Tables marked **(V2-placeholder)** are created empty in the V1 migration so V2 features have schema in place before they ship — this is a deliberate forward-compatibility choice from Section 8 §8.10 ("every V1 capture decision must assume the signal observation will eventually be needed for V3 model training").
+V1 uses a relational model on Supabase Postgres 16. The model is organised into nine entity groups containing **51 tables** in total. Tables marked **(V2-placeholder)** are created empty in the V1 migration so V2 features have schema in place before they ship — this is a deliberate forward-compatibility choice from Section 8 §8.10 ("every V1 capture decision must assume the signal observation will eventually be needed for V3 model training").
 
 | # | Group | Tables | Notes |
 |---|---|---|---|
@@ -2537,7 +2644,7 @@ V1 uses a relational model on Supabase Postgres 16. The model is organised into 
 | 2 | LP domain | `lp_organizations`, `lp_contacts`, `lp_state`, `lp_stage_transitions`, `lp_tags`, `lp_tag_assignments`, `lp_notes` | 7 tables |
 | 3 | Interactions | `lp_email_threads`, `lp_interactions`, `lp_interaction_attachments`, `lp_calendar_events`, `lp_calendar_event_attendees`, `lp_meeting_transcripts`, `lp_meeting_recaps` | 7 tables |
 | 4 | Signals and metrics | `lp_signal_log`, `stage_cadence_benchmarks`, `daily_pipeline_summary`, `tomo_action_log`, `reminders`, `commitments`, `open_loops` | 7 tables |
-| 5 | CRM integration | `csv_imports`, `csv_field_mappings`, `csv_dedupe_decisions`, `crm_sync_status`, `affinity_field_mappings` (V2-placeholder for write-back) | 5 tables |
+| 5 | CRM integration | `csv_imports`, `csv_field_mappings`, `csv_dedupe_decisions`, `contact_suggestions`, `crm_sync_status`, `affinity_field_mappings` (V2-placeholder for write-back) | 6 tables |
 | 6 | Workflows | `workflows`, `workflow_steps`, `workflow_runs`, `workflow_step_runs`, `outbound_safety_log` | 5 tables |
 | 7 | Materials and briefs | `materials`, `briefs`, `material_engagement` (V2-placeholder), `lp_document_engagement` (V2-placeholder), `lp_marketing_engagement` (V2-placeholder) | 5 tables |
 | 8 | Settings and notifications | `user_preferences`, `notification_channels`, `slack_workspace_connections`, `email_delivery_log` | 4 tables |
@@ -3109,7 +3216,7 @@ Per Section 8 §8.6. Global defaults per stage; per-workspace override deferred 
 | `id` | uuid | not null | `gen_random_uuid()` | pk | |
 | `lp_contact_id` | uuid | null | | fk → `lp_contacts.id` | Null for actions not tied to a single LP |
 | `gp_user_id` | uuid | not null | | fk → `users.id` | |
-| `action_type` | text | not null | | check in (`'draft'`, `'scheduling_thread'`, `'open_loop'`, `'missed_reply'`, `'meeting_prep'`, `'tier_correction'`, `'mandate_fit_capture'`, `'post_meeting_note'`, `'workflow_step'`, `'three_touch_send'`) | |
+| `action_type` | text | not null | | check in (`'draft'`, `'scheduling_thread'`, `'open_loop'`, `'missed_reply'`, `'meeting_prep'`, `'tier_correction'`, `'mandate_fit_capture'`, `'post_meeting_note'`, `'workflow_step'`, `'three_touch_send'`, `'warm_intro'`, `'ddq_response'`, `'re_engagement_response'`, `'relationship_suggestion'`) | |
 | `outcome` | text | null | | check in (`'pending'`, `'approved_unchanged'`, `'approved_with_edits'`, `'edited_substantially'`, `'dismissed'`, `'resolved'`, `'actioned'`, `'viewed'`, `'snoozed'`, `'expired'`) | Null at generation; set on user action |
 | `character_change_pct` | numeric(5,2) | null | | | For draft actions; threshold per O-3 (default 30%) |
 | `time_saved_minutes` | int | null | | | Per-action benchmark from O-2 |
@@ -3240,6 +3347,34 @@ Per-row review decisions surfaced during import phase 2. *(Workspace-scoped.)*
 | `decided_at` | timestamptz | null | | | |
 
 **Indexes:** `csv_dedupe_decisions(csv_import_id)`; `csv_dedupe_decisions(workspace_id, decision)`.
+
+##### Table: `contact_suggestions`
+
+Persisted classifier output and GP resolution state for unknown inbound senders (§3.3a). *(Workspace-scoped, soft-delete.)*
+
+| Column | Type | Null | Default | References | Notes |
+|---|---|---|---|---|---|
+| `id` | uuid | not null | `gen_random_uuid()` | pk | |
+| `lp_interaction_id` | uuid | not null | | fk → `lp_interactions.id` | Triggering inbound row |
+| `sender_email` | citext | not null | | | Normalised From address |
+| `sender_domain` | text | not null | | | |
+| `classification` | text | not null | | check in (`'likely_investor_relationship'`, `'maybe_investor_relationship'`, `'not_investor_related'`, `'existing_relationship'`, `'vendor_or_service_provider'`, `'internal_or_irrelevant'`) | |
+| `confidence` | smallint | not null | | | 0–100 |
+| `suggested_action` | text | not null | | check in (`'suggest_new_relationship'`, `'suggest_review'`, `'link_to_existing'`, `'ignore'`) | |
+| `prefill_jsonb` | jsonb | not null | `'{}'` | | `person_name`, `firm_name`, `relationship_type`, `investor_type` hint, etc. |
+| `reason` | text | not null | | | GP-facing one-liner |
+| `evidence` | jsonb | not null | `'[]'` | | String array |
+| `suggested_lp_contact_id` | uuid | null | | fk → `lp_contacts.id` | Fuzzy link target |
+| `suggested_lp_organization_id` | uuid | null | | fk → `lp_organizations.id` | Domain-only firm match |
+| `status` | text | not null | `'pending'` | check in (`'pending'`, `'surfaced'`, `'confirmed'`, `'dismissed'`) | |
+| `dismiss_reason` | text | null | | check in (`'ignored'`, `'not_investor'`, `'system_vendor'`, `'system_internal'`) | |
+| `suppress_sender_until` | timestamptz | null | | | Set on **Not an investor** |
+| `resolved_lp_contact_id` | uuid | null | | fk → `lp_contacts.id` | After confirm |
+| `resolved_by_user_id` | uuid | null | | fk → `users.id` | |
+| `resolved_at` | timestamptz | null | | | |
+| `assigned_user_id` | uuid | null | | fk → `users.id` | Mailbox owner default |
+
+**Indexes:** unique partial `(workspace_id, sender_email) WHERE status IN ('pending','surfaced')`; `contact_suggestions(workspace_id, status, created_at DESC)`; `contact_suggestions(lp_interaction_id)`.
 
 ##### Table: `crm_sync_status`
 
@@ -3655,7 +3790,7 @@ The data dictionary is the per-field reference for fields that participate in si
 
 1. Extensions: `pgcrypto`, `citext`, `pg_trgm`, `pgvault` (Supabase Vault).
 2. Enum-substitute CHECK constraints declared inline per table (Postgres `text` + `CHECK`); enums as text simplifies migrations vs `CREATE TYPE`.
-3. Tables created in dependency order: `users` → `workspaces` → `workspace_members` → `funds` → `oauth_tokens` → `tone_profiles` → `lp_organizations` → `lp_contacts` → `lp_state` → `lp_stage_transitions` → `lp_tags` → `lp_tag_assignments` → `lp_notes` → `lp_email_threads` → `lp_interactions` → `lp_interaction_attachments` → `lp_calendar_events` → `lp_calendar_event_attendees` → `lp_meeting_transcripts` → `lp_meeting_recaps` → signals/metrics group → CRM group → workflows group → materials/briefs group (incl. V2-placeholders) → settings group → audit group.
+3. Tables created in dependency order: `users` → `workspaces` → `workspace_members` → `funds` → `oauth_tokens` → `tone_profiles` → `lp_organizations` → `lp_contacts` → `lp_state` → `lp_stage_transitions` → `lp_tags` → `lp_tag_assignments` → `lp_notes` → `lp_email_threads` → `lp_interactions` → `lp_interaction_attachments` → `lp_calendar_events` → `lp_calendar_event_attendees` → `lp_meeting_transcripts` → `lp_meeting_recaps` → signals/metrics group → CRM group (incl. `contact_suggestions` after `lp_interactions`) → workflows group → materials/briefs group (incl. V2-placeholders) → settings group → audit group.
 4. Indexes created concurrently after tables.
 5. RLS policies enabled on every workspace-scoped table.
 6. Postgres triggers: `AFTER UPDATE` on `lp_contacts.pipeline_stage` writes a row to `lp_stage_transitions`; `AFTER UPDATE` on audited tables writes to `activity_log`.
@@ -3670,7 +3805,8 @@ The data dictionary is the per-field reference for fields that participate in si
 5. Email sync (90 days full-content) starts; `lp_interactions` rows written.
 6. Calendar sync (forward + 12 month back) starts; `lp_calendar_events` rows written.
 7. Tone calibration runs against sent mail; `tone_profiles` row written.
-8. Day 1 Gap computed; `daily_pipeline_summary` baseline row written with `day_1_gap_baseline` set.
+8. Day 1 Gap computed; `daily_pipeline_summary` baseline row written with `day_1_gap_baseline` set (degraded copy when CRM-less per BR-3.3a.12).
+9. Email sync may enqueue **contact-suggestion** classification for unresolved inbound rows (§3.3a); does not block wizard completion.
 
 **Ongoing sync:**
 
@@ -3914,6 +4050,18 @@ Stories are numbered `8.{group}.{n}`. Acceptance criteria use the `AC` prefix to
 *First-session gap surfaces and daily-rhythm configuration remain outside the eight-screen flow.*
 
 - AC — Day 1 Gap, duplicate review queues, and daily-brief scheduling follow §3.6 / Home / Settings — not gating **Take me to the app**.
+
+**Story 8.3.14 — Suggested relationships from unknown inbound email.**
+*As a GP without a full CRM import (or when a new allocator emails me), Tomo suggests adding the sender as a relationship with a clear reason — without prompting on every unmatched email.*
+
+- AC — Unknown inbound with `likely_investor_relationship` surfaces at most **3** interrupt cards per local day per user; additional rows appear only in Settings → Suggested contacts (AC-3.3a.6).
+- AC — **Add relationship** opens RelationshipDraft prefilled; confirm runs contact resolution backfill and may trigger re-engagement within 1 h when criteria met (AC-3.3a.5).
+- AC — **Not an investor** suppresses that sender for 30 days (AC-3.3a.7).
+
+**Story 8.3.15 — Manual new contact on Relationships.**
+*As a GP, I can create a new LP from the Relationships page and have Tomo link recent email from that address.*
+
+- AC — **New Contact** saves `lp_contacts` + org when needed and runs the same backfill as §3.3a item 7 for the primary email.
 
 ---
 
@@ -4573,12 +4721,16 @@ The following items are explicitly deferred to V1.5 (a stabilisation release) an
 - Fund Update as a first-class workflow with structured content blocks, jurisdictional distribution rules, and engagement analytics. V1 ships fund-update behaviour only as a saved Themed Outreach configuration.
 - Full DDQ RAG over a structured DDQ knowledge base. V1 ships only the Action Drawer DDQ response flow backed by a GP-curated prior DDQ store.
 - **Insights — Cooling caught hero surface** (Metric 9b narrative block). Metric **9b** continues to compute from `lp_signal_log` `flag_transition` rows in V1; only the **Insights UI surface** is deferred to V1.5 (see §3.6 rendering notes).
+- **Contact-suggestion learning** — retraining classifiers from dismiss/confirm feedback; confidence calibration from production outcomes (§3.3a BR-3.3a.13).
+- **External firm enrichment** for suggestions (LinkedIn, Clearbit, company databases).
+- **Thread-level / multi-message** relationship detection beyond single-message classifier input.
+- **Outbound-unknown** recipient classification (introduced-by-GP paths only via Warm Intro Tracker in V1).
 
 ### 9.2. Permanent non-goals (not on any roadmap)
 
 - TOMO is not a CRM replacement. The compliance system of record stays in Affinity / Backstop / Foliometrics / HubSpot.
 - TOMO does not auto-send emails. Every outbound is human-in-the-loop.
-- TOMO does not auto-mutate CRM records. Tomo agent proposals require user confirmation.
+- TOMO does not auto-mutate CRM records. Tomo agent proposals and contact suggestions require user confirmation; §3.3a explicitly forbids auto-creating `lp_contacts`.
 - TOMO does not provide investment, legal, or financial advice.
 - TOMO does not implement bot detection bypass, scraping of third-party LP data, or any access pattern that circumvents source-system terms of service.
 - TOMO does not collect or compile facial-recognition or biometric data.
@@ -4679,6 +4831,7 @@ Extends §1.3. Alphabetical.
 - `Document_A_CRM_Integration_Reference.md` — normative for CRM integration.
 - `Document_B_Onboarding_Flow_Specification.md` — normative for the onboarding flow.
 - `tomo_email_ingestion_strategy.md` — three-tier ingestion model.
+- `tomo_mvp_lp_relationship_detection_brief.md` — classifier contract (prompts, keywords, JSON schema, golden emails) for §3.3a; SRS wins on system integration and backfill behaviour.
 - `Tomo_MVP3.docx` — historical reference; carries SOC 2 / CASA framing and agent-orchestration tool inventory; superseded for everything else by V1 Final.
 - `APP_SUMMARY_FOR_AI_REVIEW.md` — mock-app reference.
 - `docs/EPIC_USER_STORY_ACCEPTANCE_NOTES_TEMPLATE.md` — user-story template, extended in §8.
@@ -4854,6 +5007,13 @@ csv_field_mappings (id pk, source_crm, name, column_map, created_by_user_id → 
 csv_dedupe_decisions (id pk, csv_import_id → csv_imports.id, csv_row_jsonb,
                       match_lp_contact_id → lp_contacts.id, match_confidence, decision,
                       decided_by_user_id → users.id)
+contact_suggestions (id pk, lp_interaction_id → lp_interactions.id, sender_email, sender_domain,
+                     classification, confidence, suggested_action, prefill_jsonb, reason, evidence,
+                     suggested_lp_contact_id → lp_contacts.id,
+                     suggested_lp_organization_id → lp_organizations.id,
+                     status, dismiss_reason, suppress_sender_until,
+                     resolved_lp_contact_id → lp_contacts.id, resolved_by_user_id → users.id,
+                     resolved_at, assigned_user_id → users.id)
 crm_sync_status (id pk, source, user_id → users.id, last_success_at, last_attempt_at,
                  last_error, health, webhook_subscription_id, webhook_expires_at)
 affinity_field_mappings [V2] (id pk, tomo_field, affinity_field_id, affinity_field_type,
@@ -4953,6 +5113,7 @@ Cross-references §4.2 for full detail. This appendix is the at-a-glance index.
 - OAuth: `/api/oauth/{provider}/start`, `/api/oauth/{provider}/callback`, `/api/oauth/{provider}/disconnect`
 - Integrations: `/api/integrations/status`
 - CSV: `/api/csv-import`, `/api/csv-import/{id}/mapping`, `/api/csv-import/{id}/dedupe-decisions`, `/api/csv-import/{id}/commit`
+- Contact suggestions: `/api/contact-suggestions`, `/api/contact-suggestions/{id}`, `/api/contact-suggestions/{id}/confirm` (§3.3a)
 - LP: `/api/lp-contacts`, `/api/lp-contacts/{id}`, `/api/lp-contacts/{id}/notes`, `/api/lp-contacts/{id}/timeline`, `/api/lp-state/{id}`
 - Insights: `/api/insights/{capital,day-1-gap,moveability,concentration,time-recovered,execution-health,lists-intel,raise-momentum,close-list}` (`close-list` = Metric 10 **Focus list**; `lists-intel` / `raise-momentum` payloads align with §3.6 **Momentum** section composition)
 - Workflows: `/api/workflows`, `/api/workflows/{id}`, `/api/workflows/{id}/steps`, `/api/workflows/{id}/run`, `/api/workflow-runs/{id}`
