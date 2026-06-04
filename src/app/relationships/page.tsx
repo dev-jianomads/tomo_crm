@@ -50,7 +50,7 @@ import {
 import { RelationshipsFilterChat } from "@/components/relationships-filter-chat";
 import { RelationshipsKanbanBoard } from "@/components/relationships-kanban-board";
 import { formatTouchesInStageListSecondary } from "@/lib/touchesInStage";
-import { NewContactModal } from "@/components/new-contact-modal";
+import { RelationshipDraftModal } from "@/components/relationship-draft-modal";
 import { ContactImportModal } from "@/components/contact-import-modal";
 import { RelationshipsAdvancedFiltersModal } from "@/components/relationships-advanced-filters-modal";
 import { summarizeMapping } from "@/lib/contactImportMock";
@@ -1116,10 +1116,11 @@ function RelationshipsPageContent() {
           }}
         />
       ) : null}
-      <NewContactModal
+      <RelationshipDraftModal
         open={newContactOpen}
         onClose={() => setNewContactOpen(false)}
         fundId={effectiveFundId}
+        title="New contact"
         onConfirm={(r) => {
           addRelationship(r);
           setActiveId(r.id);

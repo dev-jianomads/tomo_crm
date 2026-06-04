@@ -9,6 +9,7 @@ import {
 } from "@/components/settings/settings-widgets";
 import { LinkSlashIcon } from "@heroicons/react/24/outline";
 import { usePersistentState } from "@/lib/usePersistentState";
+import { ContactResolutionDemoPanel } from "@/components/contact-resolution-demo-panel";
 import { ONBOARDING_STATE_STORAGE_KEY, defaultOnboardingState, OnboardingState } from "@/lib/types";
 
 export default function SettingsIntegrationsPage() {
@@ -240,6 +241,8 @@ export default function SettingsIntegrationsPage() {
           ) : null}
         </div>
       </div>
+
+      <ContactResolutionDemoPanel />
     </div>
   );
 }

@@ -32,6 +32,7 @@ export function deriveBand(daysSince: number, momentum: MomentumDirection): Band
 export type ManualContactStep1 = {
   name: string;
   firm: string;
+  primaryEmail: string;
   tier: RelationshipTier;
   stage: Stage;
   relationshipOwner: RelationshipOwner;
@@ -95,6 +96,7 @@ export function buildRelationshipFromManualContact(
     id,
     name: step1.name.trim(),
     firm: step1.firm.trim(),
+    primaryEmail: step1.primaryEmail.trim().toLowerCase(),
     fundId: options?.fundId ?? DEFAULT_RELATIONSHIP_FUND_ID,
     daysSinceLastMeaningfulContact: days,
     stage: step1.stage,
@@ -135,6 +137,7 @@ export function buildMockRelationshipFromCsvImport(
     {
       name: "Imported contact",
       firm,
+      primaryEmail: "",
       tier: "Tier 2",
       stage: "Sourced",
       relationshipOwner: "You",

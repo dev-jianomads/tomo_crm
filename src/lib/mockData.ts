@@ -3,7 +3,27 @@
  * Keep shapes lean and purpose-built for the new IA.
  */
 
+import { deriveMockPrimaryEmail } from "@/lib/relationship-email";
 import { enrichTouchesInStage } from "@/lib/touchesInStage";
+
+/** Known emails aligned with Today action mailto links (contact-resolution demos). */
+const SCENARIO_PRIMARY_EMAIL: Record<string, string> = {
+  "Peter Zakowich": "peter.zakowich@paamcoprisma.com",
+  "James Staltari": "james.staltari@albourne.com",
+  "Kwong Hong Huat": "kwong.hong.huat@gic.com.sg",
+  "Camille Durand": "camille.durand@amundi.com",
+  "Alex Morgan": "alex.morgan@northwindcapital.com",
+  "Jamie Chen": "jamie.chen@peaklinepartners.com",
+  "Priya Desai": "priya.desai@lumenlp.com",
+  "Samir Patel": "samir.patel@harborlightadvisors.com",
+};
+
+function withPrimaryEmail(r: Relationship): Relationship {
+  const override = SCENARIO_PRIMARY_EMAIL[r.name];
+  if (override) return { ...r, primaryEmail: override };
+  if (r.primaryEmail) return r;
+  return { ...r, primaryEmail: deriveMockPrimaryEmail(r.name, r.firm) };
+}
 
 export type MomentumTrend = "up" | "flat" | "down";
 export type Velocity = "Fast" | "Moderate" | "Slow";
@@ -117,6 +137,8 @@ export type Relationship = {
   id: string;
   name: string;
   firm: string;
+  /** Primary email for contact resolution / dedupe (§3.3a mock). */
+  primaryEmail?: string;
   /** Workspace fund this LP is associated with (`useFunds` ids). Defaults to Fund III in demos. */
   fundId?: string;
   // Tier 1 — Prioritisation
@@ -812,7 +834,7 @@ function generateRelationships(): Relationship[] {
     });
   }
 
-  return rels.map((r) => enrichTouchesInStage(r));
+  return rels.map((r) => enrichTouchesInStage(withPrimaryEmail(r)));
 }
 
 /** Generated LP rows (used when `exports/mock-relationships.csv` is missing or invalid). */
