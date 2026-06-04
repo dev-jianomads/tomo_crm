@@ -6,12 +6,14 @@ import { useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
 import { clearSession, useRequireSession } from "@/lib/auth";
+import { useContactSuggestionSurfacing } from "@/hooks/use-contact-suggestion-surfacing";
 import { SETTINGS_NAV, settingsContextTitle } from "@/lib/settings-nav";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const { ready } = useRequireSession();
   const router = useRouter();
   const pathname = usePathname();
+  const { settingsQueueCount } = useContactSuggestionSurfacing();
 
   const assistantChips = useMemo(() => {
     const base = ["Summarize this", "Draft a follow-up", "What changed recently?"];
@@ -54,13 +56,21 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               ) : null}
               <Link
                 href={entry.href}
-                className={`block w-full rounded-[var(--tomo-radius-md)] border px-3 py-2 text-left text-sm shadow-[var(--tomo-shadow-1)] transition ${
+                className={`flex w-full items-center justify-between gap-2 rounded-[var(--tomo-radius-md)] border px-3 py-2 text-left text-sm shadow-[var(--tomo-shadow-1)] transition ${
                   active
                     ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] ring-1 ring-[color:color-mix(in_srgb,var(--accent)_30%,transparent)]"
                     : "border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_22%,var(--tomo-rule))] hover:bg-[color:var(--tomo-navy-soft)]"
                 }`}
               >
-                {entry.label}
+                <span>{entry.label}</span>
+                {entry.href === "/settings/suggested-contacts" && settingsQueueCount > 0 ? (
+                  <span
+                    className="rounded-full bg-[color:var(--tomo-teal)] px-2 py-0.5 text-[10px] font-semibold text-white"
+                    data-testid="suggested-contacts-nav-badge"
+                  >
+                    {settingsQueueCount}
+                  </span>
+                ) : null}
               </Link>
             </div>
           );

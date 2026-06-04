@@ -12,6 +12,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
   { href: "/settings/profile", label: "Profile" },
   { href: "/settings/funds", label: "Funds" },
   { href: "/settings/integrations", label: "Integrations" },
+  { href: "/settings/suggested-contacts", label: "Suggested contacts" },
   { href: "/settings/messaging", label: "Messaging" },
   { href: "/settings/notifications", label: "Notifications" },
   { href: "/settings/billing", label: "Billing & Plan", groupStart: "Subscription & team" },

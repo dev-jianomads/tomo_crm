@@ -7,7 +7,7 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -32,8 +32,12 @@ import { resolveWorkflowPillLabelForAction } from "@/lib/workflow-pill-label";
 import {
   buildWorkflowAttentionGroups,
   defaultExpandedWorkflowGroupIds,
+  UNGROUPED_ATTENTION_KEY,
+  UNGROUPED_PILL_LABEL,
   type WorkflowAttentionGroup,
 } from "@/lib/todayWorkflowAttention";
+import { ContactSuggestionFlow } from "@/components/contact-suggestion-flow";
+import { useContactSuggestionSurfacing } from "@/hooks/use-contact-suggestion-surfacing";
 import { TomoAssistant } from "@/components/tomo-assistant";
 import { useTomoChat } from "@/components/tomo-chat-context";
 import {
@@ -481,18 +485,34 @@ export default function HomePage() {
     [todaySlotSorted, actionOutcomeById],
   );
 
-  const workflowAttentionGroups = useMemo(
-    () => buildWorkflowAttentionGroups(attentionActionsVisible),
-    [attentionActionsVisible],
-  );
+  const { todayInterrupts } = useContactSuggestionSurfacing();
+
+  const workflowAttentionGroups = useMemo(() => {
+    const groups = buildWorkflowAttentionGroups(attentionActionsVisible);
+    if (todayInterrupts.length === 0) return groups;
+    if (groups.some((g) => g.id === UNGROUPED_ATTENTION_KEY)) return groups;
+    return [
+      ...groups,
+      {
+        id: UNGROUPED_ATTENTION_KEY,
+        pillLabel: UNGROUPED_PILL_LABEL,
+        urgencyScore: -0.5,
+        items: [],
+      },
+    ];
+  }, [attentionActionsVisible, todayInterrupts.length]);
+
+  const attentionItemCount = attentionActionsVisible.length + todayInterrupts.length;
 
   useEffect(() => {
     if (workflowAttentionGroups.length === 0) return;
     setExpandedWorkflowGroupIds((prev) => {
       if (prev !== null) return prev;
-      return defaultExpandedWorkflowGroupIds(workflowAttentionGroups);
+      const next = defaultExpandedWorkflowGroupIds(workflowAttentionGroups);
+      if (todayInterrupts.length > 0) next.add(UNGROUPED_ATTENTION_KEY);
+      return next;
     });
-  }, [workflowAttentionGroups]);
+  }, [workflowAttentionGroups, todayInterrupts.length]);
 
   const previousAttentionItemCount = useMemo(
     () => previousAttentionCount(sortedActionItems, actionOutcomeById),
@@ -827,9 +847,18 @@ export default function HomePage() {
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <WorkflowAttentionSection
                   title="What needs your attention"
-                  titleCount={attentionActionsVisible.length}
+                  titleCount={attentionItemCount}
                   emptyHint="All caught up — nothing needs your attention right now."
                   groups={workflowAttentionGroups}
+                  ungroupedExtra={
+                    todayInterrupts.length > 0 ? (
+                      <div className="space-y-2.5" data-testid="today-relationship-suggestions">
+                        {todayInterrupts.map((s) => (
+                          <ContactSuggestionFlow key={s.id} suggestion={s} variant="today" />
+                        ))}
+                      </div>
+                    ) : null
+                  }
                   expandedGroupIds={expandedWorkflowGroupIds ?? new Set()}
                   onToggleGroup={(groupId) => {
                     setExpandedWorkflowGroupIds((prev) => {
@@ -1375,6 +1404,7 @@ function WorkflowAttentionSection({
   onSelectAction,
   scrollable = false,
   emptyHint,
+  ungroupedExtra,
 }: {
   title: string;
   titleCount?: number;
@@ -1387,6 +1417,8 @@ function WorkflowAttentionSection({
   onSelectAction: (id: string) => void;
   scrollable?: boolean;
   emptyHint?: string;
+  /** §3.3a relationship suggestions — rendered inside Other Tasks when expanded. */
+  ungroupedExtra?: ReactNode;
 }) {
   const globalIndexById = useMemo(() => {
     const m = new Map<string, number>();
@@ -1446,14 +1478,17 @@ function WorkflowAttentionSection({
                   </div>
                   {expanded ? (
                     <div className="space-y-2.5 border-t border-[color:var(--tomo-rule-soft)] px-2 pb-2 pt-2">
-                      <TodayListRows
-                        items={group.items.map((a) => {
-                          const idx = globalIndexById.get(a.id);
-                          return mapActionToItem(a, idx);
-                        })}
-                        onSelect={onSelectAction}
-                        activeId={activeId}
-                      />
+                      {group.id === UNGROUPED_ATTENTION_KEY && ungroupedExtra ? ungroupedExtra : null}
+                      {group.items.length > 0 ? (
+                        <TodayListRows
+                          items={group.items.map((a) => {
+                            const idx = globalIndexById.get(a.id);
+                            return mapActionToItem(a, idx);
+                          })}
+                          onSelect={onSelectAction}
+                          activeId={activeId}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

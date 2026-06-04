@@ -32,6 +32,8 @@ type ContactSuggestionsContextValue = {
     row: Omit<ContactSuggestion, "id" | "createdAt"> & { id?: string }
   ) => AddSuggestionResult;
   updateSuggestion: (id: string, patch: Partial<ContactSuggestion>) => void;
+  /** Today interrupt — only transitions pending → surfaced (never overwrites dismiss/confirm). */
+  surfaceSuggestionIfPending: (id: string) => void;
   dismissSuggestion: (id: string, reason: ContactSuggestionDismissReason) => void;
   confirmSuggestion: (id: string, relationship: Relationship) => void;
   loadDemoFixtures: () => void;
@@ -101,6 +103,17 @@ export function ContactSuggestionsProvider({ children }: { children: ReactNode }
     [setSuggestions]
   );
 
+  const surfaceSuggestionIfPending = useCallback(
+    (id: string) => {
+      setSuggestions((prev) =>
+        prev.map((s) =>
+          s.id === id && s.status === "pending" ? { ...s, status: "surfaced" } : s
+        )
+      );
+    },
+    [setSuggestions]
+  );
+
   const dismissSuggestion = useCallback(
     (id: string, reason: ContactSuggestionDismissReason) => {
       const row = suggestions.find((s) => s.id === id);
@@ -160,6 +173,7 @@ export function ContactSuggestionsProvider({ children }: { children: ReactNode }
       suppressions,
       addSuggestion,
       updateSuggestion,
+      surfaceSuggestionIfPending,
       dismissSuggestion,
       confirmSuggestion,
       loadDemoFixtures,
@@ -171,6 +185,7 @@ export function ContactSuggestionsProvider({ children }: { children: ReactNode }
       suppressions,
       addSuggestion,
       updateSuggestion,
+      surfaceSuggestionIfPending,
       dismissSuggestion,
       confirmSuggestion,
       loadDemoFixtures,
