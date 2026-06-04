@@ -58,6 +58,7 @@ import { buildMockRelationshipFromCsvImport } from "@/lib/buildManualRelationshi
 import { useRequireSession } from "@/lib/auth";
 import { usePersistentState } from "@/lib/usePersistentState";
 import { useFunds } from "@/components/fund-provider";
+import { useContactResolutionBackfill } from "@/hooks/use-contact-resolution-backfill";
 import { filterRelationshipsByFund, resolveEffectiveFundId } from "@/lib/relationshipFundScope";
 import { derivePipelineFlagMock } from "@/lib/todayRaiseStands";
 import { usePipelines } from "@/lib/use-pipelines";
@@ -173,6 +174,7 @@ function RelationshipsPageContent() {
   const searchParams = useSearchParams();
   const { ready } = useRequireSession();
   const { relationships, addRelationship, resetRelationshipsDemo } = useRelationships();
+  const { confirmRelationshipWithBackfill } = useContactResolutionBackfill();
   const { funds, activeFundId } = useFunds();
   const effectiveFundId = useMemo(() => resolveEffectiveFundId(activeFundId, funds), [activeFundId, funds]);
   /** List/Kanban cohort label — when workspace is "All", show all LPs (not only `funds[0]`). */
@@ -1122,9 +1124,16 @@ function RelationshipsPageContent() {
         fundId={effectiveFundId}
         title="New contact"
         onConfirm={(r) => {
-          addRelationship(r);
           setActiveId(r.id);
-          toast.success(`${r.name} added`);
+          if (r.primaryEmail?.includes("@")) {
+            confirmRelationshipWithBackfill(r, {
+              senderEmail: r.primaryEmail,
+              mode: "add",
+            });
+          } else {
+            addRelationship(r);
+            toast.success(`${r.name} added`);
+          }
         }}
       />
       {advancedFiltersOpen ? (

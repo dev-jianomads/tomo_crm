@@ -19,6 +19,8 @@ type RelationshipsContextValue = {
   /** LP rows: CRM base (CSV or generated) plus manually added contacts (persisted). */
   relationships: Relationship[];
   addRelationship: (relationship: Relationship) => void;
+  /** Merge CRM or manual row after contact-resolution backfill (§3.3a). */
+  patchRelationship: (relationship: Relationship) => void;
   /** Clears manual contacts and reloads base CRM from `/api/crm/relationships` (fallback: generated mock). */
   resetRelationshipsDemo: () => void;
   /** PATCH demo `off_channel_active_until` and merge into in-memory relationships. */
@@ -43,6 +45,10 @@ export function RelationshipsProvider({ children }: { children: ReactNode }) {
   );
   const [offChannelById, setOffChannelById] = usePersistentState<Record<string, string | null>>(
     "tomo-off-channel-active-until-v1",
+    {},
+  );
+  const [backfillOverrides, setBackfillOverrides] = usePersistentState<Record<string, Relationship>>(
+    "tomo-relationship-backfill-overrides-v1",
     {},
   );
 
@@ -86,8 +92,11 @@ export function RelationshipsProvider({ children }: { children: ReactNode }) {
   );
 
   const relationships = useMemo(
-    () => [...baseRelationships, ...manualRelationships].map(mergeOffChannel),
-    [baseRelationships, manualRelationships, mergeOffChannel],
+    () =>
+      [...baseRelationships, ...manualRelationships]
+        .map((r) => backfillOverrides[r.id] ?? r)
+        .map(mergeOffChannel),
+    [baseRelationships, manualRelationships, backfillOverrides, mergeOffChannel],
   );
 
   const addRelationship = useCallback(
@@ -97,10 +106,24 @@ export function RelationshipsProvider({ children }: { children: ReactNode }) {
     [setManualRelationships],
   );
 
+  const patchRelationship = useCallback(
+    (relationship: Relationship) => {
+      setManualRelationships((prev) => {
+        if (prev.some((r) => r.id === relationship.id)) {
+          return prev.map((r) => (r.id === relationship.id ? relationship : r));
+        }
+        return prev;
+      });
+      setBackfillOverrides((prev) => ({ ...prev, [relationship.id]: relationship }));
+    },
+    [setManualRelationships, setBackfillOverrides],
+  );
+
   const resetRelationshipsDemo = useCallback(() => {
     setManualRelationships([]);
+    setBackfillOverrides({});
     reloadBase();
-  }, [reloadBase, setManualRelationships]);
+  }, [reloadBase, setManualRelationships, setBackfillOverrides]);
 
   const patchOffChannel = useCallback(
     async (lpId: string, action: OffChannelPatchAction) => {
@@ -120,8 +143,14 @@ export function RelationshipsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ relationships, addRelationship, resetRelationshipsDemo, patchOffChannel }),
-    [relationships, addRelationship, resetRelationshipsDemo, patchOffChannel],
+    () => ({
+      relationships,
+      addRelationship,
+      patchRelationship,
+      resetRelationshipsDemo,
+      patchOffChannel,
+    }),
+    [relationships, addRelationship, patchRelationship, resetRelationshipsDemo, patchOffChannel],
   );
 
   return <RelationshipsContext.Provider value={value}>{children}</RelationshipsContext.Provider>;

@@ -7,6 +7,7 @@ import { LinkExistingContactModal } from "@/components/link-existing-contact-mod
 import { RelationshipDraftModal } from "@/components/relationship-draft-modal";
 import { useContactSuggestions } from "@/components/contact-suggestions-provider";
 import { useRelationships } from "@/components/relationships-provider";
+import { useContactResolutionBackfill } from "@/hooks/use-contact-resolution-backfill";
 import type { ContactSuggestion } from "@/lib/contact-suggestions";
 import type { Relationship } from "@/lib/mockData";
 import type { RelationshipDraftPrefill } from "@/lib/relationship-draft";
@@ -21,7 +22,8 @@ type ContactSuggestionFlowProps = {
  */
 export function ContactSuggestionFlow({ suggestion, variant = "today" }: ContactSuggestionFlowProps) {
   const { dismissSuggestion, confirmSuggestion } = useContactSuggestions();
-  const { relationships, addRelationship } = useRelationships();
+  const { relationships } = useRelationships();
+  const { confirmRelationshipWithBackfill } = useContactResolutionBackfill();
   const [draftOpen, setDraftOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
 
@@ -41,17 +43,18 @@ export function ContactSuggestionFlow({ suggestion, variant = "today" }: Contact
       : `Inbound · ${suggestion.senderEmail}`;
 
   const finishConfirm = useCallback(
-    (relationship: Relationship, verb: "added" | "linked") => {
-      confirmSuggestion(suggestion.id, relationship);
-      toast.success(
-        verb === "linked"
-          ? `Linked ${suggestion.prefill.person_name} to ${relationship.name}`
-          : `${relationship.name} added — mock backfill not wired until Phase 4`
-      );
+    (relationship: Relationship, mode: "add" | "link") => {
+      const { relationship: patched } = confirmRelationshipWithBackfill(relationship, {
+        senderEmail: suggestion.senderEmail,
+        suggestion,
+        mode,
+        successVerb: mode === "link" ? "Linked" : "Added",
+      });
+      confirmSuggestion(suggestion.id, patched);
       setDraftOpen(false);
       setLinkOpen(false);
     },
-    [confirmSuggestion, suggestion.id, suggestion.prefill.person_name]
+    [confirmRelationshipWithBackfill, confirmSuggestion, suggestion]
   );
 
   return (
@@ -81,10 +84,7 @@ export function ContactSuggestionFlow({ suggestion, variant = "today" }: Contact
         prefill={prefill}
         title="Add relationship"
         subtitle={subtitle}
-        onConfirm={(r) => {
-          addRelationship(r);
-          finishConfirm(r, "added");
-        }}
+        onConfirm={(r) => finishConfirm(r, "add")}
       />
       <LinkExistingContactModal
         open={linkOpen}
@@ -93,7 +93,7 @@ export function ContactSuggestionFlow({ suggestion, variant = "today" }: Contact
         senderName={suggestion.prefill.person_name}
         firmHint={suggestion.prefill.firm_name}
         relationships={relationships}
-        onLink={(r) => finishConfirm(r, "linked")}
+        onLink={(r) => finishConfirm(r, "link")}
       />
     </>
   );

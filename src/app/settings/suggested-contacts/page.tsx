@@ -14,7 +14,8 @@ export default function SettingsSuggestedContactsPage() {
       <div>
         <h1 className="text-lg font-semibold text-[color:var(--foreground)]">Suggested contacts</h1>
         <p className="mt-1 text-sm text-[color:var(--tomo-body)]">
-          Review possible investor relationships from unknown inbound senders.{" "}
+          Review possible investor relationships from unknown inbound senders. Confirming runs mock
+          contact-resolution backfill (links inbound, updates touches in stage).{" "}
           <strong className="font-medium text-[color:var(--foreground)]">Maybe</strong> suggestions and{" "}
           <strong className="font-medium text-[color:var(--foreground)]">likely</strong> overflow (beyond
           Today&apos;s daily cap) appear here — not duplicated on Today.

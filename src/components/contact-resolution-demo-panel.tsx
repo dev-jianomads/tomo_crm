@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRelationships } from "@/components/relationships-provider";
+import { useContactResolutionBackfill } from "@/hooks/use-contact-resolution-backfill";
 import { useContactSuggestions } from "@/components/contact-suggestions-provider";
 import { RelationshipDraftModal } from "@/components/relationship-draft-modal";
 import { classifyInboundContactEmail } from "@/lib/contact-suggestion-classify-client";
@@ -53,7 +54,8 @@ const GOLDEN_PRESETS = [
  * Phase 2 dev panel — simulates inbound email → classify API → suggestion queue.
  */
 export function ContactResolutionDemoPanel() {
-  const { relationships, addRelationship } = useRelationships();
+  const { relationships } = useRelationships();
+  const { confirmRelationshipWithBackfill } = useContactResolutionBackfill();
   const { addSuggestion, loadDemoFixtures, suggestions, suppressions } = useContactSuggestions();
 
   const [from, setFrom] = useState<string>(GOLDEN_PRESETS[0].from);
@@ -314,8 +316,16 @@ export function ContactResolutionDemoPanel() {
         title="Add relationship"
         subtitle={`Demo inbound · ${subject}`}
         onConfirm={(r) => {
-          addRelationship(r);
-          toast.success(`${r.name} added — mock backfill not wired until Phase 4`);
+          const email = draftPrefill?.email || parsed.email;
+          if (email.includes("@")) {
+            confirmRelationshipWithBackfill(r, {
+              senderEmail: email,
+              mode: "add",
+            });
+          } else {
+            toast.error("Add a valid primary email to run backfill.");
+            return;
+          }
           setDraftOpen(false);
         }}
       />
