@@ -132,7 +132,7 @@ export default function SettingsNotificationsPage() {
             onChange={(e) => setRadarSectionSource(e.target.value as RadarSectionSourcePreference)}
           >
             <option value="env">Auto — follow environment flag</option>
-            <option value="demo">Demo seed (design reference)</option>
+            <option value="demo">Sample seed data</option>
             <option value="derived">CRM + Today derivation</option>
           </select>
         </div>

@@ -97,7 +97,7 @@ export function RelationshipDrawerV2({
 
   const priorFundLine =
     rel.lastFundHistory === "New prospect"
-      ? "— Not a prior-fund LP (demo tag)"
+      ? "— Not a prior-fund LP"
       : `Prior participation · ${rel.lastFundHistory}`;
 
   const prov = provenance ?? {
@@ -152,7 +152,7 @@ export function RelationshipDrawerV2({
           </span>
         </div>
         <p className="text-sm leading-relaxed text-[color:var(--tomo-navy)]">{snapshotParagraph}</p>
-        <p className="mt-2 text-[11px] italic text-[color:var(--tomo-mute)]">Synthesised from the five most recent interactions (demo).</p>
+        <p className="mt-2 text-[11px] italic text-[color:var(--tomo-mute)]">Synthesised from the five most recent interactions.</p>
       </section>
 
       <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule)] bg-[color:var(--tomo-card)] px-5 py-4">
@@ -273,14 +273,12 @@ export function RelationshipDrawerV2({
             <p className="mt-1 inline-flex rounded-[2px] bg-[color:var(--tomo-status-green-bg)] px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-[color:var(--tomo-status-green)]">
               {mandateFitTableLabel(rel.strategyFit)}
             </p>
-            <p className="mt-1 font-mono text-[11px] text-[color:var(--tomo-mute)]">Captured on demo timeline · verify in CRM</p>
           </div>
           <div>
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">
               <ProvHint label="Expected commitment (tier)" p={prov.typical_check} />
             </p>
             <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[color:var(--tomo-navy)]">{rel.typicalCheckSize}</p>
-            <p className="mt-1 font-mono text-[11px] text-[color:var(--tomo-mute)]">Demo maps from typical check · production: currency field</p>
           </div>
           <div>
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">Prior fund investor</p>
@@ -297,7 +295,6 @@ export function RelationshipDrawerV2({
           <div className="md:col-span-2">
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">Fund raised against</p>
             <p className="mt-1 text-sm font-medium text-[color:var(--tomo-navy)]">{activeFundLabel}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-[color:var(--tomo-mute)]">Workspace selector cohort · SRS `lp_contacts.fund_id`</p>
           </div>
           <div className="md:col-span-2">
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[color:var(--tomo-mute)]">Geography</p>

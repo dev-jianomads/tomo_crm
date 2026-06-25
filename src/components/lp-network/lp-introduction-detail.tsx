@@ -114,7 +114,7 @@ export function LpIntroductionDetail({
 
       {canSimulateLpApprove ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 text-sm">
-          <p className="text-xs font-semibold text-emerald-900">Simulate allocator (demo)</p>
+          <p className="text-xs font-semibold text-emerald-900">Simulate allocator</p>
           <p className="mt-1 text-xs text-emerald-800">Skips to LP approved — same as the allocator accepting in the LP dashboard.</p>
           <button
             type="button"
@@ -127,7 +127,7 @@ export function LpIntroductionDetail({
       ) : null}
 
       <details className="rounded-md border border-dashed border-gray-300 bg-gray-50/50 px-3 py-2 text-xs text-gray-600">
-        <summary className="cursor-pointer font-medium text-gray-700">Advance workflow (demo)</summary>
+        <summary className="cursor-pointer font-medium text-gray-700">Advance workflow</summary>
         <p className="mt-2 text-gray-500">Jump to any step or reset this thread.</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <DemoStatusBtn label="Eligible" status="eligible" current={introStatus} onPick={onDemoSetStatus} />
@@ -149,7 +149,7 @@ export function LpIntroductionDetail({
         href="/lp-network/mandate?demo=1"
         className="inline-block text-xs font-medium text-[color:var(--accent)] hover:underline"
       >
-        Open LP mandate preview (demo) →
+        Open LP mandate preview →
       </Link>
     </div>
   );

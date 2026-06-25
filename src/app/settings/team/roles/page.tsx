@@ -28,7 +28,7 @@ export default function SettingsTeamRolesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold accent-title">Roles & permissions</h2>
-          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Static matrix for UX review — enforce server-side in production.</p>
+          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Role permissions for your workspace.</p>
         </div>
         <Link
           href="/settings/team"

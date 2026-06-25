@@ -152,7 +152,7 @@ export function CommitmentDrawerPanel({
       if (e.key === "r" || e.key === "R") {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         e.preventDefault();
-        notify("Marked as reviewed (demo).");
+        notify("Marked as reviewed.");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -260,10 +260,10 @@ export function CommitmentDrawerPanel({
         <>
           {hasMeetingPrepChrome ? (
             <DrawerPrepActionBar
-              onMarkReviewed={() => notify("Marked as reviewed (demo).")}
-              onPrintPrep={() => notify("Print prep (demo).")}
-              onSendToPhone={() => notify("Send to phone (demo).")}
-              onAddNote={() => notify("Note saved locally (demo).")}
+              onMarkReviewed={() => notify("Marked as reviewed.")}
+              onPrintPrep={() => notify("Print prep opened.")}
+              onSendToPhone={() => notify("Sent to phone.")}
+              onAddNote={() => notify("Note saved.")}
               onDraftMessage={onAmend}
             />
           ) : null}

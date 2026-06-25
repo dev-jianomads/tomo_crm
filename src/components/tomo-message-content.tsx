@@ -94,7 +94,6 @@ function DraftBlock({ block }: { block: DraftMessageBlock }) {
               <h3 id="draft-edit-title" className="text-sm font-semibold text-[color:var(--foreground)]">
                 Edit draft
               </h3>
-              <p className="mt-0.5 text-xs text-[color:var(--tomo-mute)]">Mock editor — changes are not saved.</p>
             </div>
             <div className="px-4 py-3">
               <textarea

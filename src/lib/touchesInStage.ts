@@ -124,7 +124,7 @@ export function formatDrawerTouchesInStage(rel: Relationship): {
         : `${n} meaningful touches`;
   const meetingCaption =
     m > 0
-      ? `${meetingLabel(m)} since entered ${rel.stage.toLowerCase()} (demo)`
+      ? `${meetingLabel(m)} since entered ${rel.stage.toLowerCase()}`
       : null;
   return { primary, meetingCaption };
 }

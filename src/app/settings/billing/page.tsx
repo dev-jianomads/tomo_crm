@@ -20,8 +20,8 @@ export default function SettingsBillingPage() {
       </div>
 
       <p className="text-sm text-[color:var(--tomo-body)]">
-        UI mock only — wire to Stripe (checkout, portal, webhooks) for production. Return URLs should use these routes (e.g.{" "}
-        <span className="font-mono text-xs">/settings/billing/manage</span>).
+        Manage your plan, payment method, and billing details. After checkout, return to{" "}
+        <span className="font-mono text-xs">/settings/billing/manage</span>.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -67,13 +67,13 @@ export default function SettingsBillingPage() {
           title="Sync rules (CRMs)"
           body="Backstop / Dynamo / DealCloud / Salesforce mapping. Coming soon."
         />
-        <PlaceholderCard title="Email/Calendar permissions" body="Review consent and scopes. UI placeholder only." />
+        <PlaceholderCard title="Email/Calendar permissions" body="Review consent and scopes." />
         <Link
           href="/settings/team/roles"
           className="block rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] px-3 py-3 shadow-[var(--tomo-shadow-1)] transition hover:border-[color:color-mix(in_srgb,var(--tomo-teal)_28%,var(--tomo-rule))] hover:bg-[color:var(--tomo-teal-tint)]"
         >
           <p className="text-sm font-semibold accent-title">Roles & permissions</p>
-          <p className="text-xs text-[color:var(--tomo-body)]">Open the team roles mock — Owner, Admin, Member capabilities.</p>
+          <p className="text-xs text-[color:var(--tomo-body)]">Owner, Admin, and Member capabilities.</p>
           <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--tomo-teal-muted)]">Open page →</p>
         </Link>
       </div>

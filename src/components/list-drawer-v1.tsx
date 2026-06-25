@@ -217,9 +217,6 @@ export function ListDrawerV1Content({
             <span aria-hidden>{manual ? "○" : "●"}</span>
             {manual ? "Manual" : "Live · auto-updating"}
           </span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] tracking-[0.06em] text-[color:var(--tomo-mute)]">
-            Demo snapshot
-          </span>
         </div>
       </div>
 

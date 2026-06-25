@@ -96,7 +96,7 @@ export function WorkflowDuplicatePreventionModal({
               Every suppressed LP is recorded with a reason. You can review runs in the workflow activity log and, in a
               full rollout, <strong>override individual suppressions</strong> when you intentionally want a second touch.
             </p>
-            <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">Recent demo suppressions for this audience:</p>
+            <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">Recent suppressions for this audience:</p>
             <ul className="mt-2 space-y-1.5">
               {suppressionRows.map((row) => (
                 <li

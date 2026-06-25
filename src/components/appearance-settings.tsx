@@ -17,7 +17,7 @@ export function AppearanceSettings() {
     <TomoCard className="p-4">
       <p className="tomo-field-label">Appearance</p>
       <p className="mt-1 text-sm text-[color:var(--tomo-body)]">
-        Choose how TOMO looks on this device. Your choice is saved locally in the mock app.
+        Choose how TOMO looks on this device. Your choice is saved locally on this device.
       </p>
       <fieldset className="mt-4 space-y-2" disabled={!ready}>
         <legend className="sr-only">Color theme</legend>

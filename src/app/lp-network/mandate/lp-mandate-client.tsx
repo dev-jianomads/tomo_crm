@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { PageListHeader } from "@/components/page-list-header";
@@ -66,8 +65,6 @@ const MOCK_INTROS_TO_LP: LpIntroSampleRow[] = [
  */
 export function LpMandateClient() {
   const { ready } = useRequireSession();
-  const searchParams = useSearchParams();
-  const demo = searchParams.get("demo") === "1";
   const { funds } = useFunds();
 
   const base = getMandateById(DEMO_LP_MANDATE_ID);
@@ -118,13 +115,8 @@ export function LpMandateClient() {
     <div className="flex h-full min-h-0 flex-col">
       <PageListHeader
         label="Your mandate"
-        description="Allocators registered in the LP Network can review and refresh how they show up to GPs before any double opt-in. This prototype stores edits only in your browser."
+        description="Allocators registered in the LP Network can review and refresh how they show up to GPs before any double opt-in."
       >
-        {demo ? (
-          <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900 ring-1 ring-amber-200">
-            Demo mode — sample mandate only; not production data.
-          </p>
-        ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
@@ -145,7 +137,7 @@ export function LpMandateClient() {
 
       <div className="min-h-0 flex-1 overflow-auto px-4 py-4 text-sm text-gray-700">
         {!merged ? (
-          <p className="text-gray-600">Demo mandate not found.</p>
+          <p className="text-gray-600">Mandate not found.</p>
         ) : (
           <div className="space-y-3">
             <MandateAccordionSection title="Strategy & sleeve" defaultOpen>
@@ -222,12 +214,11 @@ export function LpMandateClient() {
     <div className="h-full overflow-auto p-4 text-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Introductions to you</p>
       <p className="mt-1 text-sm text-gray-600">
-        Same <code className="rounded bg-gray-100 px-1 text-[11px]">localStorage</code> as the GP view — request an intro
-        for demo mandate <span className="font-mono text-xs">{DEMO_LP_MANDATE_ID}</span> on{" "}
+        Request an introduction from the{" "}
         <Link href="/lp-network" className="font-medium text-[color:var(--accent)] hover:underline">
           LP Network
         </Link>{" "}
-        to see it here.
+        page to see it here.
       </p>
 
       {persistedIntros.length ? (
@@ -268,7 +259,7 @@ export function LpMandateClient() {
                         delete next[row.storageKey];
                         return next;
                       });
-                      toast.message("Passed", { description: "Thread cleared for this demo mandate." });
+                      toast.message("Passed", { description: "Thread cleared for this mandate." });
                     }}
                   >
                     Pass
@@ -280,7 +271,7 @@ export function LpMandateClient() {
         </ul>
       ) : (
         <p className="mt-4 rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-xs text-gray-600">
-          No live intro rows yet. Use the GP introductions page with this demo allocator selected, then{" "}
+          No live intro rows yet. Use the GP introductions page with this allocator selected, then{" "}
           <strong>Request introduction</strong>.
         </p>
       )}
@@ -312,7 +303,7 @@ export function LpMandateClient() {
       section="lp_network"
       listContent={listContent}
       detailContent={detailContent}
-      contextTitle="LP mandate (demo)"
+      contextTitle="LP mandate"
       assistantChips={["Summarize my mandate", "What can GPs see?", "Update preferences"]}
     />
   );

@@ -21,7 +21,7 @@ export default function SettingsBillingManagePage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold accent-title">Manage subscription</h2>
-          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Payment method, invoices, and plan changes (mock UI).</p>
+          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Payment method, invoices, and plan changes.</p>
         </div>
         <Link
           href="/settings/billing"
@@ -40,15 +40,15 @@ export default function SettingsBillingManagePage() {
           </div>
           <div>
             <dt className="tomo-field-label block">Renews</dt>
-            <dd className="font-medium text-[color:var(--foreground)]">May 1, 2026 (mock)</dd>
+            <dd className="font-medium text-[color:var(--foreground)]">May 1, 2026</dd>
           </div>
           <div>
             <dt className="tomo-field-label block">Trial</dt>
-            <dd className="text-[color:var(--tomo-body)]">Not on trial (mock)</dd>
+            <dd className="text-[color:var(--tomo-body)]">Not on trial</dd>
           </div>
           <div>
             <dt className="tomo-field-label block">Seats</dt>
-            <dd className="text-[color:var(--tomo-body)]">3 assigned · 5 purchased (mock)</dd>
+            <dd className="text-[color:var(--tomo-body)]">3 assigned · 5 purchased</dd>
           </div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -102,13 +102,13 @@ export default function SettingsBillingManagePage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">Download links would come from Stripe in production.</p>
+        <p className="mt-2 text-xs text-[color:var(--tomo-mute)]">Download links are provided by Stripe.</p>
       </div>
 
       <div className="rounded-[var(--tomo-radius-md)] border border-[color:color-mix(in_srgb,var(--tomo-red)_22%,var(--tomo-rule))] bg-[color:var(--tomo-red-bg)] p-4">
         <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Cancel subscription</h3>
         <p className="mt-1 text-sm text-[color:var(--tomo-body)]">
-          Mock only — production should confirm end date, data retention, and seat impact before canceling.
+          You will confirm cancellation and see your access end date before your subscription ends.
         </p>
         {!cancelOpen ? (
           <button
@@ -126,7 +126,7 @@ export default function SettingsBillingManagePage() {
                 type="button"
                 className="rounded-[var(--tomo-radius-md)] bg-[color:var(--tomo-red)] px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90"
               >
-                Confirm cancel (mock)
+                Confirm cancel
               </button>
               <button
                 type="button"

@@ -436,7 +436,7 @@ export function OnboardingWizard() {
               <ConnCard
                 icon="M"
                 name="Microsoft 365"
-                desc="Outlook mail, calendar, and Microsoft 365 contacts together (mock bundle)."
+                desc="Outlook mail, calendar, and Microsoft 365 contacts together."
                 badge="Pick one"
                 connected={state.workspaceProvider === "microsoft" && state.workspaceBundleConnected}
                 onConnect={() => connectWorkspaceBundle("microsoft")}
@@ -448,7 +448,7 @@ export function OnboardingWizard() {
               <ConnCard
                 icon="B"
                 name="Backstop"
-                desc="Bi-directional sync in production. V1 mock: upload a CRM export (CSV / Excel)."
+                desc="Bi-directional sync. Upload a CRM export (CSV / Excel)."
                 connected={state.contactImportUploaded && state.crmCsvLabel === "backstop"}
                 onConnect={() => openCsvPanel("backstop")}
               />

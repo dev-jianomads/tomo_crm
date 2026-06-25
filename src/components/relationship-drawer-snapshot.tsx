@@ -7,7 +7,7 @@ export function RelationshipDrawerSnapshotSection({ summaryText }: { summaryText
         Snapshot
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-gray-800">{summaryText}</p>
-      <p className="mt-2 text-[11px] text-gray-500">Synthesized from the five most recent interactions (demo).</p>
+      <p className="mt-2 text-[11px] text-gray-500">Synthesized from the five most recent interactions.</p>
     </section>
   );
 }

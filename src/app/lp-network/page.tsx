@@ -110,7 +110,7 @@ export default function LpNetworkPage() {
             [key]: { status: "lp_pending", updatedAt: new Date().toISOString() },
           };
         });
-        toast.message("Demo: allocator reviewing", {
+        toast.message("Allocator reviewing", {
           description: "Auto-advance moved this thread to Awaiting LP.",
         });
       }, 2000);
@@ -154,7 +154,7 @@ export default function LpNetworkPage() {
       ...prev,
       [key]: { status: "lp_approved", updatedAt: new Date().toISOString() },
     }));
-    toast.success("LP approved (demo)", {
+    toast.success("LP approved", {
       description: "TOMO can now connect you with this allocator.",
     });
   }, [effectiveFundId, selected, setIntroMap]);
@@ -185,11 +185,11 @@ export default function LpNetworkPage() {
             href="/lp-network/mandate?demo=1"
             className="text-xs font-medium text-[color:var(--accent)] hover:underline"
           >
-            Preview LP mandate view (demo) →
+            Preview LP mandate view →
           </Link>
           <p className="text-[11px] text-gray-500">
             Workspace fund: use the <strong>Fund</strong> control in the app header — lists filter by the same{" "}
-            <code className="rounded bg-gray-100 px-1 text-[10px]">fundId</code> as the rest of the mock.
+            <code className="rounded bg-gray-100 px-1 text-[10px]">fundId</code> as the rest of the app.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
@@ -208,7 +208,7 @@ export default function LpNetworkPage() {
               checked={introAutoAdvance}
               onChange={(e) => setIntroAutoAdvance(e.target.checked)}
             />
-            Demo: auto-advance to Awaiting LP (2s after request)
+            Auto-advance to Awaiting LP (2s after request)
           </label>
           </div>
           <p className="text-xs text-gray-500">
@@ -312,7 +312,7 @@ function LpNetworkListEmpty({
         <p className="mt-2">
           For <strong>{fundDisplayName}</strong>, no row matches <strong>high fit + actively deploying</strong> right
           now. Turn off <strong>Qualified only</strong> to see {allForFundCount} allocator mandate
-          {allForFundCount === 1 ? "" : "s"} in this mock for this fund.
+          {allForFundCount === 1 ? "" : "s"} for this fund.
         </p>
       </div>
     );
@@ -321,7 +321,7 @@ function LpNetworkListEmpty({
   if (allForFundCount === 0) {
     return (
       <div className={`${base} border-dashed border-gray-200 bg-gray-50 text-gray-700`}>
-        <p className="font-medium text-gray-900">No mandates for this fund in the mock</p>
+        <p className="font-medium text-gray-900">No mandates for this fund</p>
         <p className="mt-2">
           Per-mandate <code className="rounded bg-white px-1 text-xs">eligibleFundIds</code> exclude{" "}
           <strong>{fundDisplayName}</strong> for every row, or the effective fund id has no matches. Try another fund or{" "}

@@ -692,7 +692,7 @@ function WorkflowDeleteConfirmDialog({
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[color:var(--tomo-body)]">
           <span className="font-semibold text-[color:var(--foreground)]">{target.name}</span> will be removed from
-          this list. This cannot be undone in the demo.
+          this list. This cannot be undone.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button

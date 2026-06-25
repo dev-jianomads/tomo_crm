@@ -671,7 +671,7 @@ function RelationshipsPageContent() {
               type="button"
               onClick={handleResetRelationshipsDemo}
               className="text-[11px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline"
-              title="Clears manual contacts and field overrides; reloads CRM mock from default (demo)"
+              title="Clears manual contacts and field overrides; reloads relationships to default"
             >
               Reset demo
             </button>
@@ -1068,7 +1068,7 @@ function RelationshipsPageContent() {
             <RelationshipDrawerV2
               relationship={active}
               snapshotParagraph={
-                snapshotParagraph || "No recent interaction history for this LP (demo)."
+                snapshotParagraph || "No recent interaction history for this LP."
               }
               activeFundLabel={activeFundLabel}
               onClose={closeRelationshipDrawer}
@@ -1149,7 +1149,7 @@ function RelationshipsPageContent() {
         open={csvImportOpen}
         onClose={() => setCsvImportOpen(false)}
         title="Upload contacts"
-        fileStepDescription="Select a CSV or Excel file of LPs. We auto-match columns from the header row; adjust on the next step. Demo only — parsing is mocked; one relationship is added per import from the filename."
+        fileStepDescription="Select a CSV or Excel file of LPs. We auto-match columns from the header row; adjust on the next step."
         autoOpenFilePicker
         onConfirm={({ file, preview, mapping }) => {
           const summary = summarizeMapping(preview.headers, mapping);

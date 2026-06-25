@@ -303,7 +303,7 @@ export function ListsIndexV1({ pipelines, relationships, selectedId, onSelect, o
           {rows.length === 0 ? (
             <>
               <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-rule)] bg-[color:color-mix(in_srgb,var(--tomo-card)_92%,transparent)] px-4 py-6 text-center text-sm text-[color:var(--tomo-body)]">
-                No lists yet. Save a filtered view as a list from Relationships, or reset demo for sample lists.
+                No lists yet. Save a filtered view as a list from Relationships, or use Reset demo to load sample lists.
               </div>
               <ListsCreateListCard />
             </>

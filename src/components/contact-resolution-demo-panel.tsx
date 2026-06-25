@@ -181,7 +181,7 @@ export function ContactResolutionDemoPanel() {
       );
       return;
     }
-    toast.success("Queued demo suggestion for Sarah Lee");
+    toast.success("Queued suggestion for Sarah Lee");
   };
 
   const applyPreset = (preset: (typeof GOLDEN_PRESETS)[number]) => {
@@ -193,10 +193,10 @@ export function ContactResolutionDemoPanel() {
 
   return (
     <div className="rounded-[var(--tomo-radius-md)] border border-dashed border-[color:var(--tomo-teal)]/40 bg-[color:color-mix(in_srgb,var(--tomo-teal)_6%,var(--tomo-card))] p-4">
-      <p className="text-sm font-semibold text-[color:var(--foreground)]">Contact resolution (demo)</p>
+      <p className="text-sm font-semibold text-[color:var(--foreground)]">Contact resolution</p>
       <p className="mt-1 text-xs text-[color:var(--tomo-mute)]">
-        Phase 2 — simulates inbound email → POST /api/contact-suggestions/classify → local suggestion queue.
-        Golden fixtures work offline; other mail uses rules or OpenAI when configured.
+        Simulate inbound email classification and test the suggestion queue. Golden fixtures work offline; other mail
+        uses rules or OpenAI when configured.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -305,8 +305,7 @@ export function ContactResolutionDemoPanel() {
       </div>
 
       <p className="mt-2 text-[11px] text-[color:var(--tomo-mute)]">
-        {suggestions.filter((s) => s.status === "pending" || s.status === "surfaced").length} open
-        suggestion(s) in localStorage.
+        {suggestions.filter((s) => s.status === "pending" || s.status === "surfaced").length} open suggestion(s).
       </p>
 
       <RelationshipDraftModal
@@ -314,7 +313,7 @@ export function ContactResolutionDemoPanel() {
         onClose={() => setDraftOpen(false)}
         prefill={draftPrefill}
         title="Add relationship"
-        subtitle={`Demo inbound · ${subject}`}
+        subtitle={`Inbound · ${subject}`}
         onConfirm={(r) => {
           const email = draftPrefill?.email || parsed.email;
           if (email.includes("@")) {

@@ -212,7 +212,7 @@ export function WorkflowActionBuildModal({
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-medium text-[color:var(--foreground)]">Attachments</span>
                   <button type="button" onClick={addMockAttachment} className="text-xs font-medium text-[color:var(--tomo-teal)]">
-                    + Add file (demo)
+                    + Add file
                   </button>
                 </div>
                 {attachments.length === 0 ? (

@@ -749,7 +749,7 @@ export default function HomePage() {
                   onClick={() => void resendDailyBrief()}
                   disabled={dailyBriefResendBusy}
                   className="text-[12px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline disabled:opacity-50"
-                  title="Sends the Daily Brief email via Loops (demo)"
+                  title="Sends the Daily Brief email via Loops"
                 >
                   {dailyBriefResendBusy ? "Sending…" : "Resend daily brief"}
                 </button>
@@ -758,7 +758,7 @@ export default function HomePage() {
                 type="button"
                 onClick={resetDemoAttention}
                 className="text-[12px] font-normal text-[color:var(--tomo-mute)] underline-offset-2 transition hover:text-[color:var(--foreground)] hover:underline"
-                title="Clears completed Today actions for this browser session (demo)"
+                title="Clears completed Today actions for this browser session"
               >
                 Reset demo
               </button>
@@ -1069,7 +1069,7 @@ export default function HomePage() {
               <BriefDrawerPanel
                 brief={selectedBrief}
                 onClose={closeDrawerAndReset}
-                onCreateAction={() => addToast("Follow-up captured (demo).")}
+                onCreateAction={() => addToast("Follow-up captured.")}
               />
             ) : (
               <Placeholder title="No brief selected" />

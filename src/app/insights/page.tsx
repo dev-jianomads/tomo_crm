@@ -211,14 +211,14 @@ export default function InsightsPage() {
               <span id="insights-s2">2 · Momentum</span>
             </SectionTitle>
             <p className="mt-1 text-sm" style={{ color: C.slate }}>
-              Velocity and stage motion — ships after the demo window when signal history matures.
+              Velocity and stage motion — available when signal history matures.
             </p>
             <div className="mt-4 space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/30 px-4 py-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pipeline velocity</p>
                 <p className="mt-2 text-sm" style={{ color: C.slate }}>
-                  Average days between meaningful touches — with an 8-week sparkline and direction vs connection — unlocks after
-                  Raise Momentum goes live. No placeholder percentage shown.
+                  Average days between meaningful touches — with an 8-week sparkline and direction vs connection — unlocks when
+                  Raise Momentum goes live.
                 </p>
               </div>
               <div>

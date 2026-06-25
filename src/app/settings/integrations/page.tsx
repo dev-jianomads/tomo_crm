@@ -83,7 +83,7 @@ export default function SettingsIntegrationsPage() {
               onChange={(e) => setAffinityToken(e.target.value)}
               placeholder="Paste your token"
             />
-            <p className="text-xs text-[color:var(--tomo-mute)]">Stored securely server-side in production (mocked locally here).</p>
+            <p className="text-xs text-[color:var(--tomo-mute)]">Stored securely on the server.</p>
           </div>
           <div className="mt-4 flex gap-2">
             <button

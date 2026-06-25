@@ -29,7 +29,7 @@ export function buildSignalEvidence(rel: Relationship): { label: string; body: s
 
   const prefix = formatNurturingEvidenceTouchesPrefix(rel);
   const narrative = prefix ? `${prefix}${body}` : body;
-  return { label, body: `${narrative} (Demo narrative · replace with lp_signal_log + SLA benchmarks.)` };
+  return { label, body: narrative };
 }
 
 export function mockDaysInCurrentStage(rel: Relationship): number {

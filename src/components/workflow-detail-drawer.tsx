@@ -144,7 +144,7 @@ export function WorkflowDetailDrawer({
             )}
             {playbookPipelineBanner?.kind === "missing" && (
               <div className="border-b border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-status-amber-bg)] px-4 py-2 text-xs text-[color:var(--tomo-status-amber-text)]">
-                Linked list not found ({playbookPipelineBanner.pipelineId}). Pick another list or reset demo.
+                Linked list not found ({playbookPipelineBanner.pipelineId}). Pick another list or reset.
               </div>
             )}
             {outboundAudienceCount > 0 ? (

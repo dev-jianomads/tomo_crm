@@ -45,7 +45,7 @@ export default function SettingsTeamPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold accent-title">Team & seats</h2>
-          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Invite colleagues and see seat usage (mock — no backend).</p>
+          <p className="mt-1 text-sm text-[color:var(--tomo-body)]">Invite colleagues and see seat usage.</p>
         </div>
         <Link
           href="/settings/team/roles"
@@ -73,7 +73,7 @@ export default function SettingsTeamPage() {
 
       <div className="rounded-[var(--tomo-radius-md)] border border-[color:var(--tomo-rule-soft)] bg-[color:var(--tomo-card)] p-4 shadow-[var(--tomo-shadow-1)]">
         <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Invite people</h3>
-        <p className="mt-1 text-xs text-[color:var(--tomo-body)]">Invites consume a seat when accepted (product rule — mock).</p>
+        <p className="mt-1 text-xs text-[color:var(--tomo-body)]">Invites consume a seat when accepted.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <input
             type="email"
@@ -83,7 +83,7 @@ export default function SettingsTeamPage() {
             onChange={(e) => setInviteEmail(e.target.value)}
           />
           <button type="button" className="button-primary px-4" onClick={invite}>
-            Send invite (mock)
+            Send invite
           </button>
         </div>
       </div>

@@ -151,9 +151,6 @@ export function WorkflowBatchReview({
             <SparklesIcon className="h-3.5 w-3.5" />
           </button>
         </div>
-        <p className="mt-2 pl-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] tracking-[0.04em] text-[color:var(--tomo-mute)]">
-          Mock: appends a Tomo block to each open draft body. Phase 6+ can replace with model rewrite.
-        </p>
       </section>
 
       <div className="space-y-2">
