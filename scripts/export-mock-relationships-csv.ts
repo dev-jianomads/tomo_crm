@@ -14,7 +14,7 @@ function csvCell(value: string | number | undefined | null): string {
   return s;
 }
 
-const COLUMNS: (keyof Relationship)[] = [
+const COLUMNS: (keyof Relationship | "city" | "country" | "region")[] = [
   "id",
   "name",
   "firm",
@@ -27,6 +27,9 @@ const COLUMNS: (keyof Relationship)[] = [
   "strategyFit",
   "strategyType",
   "lpLocation",
+  "city",
+  "country",
+  "region",
   "investmentRemit",
   "typicalCheckSize",
   "fundSizePreference",
@@ -46,8 +49,13 @@ const COLUMNS: (keyof Relationship)[] = [
   "band",
 ];
 
+function cellFor(r: Relationship, k: (typeof COLUMNS)[number]): string | number | undefined | null {
+  if (k === "city" || k === "country" || k === "region") return r.organization?.[k] ?? "";
+  return r[k] as string | number | undefined;
+}
+
 function row(r: Relationship): string {
-  return COLUMNS.map((k) => csvCell(r[k] as string | number | undefined)).join(",");
+  return COLUMNS.map((k) => csvCell(cellFor(r, k))).join(",");
 }
 
 const header = COLUMNS.join(",");

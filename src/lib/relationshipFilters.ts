@@ -27,6 +27,7 @@ import {
   CONSULTANT_DEPENDENT_OPTIONS,
   ESG_REQUIRED_OPTIONS,
   DEFAULT_RELATIONSHIP_FUND_ID,
+  formatRelationshipGeography,
 } from "./mockData";
 
 // ── Zod schemas for enum values ─────────────────────────────────────────────
@@ -158,8 +159,16 @@ export function applyFilters(
 
     if (criteria.query?.trim()) {
       const q = criteria.query.trim().toLowerCase();
+      const city = rel.organization?.city?.toLowerCase() ?? "";
+      const country = rel.organization?.country?.toLowerCase() ?? "";
+      const region = rel.organization?.region?.toLowerCase() ?? "";
       const matchesQuery =
-        rel.name.toLowerCase().includes(q) || rel.firm.toLowerCase().includes(q);
+        rel.name.toLowerCase().includes(q) ||
+        rel.firm.toLowerCase().includes(q) ||
+        city.includes(q) ||
+        country.includes(q) ||
+        region.includes(q) ||
+        formatRelationshipGeography(rel).toLowerCase().includes(q);
       if (!matchesQuery) return false;
     }
 
@@ -265,8 +274,8 @@ export function parseFilterPromptHeuristic(text: string): Partial<StructuredFilt
   else if (/\b(emea|europe)\b/.test(t)) criteria.lpLocation = "EMEA";
   else if (/\b(apac|asia)\b/.test(t)) criteria.lpLocation = "APAC";
 
-  // Free-text query (name/firm search) — remaining words that look like a search
-  const stopWords = /^(all|the|and|for|with|show|me|tier|t1|t2|t3|cooling|heating|stalled|stable|active|contact|touch|days|open|loops)$/;
+  // Free-text query (name / firm / geography) — remaining words that look like a search
+  const stopWords = /^(all|the|and|for|with|show|me|tier|t1|t2|t3|cooling|heating|stalled|stable|active|contact|touch|days|open|loops|lps?|investors?)$/;
   const words = t.split(/\s+/).filter((w) => w.length > 2 && !stopWords.test(w));
   if (words.length > 0) {
     criteria.query = words.join(" ");

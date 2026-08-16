@@ -96,19 +96,26 @@ Return:
 
 3) missedIntent — when parseCompleteness is "partial", a short user-facing note (one sentence) on what could not be mapped. When "full", use null.
 
+query is a free-text substring against name, firm, OR geography display text (city / country / region). Do not invent a city enum. A city or country name is a complete mapping — parseCompleteness must be "full" and missedIntent null.
+
+lpLocation is the region enum only: North America, EMEA, APAC, LATAM, Other. Map Europe → EMEA and US / USA → North America. Known region names go to lpLocation, not query. City and country strings go to query.
+
 Examples for filterFields:
 - "show Tier 1 LPs with no contact in 14 days" → tier: ["Tier 1"], daysSinceLastMeaningfulContact: { min: 14, max: null }
 - "Tier 1 or Tier 2" → tier: ["Tier 1", "Tier 2"]
 - "cooling relationships" → band: ["Cooling"] or momentumDirection: ["Cooling"]
 - "family offices or endowments in North America" → investorType: ["Family office", "Endowment"], lpLocation: ["North America"]
+- "family offices in North America" → investorType: ["Family office"], lpLocation: ["North America"] (region enum, not query)
 - "LPs with open loops" → openLoops: { min: 1, max: null }
 - "clear" or "show all" → all filter fields null (empty result after stripping)
 - "Northwind" → query: "Northwind"
+- "brisbane" → query: "brisbane" (full, not partial)
+- "LPs in Australia" → query: "Australia"
 
 For days: "no contact in X days" → daysSinceLastMeaningfulContact min: X; "contacted in last X days" → max: X.
 When the user says "or" between values of the same field, include all values in the array.
 
-If they ask for a concept that has no corresponding field (e.g. a custom segment name you cannot infer), set parseCompleteness to "partial" and explain in missedIntent.`;
+If they ask for a concept that has no corresponding field (e.g. a custom segment name you cannot infer), set parseCompleteness to "partial" and explain in missedIntent. City, country, and geography keywords are not missed intent — they belong in query.`;
 
 function stripNulls(obj: Record<string, unknown>): Record<string, unknown> {
   const stripped: Record<string, unknown> = {};

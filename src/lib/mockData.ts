@@ -179,6 +179,12 @@ export type Relationship = {
   meaningfulTouchesSinceStageEntry?: number;
   /** Completed meetings in current stage (SRS `lp_state.meetings_since_stage_entry`). */
   meetingsSinceStageEntry?: number;
+  /** June 4 firm HQ (`lp_organizations` city / country / region). */
+  organization?: {
+    city?: string | null;
+    country?: string | null;
+    region?: string | null;
+  } | null;
 };
 
 /** Format days since contact for display (e.g. "3d ago", "14d ago") */
@@ -192,8 +198,12 @@ export function formatDaysSinceContact(days: number): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-/** List/card v3 — geography column */
+/** List/card v3 — geography column (org HQ display, else region · remit). */
 export function formatRelationshipGeography(r: Relationship): string {
+  const parts = [r.organization?.city, r.organization?.country, r.organization?.region]
+    .map((p) => (typeof p === "string" ? p.trim() : ""))
+    .filter((p) => p.length > 0);
+  if (parts.length > 0) return parts.join(", ");
   return `${r.lpLocation} · ${r.investmentRemit}`;
 }
 
@@ -536,10 +546,10 @@ function generateRelationships(): Relationship[] {
 
   // r1–r4: Preserve original firms for cross-entity consistency (actions, briefs, commitments)
   const preserved: Partial<Relationship>[] = [
-    { name: "Alex Morgan", firm: "Northwind Capital", daysSinceLastMeaningfulContact: 3, stage: "Active diligence", momentumDirection: "Heating up", tier: "Tier 1", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Direct", lastFundHistory: "Invested Fund II", decisionTimeline: "Q1", fiscalYearEnd: "Dec", consultantDependent: "Direct", esgRequired: "No", nextMove: "Share Q4 performance deck", openLoops: 2, band: "Heating Up", lastMeetingDate: "2025-02-15" },
-    { name: "Jamie Chen", firm: "Peakline Partners", daysSinceLastMeaningfulContact: 9, stage: "First meeting", momentumDirection: "Stable", tier: "Tier 1", relationshipOwner: "IR Person", investorType: "Fund-of-funds", strategyFit: "Active mandate", strategyType: "Multi-strat", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$50–100M", fundSizePreference: "≤5% of fund", source: "Placement agent", lastFundHistory: "New prospect", decisionTimeline: "Q2", fiscalYearEnd: "Jun", consultantDependent: "Direct", esgRequired: "No", nextMove: "Schedule allocation review", openLoops: 1, band: "Active-Stable", lastMeetingDate: "2025-02-01" },
-    { name: "Priya Desai", firm: "Lumen LP", daysSinceLastMeaningfulContact: 14, stage: "First meeting", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "EMEA", investmentRemit: "Europe only", typicalCheckSize: "$5–25M", fundSizePreference: "≤10% of fund", source: "Warm intro", sourceDetail: "Goldman cap intro", lastFundHistory: "New prospect", decisionTimeline: "Q3", fiscalYearEnd: "Mar", consultantDependent: "Direct", esgRequired: "Yes", nextMove: "Send concise update + ask for feedback", openLoops: 3, band: "Cooling" },
-    { name: "Samir Patel", firm: "Harborlight Advisors", daysSinceLastMeaningfulContact: 21, stage: "Sourced", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "Placement Agent", investorType: "Endowment", strategyFit: "Fully allocated", strategyType: "Credit", lpLocation: "North America", investmentRemit: "US only", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Conference", lastFundHistory: "Passed", decisionTimeline: "Q4", fiscalYearEnd: "Jun", consultantDependent: "Consultant-dependent", consultantName: "Mercer", esgRequired: "Yes", nextMove: "Re-engage with performance snapshot", openLoops: 0, band: "Stalled" },
+    { name: "Alex Morgan", firm: "Northwind Capital", daysSinceLastMeaningfulContact: 3, stage: "Active diligence", momentumDirection: "Heating up", tier: "Tier 1", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Direct", lastFundHistory: "Invested Fund II", decisionTimeline: "Q1", fiscalYearEnd: "Dec", consultantDependent: "Direct", esgRequired: "No", nextMove: "Share Q4 performance deck", openLoops: 2, band: "Heating Up", lastMeetingDate: "2025-02-15", organization: { city: "New York", country: "United States", region: "North America" } },
+    { name: "Jamie Chen", firm: "Peakline Partners", daysSinceLastMeaningfulContact: 9, stage: "First meeting", momentumDirection: "Stable", tier: "Tier 1", relationshipOwner: "IR Person", investorType: "Fund-of-funds", strategyFit: "Active mandate", strategyType: "Multi-strat", lpLocation: "North America", investmentRemit: "Global", typicalCheckSize: "$50–100M", fundSizePreference: "≤5% of fund", source: "Placement agent", lastFundHistory: "New prospect", decisionTimeline: "Q2", fiscalYearEnd: "Jun", consultantDependent: "Direct", esgRequired: "No", nextMove: "Schedule allocation review", openLoops: 1, band: "Active-Stable", lastMeetingDate: "2025-02-01", organization: { city: "San Francisco", country: "United States", region: "North America" } },
+    { name: "Priya Desai", firm: "Lumen LP", daysSinceLastMeaningfulContact: 14, stage: "First meeting", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "You", investorType: "Family office", strategyFit: "Active mandate", strategyType: "Long/short equity", lpLocation: "EMEA", investmentRemit: "Europe only", typicalCheckSize: "$5–25M", fundSizePreference: "≤10% of fund", source: "Warm intro", sourceDetail: "Goldman cap intro", lastFundHistory: "New prospect", decisionTimeline: "Q3", fiscalYearEnd: "Mar", consultantDependent: "Direct", esgRequired: "Yes", nextMove: "Send concise update + ask for feedback", openLoops: 3, band: "Cooling", organization: { city: "Zurich", country: "Switzerland", region: "EMEA" } },
+    { name: "Samir Patel", firm: "Harborlight Advisors", daysSinceLastMeaningfulContact: 21, stage: "Sourced", momentumDirection: "Cooling", tier: "Tier 2", relationshipOwner: "Placement Agent", investorType: "Endowment", strategyFit: "Fully allocated", strategyType: "Credit", lpLocation: "North America", investmentRemit: "US only", typicalCheckSize: "$25–50M", fundSizePreference: "No cap", source: "Conference", lastFundHistory: "Passed", decisionTimeline: "Q4", fiscalYearEnd: "Jun", consultantDependent: "Consultant-dependent", consultantName: "Mercer", esgRequired: "Yes", nextMove: "Re-engage with performance snapshot", openLoops: 0, band: "Stalled", organization: { city: "Boston", country: "United States", region: "North America" } },
   ];
 
   for (let i = 0; i < 4; i++) {
@@ -575,6 +585,7 @@ function generateRelationships(): Relationship[] {
       openLoops: p.openLoops!,
       band: p.band!,
       fundId: DEFAULT_RELATIONSHIP_FUND_ID,
+      organization: p.organization,
     });
     usedNames.add(p.name!);
     usedFirms.add(p.firm!);
@@ -608,6 +619,7 @@ function generateRelationships(): Relationship[] {
       band: "Heating Up",
       lastMeetingDate: "2025-03-10",
       contactSeniority: "CIO",
+      organization: { city: "Newport Beach", country: "United States", region: "North America" },
     },
     {
       name: "Frank Ieraci",
@@ -635,6 +647,7 @@ function generateRelationships(): Relationship[] {
       band: "Active-Stable",
       lastMeetingDate: "2025-03-15",
       contactSeniority: "Director",
+      organization: { city: "Toronto", country: "Canada", region: "North America" },
     },
     {
       name: "James Staltari",
@@ -665,6 +678,7 @@ function generateRelationships(): Relationship[] {
       contactSeniority: "Director",
       meaningfulTouchesSinceStageEntry: 3,
       meetingsSinceStageEntry: 2,
+      organization: { city: "London", country: "United Kingdom", region: "EMEA" },
     },
     {
       name: "Kwong Hong Huat",
@@ -692,6 +706,7 @@ function generateRelationships(): Relationship[] {
       band: "Active-Stable",
       lastMeetingDate: undefined,
       contactSeniority: "CIO",
+      organization: { city: "Brisbane", country: "Australia", region: "APAC" },
     },
     {
       name: "Camille Durand",
@@ -719,6 +734,7 @@ function generateRelationships(): Relationship[] {
       band: "Cooling",
       lastMeetingDate: "2025-03-05",
       contactSeniority: "Director",
+      organization: { city: "Paris", country: "France", region: "EMEA" },
     },
   ];
 
@@ -755,6 +771,7 @@ function generateRelationships(): Relationship[] {
       openLoops: p.openLoops!,
       band: p.band!,
       fundId: DEFAULT_RELATIONSHIP_FUND_ID,
+      organization: p.organization,
     });
     usedNames.add(p.name!);
     usedFirms.add(p.firm!);

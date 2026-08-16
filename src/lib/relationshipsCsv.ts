@@ -3,8 +3,8 @@
  * Shared by GET /api/crm/relationships and the export script.
  */
 
-import type { Relationship } from "./mockData";
-import { enrichTouchesInStage } from "@/lib/touchesInStage";
+import type { LpLocation, Relationship } from "./mockData";
+import { enrichTouchesInStage } from "./touchesInStage";
 import {
   BAND_OPTIONS,
   CONSULTANT_DEPENDENT_OPTIONS,
@@ -131,18 +131,86 @@ const COL_KEYS = [
 ] as const;
 
 type ColKey = (typeof COL_KEYS)[number];
+type ExtraCsvField = "city" | "country" | "region" | "location";
+type CsvField = ColKey | ExtraCsvField;
 
-function buildHeaderIndex(headerRow: string[]): Map<ColKey, number> {
-  const map = new Map<ColKey, number>();
+function normalizeHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Canonical + UAT / Affinity aliases (case-insensitive). */
+const HEADER_ALIASES: Record<string, CsvField> = {
+  id: "id",
+  "affinity row id": "id",
+  name: "name",
+  displayname: "name",
+  "display name": "name",
+  "full name": "name",
+  firm: "firm",
+  firmname: "firm",
+  "firm name": "firm",
+  "organization name": "firm",
+  city: "city",
+  country: "country",
+  region: "region",
+  location: "location",
+};
+
+function resolveHeader(raw: string): CsvField | undefined {
+  const trimmed = raw.trim();
+  if ((COL_KEYS as readonly string[]).includes(trimmed)) return trimmed as ColKey;
+  const extra: ExtraCsvField[] = ["city", "country", "region", "location"];
+  if ((extra as readonly string[]).includes(trimmed)) return trimmed as ExtraCsvField;
+  const spaced = normalizeHeader(trimmed);
+  if (HEADER_ALIASES[spaced]) return HEADER_ALIASES[spaced];
+  const compact = spaced.replace(/\s+/g, "");
+  if (HEADER_ALIASES[compact]) return HEADER_ALIASES[compact];
+  const col = COL_KEYS.find((k) => k.toLowerCase() === compact);
+  if (col) return col;
+  return undefined;
+}
+
+function buildHeaderIndex(headerRow: string[]): Map<CsvField, number> {
+  const map = new Map<CsvField, number>();
   headerRow.forEach((h, i) => {
-    const key = h.trim() as ColKey;
-    if ((COL_KEYS as readonly string[]).includes(key)) map.set(key, i);
+    const key = resolveHeader(h);
+    if (key && !map.has(key)) map.set(key, i);
   });
   return map;
 }
 
-function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relationship {
-  const g = (k: ColKey) => {
+function parseLocationParts(location: string): { city?: string; country?: string } {
+  const loc = location.trim();
+  if (!loc) return {};
+  const comma = loc.indexOf(",");
+  if (comma === -1) return { city: loc };
+  const city = loc.slice(0, comma).trim();
+  const country = loc.slice(comma + 1).trim();
+  return {
+    ...(city ? { city } : {}),
+    ...(country ? { country } : {}),
+  };
+}
+
+function mapRegionToLpLocation(region: string): LpLocation | undefined {
+  const raw = region.trim();
+  if (!raw) return undefined;
+  if ((LP_LOCATION_OPTIONS as readonly string[]).includes(raw)) return raw as LpLocation;
+  const r = raw.toLowerCase();
+  if (["na", "north america", "us", "usa"].includes(r)) return "North America";
+  if (["eu", "europe", "emea", "mena"].includes(r)) return "EMEA";
+  if (["apac", "asia", "asia-pacific", "asia pacific"].includes(r)) return "APAC";
+  if (["latam", "latin america"].includes(r)) return "LATAM";
+  return undefined;
+}
+
+function blankToUndef(value: string): string | undefined {
+  const v = value.trim();
+  return v === "" ? undefined : v;
+}
+
+function rowToRelationship(idx: Map<CsvField, number>, cells: string[]): Relationship {
+  const g = (k: CsvField) => {
     const i = idx.get(k);
     if (i === undefined) return "";
     return (cells[i] ?? "").trim();
@@ -159,7 +227,10 @@ function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relations
   const investorType = pick(g("investorType"), INVESTOR_TYPE_OPTIONS, "Family office");
   const strategyFit = pick(g("strategyFit"), STRATEGY_FIT_OPTIONS, "Unknown");
   const strategyType = pick(g("strategyType"), STRATEGY_TYPE_OPTIONS, "Other");
-  const lpLocation = pick(g("lpLocation"), LP_LOCATION_OPTIONS, "Other");
+  const lpLocation =
+    optEnum(g("lpLocation"), LP_LOCATION_OPTIONS) ??
+    mapRegionToLpLocation(g("region")) ??
+    "Other";
   const investmentRemit = pick(g("investmentRemit"), INVESTMENT_REMIT_OPTIONS, "Other");
   const typicalCheckSize = pick(g("typicalCheckSize"), TYPICAL_CHECK_SIZE_OPTIONS, "Unknown");
   const fundSizePreference = pick(g("fundSizePreference"), FUND_SIZE_PREFERENCE_OPTIONS, "Unknown");
@@ -182,6 +253,13 @@ function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relations
   const band = pick(g("band"), BAND_OPTIONS, "Active-Stable");
   const fundIdRaw = g("fundId").trim();
   const fundId = fundIdRaw || DEFAULT_RELATIONSHIP_FUND_ID;
+
+  const fromLocation = parseLocationParts(g("location"));
+  const city = blankToUndef(g("city")) ?? fromLocation.city;
+  const country = blankToUndef(g("country")) ?? fromLocation.country;
+  const region = blankToUndef(g("region"));
+  const organization =
+    city || country || region ? { city: city ?? null, country: country ?? null, region: region ?? null } : undefined;
 
   return {
     id,
@@ -214,6 +292,7 @@ function rowToRelationship(idx: Map<ColKey, number>, cells: string[]): Relations
     nextMove,
     openLoops,
     band,
+    organization,
   };
 }
 

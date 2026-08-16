@@ -358,8 +358,8 @@ export function RelationshipsAdvancedFiltersModal({
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FieldText
-                label="Name / firm contains"
-                placeholder="Substring match on name or firm"
+                label="Name / firm / geography contains"
+                placeholder="Substring match on name, firm, or geography (city / country / region)"
                 value={draft.query}
                 onChange={(v) => setField("query", v)}
               />
